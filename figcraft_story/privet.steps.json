@@ -1,0 +1,36 @@
+[
+  {
+    "command": "frame.create",
+    "params": {
+      "preset": "Instagram story",
+      "x": 0,
+      "y": 0,
+      "name": "Story: привет",
+      "props": {
+        "fills": [{ "type": "linearGradient", "stops": ["#FFB3C7", "#FF6A88"] }],
+        "layout": "vertical",
+        "mainAlign": "center",
+        "crossAlign": "center",
+        "padding": 64,
+        "sizingV": "fixed"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "parent": { "$step": 0 },
+      "name": "Привет",
+      "text": "привет! 🪿❤️",
+      "props": {
+        "fontFamily": "Inter",
+        "fontStyle": "Bold",
+        "fontSize": 140,
+        "textAlign": "center",
+        "fill": "#FFFFFF",
+        "sizingH": "fill"
+      }
+    }
+  }
+]
