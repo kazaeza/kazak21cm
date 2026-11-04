@@ -1,28 +1,32 @@
 # Сторис «привет! 🪿❤️» в FigCraft
 
-`privet.steps.json` — скрипт для `figcraft-cli`: кадр **Instagram story** (1080×1920) с розовым градиентом и
-текстом «привет! 🪿❤️» по центру.
+| Файл | Что это |
+|---|---|
+| `privet.figcraft` | Исходник в формате FigCraft (zip с `document.json` и миниатюрой) |
+| `privet.png` | Экспорт кадра, 1080×1920 |
 
-> Статус: скрипт подготовлен по справочнику скилла (`.claude/skills/figcraft/`), но **ещё не запускался**,
-> потому что `figcraft-cli` в этой среде не установлен.
+## Что внутри
 
-## Как собрать файл
+- Кадр `Story`: 1080×1920 (формат сторис), заливка `#FFE0E9`.
+- Текстовый слой `привет`: строка `привет! 🪿❤️`, Inter Bold 96 px, цвет `#D90F45`, ширина 1080 (фиксированная),
+  выравнивание по центру, `y = 902`, то есть строго по центру кадра.
 
-```bash
-figcraft-cli run figcraft_story/privet.steps.json --out figcraft_story/privet.figcraft
-figcraft-cli export figcraft_story/privet.figcraft -o figcraft_story/privet.png --scale 1
-```
+## Как сделано
 
-`run` выполняет шаги как один откат-пакет: при ошибке ничего не сохранится.
+Размещённой онлайн-версии у FigCraft нет, зато к каждому релизу приложена статическая веб-сборка (WebAssembly):
+[`figcraft-web-0.15.0.zip`](https://github.com/storytold/figcraft/releases/tag/v0.15.0). Я проверил её по
+`SHA256SUMS.txt` из релиза, отдал локально (`python3 -m http.server`) и открыл в headless Chromium по адресу
+`http://127.0.0.1:8767/?webgl`. Файл сохранён через File ▸ Save, PNG получен кнопкой «Export page as PNG».
 
-## Что проверить после сборки
+Открыть результат: десктопный FigCraft (File ▸ Open), та же веб-сборка или `figcraft-cli info privet.figcraft`.
 
-- Кириллица рисуется Inter Bold (он есть среди встроенных шрифтов).
-- Эмодзи 🪿❤️ могут отрисоваться пустыми квадратами, если в системе нет цветного эмодзи-шрифта. Проверьте
-  `figcraft-cli render … -o preview.png` и при необходимости положите эмодзи отдельным слоем (`image.place`).
-- Откройте `figcraft_story/privet.figcraft` в приложении FigCraft или проверьте `figcraft-cli info`.
+## Про эмодзи (важно, если будете править)
 
-## Установка figcraft-cli
-
-См. `.claude/skills/figcraft/SOURCE.md` (апстрим: https://github.com/ai-2070/claude-storytold-skills, скилл
-`storytold-install`) или релизы https://github.com/storytold/figcraft/releases.
+- В веб-сборке цветной гусь 🪿 рисуется только после выбора в меню шрифта пункта
+  «Use fonts installed on this computer…» (Local Font Access). Без него вместо гуся плашка `NO GLYPH`:
+  во встроенных шрифтах его нет.
+- Веб-рендер обрезает цветные эмодзи при размере шрифта около 110 px и больше (гусь превращается в обрезок),
+  поэтому размер 96 px. В десктопном приложении предел может быть другим.
+- Сердце ❤ рисуется монохромным глифом, поэтому оно берёт цвет текста (`#D90F45`), а не цвет эмодзи.
+  Панель Fill красит слой целиком, отдельный цвет для одного символа через неё не задать.
+- Скилл для агентов лежит в `.claude/skills/figcraft/` (источник и лицензия в `SOURCE.md`).
