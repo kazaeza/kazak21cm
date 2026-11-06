@@ -2,14 +2,28 @@ package com.kazaeza.muzykalka.nav
 
 import kotlinx.serialization.Serializable
 
-/** The eight screens of the plan. Type-safe routes (Navigation Compose 2.8+). */
+/** Type-safe routes (Navigation Compose). */
 @Serializable data object TodayRoute
 @Serializable data object ModesRoute
 @Serializable data object LibraryRoute
 @Serializable data object LexiconRoute
 @Serializable data object ProgressRoute
 @Serializable data object SettingsRoute
-@Serializable data object CaptureRoute
+@Serializable data object SoundCheckRoute
+@Serializable data object ExamRoute
 
-/** Full-screen game; [variant] is a `Variant.name`. */
-@Serializable data class GameRoute(val variant: String)
+/** [mode] is a `ModeId.name`. */
+@Serializable data class ModeRoute(val mode: String)
+
+/** Full-screen drill; [variant] is a `Variant.name`, [level] 0 = selected level. */
+@Serializable data class GameRoute(val variant: String, val level: Int = 0)
+
+/** The Taper; [itemId] orders exactly that item. */
+@Serializable data class TaperRoute(val itemId: String? = null)
+
+@Serializable data class SetRoute(val minimal: Boolean)
+
+@Serializable data class ItemRoute(val id: String)
+
+/** «Улов»; [id] null = new item of [kind] (`LibraryKind.name`). */
+@Serializable data class EditorRoute(val id: String? = null, val kind: String = "SONG")

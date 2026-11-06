@@ -83,6 +83,9 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
 
     fun observeDueCount(today: Int): Flow<Int> = db.srs().observeDueCount(today)
 
+    /** Playable-now orders of one session (exam memory stage). */
+    suspend fun playableInSession(sessionId: Long): Int = db.orders().inSession(sessionId).count { it.playableNow }
+
     suspend fun saveExam(sessionId: Long, results: List<ExamResult>) =
         db.exams().insertAll(results.map { ExamResultEntity(sessionId = sessionId, skill = it.skill.name, measured = it.measured, passed = it.passed, atEpochMs = it.atEpochMs) })
 

@@ -69,6 +69,9 @@ interface OrderLogDao {
     @Query("SELECT * FROM order_log ORDER BY atEpochMs")
     fun observeAll(): Flow<List<OrderLogEntity>>
 
+    @Query("SELECT * FROM order_log WHERE sessionId = :sessionId")
+    suspend fun inSession(sessionId: Long): List<OrderLogEntity>
+
     @Query("SELECT * FROM order_log WHERE itemId = :itemId ORDER BY atEpochMs DESC")
     fun observeFor(itemId: String): Flow<List<OrderLogEntity>>
 }

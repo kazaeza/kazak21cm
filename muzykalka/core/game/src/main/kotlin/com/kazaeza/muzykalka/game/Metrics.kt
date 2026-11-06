@@ -12,6 +12,21 @@ object Metrics {
 
     fun median(values: List<Long>): Long? = if (values.isEmpty()) null else values.sorted()[values.size / 2]
 
+    /**
+     * Streak of consecutive practice days ending today — or yesterday, so the streak is not shown
+     * as lost before today's practice. [days] are study-day numbers in any order.
+     */
+    fun streak(days: Collection<Int>, today: Int): Int {
+        val set = days.toSet()
+        var d = if (today in set) today else today - 1
+        var n = 0
+        while (d in set) {
+            n++
+            d--
+        }
+        return n
+    }
+
     /** Neck heat cell for one (string, pitch class), from Hunt FIND attempts. */
     data class HeatCell(val string: Int, val pitchClass: Int, val medianMs: Long, val accuracy: Double, val count: Int)
 

@@ -307,6 +307,14 @@ class MetricsAndExamTest {
     }
 
     @Test
+    fun `streak counts back from today or yesterday`() {
+        assertEquals(3, Metrics.streak(listOf(10, 9, 8, 5), today = 10))
+        assertEquals(3, Metrics.streak(listOf(9, 8, 7), today = 10))
+        assertEquals(0, Metrics.streak(listOf(7), today = 10))
+        assertEquals(0, Metrics.streak(emptyList(), today = 10))
+    }
+
+    @Test
     fun `exam measures`() {
         val hunt = listOf(a(Variant.HUNT_FIND, "x", true, 800), a(Variant.HUNT_FIND, "x", false, 6000))
         assertEquals((800 + 6000) / 2 / 1000.0, Exam.measure(Skill.NECK_LOW_STRINGS, hunt), 1e-9)
