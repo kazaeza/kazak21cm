@@ -22,24 +22,24 @@ object TestSignals {
     }
 
     /**
-     * Plucked string (basic Karplus–Strong) with a strong 2nd harmonic at the attack — the classic
-     * octave-error trap for autocorrelation detectors.
+     * Plucked-string-like tone: exact harmonic series (1/k amplitudes, 2nd harmonic boosted 1.5×,
+     * random phases), higher harmonics decaying faster. The strong 2nd harmonic is the classic
+     * octave-error trap for autocorrelation detectors. Exactly in tune by construction.
      */
     fun pluck(hz: Double, seconds: Double, seed: Int = 7, sr: Int = SAMPLE_RATE): FloatArray {
-        val period = (sr / hz).toInt()
         val rnd = Random(seed)
-        val buf = DoubleArray(period) { rnd.nextDouble(-1.0, 1.0) }
+        val harmonics = minOf(40, (sr / 2.2 / hz).toInt())
+        val phases = DoubleArray(harmonics) { rnd.nextDouble(0.0, 2 * PI) }
         val n = (seconds * sr).toInt()
-        val out = FloatArray(n)
-        var idx = 0
-        for (i in 0 until n) {
-            val next = (idx + 1) % period
-            val v = 0.5 * (buf[idx] + buf[next]) * 0.996
-            out[i] = (buf[idx] * 0.5).toFloat()
-            buf[idx] = v
-            idx = next
+        return FloatArray(n) { i ->
+            val t = i.toDouble() / sr
+            var v = 0.0
+            for (k in 1..harmonics) {
+                val amp = (if (k == 2) 1.5 else 1.0) / k * exp(-t * (1.0 + 0.6 * k))
+                v += amp * sin(2 * PI * k * hz * t + phases[k - 1])
+            }
+            (0.35 * v).toFloat()
         }
-        return out
     }
 
     /** Human-like voice: fundamental + formant-ish harmonics + 5 Hz vibrato of ±[vibratoCents]. */

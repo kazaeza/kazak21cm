@@ -5,16 +5,14 @@ import com.kazaeza.muzykalka.music.centsBetween
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.sqrt
 
 /**
- * Acceptance tests written BEFORE the implementation. They are the spec for tickets M-02/M-03/M-04.
- * Remove @Disabled when implementing the ticket; do not weaken thresholds without updating
- * docs/ROADMAP.md and saying why in the commit message.
+ * Acceptance tests written BEFORE the implementation — the spec for tickets M-02/M-03/M-04.
+ * Do not weaken thresholds without updating docs/ROADMAP.md and saying why in the commit message.
  */
 class DspAcceptanceTest {
 
@@ -25,7 +23,6 @@ class DspAcceptanceTest {
         return detector.detect(signal, offset)
     }
 
-    @Disabled("M-02")
     @Test
     fun `MPM - sines across the guitar range within 3 cents`() {
         for (n in guitarRange) {
@@ -36,7 +33,6 @@ class DspAcceptanceTest {
         }
     }
 
-    @Disabled("M-02")
     @Test
     fun `MPM - sawtooth and plucks have no octave errors and stay within 5 cents`() {
         for (n in guitarRange) {
@@ -48,7 +44,6 @@ class DspAcceptanceTest {
         }
     }
 
-    @Disabled("M-02")
     @Test
     fun `MPM - voice with vibrato is tracked to within the vibrato depth`() {
         for (n in 45..76) { // A2..E5
@@ -58,14 +53,12 @@ class DspAcceptanceTest {
         }
     }
 
-    @Disabled("M-02")
     @Test
     fun `MPM - noise and silence give no pitch`() {
         assertNull(detectMiddle(TestSignals.whiteNoise(0.2)))
         assertNull(detectMiddle(FloatArray(SAMPLE_RATE / 5)))
     }
 
-    @Disabled("M-02")
     @Test
     fun `MPM - pitch survives moderate room noise`() {
         val hz = MidiNote(52).frequency()
@@ -73,7 +66,6 @@ class DspAcceptanceTest {
         assertTrue(abs(centsBetween(est.hz, hz)) < 8.0)
     }
 
-    @Disabled("M-02")
     @Test
     fun `MPM - fast enough for real time (median under 1 ms per 2048 window)`() {
         val det = McLeodPitchDetector()
@@ -96,17 +88,15 @@ class DspAcceptanceTest {
             PitchFrame(timeNanos = off * 1_000_000_000L / SAMPLE_RATE, estimate = det.detect(signal, off), rmsDb = 20 * log10(rms + 1e-12))
         }
 
-    @Disabled("M-03")
     @Test
     fun `segmenter - one clean pluck gives exactly one onset with the right note`() {
         val seg = StableNoteSegmenter()
-        val events = frames(TestSignals.pluck(MidiNote(54).frequency(), 1.0)).mapNotNull(seg::accept)
+        val events = frames(TestSignals.pluck(MidiNote(54).frequency(), 1.0)).flatMap(seg::accept)
         val onsets = events.filterIsInstance<NoteEvent.Onset>()
         assertEquals(1, onsets.size, "$events")
         assertEquals(MidiNote(54), onsets.single().note)
     }
 
-    @Disabled("M-03")
     @Test
     fun `segmenter - a fumbled search (short wrong notes) yields the wrong note FIRST`() {
         // Rule 4: "перебор не засчитывается". A 150 ms wrong note followed by the right one must
@@ -114,20 +104,49 @@ class DspAcceptanceTest {
         val wrong = TestSignals.pluck(MidiNote(53).frequency(), 0.15)
         val right = TestSignals.pluck(MidiNote(54).frequency(), 0.6)
         val seg = StableNoteSegmenter()
-        val onsets = frames(wrong + right).mapNotNull(seg::accept).filterIsInstance<NoteEvent.Onset>()
+        val onsets = frames(wrong + right).flatMap(seg::accept).filterIsInstance<NoteEvent.Onset>()
         assertEquals(MidiNote(53), onsets.first().note)
     }
 
-    @Disabled("M-03")
     @Test
     fun `segmenter - blips shorter than minHold are ignored`() {
         val blip = TestSignals.pluck(MidiNote(60).frequency(), 0.04)
         val seg = StableNoteSegmenter()
-        val onsets = frames(blip + FloatArray(SAMPLE_RATE / 2)).mapNotNull(seg::accept).filterIsInstance<NoteEvent.Onset>()
+        val onsets = frames(blip + FloatArray(SAMPLE_RATE / 2)).flatMap(seg::accept).filterIsInstance<NoteEvent.Onset>()
         assertTrue(onsets.isEmpty(), "$onsets")
     }
 
-    @Disabled("M-04")
+    @Test
+    fun `segmenter - re-plucking the same note gives a second onset`() {
+        val hz = MidiNote(57).frequency()
+        val seg = StableNoteSegmenter()
+        val signal = TestSignals.decay(TestSignals.pluck(hz, 0.5), 0.12) + TestSignals.pluck(hz, 0.5, seed = 11)
+        val onsets = frames(signal).flatMap(seg::accept).filterIsInstance<NoteEvent.Onset>()
+        assertEquals(2, onsets.size, "$onsets")
+        assertTrue(onsets.all { it.note == MidiNote(57) })
+    }
+
+    @Test
+    fun `segmenter - onset is timestamped at the note start, not at confirmation`() {
+        val silence = FloatArray(SAMPLE_RATE / 5) // 200 ms
+        val seg = StableNoteSegmenter()
+        val onset = frames(silence + TestSignals.pluck(MidiNote(50).frequency(), 0.6)).flatMap(seg::accept)
+            .filterIsInstance<NoteEvent.Onset>().single()
+        val startMs = onset.timeNanos / 1_000_000
+        assertTrue(startMs in 150..215, "onset at $startMs ms")
+    }
+
+    @Test
+    fun `fft - inverse of forward is identity`() {
+        val fft = Fft(64)
+        val re = DoubleArray(64) { kotlin.math.sin(it * 0.3) + it % 5 }
+        val im = DoubleArray(64)
+        val orig = re.copyOf()
+        fft.forward(re, im)
+        fft.inverse(re, im)
+        for (i in 0 until 64) assertEquals(orig[i], re[i], 1e-9)
+    }
+
     @Test
     fun `synth - every voice renders at the requested pitch (closed loop with MPM)`() {
         val synth = DefaultSynth()
@@ -142,7 +161,6 @@ class DspAcceptanceTest {
         }
     }
 
-    @Disabled("M-04")
     @Test
     fun `synth - output never clips even with dense chords`() {
         val synth = DefaultSynth()
