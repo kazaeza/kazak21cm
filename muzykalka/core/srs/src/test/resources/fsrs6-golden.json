@@ -1,0 +1,4005 @@
+{
+ "generator": "py-fsrs 6.3.2 (Scheduler(learning_steps=(), relearning_steps=(), enable_fuzzing=False))",
+ "parameters": [
+  0.212,
+  1.2931,
+  2.3065,
+  8.2956,
+  6.4133,
+  0.8334,
+  3.0194,
+  0.001,
+  1.8722,
+  0.1666,
+  0.796,
+  1.4835,
+  0.0614,
+  0.2629,
+  1.6483,
+  0.6014,
+  1.8729,
+  0.5425,
+  0.0912,
+  0.0658,
+  0.1542
+ ],
+ "notes": "day = whole days since an arbitrary epoch; ratings 1=Again 2=Hard 3=Good 4=Easy; retrievabilityBefore is null on the first review",
+ "cases": [
+  {
+   "name": "first-review-each-rating-again",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": null,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "dueDay": 1
+    }
+   ]
+  },
+  {
+   "name": "first-review-each-rating-hard",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 1
+    }
+   ]
+  },
+  {
+   "name": "first-review-each-rating-good",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    }
+   ]
+  },
+  {
+   "name": "first-review-each-rating-easy",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 8
+    }
+   ]
+  },
+  {
+   "name": "all-good-on-due",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 10.964332335820698,
+     "difficulty": 2.111214235785395,
+     "dueDay": 13
+    },
+    {
+     "day": 13,
+     "rating": 3,
+     "retrievabilityBefore": 0.8997767176252718,
+     "stability": 46.28021728755693,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 59
+    },
+    {
+     "day": 59,
+     "rating": 3,
+     "retrievabilityBefore": 0.9004166937961716,
+     "stability": 162.86220163874916,
+     "difficulty": 2.0974554287524403,
+     "dueDay": 222
+    },
+    {
+     "day": 222,
+     "rating": 3,
+     "retrievabilityBefore": 0.8999418855553695,
+     "stability": 497.4471936002745,
+     "difficulty": 2.0905863426205262,
+     "dueDay": 719
+    },
+    {
+     "day": 719,
+     "rating": 3,
+     "retrievabilityBefore": 0.9000617768063983,
+     "stability": 1345.52877754259,
+     "difficulty": 2.083724125574744,
+     "dueDay": 2065
+    },
+    {
+     "day": 2065,
+     "rating": 3,
+     "retrievabilityBefore": 0.8999759422592774,
+     "stability": 3292.2795956995105,
+     "difficulty": 2.0768687707460076,
+     "dueDay": 5357
+    },
+    {
+     "day": 5357,
+     "rating": 3,
+     "retrievabilityBefore": 0.9000058345801907,
+     "stability": 7397.830529065618,
+     "difficulty": 2.0700202712721,
+     "dueDay": 12755
+    },
+    {
+     "day": 12755,
+     "rating": 3,
+     "retrievabilityBefore": 0.8999984261863673,
+     "stability": 15465.868623106442,
+     "difficulty": 2.0631786202976663,
+     "dueDay": 28221
+    },
+    {
+     "day": 28221,
+     "rating": 3,
+     "retrievabilityBefore": 0.8999994164085542,
+     "stability": 30394.12337483417,
+     "difficulty": 2.056343810974207,
+     "dueDay": 58615
+    },
+    {
+     "day": 58615,
+     "rating": 3,
+     "retrievabilityBefore": 0.9000002788706205,
+     "stability": 56628.42300851843,
+     "difficulty": 2.049515836460071,
+     "dueDay": 95115
+    },
+    {
+     "day": 95115,
+     "rating": 3,
+     "retrievabilityBefore": 0.9272637333829303,
+     "stability": 88353.94090464058,
+     "difficulty": 2.0426946899204492,
+     "dueDay": 131615
+    }
+   ]
+  },
+  {
+   "name": "all-easy-on-due",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 8
+    },
+    {
+     "day": 8,
+     "rating": 4,
+     "retrievabilityBefore": 0.9024733005284542,
+     "stability": 65.62422616189994,
+     "difficulty": 1.0,
+     "dueDay": 74
+    },
+    {
+     "day": 74,
+     "rating": 4,
+     "retrievabilityBefore": 0.899607248317662,
+     "stability": 396.7750233497581,
+     "difficulty": 1.0,
+     "dueDay": 471
+    },
+    {
+     "day": 471,
+     "rating": 4,
+     "retrievabilityBefore": 0.899961051738456,
+     "stability": 1874.9169554074524,
+     "difficulty": 1.0,
+     "dueDay": 2346
+    },
+    {
+     "day": 2346,
+     "rating": 4,
+     "retrievabilityBefore": 0.8999969570898693,
+     "stability": 7265.432894791257,
+     "difficulty": 1.0,
+     "dueDay": 9611
+    },
+    {
+     "day": 9611,
+     "rating": 4,
+     "retrievabilityBefore": 0.9000040934883285,
+     "stability": 23932.922499822544,
+     "difficulty": 1.0,
+     "dueDay": 33544
+    },
+    {
+     "day": 33544,
+     "rating": 4,
+     "retrievabilityBefore": 0.8999997775297924,
+     "stability": 68949.18220077343,
+     "difficulty": 1.0,
+     "dueDay": 70044
+    },
+    {
+     "day": 70044,
+     "rating": 4,
+     "retrievabilityBefore": 0.9375729227681329,
+     "stability": 135806.9865065576,
+     "difficulty": 1.0,
+     "dueDay": 106544
+    },
+    {
+     "day": 106544,
+     "rating": 4,
+     "retrievabilityBefore": 0.9645795946710545,
+     "stability": 201827.87661845866,
+     "difficulty": 1.0,
+     "dueDay": 143044
+    },
+    {
+     "day": 143044,
+     "rating": 4,
+     "retrievabilityBefore": 0.9751459176449742,
+     "stability": 266005.83566347085,
+     "difficulty": 1.0,
+     "dueDay": 179544
+    }
+   ]
+  },
+  {
+   "name": "lapse-cycle",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 10.964332335820698,
+     "difficulty": 2.111214235785395,
+     "dueDay": 13
+    },
+    {
+     "day": 13,
+     "rating": 3,
+     "retrievabilityBefore": 0.8997767176252718,
+     "stability": 46.28021728755693,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 59
+    },
+    {
+     "day": 59,
+     "rating": 1,
+     "retrievabilityBefore": 0.9004166937961716,
+     "stability": 2.9325804541638116,
+     "difficulty": 7.389975788014609,
+     "dueDay": 62
+    },
+    {
+     "day": 62,
+     "rating": 3,
+     "retrievabilityBefore": 0.8984308565865844,
+     "stability": 7.778225744797728,
+     "difficulty": 7.377814181523433,
+     "dueDay": 70
+    },
+    {
+     "day": 70,
+     "rating": 3,
+     "retrievabilityBefore": 0.8980569696525893,
+     "stability": 18.7816340167913,
+     "difficulty": 7.365664736638748,
+     "dueDay": 89
+    },
+    {
+     "day": 89,
+     "rating": 1,
+     "retrievabilityBefore": 0.8992038811021896,
+     "stability": 1.8466039734858777,
+     "difficulty": 9.119340281709784,
+     "dueDay": 91
+    },
+    {
+     "day": 91,
+     "rating": 1,
+     "retrievabilityBefore": 0.8944245918628103,
+     "stability": 0.4879617098008941,
+     "difficulty": 9.695761508380928,
+     "dueDay": 92
+    },
+    {
+     "day": 92,
+     "rating": 3,
+     "retrievabilityBefore": 0.8437734690064311,
+     "stability": 1.105544398021307,
+     "difficulty": 9.681294116169385,
+     "dueDay": 93
+    }
+   ]
+  },
+  {
+   "name": "same-day-repeats",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 2.3065,
+     "difficulty": 2.111214235785395,
+     "dueDay": 2
+    },
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.7750839828558984,
+     "difficulty": 7.392238132342694,
+     "dueDay": 1
+    },
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": 1.0,
+     "stability": 1.4246937658554968,
+     "difficulty": 6.5060740071714935,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.9224329172913812,
+     "stability": 3.924408672421268,
+     "difficulty": 6.49479630246116,
+     "dueDay": 5
+    }
+   ]
+  },
+  {
+   "name": "late-reviews",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 4,
+     "rating": 3,
+     "retrievabilityBefore": 0.8579857892330743,
+     "stability": 16.17726320265468,
+     "difficulty": 2.111214235785395,
+     "dueDay": 20
+    },
+    {
+     "day": 36,
+     "rating": 3,
+     "retrievabilityBefore": 0.8468351398217056,
+     "stability": 92.42827551361594,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 128
+    },
+    {
+     "day": 220,
+     "rating": 1,
+     "retrievabilityBefore": 0.8462856043866234,
+     "stability": 4.193052576515261,
+     "difficulty": 7.389975788014609,
+     "dueDay": 224
+    },
+    {
+     "day": 228,
+     "rating": 3,
+     "retrievabilityBefore": 0.8499332075576106,
+     "stability": 14.028809159846375,
+     "difficulty": 7.377814181523433,
+     "dueDay": 242
+    }
+   ]
+  },
+  {
+   "name": "early-reviews",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 10.964332335820698,
+     "difficulty": 2.111214235785395,
+     "dueDay": 13
+    },
+    {
+     "day": 8,
+     "rating": 3,
+     "retrievabilityBefore": 0.9359180277600678,
+     "stability": 33.21905895509341,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 41
+    },
+    {
+     "day": 25,
+     "rating": 2,
+     "retrievabilityBefore": 0.9392279827240906,
+     "stability": 65.1723654582728,
+     "difficulty": 4.743715608383524,
+     "dueDay": 90
+    },
+    {
+     "day": 58,
+     "rating": 4,
+     "retrievabilityBefore": 0.9397400423689706,
+     "stability": 186.83497237671867,
+     "difficulty": 2.9725386768547852,
+     "dueDay": 245
+    }
+   ]
+  },
+  {
+   "name": "retention-0.8",
+   "desiredRetention": 0.8,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 8
+    },
+    {
+     "day": 8,
+     "rating": 3,
+     "retrievabilityBefore": 0.7957472810181505,
+     "stability": 22.768180240175987,
+     "difficulty": 2.111214235785395,
+     "dueDay": 83
+    },
+    {
+     "day": 83,
+     "rating": 3,
+     "retrievabilityBefore": 0.8006245626071756,
+     "stability": 157.23906677864542,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 604
+    },
+    {
+     "day": 604,
+     "rating": 3,
+     "retrievabilityBefore": 0.8000721130718915,
+     "stability": 832.824425556497,
+     "difficulty": 2.0974554287524403,
+     "dueDay": 3366
+    },
+    {
+     "day": 3366,
+     "rating": 3,
+     "retrievabilityBefore": 0.799986756732139,
+     "stability": 3546.7133855694365,
+     "difficulty": 2.0905863426205262,
+     "dueDay": 15127
+    },
+    {
+     "day": 15127,
+     "rating": 3,
+     "retrievabilityBefore": 0.7999980665019012,
+     "stability": 12631.951090246554,
+     "difficulty": 2.083724125574744,
+     "dueDay": 51627
+    },
+    {
+     "day": 51627,
+     "rating": 3,
+     "retrievabilityBefore": 0.8128742959285475,
+     "stability": 37022.83500156716,
+     "difficulty": 2.0768687707460076,
+     "dueDay": 88127
+    },
+    {
+     "day": 88127,
+     "rating": 3,
+     "retrievabilityBefore": 0.9009741317658262,
+     "stability": 67561.9698958583,
+     "difficulty": 2.0700202712721,
+     "dueDay": 124627
+    }
+   ]
+  },
+  {
+   "name": "retention-0.95",
+   "desiredRetention": 0.95,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.9468474993825461,
+     "stability": 7.31530074407728,
+     "difficulty": 2.111214235785395,
+     "dueDay": 4
+    },
+    {
+     "day": 4,
+     "rating": 3,
+     "retrievabilityBefore": 0.9492258833357938,
+     "stability": 19.833473465759585,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 12
+    },
+    {
+     "day": 12,
+     "rating": 3,
+     "retrievabilityBefore": 0.9499176686513291,
+     "stability": 48.19959255862878,
+     "difficulty": 2.0974554287524403,
+     "dueDay": 31
+    },
+    {
+     "day": 31,
+     "rating": 3,
+     "retrievabilityBefore": 0.9508642512917695,
+     "stability": 106.55485547174699,
+     "difficulty": 2.0905863426205262,
+     "dueDay": 74
+    },
+    {
+     "day": 74,
+     "rating": 3,
+     "retrievabilityBefore": 0.9498981677261864,
+     "stability": 221.9454240152416,
+     "difficulty": 2.083724125574744,
+     "dueDay": 163
+    },
+    {
+     "day": 163,
+     "rating": 3,
+     "retrievabilityBefore": 0.9501606581626003,
+     "stability": 433.6643792595567,
+     "difficulty": 2.0768687707460076,
+     "dueDay": 338
+    },
+    {
+     "day": 338,
+     "rating": 3,
+     "retrievabilityBefore": 0.949899211130063,
+     "stability": 805.9306066398435,
+     "difficulty": 2.0700202712721,
+     "dueDay": 662
+    }
+   ]
+  },
+  {
+   "name": "random-00",
+   "desiredRetention": 0.95,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": null,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 1,
+     "retrievabilityBefore": 0.7661957302284143,
+     "stability": 0.10088578982099844,
+     "difficulty": 8.806304468856837,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.6936817601938027,
+     "stability": 0.6832068408085884,
+     "difficulty": 8.792726533684817,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 3,
+     "retrievabilityBefore": 0.8717743495969198,
+     "stability": 1.8059961279672856,
+     "difficulty": 8.77916217644797,
+     "dueDay": 4
+    },
+    {
+     "day": 4,
+     "rating": 3,
+     "retrievabilityBefore": 0.9353225609834713,
+     "stability": 3.0546557162787287,
+     "difficulty": 8.76561138356836,
+     "dueDay": 5
+    },
+    {
+     "day": 5,
+     "rating": 3,
+     "retrievabilityBefore": 0.9579880053518501,
+     "stability": 4.307741318090725,
+     "difficulty": 8.752074141481629,
+     "dueDay": 7
+    },
+    {
+     "day": 7,
+     "rating": 2,
+     "retrievabilityBefore": 0.943798669575184,
+     "stability": 5.666134208731128,
+     "difficulty": 9.156797031067335,
+     "dueDay": 9
+    },
+    {
+     "day": 9,
+     "rating": 1,
+     "retrievabilityBefore": 0.9552111933433666,
+     "stability": 0.9014787368172399,
+     "difficulty": 9.708073287188858,
+     "dueDay": 10
+    },
+    {
+     "day": 10,
+     "rating": 1,
+     "retrievabilityBefore": 0.8927174213192322,
+     "stability": 0.28342056663899323,
+     "difficulty": 9.889274043897464,
+     "dueDay": 11
+    },
+    {
+     "day": 10,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.10932991722191863,
+     "difficulty": 9.948833500462436,
+     "dueDay": 11
+    },
+    {
+     "day": 10,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.1328853625429303,
+     "difficulty": 9.934113036258811,
+     "dueDay": 11
+    },
+    {
+     "day": 11,
+     "rating": 1,
+     "retrievabilityBefore": 0.7205376393155069,
+     "stability": 0.06810070197349792,
+     "difficulty": 9.963571772346462,
+     "dueDay": 12
+    },
+    {
+     "day": 12,
+     "rating": 4,
+     "retrievabilityBefore": 0.6559997819085529,
+     "stability": 0.4917206382066515,
+     "difficulty": 9.936627525516895,
+     "dueDay": 13
+    }
+   ]
+  },
+  {
+   "name": "random-01",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 2
+    },
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 1.2931,
+     "difficulty": 6.7404595108297,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.8673675017566826,
+     "stability": 5.11406622919368,
+     "difficulty": 6.728947420615708,
+     "dueDay": 12
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 5.11406622919368,
+     "difficulty": 6.717446842491931,
+     "dueDay": 12
+    },
+    {
+     "day": 22,
+     "rating": 3,
+     "retrievabilityBefore": 0.7842978037086362,
+     "stability": 25.440429854593333,
+     "difficulty": 6.705957764946278,
+     "dueDay": 71
+    },
+    {
+     "day": 71,
+     "rating": 3,
+     "retrievabilityBefore": 0.8491236734798502,
+     "stability": 78.30814052950124,
+     "difficulty": 6.694480176478169,
+     "dueDay": 220
+    },
+    {
+     "day": 369,
+     "rating": 1,
+     "retrievabilityBefore": 0.7869129079768349,
+     "stability": 4.046304937402842,
+     "difficulty": 8.898726480840013,
+     "dueDay": 377
+    },
+    {
+     "day": 377,
+     "rating": 3,
+     "retrievabilityBefore": 0.846877500674435,
+     "stability": 9.724095081824998,
+     "difficulty": 8.88505612365601,
+     "dueDay": 396
+    },
+    {
+     "day": 377,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 9.724095081824998,
+     "difficulty": 9.24507666779506,
+     "dueDay": 396
+    },
+    {
+     "day": 415,
+     "rating": 2,
+     "retrievabilityBefore": 0.784370520308562,
+     "stability": 18.278834504903003,
+     "difficulty": 9.484075081951918,
+     "dueDay": 450
+    },
+    {
+     "day": 450,
+     "rating": 2,
+     "retrievabilityBefore": 0.8496263346003383,
+     "stability": 26.770075762346664,
+     "difficulty": 9.642733366595339,
+     "dueDay": 501
+    }
+   ]
+  },
+  {
+   "name": "random-02",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": null,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "dueDay": 1
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.6984830026911623,
+     "stability": 2.4329484753070623,
+     "difficulty": 6.402115069296838,
+     "dueDay": 7
+    },
+    {
+     "day": 5,
+     "rating": 1,
+     "retrievabilityBefore": 0.8849728465459017,
+     "stability": 0.6128259161807863,
+     "difficulty": 8.802628058192235,
+     "dueDay": 6
+    },
+    {
+     "day": 6,
+     "rating": 1,
+     "retrievabilityBefore": 0.8630152383740266,
+     "stability": 0.21783572910187565,
+     "difficulty": 9.591660354153829,
+     "dueDay": 7
+    },
+    {
+     "day": 6,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.2530272944494688,
+     "difficulty": 9.577297063096513,
+     "dueDay": 7
+    },
+    {
+     "day": 8,
+     "rating": 2,
+     "retrievabilityBefore": 0.715732077162992,
+     "stability": 0.7024613747696334,
+     "difficulty": 9.704618461823442,
+     "dueDay": 9
+    }
+   ]
+  },
+  {
+   "name": "random-03",
+   "desiredRetention": 0.95,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": null,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 2,
+     "retrievabilityBefore": 0.7661957302284143,
+     "stability": 1.219217274379578,
+     "difficulty": 7.604209769076838,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 1,
+     "retrievabilityBefore": 0.913030760926778,
+     "stability": 0.3524383102571492,
+     "difficulty": 9.197748411765964,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 3,
+     "retrievabilityBefore": 0.8145583849229197,
+     "stability": 1.1340814686378424,
+     "difficulty": 9.183779032651035,
+     "dueDay": 4
+    },
+    {
+     "day": 4,
+     "rating": 2,
+     "retrievabilityBefore": 0.9084089402729447,
+     "stability": 1.7306392745841517,
+     "difficulty": 9.443382855273516,
+     "dueDay": 5
+    },
+    {
+     "day": 6,
+     "rating": 3,
+     "retrievabilityBefore": 0.889757814225197,
+     "stability": 3.1970133568904546,
+     "difficulty": 9.42916784171508,
+     "dueDay": 7
+    },
+    {
+     "day": 7,
+     "rating": 3,
+     "retrievabilityBefore": 0.9595962079892602,
+     "stability": 4.076456187579773,
+     "difficulty": 9.414967043170202,
+     "dueDay": 9
+    },
+    {
+     "day": 8,
+     "rating": 2,
+     "retrievabilityBefore": 0.9673150039745644,
+     "stability": 4.603468602548969,
+     "difficulty": 9.59685623001743,
+     "dueDay": 10
+    },
+    {
+     "day": 10,
+     "rating": 3,
+     "retrievabilityBefore": 0.9467573669179192,
+     "stability": 6.01344400595784,
+     "difficulty": 9.58248774308425,
+     "dueDay": 12
+    }
+   ]
+  },
+  {
+   "name": "random-04",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.9166697187203525,
+     "stability": 4.546029441066125,
+     "difficulty": 5.102286904192293,
+     "dueDay": 6
+    },
+    {
+     "day": 4,
+     "rating": 2,
+     "retrievabilityBefore": 0.9259510055604501,
+     "stability": 9.492532896294538,
+     "difficulty": 6.733898182869418,
+     "dueDay": 13
+    },
+    {
+     "day": 13,
+     "rating": 3,
+     "retrievabilityBefore": 0.9036184971473766,
+     "stability": 23.924991750470763,
+     "difficulty": 6.722392653983388,
+     "dueDay": 37
+    },
+    {
+     "day": 61,
+     "rating": 2,
+     "retrievabilityBefore": 0.845614156486485,
+     "stability": 54.76147332858814,
+     "difficulty": 7.809399876508687,
+     "dueDay": 116
+    },
+    {
+     "day": 171,
+     "rating": 3,
+     "retrievabilityBefore": 0.8455090227392134,
+     "stability": 131.0742274445732,
+     "difficulty": 7.796818845929017,
+     "dueDay": 302
+    },
+    {
+     "day": 302,
+     "rating": 1,
+     "retrievabilityBefore": 0.9000389119300625,
+     "stability": 4.025302352448733,
+     "difficulty": 9.261057705585554,
+     "dueDay": 306
+    },
+    {
+     "day": 304,
+     "rating": 3,
+     "retrievabilityBefore": 0.9406444574362058,
+     "stability": 5.771464920739573,
+     "difficulty": 9.247025017176806,
+     "dueDay": 310
+    },
+    {
+     "day": 307,
+     "rating": 2,
+     "retrievabilityBefore": 0.9384697064289714,
+     "stability": 7.254536111764563,
+     "difficulty": 9.485368487064603,
+     "dueDay": 314
+    },
+    {
+     "day": 307,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 7.254536111764563,
+     "difficulty": 9.471111487874376,
+     "dueDay": 314
+    }
+   ]
+  },
+  {
+   "name": "random-05",
+   "desiredRetention": 0.95,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": null,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.7661957302284143,
+     "stability": 1.8867876195204154,
+     "difficulty": 6.402115069296838,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.9375145282170984,
+     "stability": 4.474817232218549,
+     "difficulty": 6.3909413235243795,
+     "dueDay": 4
+    },
+    {
+     "day": 6,
+     "rating": 3,
+     "retrievabilityBefore": 0.9075194926319126,
+     "stability": 12.45662039296205,
+     "difficulty": 6.379778751497693,
+     "dueDay": 11
+    },
+    {
+     "day": 16,
+     "rating": 3,
+     "retrievabilityBefore": 0.9143702324113209,
+     "stability": 29.797790245678446,
+     "difficulty": 6.368627342043034,
+     "dueDay": 28
+    },
+    {
+     "day": 16,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 29.797790245678446,
+     "difficulty": 6.357487083997829,
+     "dueDay": 28
+    },
+    {
+     "day": 16,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 8.461753867511316,
+     "difficulty": 8.787959142894753,
+     "dueDay": 19
+    },
+    {
+     "day": 18,
+     "rating": 2,
+     "retrievabilityBefore": 0.9683747699893057,
+     "stability": 9.76916689667659,
+     "difficulty": 9.180619167246432,
+     "dueDay": 22
+    }
+   ]
+  },
+  {
+   "name": "random-06",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 4,
+     "rating": 3,
+     "retrievabilityBefore": 0.8579857892330743,
+     "stability": 16.17726320265468,
+     "difficulty": 2.111214235785395,
+     "dueDay": 20
+    },
+    {
+     "day": 20,
+     "rating": 3,
+     "retrievabilityBefore": 0.9007551644604584,
+     "stability": 64.51856467070904,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 85
+    },
+    {
+     "day": 20,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 64.51856467070904,
+     "difficulty": 2.0974554287524403,
+     "dueDay": 85
+    },
+    {
+     "day": 85,
+     "rating": 1,
+     "retrievabilityBefore": 0.899488442797357,
+     "stability": 3.3505633898115215,
+     "difficulty": 7.387715706030851,
+     "dueDay": 88
+    },
+    {
+     "day": 88,
+     "rating": 2,
+     "retrievabilityBefore": 0.9074112889904099,
+     "stability": 6.310197064913847,
+     "difficulty": 8.251072322512018,
+     "dueDay": 94
+    },
+    {
+     "day": 88,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 6.310197064913847,
+     "difficulty": 8.238049619486343,
+     "dueDay": 94
+    },
+    {
+     "day": 88,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 6.310197064913847,
+     "difficulty": 8.225039939163695,
+     "dueDay": 94
+    },
+    {
+     "day": 94,
+     "rating": 3,
+     "retrievabilityBefore": 0.9034254995678723,
+     "stability": 13.00401555141847,
+     "difficulty": 8.212043268521368,
+     "dueDay": 107
+    },
+    {
+     "day": 101,
+     "rating": 3,
+     "retrievabilityBefore": 0.9367433794154302,
+     "stability": 20.944429046654125,
+     "difficulty": 8.199059594549684,
+     "dueDay": 122
+    },
+    {
+     "day": 112,
+     "rating": 2,
+     "retrievabilityBefore": 0.9379631905188722,
+     "stability": 27.940618981301295,
+     "difficulty": 8.789680204336024,
+     "dueDay": 140
+    },
+    {
+     "day": 140,
+     "rating": 1,
+     "retrievabilityBefore": 0.8998540804928034,
+     "stability": 2.177771176816403,
+     "difficulty": 9.5874044826367,
+     "dueDay": 142
+    },
+    {
+     "day": 140,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.7345962055161683,
+     "difficulty": 9.849611028389038,
+     "dueDay": 141
+    },
+    {
+     "day": 141,
+     "rating": 3,
+     "retrievabilityBefore": 0.8774520967730256,
+     "stability": 1.3273430448444858,
+     "difficulty": 9.834989786657486,
+     "dueDay": 142
+    }
+   ]
+  },
+  {
+   "name": "random-07",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 1,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 0.6075801062519337,
+     "difficulty": 7.394502741279718,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 3,
+     "retrievabilityBefore": 0.8623103828079355,
+     "stability": 2.4004040500172708,
+     "difficulty": 7.382336607835277,
+     "dueDay": 5
+    },
+    {
+     "day": 7,
+     "rating": 3,
+     "retrievabilityBefore": 0.8612917921877484,
+     "stability": 8.09751490716112,
+     "difficulty": 7.37018264052428,
+     "dueDay": 15
+    },
+    {
+     "day": 23,
+     "rating": 2,
+     "retrievabilityBefore": 0.8469296942087745,
+     "stability": 18.609515844670213,
+     "difficulty": 8.239433056587904,
+     "dueDay": 42
+    },
+    {
+     "day": 61,
+     "rating": 3,
+     "retrievabilityBefore": 0.8440865281034956,
+     "stability": 45.73056814498876,
+     "difficulty": 8.226421992828154,
+     "dueDay": 107
+    },
+    {
+     "day": 107,
+     "rating": 3,
+     "retrievabilityBefore": 0.8995959105054866,
+     "stability": 82.028134487785,
+     "difficulty": 8.213423940132163,
+     "dueDay": 189
+    },
+    {
+     "day": 271,
+     "rating": 3,
+     "retrievabilityBefore": 0.845914276049767,
+     "stability": 175.10353446111958,
+     "difficulty": 8.200438885488868,
+     "dueDay": 446
+    },
+    {
+     "day": 446,
+     "rating": 3,
+     "retrievabilityBefore": 0.9000406283031617,
+     "stability": 286.7556875222545,
+     "difficulty": 8.187466815900217,
+     "dueDay": 733
+    },
+    {
+     "day": 733,
+     "rating": 3,
+     "retrievabilityBefore": 0.8999414814955441,
+     "stability": 456.13145452507774,
+     "difficulty": 8.174507718381154,
+     "dueDay": 1189
+    }
+   ]
+  },
+  {
+   "name": "random-08",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 4
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 10.964332335820698,
+     "difficulty": 2.111214235785395,
+     "dueDay": 23
+    },
+    {
+     "day": 23,
+     "rating": 3,
+     "retrievabilityBefore": 0.8496031958433388,
+     "stability": 65.04682281345258,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 147
+    },
+    {
+     "day": 147,
+     "rating": 3,
+     "retrievabilityBefore": 0.8500047943628413,
+     "stability": 303.0497368930948,
+     "difficulty": 2.0974554287524403,
+     "dueDay": 725
+    },
+    {
+     "day": 725,
+     "rating": 2,
+     "retrievabilityBefore": 0.8499618674487049,
+     "stability": 819.6613571617329,
+     "difficulty": 4.739151024325689,
+     "dueDay": 2288
+    },
+    {
+     "day": 725,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 819.6613571617329,
+     "difficulty": 4.729640242598202,
+     "dueDay": 2288
+    },
+    {
+     "day": 2288,
+     "rating": 3,
+     "retrievabilityBefore": 0.8499794473753216,
+     "stability": 2205.9521113851433,
+     "difficulty": 4.7201389716524425,
+     "dueDay": 6493
+    },
+    {
+     "day": 6493,
+     "rating": 2,
+     "retrievabilityBefore": 0.8500098424290703,
+     "stability": 4111.026683782402,
+     "difficulty": 6.480210577155809,
+     "dueDay": 14330
+    },
+    {
+     "day": 14330,
+     "rating": 4,
+     "retrievabilityBefore": 0.850004016922881,
+     "stability": 11285.043862274708,
+     "difficulty": 5.2892893435252235,
+     "dueDay": 35844
+    },
+    {
+     "day": 25087,
+     "rating": 3,
+     "retrievabilityBefore": 0.9032583381361845,
+     "stability": 18372.4631635351,
+     "difficulty": 5.2792284234785365,
+     "dueDay": 60113
+    },
+    {
+     "day": 42600,
+     "rating": 2,
+     "retrievabilityBefore": 0.9032575255361526,
+     "stability": 24781.91193840368,
+     "difficulty": 6.851360208846425,
+     "dueDay": 79100
+    },
+    {
+     "day": 79100,
+     "rating": 1,
+     "retrievabilityBefore": 0.8712794799008748,
+     "stability": 21.669298647716197,
+     "difficulty": 8.950291880695238,
+     "dueDay": 79141
+    },
+    {
+     "day": 79141,
+     "rating": 3,
+     "retrievabilityBefore": 0.8506444511980549,
+     "stability": 43.51054440127704,
+     "difficulty": 8.936569958111379,
+     "dueDay": 79224
+    },
+    {
+     "day": 79224,
+     "rating": 1,
+     "retrievabilityBefore": 0.8499481725099532,
+     "stability": 2.8441214808411375,
+     "difficulty": 9.635686145852333,
+     "dueDay": 79229
+    }
+   ]
+  },
+  {
+   "name": "random-09",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 1,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 0.6075801062519337,
+     "difficulty": 7.394502741279718,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 4,
+     "retrievabilityBefore": 0.8623103828079355,
+     "stability": 3.965360070530034,
+     "difficulty": 6.5090953428844935,
+     "dueDay": 7
+    },
+    {
+     "day": 7,
+     "rating": 2,
+     "retrievabilityBefore": 0.8994013433242494,
+     "stability": 8.58067993514581,
+     "difficulty": 7.667803181746544,
+     "dueDay": 16
+    },
+    {
+     "day": 16,
+     "rating": 1,
+     "retrievabilityBefore": 0.8966887788927123,
+     "stability": 1.2593518552935594,
+     "difficulty": 9.21865113407529,
+     "dueDay": 17
+    },
+    {
+     "day": 17,
+     "rating": 1,
+     "retrievabilityBefore": 0.9150471130776294,
+     "stability": 0.3558129991912735,
+     "difficulty": 9.728404310239673,
+     "dueDay": 18
+    },
+    {
+     "day": 18,
+     "rating": 3,
+     "retrievabilityBefore": 0.8154382009393416,
+     "stability": 0.908870339841636,
+     "difficulty": 9.713904275226271,
+     "dueDay": 19
+    },
+    {
+     "day": 20,
+     "rating": 1,
+     "retrievabilityBefore": 0.8375404659881515,
+     "stability": 0.3124319652709423,
+     "difficulty": 9.891190650014641,
+     "dueDay": 21
+    },
+    {
+     "day": 21,
+     "rating": 2,
+     "retrievabilityBefore": 0.8033305343731658,
+     "stability": 0.5911231216900491,
+     "difficulty": 9.912995652260848,
+     "dueDay": 22
+    },
+    {
+     "day": 22,
+     "rating": 3,
+     "retrievabilityBefore": 0.8600473380760898,
+     "stability": 1.1285795977187016,
+     "difficulty": 9.898311025905425,
+     "dueDay": 23
+    },
+    {
+     "day": 23,
+     "rating": 2,
+     "retrievabilityBefore": 0.9080927381867633,
+     "stability": 1.4902681178584143,
+     "difficulty": 9.917722489586666,
+     "dueDay": 24
+    },
+    {
+     "day": 24,
+     "rating": 3,
+     "retrievabilityBefore": 0.9250108784273389,
+     "stability": 2.0938843920631793,
+     "difficulty": 9.903033136393917,
+     "dueDay": 26
+    },
+    {
+     "day": 26,
+     "rating": 3,
+     "retrievabilityBefore": 0.9031204902943704,
+     "stability": 3.152552355898267,
+     "difficulty": 9.88835847255436,
+     "dueDay": 29
+    }
+   ]
+  },
+  {
+   "name": "random-10",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 8
+    },
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 8
+    },
+    {
+     "day": 16,
+     "rating": 2,
+     "retrievabilityBefore": 0.8490052843213628,
+     "stability": 37.41972077621997,
+     "difficulty": 4.010608969296839,
+     "dueDay": 53
+    },
+    {
+     "day": 90,
+     "rating": 2,
+     "retrievabilityBefore": 0.8468577045115112,
+     "stability": 109.9398373063765,
+     "difficulty": 6.00919149749405,
+     "dueDay": 200
+    },
+    {
+     "day": 145,
+     "rating": 3,
+     "retrievabilityBefore": 0.9403181906554723,
+     "stability": 189.27533091726616,
+     "difficulty": 5.998410675293394,
+     "dueDay": 334
+    },
+    {
+     "day": 523,
+     "rating": 3,
+     "retrievabilityBefore": 0.8460103680074587,
+     "stability": 524.4087157868346,
+     "difficulty": 5.987640633914939,
+     "dueDay": 1047
+    },
+    {
+     "day": 1047,
+     "rating": 3,
+     "retrievabilityBefore": 0.9000535566651805,
+     "stability": 1023.0311654487081,
+     "difficulty": 5.9768813625778625,
+     "dueDay": 2070
+    },
+    {
+     "day": 2070,
+     "rating": 4,
+     "retrievabilityBefore": 0.900002092924679,
+     "stability": 2657.2820031200317,
+     "difficulty": 4.617770960576726,
+     "dueDay": 4727
+    },
+    {
+     "day": 4727,
+     "rating": 3,
+     "retrievabilityBefore": 0.9000072911281902,
+     "stability": 5113.486627285448,
+     "difficulty": 4.6083815589129875,
+     "dueDay": 9840
+    },
+    {
+     "day": 7284,
+     "rating": 3,
+     "retrievabilityBefore": 0.9403395004811663,
+     "stability": 7605.181476135649,
+     "difficulty": 4.599001546650913,
+     "dueDay": 14889
+    }
+   ]
+  },
+  {
+   "name": "random-11",
+   "desiredRetention": 0.95,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 1
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 10.964332335820698,
+     "difficulty": 2.111214235785395,
+     "dueDay": 6
+    },
+    {
+     "day": 2,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 10.964332335820698,
+     "difficulty": 4.748284761594571,
+     "dueDay": 6
+    },
+    {
+     "day": 4,
+     "rating": 2,
+     "retrievabilityBefore": 0.9749504218406451,
+     "stability": 14.586932288052964,
+     "difficulty": 6.498895064113205,
+     "dueDay": 10
+    },
+    {
+     "day": 10,
+     "rating": 3,
+     "retrievabilityBefore": 0.9491002923197209,
+     "stability": 25.882521019567754,
+     "difficulty": 6.48762453834593,
+     "dueDay": 20
+    },
+    {
+     "day": 20,
+     "rating": 2,
+     "retrievabilityBefore": 0.9516789613727181,
+     "stability": 36.29808555173506,
+     "difficulty": 7.653549861154354,
+     "dueDay": 35
+    },
+    {
+     "day": 28,
+     "rating": 3,
+     "retrievabilityBefore": 0.9702856836893231,
+     "stability": 46.69016860510146,
+     "difficulty": 7.641124680590038,
+     "dueDay": 47
+    },
+    {
+     "day": 47,
+     "rating": 3,
+     "retrievabilityBefore": 0.9495498573837006,
+     "stability": 68.71625868492941,
+     "difficulty": 7.628711925206287,
+     "dueDay": 75
+    },
+    {
+     "day": 61,
+     "rating": 1,
+     "retrievabilityBefore": 0.9723109964181631,
+     "stability": 2.8128407900803682,
+     "difficulty": 9.205802103871052,
+     "dueDay": 62
+    }
+   ]
+  },
+  {
+   "name": "random-12",
+   "desiredRetention": 0.95,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 2,
+     "retrievabilityBefore": 0.9542852058192565,
+     "stability": 16.746692889284255,
+     "difficulty": 4.010608969296839,
+     "dueDay": 10
+    },
+    {
+     "day": 10,
+     "rating": 1,
+     "retrievabilityBefore": 0.9484205598149122,
+     "stability": 1.67601190806162,
+     "difficulty": 8.016556265363716,
+     "dueDay": 11
+    },
+    {
+     "day": 10,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 1.7021852409287346,
+     "difficulty": 8.00376807839519,
+     "dueDay": 11
+    },
+    {
+     "day": 11,
+     "rating": 3,
+     "retrievabilityBefore": 0.9322655434904115,
+     "stability": 3.3835649718616216,
+     "difficulty": 7.990992679613633,
+     "dueDay": 12
+    },
+    {
+     "day": 12,
+     "rating": 3,
+     "retrievabilityBefore": 0.9615252256253891,
+     "stability": 5.064096074686274,
+     "difficulty": 7.978230056230858,
+     "dueDay": 14
+    },
+    {
+     "day": 14,
+     "rating": 1,
+     "retrievabilityBefore": 0.9507872420077573,
+     "stability": 0.8584749806739836,
+     "difficulty": 9.320686336815537,
+     "dueDay": 15
+    },
+    {
+     "day": 16,
+     "rating": 1,
+     "retrievabilityBefore": 0.8324768239214957,
+     "stability": 0.30168724541988484,
+     "difficulty": 9.761942587541014,
+     "dueDay": 17
+    },
+    {
+     "day": 17,
+     "rating": 3,
+     "retrievabilityBefore": 0.8000361029752161,
+     "stability": 0.8133411584970764,
+     "difficulty": 9.74740901425031,
+     "dueDay": 18
+    },
+    {
+     "day": 18,
+     "rating": 4,
+     "retrievabilityBefore": 0.8851895914633717,
+     "stability": 2.042255610611638,
+     "difficulty": 9.64823324684954,
+     "dueDay": 19
+    },
+    {
+     "day": 20,
+     "rating": 1,
+     "retrievabilityBefore": 0.9014299408722605,
+     "stability": 0.5159363432760176,
+     "difficulty": 9.869605029550202,
+     "dueDay": 21
+    },
+    {
+     "day": 22,
+     "rating": 3,
+     "retrievabilityBefore": 0.7851433448638633,
+     "stability": 1.3057466517214973,
+     "difficulty": 9.85496379381749,
+     "dueDay": 23
+    },
+    {
+     "day": 23,
+     "rating": 1,
+     "retrievabilityBefore": 0.9172614947928941,
+     "stability": 0.3628748034640983,
+     "difficulty": 9.937555954570849,
+     "dueDay": 24
+    }
+   ]
+  },
+  {
+   "name": "random-13",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 4
+    },
+    {
+     "day": 4,
+     "rating": 3,
+     "retrievabilityBefore": 0.8579857892330743,
+     "stability": 16.17726320265468,
+     "difficulty": 2.111214235785395,
+     "dueDay": 35
+    },
+    {
+     "day": 20,
+     "rating": 2,
+     "retrievabilityBefore": 0.9007551644604584,
+     "stability": 45.24972190554258,
+     "difficulty": 4.748284761594571,
+     "dueDay": 106
+    },
+    {
+     "day": 106,
+     "rating": 3,
+     "retrievabilityBefore": 0.8502628478823905,
+     "stability": 168.63326802605144,
+     "difficulty": 4.738764846129815,
+     "dueDay": 427
+    },
+    {
+     "day": 427,
+     "rating": 2,
+     "retrievabilityBefore": 0.8501293823326562,
+     "stability": 391.29016977288114,
+     "difficulty": 6.492575300599639,
+     "dueDay": 1173
+    },
+    {
+     "day": 1173,
+     "rating": 1,
+     "retrievabilityBefore": 0.8499960860836044,
+     "stability": 6.446876722178208,
+     "difficulty": 8.832361721091896,
+     "dueDay": 1185
+    },
+    {
+     "day": 1185,
+     "rating": 3,
+     "retrievabilityBefore": 0.8520362527008282,
+     "stability": 14.773702907261148,
+     "difficulty": 8.818757728667642,
+     "dueDay": 1213
+    },
+    {
+     "day": 1213,
+     "rating": 3,
+     "retrievabilityBefore": 0.8505012344488753,
+     "stability": 31.681620059204896,
+     "difficulty": 8.805167340235812,
+     "dueDay": 1273
+    },
+    {
+     "day": 1243,
+     "rating": 2,
+     "retrievabilityBefore": 0.9037029421210707,
+     "stability": 43.863129659046265,
+     "difficulty": 9.192042770543424,
+     "dueDay": 1327
+    },
+    {
+     "day": 1327,
+     "rating": 2,
+     "retrievabilityBefore": 0.849614500348226,
+     "stability": 64.8687660498374,
+     "difficulty": 9.44886870957667,
+     "dueDay": 1451
+    },
+    {
+     "day": 1575,
+     "rating": 3,
+     "retrievabilityBefore": 0.7864706641647938,
+     "stability": 125.35921791764751,
+     "difficulty": 9.434648210163932,
+     "dueDay": 1814
+    },
+    {
+     "day": 1814,
+     "rating": 3,
+     "retrievabilityBefore": 0.8499957445998237,
+     "stability": 197.72016572499325,
+     "difficulty": 9.420441931250606,
+     "dueDay": 2191
+    },
+    {
+     "day": 2568,
+     "rating": 1,
+     "retrievabilityBefore": 0.7867121542163098,
+     "stability": 5.548094113505851,
+     "difficulty": 9.79473157309378,
+     "dueDay": 2579
+    },
+    {
+     "day": 2590,
+     "rating": 3,
+     "retrievabilityBefore": 0.782968489931169,
+     "stability": 11.711615127079453,
+     "difficulty": 9.780165210817524,
+     "dueDay": 2612
+    }
+   ]
+  },
+  {
+   "name": "random-14",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 16
+    },
+    {
+     "day": 16,
+     "rating": 1,
+     "retrievabilityBefore": 0.8490052843213628,
+     "stability": 1.516569312914588,
+     "difficulty": 7.0269895692968385,
+     "dueDay": 19
+    },
+    {
+     "day": 19,
+     "rating": 3,
+     "retrievabilityBefore": 0.846832349846649,
+     "stability": 6.256373756013277,
+     "difficulty": 7.0151909490243805,
+     "dueDay": 31
+    },
+    {
+     "day": 19,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 6.256373756013277,
+     "difficulty": 8.003773029157445,
+     "dueDay": 31
+    },
+    {
+     "day": 31,
+     "rating": 2,
+     "retrievabilityBefore": 0.8494808523103106,
+     "stability": 13.131192560660985,
+     "difficulty": 8.660039881874708,
+     "dueDay": 56
+    },
+    {
+     "day": 31,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 13.131192560660985,
+     "difficulty": 9.095700400743764,
+     "dueDay": 56
+    },
+    {
+     "day": 44,
+     "rating": 3,
+     "retrievabilityBefore": 0.9006883551591883,
+     "stability": 21.84099610747747,
+     "difficulty": 9.081833069639858,
+     "dueDay": 86
+    },
+    {
+     "day": 86,
+     "rating": 1,
+     "retrievabilityBefore": 0.8492605908688786,
+     "stability": 2.119694763775035,
+     "difficulty": 9.683433142822587,
+     "dueDay": 90
+    },
+    {
+     "day": 90,
+     "rating": 2,
+     "retrievabilityBefore": 0.8508705053384216,
+     "stability": 3.333410972680455,
+     "difficulty": 9.775076537486926,
+     "dueDay": 96
+    },
+    {
+     "day": 96,
+     "rating": 2,
+     "retrievabilityBefore": 0.8548712674297637,
+     "stability": 4.933438320320543,
+     "difficulty": 9.835913693447306,
+     "dueDay": 105
+    }
+   ]
+  },
+  {
+   "name": "random-15",
+   "desiredRetention": 0.95,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 3
+    },
+    {
+     "day": 6,
+     "rating": 1,
+     "retrievabilityBefore": 0.9206802329132497,
+     "stability": 1.3475780378474311,
+     "difficulty": 7.0269895692968385,
+     "dueDay": 7
+    },
+    {
+     "day": 7,
+     "rating": 3,
+     "retrievabilityBefore": 0.9191589306876331,
+     "stability": 3.549335288861337,
+     "difficulty": 7.0151909490243805,
+     "dueDay": 8
+    },
+    {
+     "day": 9,
+     "rating": 3,
+     "retrievabilityBefore": 0.934429953235365,
+     "stability": 7.539471879511358,
+     "difficulty": 7.003404127372194,
+     "dueDay": 12
+    },
+    {
+     "day": 11,
+     "rating": 3,
+     "retrievabilityBefore": 0.964983369123623,
+     "stability": 11.495017278385653,
+     "difficulty": 6.99162909254166,
+     "dueDay": 16
+    },
+    {
+     "day": 21,
+     "rating": 1,
+     "retrievabilityBefore": 0.9092833149171922,
+     "stability": 1.4407596552263253,
+     "difficulty": 8.996397308937453,
+     "dueDay": 22
+    },
+    {
+     "day": 23,
+     "rating": 3,
+     "retrievabilityBefore": 0.8759355655260957,
+     "stability": 3.2741257493421987,
+     "difficulty": 8.982629280925353,
+     "dueDay": 24
+    },
+    {
+     "day": 24,
+     "rating": 1,
+     "retrievabilityBefore": 0.9604166880373206,
+     "stability": 0.6435397261080897,
+     "difficulty": 9.650825532057892,
+     "dueDay": 25
+    }
+   ]
+  },
+  {
+   "name": "random-16",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 4
+    },
+    {
+     "day": 8,
+     "rating": 3,
+     "retrievabilityBefore": 0.7957472810181505,
+     "stability": 22.768180240175987,
+     "difficulty": 2.111214235785395,
+     "dueDay": 51
+    },
+    {
+     "day": 30,
+     "rating": 2,
+     "retrievabilityBefore": 0.9023405425558195,
+     "stability": 60.77893519854475,
+     "difficulty": 4.748284761594571,
+     "dueDay": 146
+    },
+    {
+     "day": 146,
+     "rating": 1,
+     "retrievabilityBefore": 0.8499046492850504,
+     "stability": 3.3785077037160383,
+     "difficulty": 8.259025282096594,
+     "dueDay": 152
+    },
+    {
+     "day": 158,
+     "rating": 3,
+     "retrievabilityBefore": 0.7934913228732772,
+     "stability": 12.161966882495859,
+     "difficulty": 8.245994626111335,
+     "dueDay": 181
+    },
+    {
+     "day": 181,
+     "rating": 2,
+     "retrievabilityBefore": 0.8506866356538989,
+     "stability": 23.064628990292658,
+     "difficulty": 8.820837865459119,
+     "dueDay": 225
+    },
+    {
+     "day": 181,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 23.064628990292658,
+     "difficulty": 8.807245396890497,
+     "dueDay": 225
+    },
+    {
+     "day": 225,
+     "rating": 1,
+     "retrievabilityBefore": 0.8499437229934438,
+     "stability": 2.1735711407715437,
+     "difficulty": 9.593178041986045,
+     "dueDay": 229
+    },
+    {
+     "day": 227,
+     "rating": 3,
+     "retrievabilityBefore": 0.9056149924800133,
+     "stability": 3.5367679309625237,
+     "difficulty": 9.578813233240897,
+     "dueDay": 234
+    },
+    {
+     "day": 234,
+     "rating": 3,
+     "retrievabilityBefore": 0.8467862266346045,
+     "stability": 6.971626553545801,
+     "difficulty": 9.564462789304494,
+     "dueDay": 247
+    },
+    {
+     "day": 241,
+     "rating": 3,
+     "retrievabilityBefore": 0.8997207206929486,
+     "stability": 10.884609835338273,
+     "difficulty": 9.550126695812027,
+     "dueDay": 262
+    }
+   ]
+  },
+  {
+   "name": "random-17",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 2,
+     "retrievabilityBefore": 0.8673675017566826,
+     "stability": 4.469455348270163,
+     "difficulty": 6.7404595108297,
+     "dueDay": 11
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 4.469455348270163,
+     "difficulty": 6.728947420615708,
+     "dueDay": 11
+    },
+    {
+     "day": 11,
+     "rating": 1,
+     "retrievabilityBefore": 0.8452958554569695,
+     "stability": 0.9590333728808647,
+     "difficulty": 8.91005562961076,
+     "dueDay": 13
+    },
+    {
+     "day": 11,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 1.0104532270109507,
+     "difficulty": 8.896373943277986,
+     "dueDay": 13
+    }
+   ]
+  },
+  {
+   "name": "random-18",
+   "desiredRetention": 0.95,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 1
+    },
+    {
+     "day": 2,
+     "rating": 1,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 0.6075801062519337,
+     "difficulty": 7.394502741279718,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 3,
+     "retrievabilityBefore": 0.8623103828079355,
+     "stability": 2.4004040500172708,
+     "difficulty": 7.382336607835277,
+     "dueDay": 4
+    },
+    {
+     "day": 5,
+     "rating": 3,
+     "retrievabilityBefore": 0.9120406222319877,
+     "stability": 5.939814194797877,
+     "difficulty": 7.37018264052428,
+     "dueDay": 7
+    },
+    {
+     "day": 7,
+     "rating": 2,
+     "retrievabilityBefore": 0.9569679175801824,
+     "stability": 8.123355194653081,
+     "difficulty": 8.239433056587904,
+     "dueDay": 10
+    },
+    {
+     "day": 7,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 8.123355194653081,
+     "difficulty": 8.816481989840325,
+     "dueDay": 10
+    },
+    {
+     "day": 10,
+     "rating": 1,
+     "retrievabilityBefore": 0.9534711578071207,
+     "stability": 1.1046121196769572,
+     "difficulty": 9.596214047279823,
+     "dueDay": 11
+    },
+    {
+     "day": 11,
+     "rating": 3,
+     "retrievabilityBefore": 0.9066885403527775,
+     "stability": 1.8692833687326056,
+     "difficulty": 9.58184620252938,
+     "dueDay": 12
+    },
+    {
+     "day": 12,
+     "rating": 3,
+     "retrievabilityBefore": 0.9370525080034818,
+     "stability": 2.667353170755832,
+     "difficulty": 9.567492725623689,
+     "dueDay": 13
+    },
+    {
+     "day": 13,
+     "rating": 2,
+     "retrievabilityBefore": 0.9528801399549349,
+     "stability": 3.1523389926674175,
+     "difficulty": 9.698109885726856,
+     "dueDay": 14
+    },
+    {
+     "day": 15,
+     "rating": 3,
+     "retrievabilityBefore": 0.9281346131408174,
+     "stability": 4.449921713198576,
+     "difficulty": 9.683640145137966,
+     "dueDay": 17
+    },
+    {
+     "day": 15,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 1.4320837787696408,
+     "difficulty": 9.8812430362507,
+     "dueDay": 16
+    }
+   ]
+  },
+  {
+   "name": "random-19",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 2
+    },
+    {
+     "day": 4,
+     "rating": 3,
+     "retrievabilityBefore": 0.806528387124967,
+     "stability": 9.190358693652529,
+     "difficulty": 5.102286904192293,
+     "dueDay": 22
+    },
+    {
+     "day": 4,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 9.190358693652529,
+     "difficulty": 5.0924129865849395,
+     "dueDay": 22
+    },
+    {
+     "day": 4,
+     "rating": 4,
+     "retrievabilityBefore": 1.0,
+     "stability": 14.356120539110856,
+     "difficulty": 3.4377544695532896,
+     "dueDay": 31
+    }
+   ]
+  },
+  {
+   "name": "random-20",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.9468474993825461,
+     "stability": 7.31530074407728,
+     "difficulty": 2.111214235785395,
+     "dueDay": 8
+    },
+    {
+     "day": 8,
+     "rating": 3,
+     "retrievabilityBefore": 0.9029981645406641,
+     "stability": 31.679226101746565,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 40
+    },
+    {
+     "day": 40,
+     "rating": 1,
+     "retrievabilityBefore": 0.8993063567886003,
+     "stability": 2.5112556895624536,
+     "difficulty": 7.389975788014609,
+     "dueDay": 43
+    },
+    {
+     "day": 40,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 2.5112556895624536,
+     "difficulty": 7.377814181523433,
+     "dueDay": 43
+    },
+    {
+     "day": 46,
+     "rating": 3,
+     "retrievabilityBefore": 0.8302186325292406,
+     "stability": 9.853115436577381,
+     "difficulty": 7.365664736638748,
+     "dueDay": 56
+    },
+    {
+     "day": 56,
+     "rating": 3,
+     "retrievabilityBefore": 0.8989801785841577,
+     "stability": 23.171550320712498,
+     "difficulty": 7.353527441198947,
+     "dueDay": 79
+    },
+    {
+     "day": 79,
+     "rating": 1,
+     "retrievabilityBefore": 0.9005097083602505,
+     "stability": 2.0261870293361057,
+     "difficulty": 9.115350835232332,
+     "dueDay": 81
+    },
+    {
+     "day": 81,
+     "rating": 1,
+     "retrievabilityBefore": 0.9008912098335741,
+     "stability": 0.5153563853941593,
+     "difficulty": 9.694450204452027,
+     "dueDay": 82
+    },
+    {
+     "day": 83,
+     "rating": 3,
+     "retrievabilityBefore": 0.785035537730431,
+     "stability": 1.4271907668813082,
+     "difficulty": 9.679984123544411,
+     "dueDay": 84
+    },
+    {
+     "day": 84,
+     "rating": 1,
+     "retrievabilityBefore": 0.9225343999664922,
+     "stability": 0.3849439558659712,
+     "difficulty": 9.880041326813846,
+     "dueDay": 85
+    },
+    {
+     "day": 85,
+     "rating": 4,
+     "retrievabilityBefore": 0.8226528226523047,
+     "stability": 1.3182524575900127,
+     "difficulty": 9.82518509760604,
+     "dueDay": 86
+    },
+    {
+     "day": 86,
+     "rating": 1,
+     "retrievabilityBefore": 0.9178382582077128,
+     "stability": 0.36521422015047855,
+     "difficulty": 9.92776789962128,
+     "dueDay": 87
+    }
+   ]
+  },
+  {
+   "name": "random-21",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 2.3065,
+     "difficulty": 2.111214235785395,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 2,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 7.517359325415191,
+     "difficulty": 4.748284761594571,
+     "dueDay": 10
+    },
+    {
+     "day": 18,
+     "rating": 3,
+     "retrievabilityBefore": 0.8404708272137908,
+     "stability": 37.08506146026849,
+     "difficulty": 4.738764846129815,
+     "dueDay": 55
+    },
+    {
+     "day": 55,
+     "rating": 2,
+     "retrievabilityBefore": 0.900157682628717,
+     "stability": 78.2265207031635,
+     "difficulty": 6.492575300599639,
+     "dueDay": 133
+    },
+    {
+     "day": 133,
+     "rating": 3,
+     "retrievabilityBefore": 0.9001991034030615,
+     "stability": 169.92202758235382,
+     "difficulty": 6.481311094595878,
+     "dueDay": 303
+    },
+    {
+     "day": 303,
+     "rating": 1,
+     "retrievabilityBefore": 0.8999684790215127,
+     "stability": 4.466683930192737,
+     "difficulty": 8.828659253175058,
+     "dueDay": 307
+    },
+    {
+     "day": 311,
+     "rating": 3,
+     "retrievabilityBefore": 0.8552890060799122,
+     "stability": 10.46707628080881,
+     "difficulty": 8.81505896321872,
+     "dueDay": 321
+    },
+    {
+     "day": 321,
+     "rating": 4,
+     "retrievabilityBefore": 0.9031053995661706,
+     "stability": 25.568968232623497,
+     "difficulty": 8.404335256275568,
+     "dueDay": 347
+    },
+    {
+     "day": 347,
+     "rating": 2,
+     "retrievabilityBefore": 0.8988474035540915,
+     "stability": 38.250680401027445,
+     "difficulty": 8.925951754435502,
+     "dueDay": 385
+    },
+    {
+     "day": 385,
+     "rating": 2,
+     "retrievabilityBefore": 0.9004510874780507,
+     "stability": 52.192197765100204,
+     "difficulty": 9.27222509324288,
+     "dueDay": 437
+    },
+    {
+     "day": 489,
+     "rating": 3,
+     "retrievabilityBefore": 0.8462031868842091,
+     "stability": 91.7052897379776,
+     "difficulty": 9.258181237446475,
+     "dueDay": 581
+    },
+    {
+     "day": 489,
+     "rating": 4,
+     "retrievabilityBefore": 1.0,
+     "stability": 123.12911185593558,
+     "difficulty": 8.995528345052259,
+     "dueDay": 612
+    },
+    {
+     "day": 551,
+     "rating": 3,
+     "retrievabilityBefore": 0.9400073871860452,
+     "stability": 158.33493315120185,
+     "difficulty": 8.981761186004045,
+     "dueDay": 709
+    }
+   ]
+  },
+  {
+   "name": "random-22",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": null,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.7661957302284143,
+     "stability": 1.8867876195204154,
+     "difficulty": 6.402115069296838,
+     "dueDay": 5
+    },
+    {
+     "day": 5,
+     "rating": 2,
+     "retrievabilityBefore": 0.8408171955137733,
+     "stability": 6.009751651810346,
+     "difficulty": 7.596784690858309,
+     "dueDay": 16
+    },
+    {
+     "day": 27,
+     "rating": 3,
+     "retrievabilityBefore": 0.7906174878662473,
+     "stability": 23.900240524526907,
+     "difficulty": 7.584416275464289,
+     "dueDay": 73
+    },
+    {
+     "day": 73,
+     "rating": 3,
+     "retrievabilityBefore": 0.8491859671567731,
+     "stability": 63.80228771785652,
+     "difficulty": 7.572060228485663,
+     "dueDay": 195
+    },
+    {
+     "day": 73,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 63.80228771785652,
+     "difficulty": 7.559716537554015,
+     "dueDay": 195
+    },
+    {
+     "day": 73,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 63.80228771785652,
+     "difficulty": 7.5473851903133,
+     "dueDay": 195
+    },
+    {
+     "day": 195,
+     "rating": 1,
+     "retrievabilityBefore": 0.8497436111107839,
+     "stability": 3.347338647217593,
+     "difficulty": 9.179070559133525,
+     "dueDay": 201
+    },
+    {
+     "day": 201,
+     "rating": 1,
+     "retrievabilityBefore": 0.8552218924102712,
+     "stability": 0.7751432714935358,
+     "difficulty": 9.715394444404225,
+     "dueDay": 202
+    },
+    {
+     "day": 202,
+     "rating": 1,
+     "retrievabilityBefore": 0.8815693519776627,
+     "stability": 0.2554005742819436,
+     "difficulty": 9.891680458490285,
+     "dueDay": 203
+    },
+    {
+     "day": 202,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.29357145428624043,
+     "difficulty": 9.877017147328631,
+     "dueDay": 203
+    }
+   ]
+  },
+  {
+   "name": "random-23",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 1
+    },
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.4514029154253082,
+     "difficulty": 8.378632117467106,
+     "dueDay": 1
+    },
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.4514029154253082,
+     "difficulty": 8.908888813128176,
+     "dueDay": 1
+    },
+    {
+     "day": 2,
+     "rating": 2,
+     "retrievabilityBefore": 0.7722689633709416,
+     "stability": 1.2889967995798224,
+     "difficulty": 9.260897917670013,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 2,
+     "retrievabilityBefore": 0.9164758448939826,
+     "stability": 1.8666946319361557,
+     "difficulty": 9.494577964889157,
+     "dueDay": 5
+    },
+    {
+     "day": 7,
+     "rating": 1,
+     "retrievabilityBefore": 0.8398788960807211,
+     "stability": 0.5366446121739001,
+     "difficulty": 9.819099583225743,
+     "dueDay": 8
+    },
+    {
+     "day": 8,
+     "rating": 3,
+     "retrievabilityBefore": 0.851942171453242,
+     "stability": 1.108396746076244,
+     "difficulty": 9.804508852939355,
+     "dueDay": 9
+    },
+    {
+     "day": 9,
+     "rating": 2,
+     "retrievabilityBefore": 0.906913215533743,
+     "stability": 1.5001705126634224,
+     "difficulty": 9.855452235990528,
+     "dueDay": 11
+    },
+    {
+     "day": 9,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 1.5347502945500693,
+     "difficulty": 9.840825153051375,
+     "dueDay": 11
+    },
+    {
+     "day": 11,
+     "rating": 3,
+     "retrievabilityBefore": 0.8808033724513212,
+     "stability": 2.606817191332555,
+     "difficulty": 9.82621269719516,
+     "dueDay": 14
+    }
+   ]
+  },
+  {
+   "name": "random-24",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": null,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 1,
+     "retrievabilityBefore": 0.7661957302284143,
+     "stability": 0.10088578982099844,
+     "difficulty": 8.806304468856837,
+     "dueDay": 2
+    },
+    {
+     "day": 3,
+     "rating": 1,
+     "retrievabilityBefore": 0.6279729773354126,
+     "stability": 0.06132996784570856,
+     "difficulty": 9.592868765339693,
+     "dueDay": 4
+    }
+   ]
+  },
+  {
+   "name": "random-25",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 10.964332335820698,
+     "difficulty": 2.111214235785395,
+     "dueDay": 13
+    },
+    {
+     "day": 13,
+     "rating": 2,
+     "retrievabilityBefore": 0.8997767176252718,
+     "stability": 32.20330554579487,
+     "difficulty": 4.748284761594571,
+     "dueDay": 45
+    },
+    {
+     "day": 45,
+     "rating": 3,
+     "retrievabilityBefore": 0.9004345086391675,
+     "stability": 92.753415438586,
+     "difficulty": 4.738764846129815,
+     "dueDay": 138
+    },
+    {
+     "day": 138,
+     "rating": 3,
+     "retrievabilityBefore": 0.8998174963257158,
+     "stability": 240.13912463640008,
+     "difficulty": 4.729254450580523,
+     "dueDay": 378
+    },
+    {
+     "day": 378,
+     "rating": 4,
+     "retrievabilityBefore": 0.9000398087287026,
+     "stability": 849.578404942996,
+     "difficulty": 2.953245274003975,
+     "dueDay": 1228
+    },
+    {
+     "day": 1228,
+     "rating": 3,
+     "retrievabilityBefore": 0.8999659124504692,
+     "stability": 2047.343586720667,
+     "difficulty": 2.9455203980268094,
+     "dueDay": 3275
+    },
+    {
+     "day": 3275,
+     "rating": 3,
+     "retrievabilityBefore": 0.9000115300651167,
+     "stability": 4541.539213296068,
+     "difficulty": 2.937803246925621,
+     "dueDay": 7817
+    },
+    {
+     "day": 5546,
+     "rating": 1,
+     "retrievabilityBefore": 0.9403394497036001,
+     "stability": 12.488472064986412,
+     "difficulty": 7.663932319499211,
+     "dueDay": 5558
+    },
+    {
+     "day": 5558,
+     "rating": 4,
+     "retrievabilityBefore": 0.9027176248314566,
+     "stability": 39.31332477353331,
+     "difficulty": 6.868555730726597,
+     "dueDay": 5597
+    },
+    {
+     "day": 5558,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 39.31332477353331,
+     "difficulty": 6.856915544292709,
+     "dueDay": 5597
+    }
+   ]
+  },
+  {
+   "name": "random-26",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 10.964332335820698,
+     "difficulty": 2.111214235785395,
+     "dueDay": 13
+    },
+    {
+     "day": 13,
+     "rating": 3,
+     "retrievabilityBefore": 0.8997767176252718,
+     "stability": 46.28021728755693,
+     "difficulty": 2.1043313908464483,
+     "dueDay": 59
+    },
+    {
+     "day": 13,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 46.28021728755693,
+     "difficulty": 2.0974554287524403,
+     "dueDay": 59
+    },
+    {
+     "day": 105,
+     "rating": 4,
+     "retrievabilityBefore": 0.8464088704434715,
+     "stability": 390.75159607084174,
+     "difficulty": 1.0,
+     "dueDay": 496
+    },
+    {
+     "day": 496,
+     "rating": 1,
+     "retrievabilityBefore": 0.8999563339269517,
+     "stability": 6.656865347843065,
+     "difficulty": 7.0269895692968385,
+     "dueDay": 503
+    },
+    {
+     "day": 510,
+     "rating": 1,
+     "retrievabilityBefore": 0.84151773854666,
+     "stability": 1.2095041529110662,
+     "difficulty": 9.008020057195637,
+     "dueDay": 511
+    },
+    {
+     "day": 511,
+     "rating": 2,
+     "retrievabilityBefore": 0.9125278760434935,
+     "stability": 1.8677216795762532,
+     "difficulty": 9.326705856997966,
+     "dueDay": 513
+    },
+    {
+     "day": 512,
+     "rating": 4,
+     "retrievabilityBefore": 0.9370109504668807,
+     "stability": 3.63130419317461,
+     "difficulty": 9.086950699210588,
+     "dueDay": 516
+    },
+    {
+     "day": 514,
+     "rating": 2,
+     "retrievabilityBefore": 0.9355927224603442,
+     "stability": 4.784120816684281,
+     "difficulty": 9.379103695335408,
+     "dueDay": 519
+    }
+   ]
+  },
+  {
+   "name": "random-27",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 3,
+     "retrievabilityBefore": 0.8673675017566826,
+     "stability": 6.574701842817031,
+     "difficulty": 5.102286904192293,
+     "dueDay": 15
+    },
+    {
+     "day": 28,
+     "rating": 1,
+     "retrievabilityBefore": 0.783229729347667,
+     "stability": 1.3486189305839718,
+     "difficulty": 8.375383379153895,
+     "dueDay": 31
+    },
+    {
+     "day": 30,
+     "rating": 1,
+     "retrievabilityBefore": 0.8707337309291304,
+     "stability": 0.4054762626192117,
+     "difficulty": 9.451227933417744,
+     "dueDay": 31
+    },
+    {
+     "day": 31,
+     "rating": 3,
+     "retrievabilityBefore": 0.8273646179318978,
+     "stability": 1.1046360684289867,
+     "difficulty": 9.437005074781164,
+     "dueDay": 33
+    },
+    {
+     "day": 33,
+     "rating": 3,
+     "retrievabilityBefore": 0.8543771691589978,
+     "stability": 2.4617585213671282,
+     "difficulty": 9.42279643900322,
+     "dueDay": 38
+    },
+    {
+     "day": 36,
+     "rating": 3,
+     "retrievabilityBefore": 0.8858501031657052,
+     "stability": 4.5285969861478055,
+     "difficulty": 9.408602011861054,
+     "dueDay": 45
+    },
+    {
+     "day": 45,
+     "rating": 3,
+     "retrievabilityBefore": 0.8464314323354974,
+     "stability": 9.266378505290549,
+     "difficulty": 9.39442177914603,
+     "dueDay": 63
+    },
+    {
+     "day": 54,
+     "rating": 1,
+     "retrievabilityBefore": 0.9019913293911388,
+     "stability": 1.2834009589044586,
+     "difficulty": 9.78617892603404,
+     "dueDay": 56
+    },
+    {
+     "day": 56,
+     "rating": 1,
+     "retrievabilityBefore": 0.8667600182293546,
+     "stability": 0.3894272413004404,
+     "difficulty": 9.914946836267529,
+     "dueDay": 57
+    },
+    {
+     "day": 57,
+     "rating": 3,
+     "retrievabilityBefore": 0.8237064931666598,
+     "stability": 0.8737962108051499,
+     "difficulty": 9.900260258728098,
+     "dueDay": 59
+    },
+    {
+     "day": 61,
+     "rating": 1,
+     "retrievabilityBefore": 0.7691044034507178,
+     "stability": 0.33846235185752416,
+     "difficulty": 9.952444594571004,
+     "dueDay": 62
+    },
+    {
+     "day": 62,
+     "rating": 3,
+     "retrievabilityBefore": 0.8108088067302809,
+     "stability": 0.7872934286198531,
+     "difficulty": 9.93772051927327,
+     "dueDay": 64
+    },
+    {
+     "day": 63,
+     "rating": 1,
+     "retrievabilityBefore": 0.8827467830761165,
+     "stability": 0.2578140736309078,
+     "difficulty": 9.964757527482432,
+     "dueDay": 64
+    }
+   ]
+  },
+  {
+   "name": "random-28",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 16
+    },
+    {
+     "day": 8,
+     "rating": 3,
+     "retrievabilityBefore": 0.9024733005284542,
+     "stability": 38.90514998232684,
+     "difficulty": 1.0,
+     "dueDay": 82
+    },
+    {
+     "day": 8,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 38.90514998232684,
+     "difficulty": 1.0,
+     "dueDay": 82
+    },
+    {
+     "day": 156,
+     "rating": 3,
+     "retrievabilityBefore": 0.7869470007150022,
+     "stability": 292.9703147756013,
+     "difficulty": 1.0,
+     "dueDay": 715
+    },
+    {
+     "day": 715,
+     "rating": 2,
+     "retrievabilityBefore": 0.8499276009730974,
+     "stability": 857.2732888339441,
+     "difficulty": 4.010608969296839,
+     "dueDay": 2349
+    },
+    {
+     "day": 2349,
+     "rating": 3,
+     "retrievabilityBefore": 0.8500171479449907,
+     "stability": 2460.976745583581,
+     "difficulty": 4.00182672962438,
+     "dueDay": 7041
+    },
+    {
+     "day": 2349,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 522.6973240424715,
+     "difficulty": 8.013669602902612,
+     "dueDay": 3345
+    },
+    {
+     "day": 3345,
+     "rating": 1,
+     "retrievabilityBefore": 0.8500414655923998,
+     "stability": 6.997710467812489,
+     "difficulty": 9.332335074817626,
+     "dueDay": 3358
+    },
+    {
+     "day": 3358,
+     "rating": 3,
+     "retrievabilityBefore": 0.8522012494024629,
+     "stability": 13.848843302290614,
+     "difficulty": 9.318231109039646,
+     "dueDay": 3384
+    },
+    {
+     "day": 3384,
+     "rating": 2,
+     "retrievabilityBefore": 0.8513069140854762,
+     "stability": 21.235172770415854,
+     "difficulty": 9.532638409047035,
+     "dueDay": 3424
+    },
+    {
+     "day": 3404,
+     "rating": 2,
+     "retrievabilityBefore": 0.9040639175500021,
+     "stability": 27.047339277921736,
+     "difficulty": 9.674971966172121,
+     "dueDay": 3456
+    }
+   ]
+  },
+  {
+   "name": "random-29",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 1
+    },
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.4514029154253082,
+     "difficulty": 8.378632117467106,
+     "dueDay": 1
+    },
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 0.4997826535901225,
+     "difficulty": 8.365481854646477,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.8458470864231195,
+     "stability": 1.7544656049714862,
+     "difficulty": 8.352344742088668,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 3,
+     "retrievabilityBefore": 0.8907516359084847,
+     "stability": 4.253465454776061,
+     "difficulty": 8.339220766643416,
+     "dueDay": 7
+    }
+   ]
+  },
+  {
+   "name": "random-30",
+   "desiredRetention": 0.95,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 3,
+     "retrievabilityBefore": 0.9542852058192565,
+     "stability": 22.347965961563446,
+     "difficulty": 1.0,
+     "dueDay": 12
+    },
+    {
+     "day": 12,
+     "rating": 3,
+     "retrievabilityBefore": 0.9499832656468111,
+     "stability": 57.52372806142965,
+     "difficulty": 1.0,
+     "dueDay": 35
+    },
+    {
+     "day": 24,
+     "rating": 4,
+     "retrievabilityBefore": 0.9717153289093999,
+     "stability": 138.73561197748273,
+     "difficulty": 1.0,
+     "dueDay": 80
+    },
+    {
+     "day": 52,
+     "rating": 3,
+     "retrievabilityBefore": 0.9725456534355161,
+     "stability": 226.36783996647034,
+     "difficulty": 1.0,
+     "dueDay": 143
+    },
+    {
+     "day": 234,
+     "rating": 2,
+     "retrievabilityBefore": 0.9142762752889285,
+     "stability": 479.68684708226823,
+     "difficulty": 4.010608969296839,
+     "dueDay": 427
+    },
+    {
+     "day": 234,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 479.68684708226823,
+     "difficulty": 6.00919149749405,
+     "dueDay": 427
+    },
+    {
+     "day": 427,
+     "rating": 3,
+     "retrievabilityBefore": 0.9500219214909132,
+     "stability": 705.5925563365896,
+     "difficulty": 5.998410675293394,
+     "dueDay": 711
+    },
+    {
+     "day": 569,
+     "rating": 4,
+     "retrievabilityBefore": 0.9726160540115844,
+     "stability": 1023.1663318003426,
+     "difficulty": 4.6464943663358165,
+     "dueDay": 981
+    },
+    {
+     "day": 1393,
+     "rating": 2,
+     "retrievabilityBefore": 0.9141725941217693,
+     "stability": 1589.6806342821596,
+     "difficulty": 6.431321856308025,
+     "dueDay": 2033
+    },
+    {
+     "day": 1393,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 347.48921839364044,
+     "difficulty": 8.812228130476662,
+     "dueDay": 1533
+    }
+   ]
+  },
+  {
+   "name": "random-31",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.9166697187203525,
+     "stability": 4.546029441066125,
+     "difficulty": 5.102286904192293,
+     "dueDay": 6
+    },
+    {
+     "day": 11,
+     "rating": 3,
+     "retrievabilityBefore": 0.837573037660592,
+     "stability": 23.24378574136712,
+     "difficulty": 5.0924129865849395,
+     "dueDay": 34
+    },
+    {
+     "day": 11,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 23.24378574136712,
+     "difficulty": 5.082548942895193,
+     "dueDay": 34
+    },
+    {
+     "day": 34,
+     "rating": 4,
+     "retrievabilityBefore": 0.9007227214448398,
+     "stability": 104.79894921435135,
+     "difficulty": 3.4245943221268664,
+     "dueDay": 139
+    },
+    {
+     "day": 87,
+     "rating": 4,
+     "retrievabilityBefore": 0.9397988510715458,
+     "stability": 323.4427653019214,
+     "difficulty": 1.2126285277830924,
+     "dueDay": 410
+    },
+    {
+     "day": 87,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 78.51098221597118,
+     "difficulty": 7.096879120505152,
+     "dueDay": 166
+    },
+    {
+     "day": 166,
+     "rating": 4,
+     "retrievabilityBefore": 0.8995728427695743,
+     "stability": 228.64750314995126,
+     "difficulty": 6.112019777307797,
+     "dueDay": 395
+    },
+    {
+     "day": 166,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 228.64750314995126,
+     "difficulty": 7.404205917595377,
+     "dueDay": 395
+    },
+    {
+     "day": 395,
+     "rating": 2,
+     "retrievabilityBefore": 0.8998941324500708,
+     "stability": 336.5333341235094,
+     "difficulty": 8.26201929339241,
+     "dueDay": 732
+    },
+    {
+     "day": 564,
+     "rating": 3,
+     "retrievabilityBefore": 0.9401365928928769,
+     "stability": 447.4520032698886,
+     "difficulty": 8.248985643395855,
+     "dueDay": 1011
+    },
+    {
+     "day": 1458,
+     "rating": 4,
+     "retrievabilityBefore": 0.8459719371748705,
+     "stability": 1154.8017567424715,
+     "difficulty": 7.649106611984606,
+     "dueDay": 2613
+    },
+    {
+     "day": 2613,
+     "rating": 3,
+     "retrievabilityBefore": 0.8999882067096638,
+     "stability": 1798.8321384874064,
+     "difficulty": 7.6366858746694595,
+     "dueDay": 4412
+    }
+   ]
+  },
+  {
+   "name": "random-32",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.9166697187203525,
+     "stability": 4.546029441066125,
+     "difficulty": 5.102286904192293,
+     "dueDay": 6
+    },
+    {
+     "day": 4,
+     "rating": 2,
+     "retrievabilityBefore": 0.9259510055604501,
+     "stability": 9.492532896294538,
+     "difficulty": 6.733898182869418,
+     "dueDay": 13
+    },
+    {
+     "day": 22,
+     "rating": 3,
+     "retrievabilityBefore": 0.850457703296429,
+     "stability": 32.37218164214131,
+     "difficulty": 6.722392653983388,
+     "dueDay": 54
+    },
+    {
+     "day": 38,
+     "rating": 3,
+     "retrievabilityBefore": 0.9408938505965485,
+     "stability": 56.67555760854396,
+     "difficulty": 6.710898630626243,
+     "dueDay": 95
+    },
+    {
+     "day": 67,
+     "rating": 4,
+     "retrievabilityBefore": 0.9392346002628823,
+     "stability": 131.55491412885758,
+     "difficulty": 5.597062594402185,
+     "dueDay": 199
+    },
+    {
+     "day": 133,
+     "rating": 3,
+     "retrievabilityBefore": 0.9401830231766904,
+     "stability": 231.53137766470843,
+     "difficulty": 5.586693901104621,
+     "dueDay": 365
+    },
+    {
+     "day": 597,
+     "rating": 3,
+     "retrievabilityBefore": 0.8457099466740807,
+     "stability": 661.4709187910354,
+     "difficulty": 5.576335576500354,
+     "dueDay": 1258
+    },
+    {
+     "day": 597,
+     "rating": 3,
+     "retrievabilityBefore": 1.0,
+     "stability": 661.4709187910354,
+     "difficulty": 5.565987610220692,
+     "dueDay": 1258
+    },
+    {
+     "day": 1919,
+     "rating": 3,
+     "retrievabilityBefore": 0.8459461579059688,
+     "stability": 1694.9606799403255,
+     "difficulty": 5.55564999190731,
+     "dueDay": 3614
+    },
+    {
+     "day": 3614,
+     "rating": 4,
+     "retrievabilityBefore": 0.8999984062618757,
+     "stability": 4392.999718331772,
+     "difficulty": 4.055783695209948,
+     "dueDay": 8007
+    },
+    {
+     "day": 8007,
+     "rating": 3,
+     "retrievabilityBefore": 0.89999999559504,
+     "stability": 8456.489681658764,
+     "difficulty": 4.046956280811576,
+     "dueDay": 16463
+    },
+    {
+     "day": 16463,
+     "rating": 3,
+     "retrievabilityBefore": 0.900003978287804,
+     "stability": 15478.735077354377,
+     "difficulty": 4.038137693827603,
+     "dueDay": 31942
+    }
+   ]
+  },
+  {
+   "name": "random-33",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 4
+    },
+    {
+     "day": 2,
+     "rating": 1,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 0.6075801062519337,
+     "difficulty": 7.394502741279718,
+     "dueDay": 3
+    },
+    {
+     "day": 3,
+     "rating": 3,
+     "retrievabilityBefore": 0.8623103828079355,
+     "stability": 2.4004040500172708,
+     "difficulty": 7.382336607835277,
+     "dueDay": 8
+    },
+    {
+     "day": 8,
+     "rating": 1,
+     "retrievabilityBefore": 0.842356370907046,
+     "stability": 0.6458107500369563,
+     "difficulty": 9.12482021240336,
+     "dueDay": 9
+    },
+    {
+     "day": 9,
+     "rating": 1,
+     "retrievabilityBefore": 0.8672752827561808,
+     "stability": 0.22558862115972655,
+     "difficulty": 9.697562724336377,
+     "dueDay": 10
+    }
+   ]
+  },
+  {
+   "name": "random-34",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 4,
+     "retrievabilityBefore": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "dueDay": 8
+    },
+    {
+     "day": 8,
+     "rating": 3,
+     "retrievabilityBefore": 0.9024733005284542,
+     "stability": 38.90514998232684,
+     "difficulty": 1.0,
+     "dueDay": 47
+    },
+    {
+     "day": 8,
+     "rating": 2,
+     "retrievabilityBefore": 1.0,
+     "stability": 38.90514998232684,
+     "difficulty": 4.010608969296839,
+     "dueDay": 47
+    },
+    {
+     "day": 86,
+     "rating": 3,
+     "retrievabilityBefore": 0.8456742490489673,
+     "stability": 164.48991756259866,
+     "difficulty": 4.00182672962438,
+     "dueDay": 250
+    },
+    {
+     "day": 414,
+     "rating": 2,
+     "retrievabilityBefore": 0.8461422121565011,
+     "stability": 415.13711550578614,
+     "difficulty": 6.0033614375471025,
+     "dueDay": 829
+    }
+   ]
+  },
+  {
+   "name": "random-35",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": null,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 4,
+     "retrievabilityBefore": 0.7661957302284143,
+     "stability": 3.348709732599786,
+     "difficulty": 5.200020369516838,
+     "dueDay": 4
+    },
+    {
+     "day": 3,
+     "rating": 3,
+     "retrievabilityBefore": 0.9313953580863077,
+     "stability": 9.144655320978394,
+     "difficulty": 5.190048718444159,
+     "dueDay": 12
+    },
+    {
+     "day": 8,
+     "rating": 3,
+     "retrievabilityBefore": 0.9359605291045621,
+     "stability": 21.640697318250226,
+     "difficulty": 5.1800870390225535,
+     "dueDay": 30
+    },
+    {
+     "day": 30,
+     "rating": 2,
+     "retrievabilityBefore": 0.8988647231990268,
+     "stability": 46.38044457179228,
+     "difficulty": 6.785545537856027,
+     "dueDay": 76
+    },
+    {
+     "day": 76,
+     "rating": 3,
+     "retrievabilityBefore": 0.9005648606068597,
+     "stability": 101.62692358199571,
+     "difficulty": 6.77398836161501,
+     "dueDay": 178
+    },
+    {
+     "day": 178,
+     "rating": 3,
+     "retrievabilityBefore": 0.8997480587958328,
+     "stability": 209.05244982458822,
+     "difficulty": 6.762442742550234,
+     "dueDay": 387
+    },
+    {
+     "day": 283,
+     "rating": 3,
+     "retrievabilityBefore": 0.9401282869660587,
+     "stability": 324.5112585838623,
+     "difficulty": 6.750908669104522,
+     "dueDay": 608
+    },
+    {
+     "day": 608,
+     "rating": 3,
+     "retrievabilityBefore": 0.8998965744425466,
+     "stability": 608.3167383972382,
+     "difficulty": 6.739386129732256,
+     "dueDay": 1216
+    },
+    {
+     "day": 1216,
+     "rating": 3,
+     "retrievabilityBefore": 0.9000357767475539,
+     "stability": 1088.0535250778028,
+     "difficulty": 6.727875112899362,
+     "dueDay": 2304
+    }
+   ]
+  },
+  {
+   "name": "random-36",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 3,
+     "retrievabilityBefore": null,
+     "stability": 2.3065,
+     "difficulty": 2.118103970459016,
+     "dueDay": 2
+    },
+    {
+     "day": 2,
+     "rating": 4,
+     "retrievabilityBefore": 0.9094932559773545,
+     "stability": 18.52175418175859,
+     "difficulty": 1.0,
+     "dueDay": 21
+    },
+    {
+     "day": 21,
+     "rating": 1,
+     "retrievabilityBefore": 0.8982390453037329,
+     "stability": 2.0774485422983395,
+     "difficulty": 7.0269895692968385,
+     "dueDay": 23
+    }
+   ]
+  },
+  {
+   "name": "random-37",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 4,
+     "retrievabilityBefore": 0.9166697187203525,
+     "stability": 7.385511550172746,
+     "difficulty": 3.4641142975548855,
+     "dueDay": 8
+    },
+    {
+     "day": 8,
+     "rating": 4,
+     "retrievabilityBefore": 0.9036405877557019,
+     "stability": 46.11240949410938,
+     "difficulty": 1.2653542373683004,
+     "dueDay": 54
+    },
+    {
+     "day": 54,
+     "rating": 2,
+     "retrievabilityBefore": 0.9001675919242836,
+     "stability": 122.8044523908668,
+     "difficulty": 4.186763477569377,
+     "dueDay": 177
+    },
+    {
+     "day": 177,
+     "rating": 3,
+     "retrievabilityBefore": 0.8998906531698389,
+     "stability": 325.2914096406313,
+     "difficulty": 4.177805083388646,
+     "dueDay": 502
+    },
+    {
+     "day": 827,
+     "rating": 1,
+     "retrievabilityBefore": 0.8459620542078768,
+     "stability": 6.26993050129675,
+     "difficulty": 8.071512491132117,
+     "dueDay": 833
+    },
+    {
+     "day": 839,
+     "rating": 3,
+     "retrievabilityBefore": 0.849665897545934,
+     "stability": 17.448418510546233,
+     "difficulty": 8.058669347937823,
+     "dueDay": 856
+    },
+    {
+     "day": 856,
+     "rating": 2,
+     "retrievabilityBefore": 0.9017786845453096,
+     "stability": 27.584726746783,
+     "difficulty": 8.696482616449577,
+     "dueDay": 884
+    },
+    {
+     "day": 856,
+     "rating": 4,
+     "retrievabilityBefore": 1.0,
+     "stability": 40.08340408246674,
+     "difficulty": 8.246136220073938,
+     "dueDay": 896
+    },
+    {
+     "day": 896,
+     "rating": 2,
+     "retrievabilityBefore": 0.9001430363075437,
+     "stability": 59.392798145084164,
+     "difficulty": 8.820931862129772,
+     "dueDay": 955
+    },
+    {
+     "day": 955,
+     "rating": 3,
+     "retrievabilityBefore": 0.9004552213849281,
+     "stability": 94.53573684120484,
+     "difficulty": 8.807339299564479,
+     "dueDay": 1050
+    },
+    {
+     "day": 955,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 24.881664899329653,
+     "difficulty": 9.593208907156445,
+     "dueDay": 980
+    },
+    {
+     "day": 980,
+     "rating": 3,
+     "retrievabilityBefore": 0.8996737053394831,
+     "stability": 35.95876861862303,
+     "difficulty": 9.578844067546125,
+     "dueDay": 1016
+    }
+   ]
+  },
+  {
+   "name": "random-38",
+   "desiredRetention": 0.85,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 2,
+     "retrievabilityBefore": null,
+     "stability": 1.2931,
+     "difficulty": 5.112170705601056,
+     "dueDay": 2
+    },
+    {
+     "day": 4,
+     "rating": 3,
+     "retrievabilityBefore": 0.806528387124967,
+     "stability": 9.190358693652529,
+     "difficulty": 5.102286904192293,
+     "dueDay": 22
+    },
+    {
+     "day": 22,
+     "rating": 3,
+     "retrievabilityBefore": 0.84768812089203,
+     "stability": 40.58466084501126,
+     "difficulty": 5.0924129865849395,
+     "dueDay": 99
+    },
+    {
+     "day": 99,
+     "rating": 3,
+     "retrievabilityBefore": 0.850410890052613,
+     "stability": 146.95756620746363,
+     "difficulty": 5.082548942895193,
+     "dueDay": 379
+    },
+    {
+     "day": 659,
+     "rating": 2,
+     "retrievabilityBefore": 0.7867836220715401,
+     "stability": 420.88216082195254,
+     "difficulty": 6.720795204371407,
+     "dueDay": 1461
+    }
+   ]
+  },
+  {
+   "name": "random-39",
+   "desiredRetention": 0.9,
+   "steps": [
+    {
+     "day": 0,
+     "rating": 1,
+     "retrievabilityBefore": null,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "dueDay": 1
+    },
+    {
+     "day": 1,
+     "rating": 3,
+     "retrievabilityBefore": 0.7661957302284143,
+     "stability": 1.8867876195204154,
+     "difficulty": 6.402115069296838,
+     "dueDay": 3
+    },
+    {
+     "day": 5,
+     "rating": 3,
+     "retrievabilityBefore": 0.8408171955137733,
+     "stability": 8.742397915978565,
+     "difficulty": 6.3909413235243795,
+     "dueDay": 14
+    },
+    {
+     "day": 23,
+     "rating": 3,
+     "retrievabilityBefore": 0.8433676617393255,
+     "stability": 32.98631642189301,
+     "difficulty": 6.379778751497693,
+     "dueDay": 56
+    },
+    {
+     "day": 56,
+     "rating": 2,
+     "retrievabilityBefore": 0.899971504276337,
+     "stability": 60.575134742559364,
+     "difficulty": 7.581956802230827,
+     "dueDay": 117
+    },
+    {
+     "day": 87,
+     "rating": 3,
+     "retrievabilityBefore": 0.939227346673149,
+     "stability": 94.25698461369487,
+     "difficulty": 7.569603214725435,
+     "dueDay": 181
+    },
+    {
+     "day": 87,
+     "rating": 1,
+     "retrievabilityBefore": 1.0,
+     "stability": 24.813118632700917,
+     "difficulty": 9.186373472675228,
+     "dueDay": 112
+    },
+    {
+     "day": 100,
+     "rating": 3,
+     "retrievabilityBefore": 0.9380833280930461,
+     "stability": 33.47133234831819,
+     "difficulty": 9.172415468499391,
+     "dueDay": 133
+    }
+   ]
+  }
+ ]
+}

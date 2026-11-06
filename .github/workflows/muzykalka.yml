@@ -1,0 +1,70 @@
+# Builds, tests and publishes the Muzykalka APK.
+# Every push that touches muzykalka/ → `check` (unit + Robolectric smoke + lint) → signed release APK
+# → uploaded as an artifact AND published to the rolling pre-release `muzykalka-latest`
+# (open https://github.com/<owner>/<repo>/releases/tag/muzykalka-latest on the phone to install).
+name: muzykalka
+
+on:
+  push:
+    paths:
+      - "muzykalka/**"
+      - ".github/workflows/muzykalka.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: muzykalka-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: muzykalka
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # versionCode = commit count
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Check (unit tests, Robolectric smoke test, lint)
+        run: ./gradlew check --stacktrace
+
+      - name: Assemble signed release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Name the APK
+        id: apk
+        run: |
+          VERSION="$(grep -oE 'versionBase = "[0-9.]+"' app/build.gradle.kts | grep -oE '[0-9.]+').$(git rev-list --count HEAD)"
+          NAME="muzykalka-${VERSION}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$NAME"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: muzykalka/${{ steps.apk.outputs.name }}
+          if-no-files-found: error
+
+      - name: Publish rolling pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete muzykalka-latest --yes --cleanup-tag || true
+          gh release create muzykalka-latest "${{ steps.apk.outputs.name }}" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Музыкалка ${{ steps.apk.outputs.version }} (${GITHUB_REF_NAME})" \
+            --notes "Сборка из ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Установка: скачать APK на телефоне → открыть → разрешить установку из этого источника. Обновляется поверх старой версии без потери данных (один и тот же ключ подписи)."
