@@ -52,10 +52,33 @@ class TirDriverTest {
     }
 
     @Test
-    fun `level 1 asks only 1, 3, 5`() {
+    fun `level 1 asks mostly 1, 3, 5 with guests from the scale and shows all seven keys`() {
         val driver = TirDriver(KeyPicker(Random(3)))
-        val degrees = (0 until 100).map { driver.nextTask(ctx(1, it)).notes.single().degree }.toSet()
-        assertEquals(setOf(Degree.ONE, Degree.THREE, Degree.FIVE), degrees)
+        val tasks = (0 until 400).map { driver.nextTask(ctx(1, it)) }
+        val degrees = tasks.map { it.notes.single().degree }
+        assertEquals(Degree.NATURALS.toSet(), degrees.toSet(), "guests come from the whole scale")
+        val core = degrees.count { it in TirDriver.CORE }.toDouble() / degrees.size
+        assertTrue(core in 0.65..0.85, "core share $core")
+        tasks.forEach { assertEquals(Degree.NATURALS, it.noteChoices) }
+        assertTrue(tasks.map { it.notes.single().octave }.toSet().size > 1, "register jumps from level 1")
+    }
+
+    @Test
+    fun `questions are independent - repeats happen`() {
+        val driver = TirDriver(KeyPicker(Random(4)))
+        val r = Random(11)
+        val seq = (0 until 300).map { driver.nextTask(DriverContext(r, 2, emptyList())).itemKey }
+        assertTrue(seq.zipWithNext().any { (a, b) -> a == b }, "the same degree may come twice in a row")
+    }
+
+    @Test
+    fun `don't know is an honest wrong answer with the correction`() {
+        val driver = TirDriver(KeyPicker(Random(6)))
+        val task = driver.nextTask(ctx(2))
+        val e = driver.evaluate(task, Answer.Pass)
+        assertFalse(e.correct)
+        assertNotNull(e.correction)
+        assertEquals("?", e.givenCode)
     }
 
     @Test
@@ -341,5 +364,96 @@ class MetricsAndExamTest {
         assertEquals(ChordDegree.parse("I"), ChordDegree.parse("I"))
         assertEquals(NoteName.parse("C"), NoteName.parse("C"))
         assertEquals(MidiNote(60), MidiNote(60))
+    }
+}
+
+class StepsDriverTest {
+    @Test
+    fun `every level gives a progression in a random key and plays it after the answer`() {
+        for (level in 1..StepsLadder.LEVELS.size) {
+            val driver = StepsDriver(KeyPicker(Random(level)))
+            val keys = mutableSetOf<String>()
+            repeat(20) { i ->
+                val task = driver.nextTask(DriverContext(Random(i), level, emptyList()))
+                assertNull(task.prompt.audio, "the user plays first")
+                assertTrue(task.pattern in StepsLadder.LEVELS[level - 1])
+                keys += task.key.toString()
+                val ok = driver.evaluate(task, Answer.SelfReport(SelfGrade.CLEAN))
+                assertTrue(ok.correct)
+                assertNotNull(ok.confirmation)
+                val no = driver.evaluate(task, Answer.SelfReport(SelfGrade.FAILED))
+                assertFalse(no.correct)
+                assertNotNull(no.correction)
+            }
+            assertTrue(keys.size > 3, "keys vary (rule 2)")
+        }
+    }
+
+    @Test
+    fun `level 1 is the banal two-chord stuff`() {
+        StepsLadder.LEVELS[0].forEach { p -> assertTrue(p.chords.size <= 3 && p.chords.all { it.root.number in setOf(1, 4, 5) }, p.code) }
+    }
+
+    @Test
+    fun `failed moves come back more often`() {
+        val driver = StepsDriver(KeyPicker(Random(1)))
+        val pool = StepsLadder.LEVELS[0]
+        val bad = "steps:L1:" + pool[0].chords.joinToString("-") { it.toString() }
+        val history = pool.flatMap { p ->
+            val key = "steps:L1:" + p.chords.joinToString("-") { it.toString() }
+            List(10) { AttemptRecord(Variant.TAPER_STEPS, 1, key, p.code, "CLEAN", key != bad, 10_000, null, 0, null, 0) }
+        }
+        val r = Random(2)
+        val picks = (0 until 600).map { driver.nextTask(DriverContext(r, 1, history)).itemKey }
+        assertTrue(picks.count { it == bad } > 600 / pool.size * 2, "the failed move is picked far more often")
+    }
+
+    @Test
+    fun `sets keep their length and give the songs' time to the moves when nothing is due`() {
+        assertEquals(20.0, DailySet.DEFAULT.sumOf { it.minutes })
+        assertEquals(5.0, DailySet.MINIMAL.sumOf { it.minutes })
+        listOf(DailySet.DEFAULT, DailySet.MINIMAL).forEach { plan ->
+            val songless = DailySet.withoutSongs(plan)
+            assertEquals(plan.sumOf { it.minutes }, songless.sumOf { it.minutes })
+            assertTrue(songless.none { it.variant == Variant.TAPER_ORDER })
+            assertEquals(1, songless.count { it.variant == Variant.TAPER_STEPS })
+        }
+        val noSteps = listOf(SetSegment(Variant.TIR_CLASSIC, 1.0), SetSegment(Variant.TAPER_ORDER, 4.0))
+        assertEquals(listOf(SetSegment(Variant.TIR_CLASSIC, 1.0), SetSegment(Variant.TAPER_STEPS, 4.0)), DailySet.withoutSongs(noSteps))
+    }
+}
+
+class MoreMetricsTest {
+    private fun tir(expected: String, given: String, at: Long, correct: Boolean = expected == given) =
+        AttemptRecord(Variant.TIR_CLASSIC, 2, "tir:L2:$expected", expected, given, correct, 1500, null, 0, null, at)
+
+    @Test
+    fun `guessing detects answers that echo the previous question`() {
+        val a = listOf(
+            tir("3", "3", 0), tir("5", "3", 5_000), tir("6", "5", 10_000), tir("1", "?", 15_000, correct = false), tir("2", "4", 20_000),
+        )
+        val g = Metrics.guessing(a)
+        assertEquals(3, g.wrong)
+        assertEquals(2, g.echoes)
+        assertEquals(1, g.passes)
+    }
+
+    @Test
+    fun `degree stats and longest streak`() {
+        val a = listOf(tir("3", "3", 0), tir("3", "5", 1), tir("1", "1", 2))
+        val stats = Metrics.degreeStats(a)
+        assertEquals(listOf("1", "3"), stats.map { it.code })
+        assertEquals(0.5, stats[1].accuracy, 1e-9)
+        assertEquals(3, Metrics.longestStreak(listOf(1, 2, 3, 7, 8)))
+        assertEquals(0, Metrics.longestStreak(emptyList()))
+    }
+
+    @Test
+    fun `parts of the day`() {
+        val a = listOf(tir("1", "1", 9), tir("1", "2", 20))
+        val parts = Metrics.byPartOfDay(a) { it.toInt() }
+        assertEquals(1, parts.first { it.ru == "утро" }.attempts)
+        assertEquals(0.0, parts.first { it.ru == "вечер" }.accuracy!!, 1e-9)
+        assertNull(parts.first { it.ru == "ночь" }.accuracy)
     }
 }

@@ -1,12 +1,20 @@
 package com.kazaeza.muzykalka
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -23,14 +31,28 @@ class AppSmokeTest {
     @get:Rule
     val rule = createAndroidComposeRule<MainActivity>()
 
+    /** Screens are lazy lists: items below the fold exist only after scrolling to them. */
+    private fun scrollTo(text: String) {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
+        rule.waitForIdle()
+    }
+
+    /** By semantics, not by touch: the floating tab bar may cover the bottom of the list. */
+    private fun click(text: String) {
+        rule.onAllNodes(hasClickAction() and hasText(text, substring = true)).onFirst().performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitForIdle()
+    }
+
     @Test
     fun startsOnTodayAndAllTabsOpen() {
         rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
-        for (tab in listOf("Режимы", "Библиотека", "Лексикон", "Прогресс", "Сегодня")) {
-            rule.onAllNodesWithText(tab).onFirst().performClick()
+        // Four tabs only; unselected tabs show just an icon, so they are found by description.
+        for (tab in listOf("Режимы", "Библиотека", "Прогресс", "Сегодня")) {
+            rule.onNodeWithContentDescription(tab).performClick()
             rule.waitForIdle()
         }
         rule.onNodeWithText("ИГРАЮ С ХОДУ").assertIsDisplayed()
+        rule.onAllNodesWithText("Лексикон").assertCountEquals(0)
     }
 
     @Test
@@ -45,21 +67,38 @@ class AppSmokeTest {
     }
 
     @Test
-    fun libraryExampleCanBeAddedAndOpened() {
-        rule.onAllNodesWithText("Библиотека").onFirst().performClick()
+    fun songbookPieceCanBeAddedAndOpened() {
+        rule.onNodeWithContentDescription("Библиотека").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Пример из плана: Autumn Leaves").performClick()
-        rule.waitUntil(5_000) { rule.onAllNodesWithText("Autumn Leaves").fetchSemanticsNodes().isNotEmpty() }
-        rule.onAllNodesWithText("Autumn Leaves").onFirst().performClick()
+        scrollTo("Stand by Me")
+        click("В мои")
+        // The piece lands in «my songs» at the top of the list.
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("повтор:", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        click("Stand by Me")
         rule.waitForIdle()
-        rule.onNodeWithText("Заказать сейчас").assertIsDisplayed()
+        rule.onNodeWithText("Сыграть сейчас").assertIsDisplayed()
     }
 
     @Test
-    fun modesShowTheSixTiles() {
-        rule.onAllNodesWithText("Режимы").onFirst().performClick()
+    fun feelLessonOpensFromToday() {
+        scrollTo("Вайб ступеней")
+        rule.onNodeWithText("Вайб ступеней").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Ступень — это не высота, а ощущение").assertIsDisplayed()
+    }
+
+    @Test
+    fun modesShowWhatIsPlayableAndExplainTheTaper() {
+        rule.onNodeWithContentDescription("Режимы").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Тир").assertIsDisplayed()
         rule.onNodeWithText("Охота").assertIsDisplayed()
+        scrollTo("Тапёр")
+        rule.onNodeWithText("Тапёр").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("КАК ИГРАТЬ").assertIsDisplayed()
+        scrollTo("Ходы")
+        rule.onNodeWithText("Ходы").assertIsDisplayed()
     }
 }

@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kazaeza.muzykalka.game.ModeId
@@ -62,7 +67,7 @@ object ModeVisuals {
         ModeId.TIR -> "🎯"
         ModeId.KAMERTON -> "🎤"
         ModeId.PARROT -> "🦜"
-        ModeId.TAPER -> "🎹"
+        ModeId.TAPER -> "🎸"
         ModeId.RECORDER -> "📼"
     }
 
@@ -94,7 +99,7 @@ fun ruDate(date: LocalDate): String {
 
 /** "через 3 дн.", "сегодня", "завтра", "просрочено на 2 дн." */
 fun ruDue(dueDay: Int?, today: Int): String = when {
-    dueDay == null -> "ждёт первого заказа"
+    dueDay == null -> "при первой возможности"
     dueDay < today -> "просрочено на ${today - dueDay} дн."
     dueDay == today -> "сегодня"
     dueDay == today + 1 -> "завтра"
@@ -110,6 +115,9 @@ fun plural(n: Int, one: String, few: String, many: String): String {
         else -> many
     }
 }
+
+/** Extra bottom space a tab screen reserves for the floating tab bar (0 on full screens). */
+val LocalTabBarSpace = compositionLocalOf<Dp> { 0.dp }
 
 /**
  * Standard screen: aurora background, big title, optional back arrow and actions, scrolling
@@ -127,7 +135,11 @@ fun ScreenFrame(
     AuroraBackground(accent, Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = 32.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + LocalTabBarSpace.current,
+            ),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item(key = "__header") {

@@ -120,7 +120,7 @@ fun ExamScreen(onExit: () -> Unit) {
     val vm: ExamViewModel = viewModel { ExamViewModel(graph) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     when (ui.phase) {
-        ExamPhase.INTRO -> ScreenFrame(title = "Экзамен", subtitle = "точка отсчёта, без подсказок", accent = Accents.Calm, onBack = onExit) {
+        ExamPhase.INTRO -> ScreenFrame(title = "Замер уровня", subtitle = "точка отсчёта, без подсказок", accent = Accents.Calm, onBack = onExit) {
             item(key = "about") {
                 GlassCard(Modifier.fillMaxWidth(), accent = Accents.Calm) {
                     Text("Это замер, а не игра", style = MaterialTheme.typography.titleLarge)

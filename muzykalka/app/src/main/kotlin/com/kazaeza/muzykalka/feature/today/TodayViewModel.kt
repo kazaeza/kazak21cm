@@ -3,9 +3,11 @@ package com.kazaeza.muzykalka.feature.today
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazaeza.muzykalka.AppGraph
-import com.kazaeza.muzykalka.data.repo.MemoryStatus
+import com.kazaeza.muzykalka.feature.common.APP_STAGE
+import com.kazaeza.muzykalka.game.DailySet
 import com.kazaeza.muzykalka.game.Link
 import com.kazaeza.muzykalka.game.Metrics
+import com.kazaeza.muzykalka.game.SetSegment
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -16,21 +18,22 @@ data class TodayUi(
     val loading: Boolean = true,
     val playableNow: Int = 0,
     val libraryCount: Int = 0,
-    val holding: Int = 0,
     val dueCount: Int = 0,
     val streak: Int = 0,
     val practicedToday: Boolean = false,
-    val links: List<Double?> = List(6) { null },
-    val examDone: Boolean = false,
+    /** What «Начать сет» will run today, as the set screen will build it. */
+    val set: List<SetSegment> = DailySet.available(DailySet.DEFAULT, APP_STAGE),
     val date: LocalDate = LocalDate.now(),
-)
+) {
+    val setMinutes: Int get() = set.sumOf { it.minutes }.toInt()
+}
 
 /** Order of the triangle strands, as TriangleChart expects. */
 val TRIANGLE_ORDER = listOf(Link.SOUND_TO_NAME, Link.NAME_TO_SOUND, Link.NAME_TO_PLACE, Link.PLACE_TO_NAME, Link.PLACE_TO_SOUND, Link.SOUND_TO_PLACE)
 
-/** Ticket T-01: «Сегодня» on live data. */
+/** Ticket T-01: «Сегодня» on live data — only what helps to start playing (ADR-016). */
 class TodayViewModel(graph: AppGraph) : ViewModel() {
-    private val base = combine(
+    val ui: StateFlow<TodayUi> = combine(
         graph.settings.settings,
         graph.practice.observePlayableNow(),
         graph.practice.observePracticeDays(),
@@ -38,19 +41,17 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
     ) { settings, playable, days, entries ->
         val today = graph.today(settings)
         val orderable = entries.filter { it.orderable }
+        val due = orderable.count { it.card?.isDue(today) ?: true }
+        val plan = DailySet.available(DailySet.DEFAULT, APP_STAGE)
         TodayUi(
             loading = false,
             playableNow = playable,
             libraryCount = orderable.size,
-            holding = orderable.count { it.status == MemoryStatus.HOLDING },
-            dueCount = orderable.count { it.card?.isDue(today) ?: true },
+            dueCount = due,
             streak = Metrics.streak(days, today),
             practicedToday = today in days,
+            set = if (due == 0) DailySet.withoutSongs(plan) else plan,
+            date = LocalDate.ofEpochDay(today.toLong()),
         )
-    }
-
-    val ui: StateFlow<TodayUi> = combine(base, graph.practice.observeAttempts(), graph.practice.observeExams()) { b, attempts, exams ->
-        val scores = Metrics.linkScores(attempts)
-        b.copy(links = TRIANGLE_ORDER.map { scores[it] }, examDone = exams.isNotEmpty())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUi())
 }

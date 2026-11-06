@@ -6,11 +6,13 @@ import kotlinx.serialization.Serializable
 @Serializable data object TodayRoute
 @Serializable data object ModesRoute
 @Serializable data object LibraryRoute
-@Serializable data object LexiconRoute
 @Serializable data object ProgressRoute
 @Serializable data object SettingsRoute
 @Serializable data object SoundCheckRoute
 @Serializable data object ExamRoute
+
+/** «Вайб ступеней»: listen to every degree against its tonic (ADR-015). */
+@Serializable data object FeelRoute
 
 /** [mode] is a `ModeId.name`. */
 @Serializable data class ModeRoute(val mode: String)

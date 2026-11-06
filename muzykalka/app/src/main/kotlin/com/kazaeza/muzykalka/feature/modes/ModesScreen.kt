@@ -20,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -34,6 +33,7 @@ import com.kazaeza.muzykalka.feature.game.Drills
 import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.ui.component.Badge
+import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
 import com.kazaeza.muzykalka.ui.component.JuicyButton
 import com.kazaeza.muzykalka.ui.component.SectionLabel
@@ -41,18 +41,29 @@ import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import kotlinx.coroutines.launch
 
-/** «Режимы» — six tiles (ticket T-02). */
+/** «Режимы»: the modes of this build as tiles; later ones collapse into one «скоро» line. */
 @Composable
 fun ModesScreen(onOpen: (ModeId) -> Unit) {
     val graph = LocalAppGraph.current
     val progress by graph.progress.progress.collectAsState(initial = GameProgress())
-    ScreenFrame(title = "Режимы", subtitle = "шесть связей треугольника", accent = Accents.Recorder) {
-        ModeId.entries.chunked(2).forEach { pair ->
+    val (ready, later) = ModeId.entries.partition { it.isAvailable() }
+    ScreenFrame(title = "Режимы", subtitle = "каждый тренирует один навык", accent = Accents.Recorder) {
+        ready.chunked(2).forEach { pair ->
             item(key = pair.first().name) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     pair.forEach { mode -> ModeTile(mode, progress, Modifier.weight(1f)) { onOpen(mode) } }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
+            }
+        }
+        if (later.isNotEmpty()) {
+            item(key = "later") {
+                Text(
+                    "Скоро: " + later.joinToString(", ") { it.ru } + ".",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Juicy.TextFaint,
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                )
             }
         }
     }
@@ -61,9 +72,8 @@ fun ModesScreen(onOpen: (ModeId) -> Unit) {
 @Composable
 private fun ModeTile(mode: ModeId, progress: GameProgress, modifier: Modifier, onClick: () -> Unit) {
     val accent = ModeVisuals.accent(mode)
-    val available = mode.isAvailable()
-    val main = Variant.entries.firstOrNull { it.mode == mode }
-    GlassCard(modifier.heightIn(min = 210.dp).alpha(if (available) 1f else 0.55f), accent = accent, onClick = onClick, contentPadding = 16.dp) {
+    val main = Variant.entries.firstOrNull { it.mode == mode && it in Drills.PLAYABLE }
+    GlassCard(modifier.heightIn(min = 210.dp), accent = accent, onClick = onClick, contentPadding = 16.dp) {
         Box(
             Modifier
                 .clip(RoundedCornerShape(18.dp))
@@ -75,46 +85,73 @@ private fun ModeTile(mode: ModeId, progress: GameProgress, modifier: Modifier, o
         Spacer(Modifier.height(4.dp))
         Text(mode.goal, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim, maxLines = 3)
         Spacer(Modifier.height(10.dp))
-        if (available && main != null) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (Drills.maxLevel(main) > 1) Badge("ур. ${progress.unlockedLevel(main)}/${Drills.maxLevel(main)}", accent)
-                val rec = progress.record(main)
-                if (rec > 0) Badge("🏆 $rec", listOf(Juicy.Ink4, Juicy.Ink4))
-            }
-        } else {
-            Badge("скоро · v${mode.since}", listOf(Juicy.Ink4, Juicy.Ink4))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Badge(mode.guitar.ru, listOf(Juicy.Ink4, Juicy.Ink4))
+            val rec = main?.let { progress.record(it) } ?: 0
+            if (rec > 0) Badge("🏆 $rec", accent)
         }
     }
 }
 
-/** One mode: its variants with level pickers. */
+/** What the mode is and how to play it, in plain words: the first thing on its screen. */
+private fun howTo(mode: ModeId): String? = when (mode) {
+    ModeId.TIR ->
+        "Сначала звучит каденция — это «дом», тональность. Потом одна нота: нажми её ступень. " +
+            "Не уверен — жми «🤷 не знаю»: это честнее, чем угадывать, а правильный ответ и путь домой ты всё равно услышишь."
+    ModeId.HUNT ->
+        "На экране нота — найди её на грифе и сыграй, телефон слушает. «Обратная охота» — наоборот: " +
+            "показано место на грифе, назови ноту. Гитара не нужна."
+    ModeId.TAPER ->
+        "Тапёр — это ты за гитарой, а приложение заказывает музыку. В «Ходах» на экране тональность и ступени, " +
+            "например «ре мажор: I – V». Сыграй эти аккорды, отметь «получилось» или «не вышло» — и сразу услышишь, " +
+            "как это должно звучать. Микрофон не нужен. Начни с первого уровня, даже если кажется слишком просто."
+    else -> null
+}
+
+/** One mode: how to play, then its playable variants. */
 @Composable
-fun ModeDetailScreen(mode: ModeId, onBack: () -> Unit, onPlay: (Variant, Int) -> Unit, onTaper: () -> Unit) {
+fun ModeDetailScreen(
+    mode: ModeId,
+    onBack: () -> Unit,
+    onPlay: (Variant, Int) -> Unit,
+    onTaper: () -> Unit,
+    onFeel: () -> Unit = {},
+    onLibrary: () -> Unit = {},
+) {
     val graph = LocalAppGraph.current
     val progress by graph.progress.progress.collectAsState(initial = GameProgress())
     val scope = rememberCoroutineScope()
     val accent = ModeVisuals.accent(mode)
+    val (ready, later) = Variant.entries.filter { it.mode == mode }.partition { it.isAvailable() && (it in Drills.PLAYABLE || it == Variant.TAPER_ORDER) }
     ScreenFrame(title = "${ModeVisuals.emoji(mode)} ${mode.ru}", subtitle = mode.goal, accent = accent, onBack = onBack) {
-        if (mode.links.isNotEmpty()) {
-            item(key = "links") {
-                Text("Связь: " + mode.links.joinToString(", ") { it.ru } + " · " + mode.guitar.ru, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+        howTo(mode)?.let { text ->
+            item(key = "how") {
+                GlassCard(Modifier.fillMaxWidth(), accent = accent) {
+                    SectionLabel("как играть")
+                    Spacer(Modifier.height(6.dp))
+                    Text(text, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+                    if (mode == ModeId.TIR) {
+                        Spacer(Modifier.height(12.dp))
+                        GhostButton("Сначала послушать вайб ступеней", onClick = onFeel, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "🎧")
+                    }
+                }
             }
         }
-        Variant.entries.filter { it.mode == mode }.forEach { v ->
+        ready.forEach { v ->
             item(key = v.name) {
-                val available = v.isAvailable() && (v in Drills.PLAYABLE || v == Variant.TAPER_ORDER)
-                GlassCard(Modifier.fillMaxWidth().alpha(if (available) 1f else 0.5f), accent = if (available) accent else null) {
+                GlassCard(Modifier.fillMaxWidth(), accent = accent) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(v.ru, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                        Badge(if (available) v.guitar.ru else "скоро · v${v.since}", if (available) accent else listOf(Juicy.Ink4, Juicy.Ink4))
+                        Badge(v.guitar.ru, accent)
                     }
-                    if (available && v in Drills.PLAYABLE) {
+                    if (v in Drills.PLAYABLE) {
                         val max = Drills.maxLevel(v)
-                        val unlocked = progress.unlockedLevel(v)
+                        val allOpen = Drills.allLevelsOpen(v)
+                        val unlocked = if (allOpen) max else progress.unlockedLevel(v)
                         val selected = progress.selectedLevel(v)
                         if (max > 1) {
                             Spacer(Modifier.height(10.dp))
-                            SectionLabel("уровень")
+                            SectionLabel(if (allOpen) "уровень — любой, начни с первого" else "уровень")
                             Spacer(Modifier.height(6.dp))
                             (1..max).forEach { level ->
                                 val open = level <= unlocked
@@ -125,7 +162,18 @@ fun ModeDetailScreen(mode: ModeId, onBack: () -> Unit, onPlay: (Variant, Int) ->
                                         .padding(vertical = 3.dp)
                                         .clip(RoundedCornerShape(14.dp))
                                         .background(if (isSel) Brush.horizontalGradient(accent.map { it.copy(alpha = 0.45f) }) else Brush.horizontalGradient(listOf(Juicy.Ink3, Juicy.Ink3)))
-                                        .then(if (open) Modifier.clickable { scope.launch { graph.progress.select(v, level) } } else Modifier)
+                                        .then(
+                                            if (open) {
+                                                Modifier.clickable {
+                                                    scope.launch {
+                                                        if (allOpen) graph.progress.unlock(v, level)
+                                                        graph.progress.select(v, level)
+                                                    }
+                                                }
+                                            } else {
+                                                Modifier
+                                            },
+                                        )
                                         .padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -136,24 +184,32 @@ fun ModeDetailScreen(mode: ModeId, onBack: () -> Unit, onPlay: (Variant, Int) ->
                             }
                         }
                         val record = progress.record(v)
-                        if (record > 0) {
+                        if (record > 0 && !Drills.guitarPaced(v)) {
                             Spacer(Modifier.height(6.dp))
                             Text("🏆 рекорд: $record", style = MaterialTheme.typography.bodyMedium, color = Juicy.Gold)
                         }
                         Spacer(Modifier.height(12.dp))
                         JuicyButton("Играть", onClick = { onPlay(v, selected) }, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "▶️")
-                    } else if (available && v == Variant.TAPER_ORDER) {
+                    } else if (v == Variant.TAPER_ORDER) {
                         Spacer(Modifier.height(8.dp))
-                        Text("Заказы из твоей библиотеки по графику повторений, в случайной тональности.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                        Text(
+                            "То же, но целые песни из твоей библиотеки. Каждая приходит по графику повторений и каждый раз в новой тональности — " +
+                                "так песня запоминается ступенями, а не пальцами.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Juicy.TextDim,
+                        )
                         Spacer(Modifier.height(12.dp))
-                        JuicyButton("Открыть бар", onClick = onTaper, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "🎹")
+                        JuicyButton("Играть песни", onClick = onTaper, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "🎸")
+                        Spacer(Modifier.height(8.dp))
+                        GhostButton("Взять песню из сборника", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "📚")
                     }
                 }
             }
         }
         item(key = "rules") {
             Text(
-                "Раунд 60–90 секунд · засчитывается первая нота · ошибся — сразу слышишь правильный ответ · каждый результат — число.",
+                (if (later.isNotEmpty()) "Скоро: " + later.joinToString(", ") { it.ru } + ". " else "") +
+                    if (mode == ModeId.TAPER) "Раунд 90 секунд, без жизней: оценку ставишь ты сам, честно." else "Раунд 60–90 секунд · ошибся — сразу слышишь правильный ответ.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Juicy.TextFaint,
             )

@@ -36,6 +36,9 @@ sealed interface Answer {
     data class Formula(val notes: List<DegreeNote>) : Answer
     data class ChordFormula(val chords: List<ChordDegree>) : Answer
     data class SelfReport(val grade: SelfGrade) : Answer
+
+    /** «Не знаю»: an honest wrong answer instead of a guess — the right one is played at once. */
+    data object Pass : Answer
     data object TimedOut : Answer
 }
 

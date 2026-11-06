@@ -32,6 +32,9 @@ data class OrderLogRow(
 
 /** Ticket D-04: everything the user DID — sessions, drill attempts, Taper orders, exams. */
 class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: () -> Long = System::currentTimeMillis) {
+    companion object {
+        const val MAX_SESSION_MS = 2 * 60 * 60_000L
+    }
 
     suspend fun startSession(kind: SessionKind, studyDay: Int): Long =
         db.sessions().insert(SessionEntity(kind = kind.name, studyDay = studyDay, startedAtEpochMs = clock(), endedAtEpochMs = null))
@@ -39,6 +42,11 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
     suspend fun finishSession(id: Long) = db.sessions().finish(id, clock())
 
     fun observePracticeDays(): Flow<List<Int>> = db.sessions().observePracticeDays()
+
+    /** Total time in finished sessions; a session left open overnight counts at most [MAX_SESSION_MS]. */
+    fun observePracticeMs(): Flow<Long> = db.sessions().observeFinished().map { rows ->
+        rows.sumOf { r -> ((r.endedAtEpochMs ?: r.startedAtEpochMs) - r.startedAtEpochMs).coerceIn(0, MAX_SESSION_MS) }
+    }
 
     suspend fun saveAttempts(records: List<AttemptRecord>, sessionId: Long?) {
         if (records.isEmpty()) return

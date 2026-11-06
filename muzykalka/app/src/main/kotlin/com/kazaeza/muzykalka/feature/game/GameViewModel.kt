@@ -15,6 +15,7 @@ import com.kazaeza.muzykalka.game.RoundConfig
 import com.kazaeza.muzykalka.game.RoundEngine
 import com.kazaeza.muzykalka.game.RoundPhase
 import com.kazaeza.muzykalka.game.RoundState
+import com.kazaeza.muzykalka.game.StepsDriver
 import com.kazaeza.muzykalka.game.Task
 import com.kazaeza.muzykalka.game.TirDriver
 import com.kazaeza.muzykalka.game.TirTask
@@ -105,32 +106,46 @@ data class GameUi(
 fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES
 
 object Drills {
-    /** Variants with a drill driver in this build (Taper has its own screen). */
-    val PLAYABLE = setOf(Variant.TIR_CLASSIC, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE)
+    /** Variants with a drill driver in this build (library songs have their own Taper screen). */
+    val PLAYABLE = setOf(Variant.TIR_CLASSIC, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE, Variant.TAPER_STEPS)
 
     fun maxLevel(v: Variant): Int = when (v) {
         Variant.HUNT_FIND -> Levels.HUNT.size
         Variant.HUNT_REVERSE -> 3
         Variant.HUNT_ALL_OCTAVES -> 1
         Variant.TIR_CLASSIC -> Levels.TIR.size
+        Variant.TAPER_STEPS -> Levels.STEPS.size
         else -> 1
     }
+
+    /** «Ходы» are self-graded: every level is open, start wherever it feels right. */
+    fun allLevelsOpen(v: Variant): Boolean = v == Variant.TAPER_STEPS
+
+    /** Guitar-paced drills: the longest round rule 6 allows, and no lives for honest self-grades. */
+    fun guitarPaced(v: Variant): Boolean = v == Variant.TAPER_STEPS
 
     fun levelName(v: Variant, level: Int): String = when (v.mode) {
         ModeId.HUNT -> if (v == Variant.HUNT_ALL_OCTAVES) "весь гриф" else Levels.HUNT.getOrElse(level - 1) { "" }
         ModeId.TIR -> Levels.TIR.getOrElse(level - 1) { "" }
+        ModeId.TAPER -> Levels.STEPS.getOrElse(level - 1) { "" }
         else -> ""
     }
 
     fun promotionTargetMs(v: Variant, level: Int): Long = when (v.mode) {
         ModeId.TIR -> TirDriver.promotionTargetMs(level)
+        ModeId.TAPER -> StepsDriver.PROMOTION_TARGET_MS
         else -> HuntDriver.promotionTargetMs(level)
     }
 
     fun engine(spec: RoundSpec, level: Int, settings: Settings, history: List<AttemptRecord>, epochOffsetMs: Long): RoundEngine<*> {
-        val config = if (spec.exam) RoundConfig.exam(spec.examTasks) else RoundConfig(durationMs = spec.durationMs, lives = 3)
+        val config = when {
+            spec.exam -> RoundConfig.exam(spec.examTasks)
+            guitarPaced(spec.variant) -> RoundConfig(durationMs = 90_000, lives = null)
+            else -> RoundConfig(durationMs = spec.durationMs, lives = 3)
+        }
         val random = Random(System.nanoTime())
         return when (spec.variant) {
+            Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_CLASSIC, Variant.TIR_DUEL, Variant.TIR_RADIO ->
                 RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant), config, random, level, history, epochOffsetMs)
             Variant.HUNT_FIND, Variant.HUNT_REVERSE, Variant.HUNT_ALL_OCTAVES ->
@@ -189,7 +204,9 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         state.update {
             it.copy(
                 loading = false, level = level, needsMic = needsMic, notation = settings.degreeNotation, naming = settings.noteNaming,
-                settings = settings, totalMs = if (spec.exam) 0 else spec.durationMs, maxLives = if (spec.exam) 0 else 3,
+                settings = settings,
+                totalMs = if (spec.exam) 0 else if (Drills.guitarPaced(spec.variant)) 90_000 else spec.durationMs,
+                maxLives = if (spec.exam || Drills.guitarPaced(spec.variant)) 0 else 3,
                 taskLimit = if (spec.exam) spec.examTasks else null,
             )
         }

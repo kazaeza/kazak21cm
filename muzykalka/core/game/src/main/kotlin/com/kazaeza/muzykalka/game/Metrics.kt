@@ -136,6 +136,76 @@ object Metrics {
         }
     }
 
+    /** Longest run of consecutive practice days ever. */
+    fun longestStreak(days: Collection<Int>): Int {
+        val sorted = days.toSortedSet()
+        var best = 0
+        var run = 0
+        var prev: Int? = null
+        for (d in sorted) {
+            run = if (prev != null && d == prev + 1) run + 1 else 1
+            best = maxOf(best, run)
+            prev = d
+        }
+        return best
+    }
+
+    /** How well each single degree is recognised in Tir (canonical codes "1", "♭3", …). */
+    data class DegreeStat(val code: String, val attempts: Int, val accuracy: Double, val medianMs: Long?)
+
+    private fun isTirNote(a: AttemptRecord) = a.variant.mode == ModeId.TIR && a.itemKey.startsWith("tir:L") && a.expected in CHROMATIC_LABELS
+
+    fun degreeStats(attempts: List<AttemptRecord>): List<DegreeStat> =
+        attempts.filter(::isTirNote).groupBy { it.expected }.map { (code, list) ->
+            val recent = list.takeLast(50)
+            DegreeStat(code, list.size, recent.count { it.correct }.toDouble() / recent.size, median(recent.filter { it.correct }.map { it.latencyMs }))
+        }.sortedBy { CHROMATIC_LABELS.indexOf(it.code) }
+
+    /**
+     * Guessing by pattern instead of by ear: among WRONG Tir note answers, the share that simply
+     * repeat the previous question's answer (asked within a minute). High = the ear is not used.
+     */
+    data class Guessing(val wrong: Int, val echoes: Int, val passes: Int) {
+        val echoShare: Double? get() = if (wrong == 0) null else echoes.toDouble() / wrong
+    }
+
+    fun guessing(attempts: List<AttemptRecord>): Guessing {
+        val notes = attempts.filter { it.variant.mode == ModeId.TIR && it.itemKey.startsWith("tir:L") && (it.expected in CHROMATIC_LABELS) }
+        var wrong = 0
+        var echoes = 0
+        var passes = 0
+        notes.forEachIndexed { i, a ->
+            if (a.correct) return@forEachIndexed
+            if (a.given == "?") {
+                passes++
+                return@forEachIndexed
+            }
+            wrong++
+            val prev = notes.getOrNull(i - 1)
+            if (prev != null && a.atEpochMs - prev.atEpochMs < 60_000 && a.given == prev.expected) echoes++
+        }
+        return Guessing(wrong, echoes, passes)
+    }
+
+    /** Accuracy by part of the day; [hourOf] turns epoch ms into the local hour 0..23. */
+    data class DayPart(val ru: String, val attempts: Int, val accuracy: Double?)
+
+    fun byPartOfDay(attempts: List<AttemptRecord>, hourOf: (Long) -> Int): List<DayPart> {
+        val parts = listOf("утро" to 4..11, "день" to 12..17, "вечер" to 18..23, "ночь" to 0..3)
+        return parts.map { (ru, hours) ->
+            val list = attempts.filter { hourOf(it.atEpochMs) in hours }
+            DayPart(ru, list.size, if (list.isEmpty()) null else list.count { it.correct }.toDouble() / list.size)
+        }
+    }
+
+    /** Taper «Ходы»: per level, how many moves were tried and how many went well. */
+    data class StepsLevelStat(val level: Int, val attempts: Int, val accuracy: Double)
+
+    fun stepsStats(attempts: List<AttemptRecord>): List<StepsLevelStat> =
+        attempts.filter { it.variant == Variant.TAPER_STEPS }.groupBy { it.level }.toSortedMap().map { (level, list) ->
+            StepsLevelStat(level, list.size, list.count { it.correct }.toDouble() / list.size)
+        }
+
     /** One line per variant for the Progress screen. */
     data class VariantStats(val variant: Variant, val attempts: Int, val accuracy: Double, val medianMs: Long?)
 

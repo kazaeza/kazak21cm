@@ -7,15 +7,16 @@ import com.kazaeza.muzykalka.data.dto.MelodyPayload
 import com.kazaeza.muzykalka.data.dto.Payloads
 import com.kazaeza.muzykalka.data.dto.SongPayload
 import com.kazaeza.muzykalka.game.TaperItem
+import com.kazaeza.muzykalka.music.BookEntry
 import com.kazaeza.muzykalka.music.Melody
 import com.kazaeza.muzykalka.music.MelodyKind
-import com.kazaeza.muzykalka.music.Mode
-import com.kazaeza.muzykalka.music.ProgressionText
 import com.kazaeza.muzykalka.music.Song
+import com.kazaeza.muzykalka.music.SongBook
 import com.kazaeza.muzykalka.srs.CardState
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 enum class LibraryKind(val ru: String) { SONG("вещь"), RIFF("рифф"), TUNE("мелодия"), PHRASE("фраза") }
@@ -100,24 +101,22 @@ class LibraryRepository(private val db: MuzykalkaDatabase, private val clock: ()
 
     suspend fun delete(id: String) = db.library().delete(id)
 
-    /** ROADMAP L-03: the optional example, only on the user's request (rule 7). */
-    suspend fun addAutumnLeavesExample(): String = saveSong(
-        Song(
-            id = newId(),
-            title = "Autumn Leaves",
-            artist = "пример",
-            mode = Mode.MINOR,
-            sections = ProgressionText.parseSections(
-                """
-                A: | iv7 | bVII7 | bIIImaj7 | bVImaj7 | iiø7 | V7 | i | i |
-                B: | iiø7 | V7 | i | i | iv7 | bVII7 | bIIImaj7 | bVImaj7 |
-                C: | iiø7 | V7 | i7 | bVI7 | iiø7 V7 | i | i |
-                """.trimIndent(),
-            ),
-            form = ProgressionText.parseForm("AABC"),
-            notes = "Пример из плана. Отредактируй под свою версию или удали.",
-        ),
-    )
+    /**
+     * ADR-013: adds a songbook piece under its stable id. The user's own edits are never
+     * overwritten: adding again only brings an archived copy back.
+     */
+    suspend fun addFromBook(entry: BookEntry): String {
+        val id = SongBook.libraryId(entry)
+        val existing = db.library().get(id)
+        when {
+            existing == null -> saveSong(entry.song)
+            existing.archived -> db.library().setArchived(id, false, clock())
+        }
+        return id
+    }
+
+    /** Ids of songbook pieces already in the library (archived ones count as absent). */
+    fun observeBookIds(): Flow<Set<String>> = observeEntries().map { list -> list.filter { it.id.startsWith(BOOK_PREFIX) }.map { it.id }.toSet() }
 
     private fun decode(item: LibraryItemEntity, card: CardState?): LibraryEntry {
         val kind = runCatching { LibraryKind.valueOf(item.kind) }.getOrNull()
@@ -132,6 +131,8 @@ class LibraryRepository(private val db: MuzykalkaDatabase, private val clock: ()
     }
 
     companion object {
+        private const val BOOK_PREFIX = "book:"
+
         fun newId(): String = UUID.randomUUID().toString()
     }
 }

@@ -76,14 +76,14 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Badge(e.status.ru, e.status.colors())
                         Spacer(Modifier.padding(horizontal = 6.dp))
-                        Text("заказ: " + ruDue(e.card?.dueDay, today), style = MaterialTheme.typography.titleMedium)
+                        Text("повтор: " + ruDue(e.card?.dueDay, today), style = MaterialTheme.typography.titleMedium)
                     }
                     e.card?.stability?.let {
                         Spacer(Modifier.height(4.dp))
                         Text("держится ~${it.toInt()} дн. · повторений ${e.card?.reps ?: 0} · вылетала ${e.card?.lapses ?: 0}", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
                     }
                     Spacer(Modifier.height(12.dp))
-                    JuicyButton("Заказать сейчас", onClick = { onOrder(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "🎹")
+                    JuicyButton("Сыграть сейчас", onClick = { onOrder(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "🎸")
                 }
             }
         }
@@ -121,7 +121,7 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
             }
         }
         if (orders.isNotEmpty()) {
-            item(key = "history-label") { SectionLabel("история заказов") }
+            item(key = "history-label") { SectionLabel("история") }
             orders.take(20).forEach { o ->
                 item(key = "o-" + o.atEpochMs) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -130,7 +130,7 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
                         Column(Modifier.weight(1f)) {
                             Text(SimpleDateFormat("d MMM, HH:mm", Locale.forLanguageTag("ru")).format(Date(o.atEpochMs)) + " · " + o.keyLabel, style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                "подсказка: " + (runCatching { HintStep.valueOf(o.maxHint).ru }.getOrDefault(o.maxHint)) + " · формула ${(o.formulaAccuracy * 100).toInt()}% · +${o.tips} 💰",
+                                "подсказка: " + (runCatching { HintStep.valueOf(o.maxHint).ru }.getOrDefault(o.maxHint)) + " · формула ${(o.formulaAccuracy * 100).toInt()}% · +${o.tips} ⭐",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Juicy.TextDim,
                             )

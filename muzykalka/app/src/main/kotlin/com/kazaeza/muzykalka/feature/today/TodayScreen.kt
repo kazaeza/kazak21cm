@@ -1,13 +1,14 @@
 package com.kazaeza.muzykalka.feature.today
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,7 +25,6 @@ import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.feature.common.ruDate
 import com.kazaeza.muzykalka.game.Variant
-import com.kazaeza.muzykalka.ui.chart.TriangleChart
 import com.kazaeza.muzykalka.ui.component.CountUpText
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
@@ -35,16 +35,18 @@ import com.kazaeza.muzykalka.ui.effect.breathe
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
 
-/** «Сегодня» — one big button and the one number that matters. */
+/**
+ * «Сегодня» — one big button, the one number that matters and the no-guitar shortcuts.
+ * Everything else (exam, triangle, detailed stats) lives in «Прогресс» (ADR-016).
+ */
 @Composable
 fun TodayScreen(
     onStartSet: () -> Unit,
-    onMinimalDay: () -> Unit,
+    onShortSet: () -> Unit,
     onSettings: () -> Unit,
     onPlay: (Variant) -> Unit,
+    onFeel: () -> Unit,
     onLibrary: () -> Unit,
-    onProgress: () -> Unit,
-    onExam: () -> Unit,
 ) {
     val graph = LocalAppGraph.current
     val vm: TodayViewModel = viewModel { TodayViewModel(graph) }
@@ -63,14 +65,14 @@ fun TodayScreen(
                     CountUpText(ui.playableNow, MaterialTheme.typography.displayLarge, colors = Accents.Hero)
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        if (ui.libraryCount == 0) "библиотека пуста" else "из ${ui.libraryCount} ${plural(ui.libraryCount, "вещи", "вещей", "вещей")}",
+                        if (ui.libraryCount == 0) "песен пока нет" else "из ${ui.libraryCount} ${plural(ui.libraryCount, "песни", "песен", "песен")}",
                         style = MaterialTheme.typography.titleMedium,
                         color = Juicy.TextDim,
                         modifier = Modifier.weight(1f),
                     )
                 }
                 Text(
-                    "вещей, сыгранных на последнем заказе без подсказок — в случайной тональности",
+                    "Столько песен из твоей библиотеки ты в последний раз сыграл сам — без подсказок и в незнакомой тональности.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Juicy.TextFaint,
                 )
@@ -78,46 +80,43 @@ fun TodayScreen(
         }
         item(key = "pills") {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatPill("🔥", "${ui.streak} ${plural(ui.streak, "день", "дня", "дней")}", colors = Accents.Tir)
-                StatPill("🎹", "к заказу: ${ui.dueCount}", colors = Accents.Taper)
-                StatPill("💪", "держатся: ${ui.holding}", colors = Accents.Good)
+                StatPill("🔥", "${ui.streak} ${plural(ui.streak, "день", "дня", "дней")} подряд", colors = Accents.Tir)
+                if (ui.libraryCount > 0) StatPill("🎸", "повторить: ${ui.dueCount}", colors = Accents.Taper)
             }
         }
         item(key = "start") {
-            JuicyButton(
-                if (ui.practicedToday) "Ещё один сет · 20 мин" else "Начать сет · 20 мин",
-                onClick = onStartSet,
-                modifier = Modifier.fillMaxWidth().breathe(!ui.practicedToday, 0.025f, 1800),
-                height = 76.dp,
-                textStyle = MaterialTheme.typography.headlineSmall,
-                leading = "▶️",
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                JuicyButton(
+                    (if (ui.practicedToday) "Ещё один сет" else "Начать сет") + " · ${ui.setMinutes} мин",
+                    onClick = onStartSet,
+                    modifier = Modifier.fillMaxWidth().breathe(!ui.practicedToday, 0.025f, 1800),
+                    height = 76.dp,
+                    textStyle = MaterialTheme.typography.headlineSmall,
+                    leading = "▶️",
+                )
+                Text(
+                    ui.set.joinToString(" → ") { it.variant.ru.lowercase() } + ". Любую часть можно пропустить.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Juicy.TextDim,
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                )
+            }
         }
-        item(key = "minimal") {
-            GhostButton("Минимальный день · 5 мин", onClick = onMinimalDay, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "⚡")
+        item(key = "short") {
+            GhostButton("Нет времени? 5 минут", onClick = onShortSet, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "⚡")
         }
         if (ui.libraryCount == 0) {
             item(key = "empty") {
                 GlassCard(Modifier.fillMaxWidth(), accent = Accents.Taper, onClick = onLibrary) {
-                    Text("🎸 Добавь первую вещь", style = MaterialTheme.typography.titleLarge)
+                    Text("📚 Возьми песню из сборника", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(4.dp))
-                    Text("Тапёру нечего заказывать. Запиши любимую вещь ступенями через «Улов» — это займёт полминуты.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                    Text(
+                        "В библиотеке есть готовые аккорды обучающих песен: Stand by Me, блюз, Autumn Leaves и ещё два десятка. " +
+                            "Одно касание — и песня твоя: приложение будет просить сыграть её в разных тональностях.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Juicy.TextDim,
+                    )
                 }
-            }
-        }
-        if (!ui.examDone) {
-            item(key = "exam") {
-                GlassCard(Modifier.fillMaxWidth(), accent = Accents.Calm, onClick = onExam) {
-                    Text("📋 Вступительный экзамен", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(4.dp))
-                    Text("Точка отсчёта: гриф, слух и память. Минут десять, без подсказок.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
-                }
-            }
-        }
-        item(key = "triangle") {
-            GlassCard(Modifier.fillMaxWidth(), onClick = onProgress) {
-                SectionLabel("связи · звук, имя, место")
-                TriangleChart(ui.links, compact = true)
             }
         }
         item(key = "noguitar") {
@@ -125,7 +124,7 @@ fun TodayScreen(
                 SectionLabel("Без гитары — в дороге")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GhostButton("Тир", onClick = { onPlay(Variant.TIR_CLASSIC) }, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "🎯")
-                    GhostButton("Обратная охота", onClick = { onPlay(Variant.HUNT_REVERSE) }, modifier = Modifier.weight(1f), colors = Accents.Hunt, leading = "🏹")
+                    GhostButton("Вайб ступеней", onClick = onFeel, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "🎧")
                 }
             }
         }

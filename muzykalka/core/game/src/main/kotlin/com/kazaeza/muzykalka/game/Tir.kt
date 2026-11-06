@@ -48,6 +48,11 @@ data class TirTask(
  * Tir — sound → name (ticket G-02). Every question: a fresh random key (rule 2), the cadence of its
  * mode, then the question. A right answer is rewarded with the resolution to the tonic; a wrong one
  * replays the question and resolves it (rule 5).
+ *
+ * Anti-guessing (ADR-015): questions are independent — the same degree may come twice in a row, so
+ * «не похоже на прошлый — значит iii» stops working; level 1 shows all seven keys and slips in
+ * «guests» from the rest of the scale, so «не тоника — значит 3 или 5» stops working too; the
+ * register jumps by octaves from level 1; «Не знаю» ([Answer.Pass]) is an honest way out.
  */
 class TirDriver(
     private val keyPicker: KeyPicker,
@@ -61,9 +66,8 @@ class TirDriver(
         Answer.Formula::class.java,
         Answer.ChordChoice::class.java,
         Answer.ChordFormula::class.java,
+        Answer.Pass::class.java,
     )
-
-    private var previousKey: String? = null
 
     override fun nextTask(context: DriverContext): TirTask {
         val level = context.level.coerceIn(1, Levels.TIR.size)
@@ -76,30 +80,32 @@ class TirDriver(
         val key = keyPicker.next(mode)
         val tonic = key.tonicAtOrAbove(MidiNote(55))
         val cadence = arranger.chords(Harmony.cadence(mode), key, beatsEach = 1.0, tempoBpm = TEMPO)
-        val task = when (level) {
-            1 -> noteTask(level, key, tonic, cadence, listOf(Degree.ONE, Degree.THREE, Degree.FIVE), context)
-            2 -> noteTask(level, key, tonic, cadence, mode.degrees, context)
-            3 -> noteTask(level, key, tonic, cadence, Degree.CHROMATIC, context)
+        return when (level) {
+            1 -> noteTask(level, key, tonic, cadence, CORE, mode.degrees, context)
+            2 -> noteTask(level, key, tonic, cadence, mode.degrees, mode.degrees, context)
+            3 -> noteTask(level, key, tonic, cadence, Degree.CHROMATIC, Degree.CHROMATIC, context)
             4 -> melodyTask(key, tonic, cadence, r)
             5 -> chordTask(key, cadence, context)
             6 -> progressionTask(key, cadence, r)
-            else -> noteTask(level, key, tonic, cadence, mode.degrees, context)
+            else -> noteTask(level, key, tonic, cadence, mode.degrees, mode.degrees, context)
         }
-        previousKey = task.itemKey
-        return task
     }
 
-    private fun noteTask(level: Int, key: Key, tonic: MidiNote, cadence: Score, pool: List<Degree>, ctx: DriverContext): TirTask {
+    /**
+     * [pool] is what is mostly asked, [pad] what can be answered. When the pad is wider than the
+     * pool, [GUEST_SHARE] of the questions come from the rest of the pad.
+     */
+    private fun noteTask(level: Int, key: Key, tonic: MidiNote, cadence: Score, pool: List<Degree>, pad: List<Degree>, ctx: DriverContext): TirTask {
         val prefix = if (level == 7) "tir:L7:${key.mode.name}:" else "tir:L$level:"
-        val degree = ItemWeights.pick(ctx.random, pool, avoid = pool.firstOrNull { prefix + it == previousKey }) {
-            ItemWeights.weight(prefix + it, ctx.history)
-        }
-        val octaves = if (level == 1) listOf(0) else listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in 50..79 }
+        val guests = pad.filter { d -> pool.none { it sameSoundAs d } }
+        val from = if (guests.isNotEmpty() && ctx.random.nextDouble() < GUEST_SHARE) guests else pool
+        val degree = ItemWeights.pick(ctx.random, from) { ItemWeights.weight(prefix + it, ctx.history) }
+        val octaves = listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in 50..79 }
         val note = DegreeNote(degree, octaves[ctx.random.nextInt(octaves.size)])
         val question = arranger.line(listOf(note), key, beatsEach = 1.5, tempoBpm = TEMPO, tonicFloor = tonic)
         return TirTask(
             itemKey = prefix + degree, prompt = prompt(key, cadence, question), kind = TirKind.NOTE, level = level,
-            key = key, tonic = tonic, notes = listOf(note), chords = emptyList(), noteChoices = pool,
+            key = key, tonic = tonic, notes = listOf(note), chords = emptyList(), noteChoices = pad,
             chordChoices = emptyList(), question = question,
         )
     }
@@ -201,6 +207,7 @@ class TirDriver(
                 answer.chords.joinToString(" ") { DegreeFormatter.chord(it, notation) },
                 answer.chords.joinToString(" ") { ChordParser.formatRoman(it) },
             )
+            Answer.Pass -> Triple(false, "не знаю", "?")
             else -> Triple(false, "—", "—")
         }
         return Evaluation(
@@ -243,6 +250,10 @@ class TirDriver(
 
     companion object {
         const val TEMPO = 120.0
+
+        /** Level 1 asks mostly these; the other scale degrees come as guests. */
+        val CORE = listOf(Degree.ONE, Degree.THREE, Degree.FIVE)
+        const val GUEST_SHARE = 0.25
         val MODAL_LEVEL_MODES = listOf(Mode.DORIAN, Mode.PHRYGIAN, Mode.HARMONIC_MINOR)
 
         /** Functional moves between diatonic steps (0 = I … 6 = vii°). */

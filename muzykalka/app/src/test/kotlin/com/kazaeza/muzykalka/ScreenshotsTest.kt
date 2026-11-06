@@ -10,15 +10,19 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazaeza.muzykalka.audio.AudioOutput
+import com.kazaeza.muzykalka.feature.feel.FeelScreen
 import com.kazaeza.muzykalka.feature.game.GameScreen
 import com.kazaeza.muzykalka.feature.game.RoundSpec
+import com.kazaeza.muzykalka.feature.modes.ModeDetailScreen
 import com.kazaeza.muzykalka.feature.modes.ModesScreen
 import com.kazaeza.muzykalka.feature.progress.ProgressScreen
 import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
 import com.kazaeza.muzykalka.feature.today.TodayScreen
 import com.kazaeza.muzykalka.feature.library.LibraryScreen
+import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.music.SongBook
 import com.kazaeza.muzykalka.ui.theme.MuzykalkaTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
@@ -65,16 +69,25 @@ class ScreenshotsTest {
     }
 
     @Test
-    fun today() = shot("01-today", { TodayScreen({}, {}, {}, {}, {}, {}, {}) }, "Начать сет")
+    fun today() = shot("01-today", { TodayScreen({}, {}, {}, {}, {}, {}) }, "Начать сет")
 
     @Test
     fun modes() = shot("02-modes", { ModesScreen(onOpen = {}) }, "Тапёр")
 
     @Test
     fun library() {
-        runBlocking { graph.library.addAutumnLeavesExample() }
+        runBlocking { graph.library.addFromBook(SongBook.byId("autumn-leaves")!!) }
         shot("03-library", { LibraryScreen(onCapture = {}, onOpen = {}) }, "Autumn Leaves")
     }
+
+    @Test
+    fun taperMode() = shot("02b-taper-mode", { ModeDetailScreen(ModeId.TAPER, onBack = {}, onPlay = { _, _ -> }, onTaper = {}) }, "КАК ИГРАТЬ")
+
+    @Test
+    fun steps() = shot("04b-steps", { GameScreen(RoundSpec(Variant.TAPER_STEPS, level = 2), onExit = {}) }, "Получилось")
+
+    @Test
+    fun feel() = shot("04c-feel", { FeelScreen(onBack = {}, onTir = {}) }, "Вайб ступеней")
 
     @Test
     fun tir() = shot("04-tir", { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 2), onExit = {}) }, "Какая ступень?")
@@ -84,8 +97,8 @@ class ScreenshotsTest {
 
     @Test
     fun taper() {
-        runBlocking { graph.library.addAutumnLeavesExample() }
-        shot("06-taper", { TaperScreen(TaperSpec(), onExit = {}) }, "ЗАКАЗ")
+        runBlocking { graph.library.addFromBook(SongBook.byId("autumn-leaves")!!) }
+        shot("06-taper", { TaperScreen(TaperSpec(), onExit = {}) }, "СЫГРАЙ")
     }
 
     @Test

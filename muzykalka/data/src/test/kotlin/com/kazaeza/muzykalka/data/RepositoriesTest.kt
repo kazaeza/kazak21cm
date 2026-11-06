@@ -20,6 +20,7 @@ import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.Melody
 import com.kazaeza.muzykalka.music.MelodyKind
 import com.kazaeza.muzykalka.music.Mode
+import com.kazaeza.muzykalka.music.SongBook
 import com.kazaeza.muzykalka.srs.Fsrs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -46,7 +47,7 @@ class RepositoriesTest {
 
     @Test
     fun songRoundTripAndOrderUpdatesTheCard() = runBlocking {
-        val id = library.addAutumnLeavesExample()
+        val id = library.addFromBook(SongBook.byId("autumn-leaves")!!)
         val entry = library.get(id)!!
         assertEquals(LibraryKind.SONG, entry.kind)
         assertEquals("AABC", entry.song!!.formString)
@@ -69,6 +70,36 @@ class RepositoriesTest {
     }
 
     @Test
+    fun songbookPiecesAreAddedOnceAndKeepUserEdits() = runBlocking {
+        val book = SongBook.byId("stand-by-me")!!
+        val id = library.addFromBook(book)
+        assertEquals("book:stand-by-me", id)
+        assertEquals(setOf(id), library.observeBookIds().first())
+        val edited = library.get(id)!!.song!!.copy(title = "Stand by Me (моя версия)")
+        library.saveSong(edited)
+        assertEquals(id, library.addFromBook(book))
+        assertEquals("Stand by Me (моя версия)", library.get(id)!!.title)
+        library.setArchived(id, true)
+        assertEquals(emptySet<String>(), library.observeBookIds().first())
+        library.addFromBook(book)
+        assertEquals(1, library.allOrderable().size)
+    }
+
+    @Test
+    fun practiceTimeSumsFinishedSessionsOnly() = runBlocking {
+        var now = 1_000_000L
+        val timed = PracticeRepository(db) { now }
+        val a = timed.startSession(SessionKind.SET, 1)
+        now += 12 * 60_000
+        timed.finishSession(a)
+        timed.startSession(SessionKind.FREE, 1) // never finished: not counted
+        val b = timed.startSession(SessionKind.FREE, 2)
+        now += 10 * 60 * 60_000 // left open overnight
+        timed.finishSession(b)
+        assertEquals(12 * 60_000L + PracticeRepository.MAX_SESSION_MS, timed.observePracticeMs().first())
+    }
+
+    @Test
     fun riffsAndAttemptsPersist() = runBlocking {
         val riff = Melody(LibraryRepository.newId(), "Рифф", Mode.PHRYGIAN, MelodyKind.RIFF, DegreeNote.parseLine("1 b2 b3 1 5, b7,"))
         library.saveMelody(riff)
@@ -80,7 +111,7 @@ class RepositoriesTest {
 
     @Test
     fun backupRoundTrip() = runBlocking {
-        library.addAutumnLeavesExample()
+        library.addFromBook(SongBook.byId("autumn-leaves")!!)
         practice.saveAttempts(listOf(AttemptRecord(Variant.HUNT_FIND, 1, "hunt:s6:pc4", "E", "E2", true, 900, 3.0, 0, null, 7)), null)
         val manager = BackupManager(context, db, SettingsRepository(context), ProgressStore(context), "test")
         val json = manager.export()

@@ -105,6 +105,9 @@ interface SessionDao {
 
     @Query("SELECT * FROM session")
     suspend fun all(): List<SessionEntity>
+
+    @Query("SELECT * FROM session WHERE endedAtEpochMs IS NOT NULL")
+    fun observeFinished(): Flow<List<SessionEntity>>
 }
 
 @Dao

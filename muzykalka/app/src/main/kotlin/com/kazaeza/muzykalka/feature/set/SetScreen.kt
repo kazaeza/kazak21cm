@@ -79,10 +79,17 @@ data class SetUi(
 
 /** Ticket T-03: the daily set (or the minimal day) as one guided session. */
 class SetViewModel(private val graph: AppGraph, minimal: Boolean) : ViewModel() {
-    private val state = MutableStateFlow(
-        SetUi(minimal, DailySet.available(if (minimal) DailySet.MINIMAL else DailySet.DEFAULT, APP_STAGE)),
-    )
+    private val state = MutableStateFlow(SetUi(minimal, DailySet.available(if (minimal) DailySet.MINIMAL else DailySet.DEFAULT, APP_STAGE)))
     val ui: StateFlow<SetUi> = state.asStateFlow()
+
+    init {
+        // No song is due (or the library is empty): «Ходы» take the songs' minutes.
+        viewModelScope.launch {
+            val today = graph.today(graph.settings.settings.first())
+            val anyDue = graph.library.allOrderable().any { it.card?.isDue(today) ?: true }
+            if (!anyDue) state.update { it.copy(segments = DailySet.withoutSongs(it.segments)) }
+        }
+    }
 
     fun start() = viewModelScope.launch {
         if (state.value.sessionId == null) {
@@ -163,8 +170,8 @@ fun SetScreen(minimal: Boolean, onExit: () -> Unit, onLibrary: () -> Unit) {
 @Composable
 private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
     ScreenFrame(
-        title = if (ui.minimal) "Минимальный день" else "Сет дня",
-        subtitle = if (ui.minimal) "5 минут, засчитывается в серию" else "${ui.segments.sumOf { it.minutes }.roundToInt()} минут, режимы вперемешку",
+        title = if (ui.minimal) "Короткий сет" else "Сет дня",
+        subtitle = if (ui.minimal) "${ui.segments.sumOf { it.minutes }.roundToInt()} минут — серия не прервётся" else "${ui.segments.sumOf { it.minutes }.roundToInt()} минут, по кусочку каждого режима",
         accent = Accents.Hero,
         onBack = onExit,
     ) {

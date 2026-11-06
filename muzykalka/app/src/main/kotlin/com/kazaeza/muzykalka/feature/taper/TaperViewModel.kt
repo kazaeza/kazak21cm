@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.kazaeza.muzykalka.AppGraph
 import com.kazaeza.muzykalka.data.repo.SessionKind
 import com.kazaeza.muzykalka.data.settings.Settings
-import com.kazaeza.muzykalka.feature.common.hasMicPermission
 import com.kazaeza.muzykalka.game.HintStep
 import com.kazaeza.muzykalka.game.OrderResult
 import com.kazaeza.muzykalka.game.SelfGrade
@@ -16,11 +15,9 @@ import com.kazaeza.muzykalka.game.TaperSession
 import com.kazaeza.muzykalka.music.ChordDegree
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.KeyPicker
-import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.RuNames
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,7 +31,7 @@ import kotlin.random.Random
 data class TaperSpec(
     val budgetMinutes: Double = 8.0,
     val sessionId: Long? = null,
-    /** Order exactly this item (Library → «Заказать сейчас»). */
+    /** Play exactly this item (Library → «Сыграть сейчас»). */
     val onlyItemId: String? = null,
     /** Exam memory stage: random items, no hints. */
     val exam: Boolean = false,
@@ -52,8 +49,6 @@ data class TaperUi(
     val hintsAllowed: Boolean = true,
     val orderedAtMs: Long = 0,
     val startLatencyMs: Long? = null,
-    val listening: Boolean = false,
-    val heard: MidiNote? = null,
     val enteredChords: List<ChordDegree> = emptyList(),
     val enteredDegrees: List<Degree> = emptyList(),
     val expectedLength: Int = 0,
@@ -66,7 +61,10 @@ data class TaperUi(
     val settings: Settings = Settings(),
 )
 
-/** Ticket G-03: drives [TaperSession] — announce, listen for the start, hints, grade, formula, FSRS. */
+/**
+ * Ticket G-03: drives [TaperSession] — announce, hints, self-grade, formula, FSRS. No microphone
+ * (ADR-014): the user plays when ready and says how it went; start speed is not measured.
+ */
 class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) : ViewModel() {
     private val state = MutableStateFlow(TaperUi(hintsAllowed = !spec.exam))
     val ui: StateFlow<TaperUi> = state.asStateFlow()
@@ -78,7 +76,6 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
     private var settings = Settings()
     private var today = 0
     private val random = Random(System.nanoTime())
-    private var listenJob: Job? = null
     private var announceJob: Job? = null
 
     init {
@@ -120,7 +117,6 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
 
     fun nextOrder() {
         val s = session ?: return
-        stopListening()
         if (!s.next(now())) {
             publish()
             finishSession()
@@ -129,45 +125,7 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
         val item = s.current ?: return
         val key = s.key ?: return
         publish()
-        announceJob = viewModelScope.launch {
-            graph.announcer.say("«${item.title}», ${RuNames.inKey(key)}!")
-            startListening()
-        }
-    }
-
-    private fun startListening() {
-        if (!hasMicPermission(graph.app)) return
-        val s = session ?: return
-        graph.pitchInput.start(settings.inputDeviceId, settings.a4Hz)
-        state.update { it.copy(listening = true) }
-        listenJob = viewModelScope.launch {
-            val headphones = MutableStateFlow(settings.headphones || graph.headphones.connected.value)
-            launch {
-                graph.pitchInput.frames.collect { f ->
-                    val est = f.estimate
-                    val heard = if (est != null && est.clarity > 0.85 && f.rmsDb > -50) MidiNote.nearest(est.hz, settings.a4Hz).note else null
-                    state.update { it.copy(heard = heard) }
-                }
-            }
-            launch {
-                delay(com.kazaeza.muzykalka.game.TaperGrading.START_WINDOW_MS + 500)
-                stopListening()
-            }
-            graph.gate.onsets(graph.pitchInput, graph.audioOutput, graph.announcer, headphones).collect { onset ->
-                s.onFirstNote(onset.timeNanos / 1_000_000)
-                publish()
-                if (s.startLatencyMs != null) stopListening()
-            }
-        }
-    }
-
-    private fun stopListening() {
-        if (listenJob != null) {
-            listenJob?.cancel()
-            listenJob = null
-            graph.pitchInput.stop()
-        }
-        state.update { it.copy(listening = false, heard = null) }
+        announceJob = viewModelScope.launch { graph.announcer.say("«${item.title}», ${RuNames.inKey(key)}!") }
     }
 
     fun hint() {
@@ -177,7 +135,6 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
 
     fun played() {
         announceJob?.cancel()
-        stopListening()
         session?.finishPlaying()
         publish()
     }
@@ -239,7 +196,6 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
     fun currentKey() = session?.key
 
     override fun onCleared() {
-        stopListening()
         announceJob?.cancel()
         if (session?.phase != TaperPhase.FINISHED) finishSession()
     }

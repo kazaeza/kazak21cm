@@ -286,23 +286,60 @@ fun DegreeKeypad(
     highlight: (Degree) -> KeyHighlight = { KeyHighlight.NONE },
     columns: Int = 4,
     keyHeight: Dp = GameTouchTarget,
+    /** Optional extra key in the last free cell, e.g. «🤷» (don't know). */
+    extraKey: ExtraKey? = null,
 ) {
+    val cells: List<Degree?> = degrees + if (extraKey != null) listOf(null) else emptyList()
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        degrees.chunked(columns).forEach { row ->
+        cells.chunked(columns).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { d ->
-                    JuicyKey(
-                        label = DegreeFormatter.degree(d, notation),
-                        colors = DegreeColors.gradient(d),
-                        onClick = { onDegree(d) },
-                        modifier = Modifier.weight(1f),
-                        enabled = enabled,
-                        highlight = highlight(d),
-                        height = keyHeight,
-                    )
+                    if (d == null && extraKey != null) {
+                        ExtraKeyView(extraKey, enabled, keyHeight, Modifier.weight(1f))
+                    } else if (d != null) {
+                        JuicyKey(
+                            label = DegreeFormatter.degree(d, notation),
+                            colors = DegreeColors.gradient(d),
+                            onClick = { onDegree(d) },
+                            modifier = Modifier.weight(1f),
+                            enabled = enabled,
+                            highlight = highlight(d),
+                            height = keyHeight,
+                        )
+                    }
                 }
                 repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
             }
+        }
+    }
+}
+
+/** A non-degree key on an answer pad («🤷 не знаю»). */
+data class ExtraKey(val label: String, val sublabel: String?, val onClick: () -> Unit)
+
+/** Glass key for [ExtraKey]: same size as the coloured keys, visibly not an answer. */
+@Composable
+fun ExtraKeyView(key: ExtraKey, enabled: Boolean, height: Dp, modifier: Modifier = Modifier) {
+    val source = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(source, 0.9f)
+    val shape = RoundedCornerShape(22.dp)
+    Box(
+        modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = if (enabled) 1f else 0.4f
+            }
+            .heightIn(min = height)
+            .clip(shape)
+            .background(Juicy.Ink3.copy(alpha = 0.8f))
+            .border(BorderStroke(1.5.dp, Juicy.Line), shape)
+            .clickable(interactionSource = source, indication = null, enabled = enabled, onClick = key.onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(key.label, style = MaterialTheme.typography.headlineSmall, color = Juicy.Text, maxLines = 1)
+            if (key.sublabel != null) Text(key.sublabel, style = MaterialTheme.typography.labelSmall, color = Juicy.TextDim, maxLines = 1)
         }
     }
 }

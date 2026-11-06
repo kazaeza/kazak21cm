@@ -31,8 +31,8 @@ enum class ModeId(
     TIR("Тир", "слышишь ноту или аккорд — сразу знаешь ступень", setOf(Link.SOUND_TO_NAME), GuitarNeed.NONE, "0.1"),
     KAMERTON("Камертон", "слышать ноту до того, как ударил по струне", setOf(Link.NAME_TO_SOUND, Link.PLACE_TO_SOUND), GuitarNeed.OPTIONAL, "0.2"),
     PARROT("Попугай", "услышал — сыграл сразу, без поиска", setOf(Link.SOUND_TO_PLACE), GuitarNeed.REQUIRED, "0.2"),
-    TAPER("Тапёр", "дадут гитару — сыграешь с ходу", emptySet(), GuitarNeed.REQUIRED, "0.1"),
-    RECORDER("Магнитофон и Лексикон", "игра на ощущениях становится словарём", emptySet(), GuitarNeed.REQUIRED, "0.3"),
+    TAPER("Тапёр", "видишь ступени — играешь на гитаре в любой тональности", setOf(Link.NAME_TO_PLACE), GuitarNeed.REQUIRED, "0.1"),
+    RECORDER("Магнитофон", "игра на ощущениях становится словарём", emptySet(), GuitarNeed.REQUIRED, "0.3"),
 }
 
 /** Concrete playable variants. Stats, levels and records are kept per variant. */
@@ -48,10 +48,10 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     KAMERTON_DIGITS(ModeId.KAMERTON, "Угадай по цифрам", GuitarNeed.NONE, "0.2"),
     PARROT_ECHO(ModeId.PARROT, "Попугай", GuitarNeed.REQUIRED, "0.2"),
     PARROT_CALL_RESPONSE(ModeId.PARROT, "Перекличка", GuitarNeed.REQUIRED, "0.3"),
-    TAPER_ORDER(ModeId.TAPER, "Тапёр", GuitarNeed.REQUIRED, "0.1"),
+    TAPER_STEPS(ModeId.TAPER, "Ходы", GuitarNeed.REQUIRED, "0.1"),
+    TAPER_ORDER(ModeId.TAPER, "Песни из библиотеки", GuitarNeed.REQUIRED, "0.1"),
     FORMULA_ALOUD(ModeId.TAPER, "Формула вслух", GuitarNeed.NONE, "0.2"),
     RECORDER_FREE(ModeId.RECORDER, "Магнитофон", GuitarNeed.REQUIRED, "0.3"),
-    LEXICON_REVIEW(ModeId.RECORDER, "Лексикон", GuitarNeed.REQUIRED, "0.3"),
     DIALOG(ModeId.RECORDER, "Диалог", GuitarNeed.REQUIRED, "0.3"),
 }
 
@@ -67,13 +67,21 @@ object Levels {
         "ступени от корня",
     )
     val TIR = listOf(
-        "1–3–5",
+        "1–3–5 (+ гости из лада)",
         "все 7 ступеней",
         "хроматика (♭2, ♭3, ♯4, ♭6, ♭7)",
         "мелодии из 2–5 нот",
         "аккорды",
         "ходы из 4 аккордов",
         "лады: дорийский, фригийский, гармонический минор",
+    )
+    /** Taper «Ходы»: progressions from the most banal up (see [StepsLadder]). */
+    val STEPS = listOf(
+        "два аккорда: I–V, I–IV",
+        "три аккорда: I–IV–V, ii–V–I",
+        "четыре аккорда: поп-квадраты",
+        "минор: i–iv, i–v, андалузская",
+        "джаз: септаккорды, ii–V–I",
     )
     val KAMERTON = listOf("ступени от тоники", "интервалы от любой ступени", "мелодии из 3–8 нот")
     val PARROT = listOf("шаги в одной позиции", "скачки", "смена позиции", "6 нот", "в темп с бэкингом")
@@ -83,7 +91,8 @@ object Levels {
         ModeId.TIR -> TIR
         ModeId.KAMERTON -> KAMERTON
         ModeId.PARROT -> PARROT
-        ModeId.TAPER, ModeId.RECORDER -> emptyList()
+        ModeId.TAPER -> STEPS
+        ModeId.RECORDER -> emptyList()
     }
 }
 

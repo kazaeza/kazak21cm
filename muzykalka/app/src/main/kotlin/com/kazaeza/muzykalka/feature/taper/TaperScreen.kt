@@ -29,9 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,13 +44,12 @@ import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.feature.common.ChordInputPanel
 import com.kazaeza.muzykalka.feature.common.DegreeInputPanel
 import com.kazaeza.muzykalka.feature.common.KeepScreenOn
+import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.feature.common.ruDue
 import com.kazaeza.muzykalka.game.HintStep
 import com.kazaeza.muzykalka.game.SelfGrade
-import com.kazaeza.muzykalka.game.TaperGrading
 import com.kazaeza.muzykalka.game.TaperPhase
 import com.kazaeza.muzykalka.music.DegreeFormatter
-import com.kazaeza.muzykalka.music.RuNames
 import com.kazaeza.muzykalka.srs.Rating
 import com.kazaeza.muzykalka.ui.component.CountUpText
 import com.kazaeza.muzykalka.ui.component.DegreeChip
@@ -63,7 +59,6 @@ import com.kazaeza.muzykalka.ui.component.GradientText
 import com.kazaeza.muzykalka.ui.component.JuicyButton
 import com.kazaeza.muzykalka.ui.component.SectionLabel
 import com.kazaeza.muzykalka.ui.component.StatPill
-import com.kazaeza.muzykalka.ui.component.TimerRing
 import com.kazaeza.muzykalka.ui.effect.AuroraBackground
 import com.kazaeza.muzykalka.ui.effect.ParticleLayer
 import com.kazaeza.muzykalka.ui.effect.pop
@@ -72,11 +67,10 @@ import com.kazaeza.muzykalka.ui.rememberHaptics
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
-import kotlinx.coroutines.delay
 
 private val BAR = listOf(Juicy.Gold, Juicy.Orange, Juicy.Hot)
 
-/** «Тапёр» (ticket G-03): the bar where the user's library gets ordered. */
+/** «Тапёр» · songs (ticket G-03): library pieces, due by the SRS schedule, each in a random key. */
 @Composable
 fun TaperScreen(
     spec: TaperSpec,
@@ -124,10 +118,10 @@ fun TaperScreen(
                 ) { Text("✕", style = MaterialTheme.typography.titleMedium) }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(if (spec.exam) "🎹 Память · экзамен" else "🎹 Тапёр", style = MaterialTheme.typography.titleLarge)
-                    Text(if (ui.queueLeft > 0) "в очереди ещё ${ui.queueLeft}" else "бар открыт", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+                    Text(if (spec.exam) "🎸 Память · замер" else "🎸 Песни", style = MaterialTheme.typography.titleLarge)
+                    Text(if (ui.queueLeft > 0) "ещё ${ui.queueLeft} ${plural(ui.queueLeft, "песня", "песни", "песен")}" else "последняя на сегодня", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
                 }
-                StatPill("💰", "${ui.totalTips}", colors = BAR, modifier = Modifier.pop(ui.totalTips, 0.25f))
+                StatPill("⭐", "${ui.totalTips}", colors = BAR, modifier = Modifier.pop(ui.totalTips, 0.25f))
             }
 
             Column(
@@ -155,13 +149,12 @@ private fun OrderFlow(ui: TaperUi, vm: TaperViewModel) {
     OrderTicket(item.title, item.song?.artist, ui.keyText, ui.phase == TaperPhase.PLAYING)
     when (ui.phase) {
         TaperPhase.PLAYING -> {
-            StartWindow(ui)
             if (ui.hint != HintStep.NONE) HintCard(ui, vm)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 val next = ui.hint.next()
                 if (ui.hintsAllowed && next != null) {
                     GhostButton(
-                        "Подсказка: ${next.ru} (−${next.tipCost - ui.hint.tipCost} 💰)",
+                        "Подсказка: ${next.ru} (−${next.tipCost - ui.hint.tipCost} ⭐)",
                         onClick = vm::hint,
                         modifier = Modifier.fillMaxWidth(),
                         colors = BAR,
@@ -171,7 +164,7 @@ private fun OrderFlow(ui: TaperUi, vm: TaperViewModel) {
             }
             JuicyButton("Сыграл", onClick = vm::played, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "✅")
             Text(
-                "Играй с ходу, без листа. Подсказки — по одной ступеньке, каждая срезает чаевые.",
+                "Сыграй песню целиком в этой тональности, без листа. Застрял — бери подсказку: они открываются по одной ступеньке и срезают звёзды.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Juicy.TextDim,
             )
@@ -202,42 +195,12 @@ private fun OrderTicket(title: String, artist: String?, keyText: String, fresh: 
             .padding(20.dp),
     ) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("✦ ЗАКАЗ ✦", style = MaterialTheme.typography.labelSmall, color = Juicy.PaperInk.copy(alpha = 0.6f))
+            Text("✦ СЫГРАЙ ✦", style = MaterialTheme.typography.labelSmall, color = Juicy.PaperInk.copy(alpha = 0.6f))
             Spacer(Modifier.height(6.dp))
             Text(title, style = MaterialTheme.typography.headlineLarge, color = Juicy.PaperInk, textAlign = TextAlign.Center)
             if (!artist.isNullOrBlank()) Text(artist, style = MaterialTheme.typography.bodyMedium, color = Juicy.PaperInk.copy(alpha = 0.7f))
             Spacer(Modifier.height(10.dp))
             GradientText(keyText, MaterialTheme.typography.headlineMedium, listOf(Juicy.Hot, Juicy.Orange), textAlign = TextAlign.Center)
-        }
-    }
-}
-
-@Composable
-private fun StartWindow(ui: TaperUi) {
-    var now by remember { mutableLongStateOf(System.nanoTime() / 1_000_000) }
-    LaunchedEffect(ui.orderedAtMs) {
-        while (true) {
-            now = System.nanoTime() / 1_000_000
-            delay(100)
-        }
-    }
-    val elapsed = (now - ui.orderedAtMs).coerceAtLeast(0)
-    val left = (TaperGrading.START_WINDOW_MS - elapsed).coerceAtLeast(0)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        val started = ui.startLatencyMs
-        if (started != null) {
-            StatPill("▶️", String.format(java.util.Locale.US, "начал за %.1f с", started / 1000.0), colors = Accents.Good, modifier = Modifier.pop(1, 0.3f))
-        } else {
-            TimerRing(left.toFloat() / TaperGrading.START_WINDOW_MS, "${(left + 999) / 1000}", colors = BAR, diameter = 52.dp)
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(if (left > 0) "10 секунд на старт" else "время на старт вышло", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    if (ui.listening) "слушаю первую ноту${ui.heard?.let { " · " + RuNames.note(com.kazaeza.muzykalka.game.HuntDriver.PAD[it.pitchClass.value], ui.settings.noteNaming) } ?: ""}" else "начинай, когда готов",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Juicy.TextDim,
-                )
-            }
         }
     }
 }
@@ -353,27 +316,27 @@ private fun ResultCard(ui: TaperUi, vm: TaperViewModel) {
                 color = if (r.playableNow) Juicy.Good else if (r.rating == Rating.AGAIN) Juicy.Hot else Juicy.Gold,
             )
             Spacer(Modifier.height(6.dp))
-            CountUpText(r.tips, MaterialTheme.typography.displayMedium, colors = BAR, prefix = "+", suffix = " 💰")
+            CountUpText(r.tips, MaterialTheme.typography.displayMedium, colors = BAR, prefix = "+", suffix = " ⭐")
             Spacer(Modifier.height(8.dp))
             Text("Формула: ${(r.outcome.formulaAccuracy * 100).toInt()}% · подсказка: ${r.outcome.maxHint.ru}", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
             Text(
-                "Следующий заказ: " + ruDue(r.newCard.dueDay, ui.today),
+                "Снова попрошу: " + ruDue(r.newCard.dueDay, ui.today),
                 style = MaterialTheme.typography.titleMedium,
                 color = Juicy.Text,
             )
         }
     }
-    JuicyButton(if (ui.queueLeft > 0) "Следующий заказ" else "Закрыть смену", onClick = vm::nextOrder, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "🎹")
+    JuicyButton(if (ui.queueLeft > 0) "Следующая песня" else "Закончить", onClick = vm::nextOrder, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "🎸")
 }
 
 @Composable
 private fun ClosingTime(ui: TaperUi, onDone: () -> Unit) {
     GlassCard(Modifier.fillMaxWidth(), accent = BAR) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Смена закрыта", style = MaterialTheme.typography.headlineLarge)
+            Text("На сегодня всё", style = MaterialTheme.typography.headlineLarge)
             Spacer(Modifier.height(8.dp))
-            CountUpText(ui.totalTips, MaterialTheme.typography.displayMedium, colors = BAR, suffix = " 💰")
-            Text("заказов: ${ui.ordersDone} · с ходу: ${ui.playableCount}", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+            CountUpText(ui.totalTips, MaterialTheme.typography.displayMedium, colors = BAR, suffix = " ⭐")
+            Text("песен: ${ui.ordersDone} · с ходу: ${ui.playableCount}", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
         }
     }
     JuicyButton("Готово", onClick = onDone, modifier = Modifier.fillMaxWidth(), colors = BAR)
@@ -383,8 +346,8 @@ private fun ClosingTime(ui: TaperUi, onDone: () -> Unit) {
 private fun EmptyBar(onOpenLibrary: () -> Unit) {
     GlassCard(Modifier.fillMaxWidth(), accent = BAR) {
         Text("🎸", style = MaterialTheme.typography.displayMedium)
-        Text("Посетителям нечего заказать", style = MaterialTheme.typography.headlineMedium)
-        Text("Добавь вещь или рифф в библиотеку — ступенями, через «Улов». Тапёр будет заказывать её в случайной тональности по графику повторений.", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)
+        Text("Пока нечего играть", style = MaterialTheme.typography.headlineMedium)
+        Text("Возьми песню из сборника в библиотеке или запиши свою ступенями. Потом приложение будет просить сыграть её — каждый раз в новой тональности.", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)
     }
     JuicyButton("В библиотеку", onClick = onOpenLibrary, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "📚")
 }
@@ -394,8 +357,8 @@ private fun NothingDue(onExtra: () -> Unit, onDone: () -> Unit) {
     GlassCard(Modifier.fillMaxWidth(), accent = Accents.Good) {
         Text("🎉", style = MaterialTheme.typography.displayMedium)
         Text("Всё держится", style = MaterialTheme.typography.headlineMedium)
-        Text("Сегодня по графику заказов нет. Можно взять что-нибудь сверх плана — самые шаткие вещи первыми.", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)
+        Text("Сегодня повторять нечего: все песни ещё помнятся. Можно сыграть сверх плана — самые шаткие первыми.", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)
     }
-    JuicyButton("Заказать сверх плана", onClick = onExtra, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "🎹")
+    JuicyButton("Сыграть сверх плана", onClick = onExtra, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "🎸")
     GhostButton("Готово", onClick = onDone, modifier = Modifier.fillMaxWidth())
 }
