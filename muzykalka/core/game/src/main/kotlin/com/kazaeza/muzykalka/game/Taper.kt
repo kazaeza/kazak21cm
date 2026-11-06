@@ -100,4 +100,19 @@ object TaperGrading {
         }
         return max(0.0, 1.0 - d[n][m] / max(n, m))
     }
+
+    /** Same idea for a riff: plain edit distance over degrees (octave ignored). */
+    fun melodyAccuracy(expected: List<com.kazaeza.muzykalka.music.Degree>, given: List<com.kazaeza.muzykalka.music.Degree>): Double {
+        if (expected.isEmpty()) return if (given.isEmpty()) 1.0 else 0.0
+        val n = expected.size
+        val m = given.size
+        val d = Array(n + 1) { IntArray(m + 1) }
+        for (i in 0..n) d[i][0] = i
+        for (j in 0..m) d[0][j] = j
+        for (i in 1..n) for (j in 1..m) {
+            val sub = if (expected[i - 1] sameSoundAs given[j - 1]) 0 else 1
+            d[i][j] = minOf(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + sub)
+        }
+        return max(0.0, 1.0 - d[n][m].toDouble() / max(n, m))
+    }
 }

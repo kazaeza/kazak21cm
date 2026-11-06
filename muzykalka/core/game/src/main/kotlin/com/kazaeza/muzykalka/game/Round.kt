@@ -53,6 +53,11 @@ data class Evaluation(
     val correction: Score? = null,
     val centsError: Double? = null,
     val taskHadSound: Boolean = false,
+    /** Played on a CORRECT answer (Tir: the resolution) — the musical reward. */
+    val confirmation: Score? = null,
+    /** Canonical, notation-independent codes stored in [AttemptRecord] for statistics ("♭3", "ii⁷", "F♯3"). */
+    val expectedCode: String = expectedText,
+    val givenCode: String = givenText,
 ) {
     init {
         require(expectedText.isNotBlank()) { "Rule 5: expected answer text is mandatory" }
@@ -106,7 +111,10 @@ data class AttemptRecord(
     val atEpochMs: Long,
 )
 
-/** Rule 6: drill rounds last 60–90 s. Lives null = unlimited. */
+/**
+ * Rule 6: drill rounds last 60–90 s. Lives null = unlimited.
+ * Exams («замер») are the only exception: they set [taskLimit] and are not time-boxed.
+ */
 data class RoundConfig(
     val durationMs: Long = 75_000,
     val lives: Int? = 3,
@@ -114,11 +122,19 @@ data class RoundConfig(
     val comboStep: Int = 5,
     /** Pause after feedback before the next task. */
     val feedbackMs: Long = 900,
+    /** Exams only: the round ends after this many judged answers instead of after [durationMs]. */
+    val taskLimit: Int? = null,
 ) {
     init {
-        require(durationMs in 60_000..90_000) { "Rule 6: a round lasts 60–90 s, got $durationMs ms" }
+        require(taskLimit != null || durationMs in 60_000..90_000) { "Rule 6: a round lasts 60–90 s, got $durationMs ms" }
+        require(taskLimit == null || taskLimit > 0)
         require(lives == null || lives > 0)
         require(comboStep > 0)
+    }
+
+    companion object {
+        /** Exam stage: [tasks] questions, no lives, no clock (feedback still shown). */
+        fun exam(tasks: Int) = RoundConfig(durationMs = Long.MAX_VALUE / 4, lives = null, taskLimit = tasks)
     }
 }
 
@@ -145,6 +161,11 @@ data class RoundState<T : Task>(
     val remainingMs: Long,
     val lastEvaluation: Evaluation?,
     val attempts: List<AttemptRecord>,
+    /** Increments with every new task — UI keys its enter animations on it. */
+    val taskSerial: Int = 0,
+    /** Points earned by the last answer (for the "+150" pop-up). */
+    val lastPoints: Int = 0,
+    val bestStreak: Int = 0,
 ) {
     val correctCount: Int get() = attempts.count { it.correct }
     val accuracy: Double get() = if (attempts.isEmpty()) 0.0 else correctCount.toDouble() / attempts.size

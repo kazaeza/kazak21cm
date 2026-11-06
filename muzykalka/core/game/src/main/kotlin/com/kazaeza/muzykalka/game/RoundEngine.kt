@@ -28,6 +28,8 @@ class RoundEngine<T : Task>(
     private val random: Random,
     private val level: Int,
     history: List<AttemptRecord> = emptyList(),
+    /** Added to `nowMs` to get wall-clock epoch ms for [AttemptRecord.atEpochMs]. */
+    private val epochOffsetMs: Long = 0,
 ) {
     private val history = history.toMutableList()
     private var startedAt = 0L
@@ -44,15 +46,26 @@ class RoundEngine<T : Task>(
 
     fun start(nowMs: Long): RoundState<T> {
         startedAt = nowMs
-        state = state.copy(phase = RoundPhase.FINISHED) // reset guard
         return nextTask(nowMs)
     }
+
+    /** Ends the round now (user quit). Attempts so far are kept. */
+    fun abort(nowMs: Long): RoundState<T> = finish(nowMs)
+
+    /** Monotonic time the current task started listening (for UI timers). */
+    val listeningSinceMs: Long get() = listeningSince
+
+    /** Current task's deadline, if the driver sets one. */
+    fun currentTimeLimitMs(): Long? = state.task?.let { driver.timeLimitMs(it, context()) }
 
     private fun nextTask(nowMs: Long): RoundState<T> {
         val task = driver.nextTask(context())
         val phase = if (task.prompt.audio != null) RoundPhase.PROMPTING else RoundPhase.LISTENING
         if (phase == RoundPhase.LISTENING) listeningSince = nowMs
-        state = state.copy(phase = phase, task = task, lastEvaluation = null, remainingMs = remaining(nowMs))
+        state = state.copy(
+            phase = phase, task = task, lastEvaluation = null, remainingMs = remaining(nowMs),
+            taskSerial = state.taskSerial + 1, lastPoints = 0,
+        )
         return state
     }
 
@@ -66,14 +79,15 @@ class RoundEngine<T : Task>(
     fun answer(answer: Answer, nowMs: Long): RoundState<T> {
         val task = state.task
         if (state.phase != RoundPhase.LISTENING || task == null) return state // rule 4
+        if (nowMs < listeningSince) return state // a note that began before listening started is not an answer
         if (answer !is Answer.TimedOut && driver.accepts.none { it.isInstance(answer) }) return state
         val evaluation = driver.evaluate(task, answer)
         val latency = max(0L, nowMs - listeningSince)
         val record = AttemptRecord(
             variant = driver.variant, level = level, itemKey = task.itemKey,
-            expected = evaluation.expectedText, given = evaluation.givenText, correct = evaluation.correct,
+            expected = evaluation.expectedCode, given = evaluation.givenCode, correct = evaluation.correct,
             latencyMs = latency, centsError = evaluation.centsError, hintLevel = 0,
-            keyLabel = task.prompt.key?.toString(), atEpochMs = nowMs,
+            keyLabel = task.prompt.key?.toString(), atEpochMs = nowMs + epochOffsetMs,
         )
         history += record
         val streak = if (evaluation.correct) state.streak + 1 else 0
@@ -84,6 +98,7 @@ class RoundEngine<T : Task>(
         state = state.copy(
             phase = RoundPhase.FEEDBACK, score = state.score + points, streak = streak, multiplier = multiplier,
             livesLeft = lives, lastEvaluation = evaluation, attempts = state.attempts + record, remainingMs = remaining(nowMs),
+            lastPoints = points, bestStreak = max(state.bestStreak, streak),
         )
         return state
     }
@@ -91,7 +106,7 @@ class RoundEngine<T : Task>(
     fun tick(nowMs: Long): RoundState<T> {
         if (state.phase == RoundPhase.FINISHED) return state
         val remaining = remaining(nowMs)
-        val outOfLives = state.livesLeft == 0
+        val outOfLives = state.livesLeft == 0 || config.taskLimit?.let { state.attempts.size >= it } == true
         when {
             state.phase == RoundPhase.FEEDBACK && nowMs >= feedbackUntil ->
                 return if (remaining <= 0 || outOfLives) finish(nowMs) else nextTask(nowMs)
