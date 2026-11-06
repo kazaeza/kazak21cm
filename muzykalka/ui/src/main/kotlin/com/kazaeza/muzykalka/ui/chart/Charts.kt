@@ -74,7 +74,7 @@ fun TriangleChart(scores: List<Double?>, modifier: Modifier = Modifier, compact:
         strand(place, name, scores[3], 1f)
         strand(place, sound, scores[4], 1f)
         strand(sound, place, scores[5], 1f)
-        val nodeR = size.minDimension * (if (compact) 0.085f else 0.075f)
+        val nodeR = size.minDimension * (if (compact) 0.085f else 0.092f)
         listOf(sound to "звук", name to "имя", place to "место").forEach { (p, text) ->
             drawCircle(Brush.radialGradient(listOf(Juicy.Ink4, Juicy.Ink2), center = p, radius = nodeR * 1.4f), nodeR * 1.4f, p)
             drawCircle(Juicy.Line, nodeR * 1.4f, p, style = Stroke(1.5.dp.toPx()))

@@ -19,9 +19,12 @@ object DegreeFormatter {
         DegreeNotation.SOLFEGE -> degree.accidental.symbol + SOLFEGE[degree.number - 1]
     }
 
+    /**
+     * Chords are written in Roman numerals in both 1–7 and I–VII modes: the plan names chords that
+     * way («ii–V–I», «над V7») and Nashville superscripts like "♭7⁷" read badly on a phone.
+     */
     fun chord(chord: ChordDegree, notation: DegreeNotation): String = when (notation) {
-        DegreeNotation.ROMAN -> ChordParser.formatRoman(chord)
-        DegreeNotation.ARABIC -> ChordParser.formatArabic(chord)
+        DegreeNotation.ROMAN, DegreeNotation.ARABIC -> ChordParser.formatRoman(chord)
         DegreeNotation.SOLFEGE -> {
             // Movable-do root + Roman-style suffix, e.g. "ре m⁷", "соль⁷".
             val q = chord.quality
