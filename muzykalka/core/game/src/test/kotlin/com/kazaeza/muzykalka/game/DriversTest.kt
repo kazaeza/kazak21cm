@@ -13,6 +13,9 @@ import com.kazaeza.muzykalka.music.NoteName
 import com.kazaeza.muzykalka.music.ProgressionText
 import com.kazaeza.muzykalka.music.Song
 import com.kazaeza.muzykalka.music.Tuning
+import com.kazaeza.muzykalka.music.Voice
+import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.Melody
 import com.kazaeza.muzykalka.srs.CardState
 import com.kazaeza.muzykalka.srs.Fsrs
@@ -29,14 +32,22 @@ class TirDriverTest {
     private fun ctx(level: Int, seed: Int = 1) = DriverContext(Random(seed), level, emptyList())
 
     @Test
-    fun `every level produces a sounding task with a cadence and a key`() {
+    fun `every level produces a sounding task in a key - drone or cadence`() {
         for (level in 1..7) {
             val driver = TirDriver(KeyPicker(Random(level)))
             repeat(30) { i ->
                 val task = driver.nextTask(ctx(level, i))
                 val audio = requireNotNull(task.prompt.audio)
-                assertTrue(audio.lengthBeats > task.question.lengthBeats, "cadence precedes the question")
                 assertNotNull(task.prompt.key)
+                if (TirDriver.usesDrone(level)) {
+                    val drone = requireNotNull(task.drone) { "level $level is heard over the drone" }
+                    assertEquals(task.prompt.key!!.tonic.pitchClass, drone.first().pitchClass)
+                    assertTrue(audio.lengthBeats >= task.question.lengthBeats)
+                    task.question.notes.forEach { assertEquals(Voice.TONE, it.voice, "one soft timbre over the drone") }
+                } else {
+                    assertNull(task.drone, "chords keep the cadence")
+                    assertTrue(audio.lengthBeats > task.question.lengthBeats, "cadence precedes the question")
+                }
                 when (task.kind) {
                     TirKind.NOTE -> assertTrue(task.notes.single().degree in task.noteChoices || task.noteChoices.any { it sameSoundAs task.notes.single().degree })
                     TirKind.MELODY -> assertTrue(task.notes.size in 2..5)
@@ -49,6 +60,40 @@ class TirDriverTest {
                 task.question.notes.forEach { assertTrue(it.note!!.value in 36..90, "register ${it.note}") }
             }
         }
+    }
+
+    @Test
+    fun `the drone key holds for a block, opens with the scale, then moves on`() {
+        val driver = TirDriver(KeyPicker(Random(7)))
+        val r = Random(3)
+        val tasks = (0 until TirDriver.KEY_BLOCK * 6).map { driver.nextTask(DriverContext(r, 2, emptyList())) }
+        tasks.chunked(TirDriver.KEY_BLOCK).forEach { block ->
+            assertEquals(1, block.map { it.prompt.key }.toSet().size, "one key per block")
+            assertEquals(1, block.map { it.drone }.toSet().size, "one drone per block")
+            val first = block.first()
+            assertTrue(first.prompt.audio!!.lengthBeats > first.question.lengthBeats, "new key starts with the scale")
+            block.drop(1).forEach { assertEquals(it.question.lengthBeats, it.prompt.audio!!.lengthBeats, "same key: just the note") }
+        }
+        val keys = tasks.chunked(TirDriver.KEY_BLOCK).map { it.first().prompt.key }
+        keys.zipWithNext().forEach { (a, b) -> assertTrue(a != b, "the key changes between blocks") }
+    }
+
+    @Test
+    fun `changing the level starts a new drone block`() {
+        val driver = TirDriver(KeyPicker(Random(8)))
+        driver.nextTask(ctx(1))
+        val switched = driver.nextTask(ctx(2, 2))
+        assertTrue(switched.prompt.audio!!.lengthBeats > switched.question.lengthBeats, "the scale plays again")
+        val chord = driver.nextTask(ctx(5, 3))
+        assertNull(chord.drone)
+    }
+
+    @Test
+    fun `drone sits low and spans the octave`() {
+        val drone = Arranger().drone(Key(NoteName.parse("E"), Mode.MAJOR))
+        assertEquals(2, drone.size)
+        assertEquals(12, drone[1].value - drone[0].value)
+        assertTrue(drone[0].value in 45..56, "drone root ${drone[0]}")
     }
 
     @Test

@@ -150,7 +150,7 @@ class DspAcceptanceTest {
     @Test
     fun `synth - every voice renders at the requested pitch (closed loop with MPM)`() {
         val synth = DefaultSynth()
-        for (voice in listOf(com.kazaeza.muzykalka.music.Voice.GUITAR, com.kazaeza.muzykalka.music.Voice.PIANO, com.kazaeza.muzykalka.music.Voice.BASS)) {
+        for (voice in listOf(com.kazaeza.muzykalka.music.Voice.GUITAR, com.kazaeza.muzykalka.music.Voice.PIANO, com.kazaeza.muzykalka.music.Voice.BASS, com.kazaeza.muzykalka.music.Voice.TONE)) {
             for (n in listOf(40, 45, 52, 57, 64, 69)) {
                 if (voice == com.kazaeza.muzykalka.music.Voice.BASS && n > 57) continue
                 val score = com.kazaeza.muzykalka.music.Score(60.0, listOf(com.kazaeza.muzykalka.music.ScoreNote(0.0, 1.0, voice, MidiNote(n))))
@@ -165,6 +165,67 @@ class DspAcceptanceTest {
     fun `synth - output never clips even with dense chords`() {
         val synth = DefaultSynth()
         val notes = (0 until 16).map { com.kazaeza.muzykalka.music.ScoreNote(0.0, 2.0, com.kazaeza.muzykalka.music.Voice.PIANO, MidiNote(48 + it * 2), 1f) }
+        val audio = synth.renderOffline(com.kazaeza.muzykalka.music.Score(60.0, notes))
+        assertTrue(audio.all { it in -1f..1f })
+    }
+
+    private fun Synth.renderFrames(frames: Int): FloatArray {
+        val out = FloatArray(frames)
+        val block = FloatArray(256)
+        var written = 0
+        while (written < frames) {
+            val n = minOf(256, frames - written)
+            render(block, n)
+            System.arraycopy(block, 0, out, written, n)
+            written += n
+        }
+        return out
+    }
+
+    private fun rms(x: FloatArray, from: Int, to: Int): Double {
+        var s = 0.0
+        for (i in from until to) s += x[i] * x[i]
+        return kotlin.math.sqrt(s / (to - from))
+    }
+
+    @Test
+    fun `drone - sounds at the tonic, survives stopAll, fades out when cleared`() {
+        val synth = DefaultSynth()
+        val tonic = MidiNote(45)
+        synth.setDrone(listOf(tonic.frequency(), (tonic + 12).frequency()))
+        val settled = synth.renderFrames(SAMPLE_RATE)
+        val est = requireNotNull(McLeodPitchDetector().detect(settled.copyOfRange(SAMPLE_RATE / 2, SAMPLE_RATE), SAMPLE_RATE / 4)) { "drone silent" }
+        val pc = Math.floorMod(kotlin.math.round(MidiNote.fractional(est.hz)).toInt(), 12)
+        assertEquals(tonic.pitchClass.value, pc, "drone pitch ${est.hz}")
+        assertTrue(!synth.isIdle, "a sounding drone keeps the output busy")
+
+        synth.stopAll()
+        val afterStop = synth.renderFrames(SAMPLE_RATE / 2)
+        assertTrue(rms(afterStop, 0, afterStop.size) > 0.5 * rms(settled, SAMPLE_RATE / 2, SAMPLE_RATE), "stopAll keeps the drone")
+
+        synth.setDrone(emptyList())
+        val faded = synth.renderFrames(3 * SAMPLE_RATE)
+        assertTrue(rms(faded, faded.size - 4800, faded.size) < 1e-3, "drone fades out")
+        assertTrue(synth.isIdle)
+    }
+
+    @Test
+    fun `drone - changing the key crossfades without clicks`() {
+        val synth = DefaultSynth()
+        synth.setDrone(listOf(MidiNote(45).frequency(), MidiNote(57).frequency()))
+        synth.renderFrames(SAMPLE_RATE)
+        synth.setDrone(listOf(MidiNote(50).frequency(), MidiNote(62).frequency()))
+        val change = synth.renderFrames(SAMPLE_RATE)
+        val maxStep = (1 until change.size).maxOf { abs(change[it] - change[it - 1]) }
+        assertTrue(maxStep < 0.1f, "sample jump $maxStep")
+    }
+
+    @Test
+    fun `drone - with notes on top the output never clips`() {
+        val synth = DefaultSynth()
+        synth.setDrone(listOf(MidiNote(45).frequency(), MidiNote(57).frequency()))
+        synth.renderFrames(SAMPLE_RATE / 2)
+        val notes = (0 until 8).map { com.kazaeza.muzykalka.music.ScoreNote(0.0, 2.0, com.kazaeza.muzykalka.music.Voice.TONE, MidiNote(60 + it * 3), 1f) }
         val audio = synth.renderOffline(com.kazaeza.muzykalka.music.Score(60.0, notes))
         assertTrue(audio.all { it in -1f..1f })
     }

@@ -5,6 +5,7 @@ import com.kazaeza.muzykalka.music.Score
 import com.kazaeza.muzykalka.music.Voice
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.max
@@ -15,8 +16,9 @@ import kotlin.math.tanh
 
 /**
  * Real-time synthesiser driven by the output thread. All voices are synthesised (no samples):
- * GUITAR/BASS = extended Karplus–Strong, PIANO = 2-operator FM e-piano, drums = noise/sine
- * models, CLICK = short sine burst.
+ * GUITAR/BASS = extended Karplus–Strong, PIANO = 2-operator FM e-piano, TONE = soft additive
+ * voice with a late vibrato, drums = noise/sine models, CLICK = short sine burst. Beside the
+ * scored voices runs a [setDrone] bank: a sustained wavetable drone that outlives [stopAll].
  *
  * Threading contract: [schedule] and [stopAll] may be called from any thread; [render] only from
  * the audio thread; [render] does not lock and allocates nothing in steady state.
@@ -30,13 +32,19 @@ interface Synth {
     /** Renders the next [frames] mono samples into [out] starting at index 0. */
     fun render(out: FloatArray, frames: Int)
 
-    /** Fades everything out within ~10 ms and drops everything scheduled. */
+    /** Fades everything scheduled out within ~10 ms and drops it. The drone keeps sounding. */
     fun stopAll()
+
+    /**
+     * Sustained drone on [frequencies] (Hz). A new set crossfades from the old one (~0.4 s);
+     * an empty list fades the drone out. Callable from any thread.
+     */
+    fun setDrone(frequencies: List<Double>)
 
     /** Absolute index of the next frame [render] will produce. */
     val framePosition: Long
 
-    /** True when nothing is sounding and nothing is scheduled (updated by [render]). */
+    /** True when nothing is sounding, nothing is scheduled and the drone is silent (updated by [render]). */
     val isIdle: Boolean
 }
 
@@ -65,6 +73,10 @@ class DefaultSynth(
     private class Event(val startFrame: Long, val endFrame: Long, val voice: Voice, val hz: Double, val velocity: Float)
 
     private object StopAll
+
+    private class DroneCommand(val frequencies: List<Double>)
+
+    private val drone = DroneBank(sampleRate)
 
     private val commands = ConcurrentLinkedQueue<Any>()
     private val pending = ArrayList<Event>(2048)
@@ -104,6 +116,11 @@ class DefaultSynth(
         commands.add(StopAll)
     }
 
+    override fun setDrone(frequencies: List<Double>) {
+        if (frequencies.isNotEmpty()) idleFlag = false
+        commands.add(DroneCommand(frequencies))
+    }
+
     override fun render(out: FloatArray, frames: Int) {
         drainCommands()
         val base = position
@@ -113,7 +130,7 @@ class DefaultSynth(
                 startVoice(pending[pendingIndex], now)
                 pendingIndex++
             }
-            var sum = 0.0
+            var sum = drone.next()
             for (v in voices) if (v.active) sum += v.next(now)
             out[i] = tanh(sum * masterGain).toFloat()
         }
@@ -124,7 +141,7 @@ class DefaultSynth(
         position = base + frames
         var anyActive = false
         for (v in voices) if (v.active) anyActive = true
-        idleFlag = !anyActive && pendingIndex >= pending.size
+        idleFlag = !anyActive && pendingIndex >= pending.size && drone.silent
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -135,6 +152,8 @@ class DefaultSynth(
                 pending.clear()
                 pendingIndex = 0
                 for (v in voices) if (v.active) v.fastRelease(position)
+            } else if (cmd is DroneCommand) {
+                drone.set(cmd.frequencies)
             } else {
                 for (e in cmd as List<Event>) insertSorted(e)
             }
@@ -280,6 +299,7 @@ private class SynthVoice(private val sr: Int) {
         val y = when (kind) {
             Voice.GUITAR, Voice.BASS -> string()
             Voice.PIANO -> ePiano(t, now)
+            Voice.TONE -> tone(t, now)
             Voice.KICK -> kick(t)
             Voice.SNARE -> snare(t)
             Voice.HAT -> hat(t)
@@ -326,6 +346,23 @@ private class SynthVoice(private val sr: Int) {
         return y * env * velocity * 0.8
     }
 
+    /**
+     * Soft, singable voice for the drone (ADR-017): fundamental + a little 2nd/3rd harmonic,
+     * 30 ms attack, slow sag, vibrato that sets in after ~0.35 s like a held sung note.
+     */
+    private fun tone(t: Double, now: Long): Double {
+        val attack = min(1.0, t / 0.03)
+        var env = attack * (0.75 + 0.25 * exp(-t / 0.4)) * exp(-t / 6.0)
+        if (released) env *= exp(-(now - releaseStart).toDouble() / sr / 0.09)
+        val vibDepth = 0.0035 * min(1.0, max(0.0, (t - 0.35) / 0.4))
+        val f = hz * (1.0 + vibDepth * sin(2 * PI * 5.2 * t))
+        phase += f / sr
+        if (phase >= 1.0) phase -= 1.0
+        val p = 2 * PI * phase
+        val y = sin(p) + 0.22 * sin(2 * p) + 0.08 * sin(3 * p)
+        return y * env * velocity * 0.75
+    }
+
     private fun kick(t: Double): Double {
         val f = 48.0 + 110.0 * exp(-t / 0.035)
         phase += f / sr
@@ -355,5 +392,90 @@ private class SynthVoice(private val sr: Int) {
         if (t > 0.03) return 0.0
         phase += 1600.0 / sr
         return sin(2 * PI * phase) * exp(-t / 0.008) * 0.7 * velocity
+    }
+}
+
+/**
+ * The tonic drone (ADR-017): up to [SLOTS] sustained notes read from one band-limited wavetable
+ * (a warm organ/tanpura-like spectrum), each as two oscillators detuned by ±0.12 % so the drone
+ * slowly «breathes». Gains glide, so a key change is a crossfade, never a click.
+ * Audio-thread only, except [set] which the synth calls from [DefaultSynth.render].
+ */
+internal class DroneBank(private val sr: Int) {
+    private val hz = DoubleArray(SLOTS)
+    private val gain = DoubleArray(SLOTS)
+    private val target = DoubleArray(SLOTS)
+    private val phaseA = DoubleArray(SLOTS)
+    private val phaseB = DoubleArray(SLOTS)
+    private val glide = 1.0 - exp(-1.0 / (sr * 0.16))
+
+    val silent: Boolean
+        get() {
+            for (i in 0 until SLOTS) if (gain[i] > 1e-4 || target[i] > 0.0) return false
+            return true
+        }
+
+    fun set(frequencies: List<Double>) {
+        for (i in 0 until SLOTS) target[i] = 0.0
+        val level = if (frequencies.isEmpty()) 0.0 else LEVEL / frequencies.size
+        for (f in frequencies.take(SLOTS / 2)) {
+            // Reuse a slot already on this pitch (no restart), else the quietest free one.
+            var slot = (0 until SLOTS).firstOrNull { abs(hz[it] - f) < 0.01 && gain[it] > 1e-4 }
+            if (slot == null) slot = (0 until SLOTS).filter { target[it] == 0.0 }.minByOrNull { gain[it] } ?: continue
+            if (abs(hz[slot] - f) >= 0.01) {
+                hz[slot] = f
+                gain[slot] = 0.0
+                phaseA[slot] = 0.0
+                phaseB[slot] = 0.37
+            }
+            target[slot] = level
+        }
+    }
+
+    fun next(): Double {
+        var sum = 0.0
+        for (i in 0 until SLOTS) {
+            val g = gain[i] + (target[i] - gain[i]) * glide
+            gain[i] = g
+            if (g < 1e-5 && target[i] == 0.0) continue
+            phaseA[i] += hz[i] * (1.0 + DETUNE) / sr
+            phaseB[i] += hz[i] * (1.0 - DETUNE) / sr
+            if (phaseA[i] >= 1.0) phaseA[i] -= 1.0
+            if (phaseB[i] >= 1.0) phaseB[i] -= 1.0
+            sum += g * 0.5 * (read(phaseA[i]) + read(phaseB[i]))
+        }
+        return sum
+    }
+
+    private fun read(phase: Double): Double {
+        val x = phase * TABLE
+        val i = x.toInt()
+        val frac = x - i
+        return WAVE[i] + (WAVE[i + 1] - WAVE[i]) * frac
+    }
+
+    companion object {
+        const val SLOTS = 8
+        private const val TABLE = 2048
+        private const val DETUNE = 0.0012
+
+        /** Peak drone level before the master gain: present, but under the questions. */
+        private const val LEVEL = 0.55
+
+        /** Harmonic amplitudes 1..10: dark and round, a touch of nasal 3rd/5th. */
+        private val HARMONICS = doubleArrayOf(1.0, 0.5, 0.36, 0.2, 0.16, 0.08, 0.06, 0.035, 0.025, 0.015)
+
+        private val WAVE: DoubleArray = run {
+            val w = DoubleArray(TABLE + 1)
+            for (i in 0..TABLE) {
+                val p = 2 * PI * i / TABLE
+                var y = 0.0
+                for (h in HARMONICS.indices) y += HARMONICS[h] * sin((h + 1) * p)
+                w[i] = y
+            }
+            val peak = w.maxOf { kotlin.math.abs(it) }
+            for (i in w.indices) w[i] /= peak
+            w
+        }
     }
 }

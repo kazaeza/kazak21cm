@@ -11,6 +11,7 @@ import com.kazaeza.muzykalka.audio.AudioOutput
 import com.kazaeza.muzykalka.feature.game.GameScreen
 import com.kazaeza.muzykalka.feature.game.RoundSpec
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Score
 import com.kazaeza.muzykalka.ui.theme.MuzykalkaTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,11 @@ class FakeAudioOutput : AudioOutput {
     override suspend fun play(score: Score) {
         played += score
     }
+    val drones = mutableListOf<List<MidiNote>?>()
     override fun stop() = Unit
+    override fun drone(notes: List<MidiNote>?) {
+        drones += notes
+    }
     override val isSounding: StateFlow<Boolean> = MutableStateFlow(false)
     override val lastSoundEndNanos: Long = 0
     override var a4Hz: Double = 440.0
@@ -40,7 +45,7 @@ class GameFlowTest {
     val rule = createComposeRule()
 
     @Test
-    fun tirRoundPlaysTheCadenceAndJudgesATap() {
+    fun tirRoundRunsOverTheDroneAndJudgesATap() {
         val audio = FakeAudioOutput()
         val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
             override val audioOutput: AudioOutput = audio
@@ -51,7 +56,8 @@ class GameFlowTest {
             }
         }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Какая ступень?").fetchSemanticsNodes().isNotEmpty() }
-        assertTrue("cadence + question were played", audio.played.isNotEmpty())
+        assertTrue("scale + question were played", audio.played.isNotEmpty())
+        assertTrue("the tonic drone is on", audio.drones.lastOrNull()?.isNotEmpty() == true)
         rule.onAllNodesWithText("1").onFirst().performClick()
         rule.waitUntil(5_000) { audio.played.size >= 2 } // confirmation or correction (rule 5)
     }

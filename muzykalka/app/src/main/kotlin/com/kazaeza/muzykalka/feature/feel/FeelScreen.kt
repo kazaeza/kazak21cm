@@ -45,6 +45,7 @@ import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.RuNames
 import com.kazaeza.muzykalka.music.Score
+import com.kazaeza.muzykalka.music.Voice
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.DegreeChip
 import com.kazaeza.muzykalka.ui.component.GhostButton
@@ -77,12 +78,14 @@ data class FeelUi(
     val key: Key? = null,
     val scope: FeelScope = FeelScope.MAJOR,
     val playing: Degree? = null,
+    val droneOn: Boolean = false,
     val settings: Settings = Settings(),
 )
 
 /**
- * «Вайб ступеней» (ADR-015): for each degree — the cadence (home), then the degree held over the
- * tonic chord (its colour against home), then its walk home. No score: this is listening, not a test.
+ * «Вайб ступеней» (ADR-015, ADR-017): the tonic drone is home; tap a degree to hear it sung over
+ * the drone, held long enough to feel its colour against home, then its walk home. No score:
+ * this is listening, not a test. The drone stays on between taps until «Стоп».
  */
 class FeelViewModel(private val graph: AppGraph) : ViewModel() {
     private val random = Random(System.nanoTime())
@@ -110,20 +113,33 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
         state.update { it.copy(scope = scope, key = if (scope.mode != it.scope.mode) keys.next(scope.mode) else it.key) }
     }
 
-    fun play(degree: Degree) = launchPlay(listOf(degree), withCadence = true)
+    fun play(degree: Degree) = launchPlay(listOf(degree))
 
-    /** Every degree in turn, the cadence only once: a passive listening loop for the commute. */
-    fun playAll() = launchPlay(state.value.scope.degrees(), withCadence = true)
+    /** Every degree in turn over one drone: a passive listening loop for the commute. */
+    fun playAll() = launchPlay(state.value.scope.degrees())
 
-    private fun launchPlay(degrees: List<Degree>, withCadence: Boolean) {
+    /** Just the drone: sing degrees against it, or simply let «home» sink in. */
+    fun droneOnly() {
         val key = state.value.key ?: return
-        stop()
+        job?.cancel()
+        graph.audioOutput.drone(arranger.drone(key))
+        state.update { it.copy(droneOn = true, playing = null) }
+    }
+
+    private fun launchPlay(degrees: List<Degree>) {
+        val key = state.value.key ?: return
+        val wasOn = state.value.droneOn
+        job?.cancel()
         job = viewModelScope.launch {
-            if (withCadence) graph.audioOutput.play(cadence(key))
+            if (!wasOn) {
+                graph.audioOutput.drone(arranger.drone(key))
+                state.update { it.copy(droneOn = true) }
+                delay(1_500)
+            }
             for (d in degrees) {
                 state.update { it.copy(playing = d) }
                 graph.audioOutput.play(demo(d, key))
-                delay(350)
+                delay(700)
             }
             state.update { it.copy(playing = null) }
         }
@@ -133,19 +149,15 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
         job?.cancel()
         job = null
         graph.audioOutput.stop()
-        state.update { it.copy(playing = null) }
+        state.update { it.copy(playing = null, droneOn = false) }
     }
 
-    private fun cadence(key: Key): Score = arranger.chords(Harmony.cadence(key.mode), key, beatsEach = 1.0, tempoBpm = TEMPO)
-
-    /** The degree over the sustained tonic chord, then its resolution, in a register above the chord. */
+    /** The degree held over the drone, then its resolution — one soft timbre throughout. */
     private fun demo(degree: Degree, key: Key): Score {
-        val floor = MidiNote(64)
-        val tonic = arranger.chords(listOf(Harmony.diatonicChord(key.mode, 0)), key, beatsEach = 3.0, tempoBpm = TEMPO)
-        val held = arranger.line(listOf(DegreeNote(degree)), key, beatsEach = 3.0, tempoBpm = TEMPO, tonicFloor = floor)
-        val over = Score(TEMPO, tonic.notes + held.notes)
+        val floor = MidiNote(55)
+        val held = arranger.line(listOf(DegreeNote(degree)), key, Voice.TONE, beatsEach = 3.0, tempoBpm = TEMPO, tonicFloor = floor)
         val path = Harmony.resolution(DegreeNote(degree), key.mode)
-        return if (path.isEmpty()) over else over.then(arranger.line(path, key, beatsEach = 0.75, tempoBpm = TEMPO, tonicFloor = floor), gapBeats = 0.25)
+        return if (path.isEmpty()) held else held.then(arranger.line(path, key, Voice.TONE, beatsEach = 0.75, tempoBpm = TEMPO, tonicFloor = floor), gapBeats = 0.25)
     }
 
     override fun onCleared() = stop()
@@ -169,8 +181,8 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
                 Text("Ступень — это не высота, а ощущение", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Нажми карточку: прозвучит каденция — это «дом», потом ступень поверх домашнего аккорда и её путь домой. " +
-                        "Узнавай не «выше или ниже прошлой», а характер: свет, тяжесть, напряжение.",
+                    "Гудит дрон — это «дом», тоника. Нажми карточку: ступень зазвучит поверх дома, подольше, чтобы ты успел " +
+                        "почувствовать её цвет, а потом пройдёт путь домой. Узнавай не «выше или ниже прошлой», а характер: свет, тяжесть, напряжение.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Juicy.TextDim,
                 )
@@ -200,10 +212,14 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
         }
         item(key = "actions") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (ui.playing != null) {
+                if (ui.playing != null || ui.droneOn) {
                     GhostButton("Стоп", onClick = vm::stop, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "⏹")
-                } else {
-                    GhostButton("Все по кругу", onClick = vm::playAll, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "🔁")
+                }
+                if (ui.playing == null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GhostButton("Все по кругу", onClick = vm::playAll, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "🔁")
+                        if (!ui.droneOn) GhostButton("Только дрон", onClick = vm::droneOnly, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "〰️")
+                    }
                 }
                 JuicyButton("Проверить себя в Тире", onClick = onTir, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "🎯")
             }

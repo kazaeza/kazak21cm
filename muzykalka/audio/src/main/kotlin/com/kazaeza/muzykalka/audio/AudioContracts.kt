@@ -2,6 +2,7 @@ package com.kazaeza.muzykalka.audio
 
 import com.kazaeza.muzykalka.dsp.NoteEvent
 import com.kazaeza.muzykalka.dsp.PitchFrame
+import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Score
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
@@ -17,8 +18,15 @@ interface AudioOutput {
     /** Plays [score] and suspends until it has finished SOUNDING (including release tail). */
     suspend fun play(score: Score)
 
-    /** Stops everything immediately (fade ≤ 10 ms). */
+    /** Stops everything immediately (fade ≤ 10 ms), the drone included. */
     fun stop()
+
+    /**
+     * Tonic drone under everything that [play]s (ADR-017): crossfades to [notes], or fades out
+     * on null/empty. Cancelling a [play] does not stop it. Not counted in [isSounding]: games
+     * that listen to the microphone must not run a drone without headphones.
+     */
+    fun drone(notes: List<MidiNote>?)
 
     /** True while anything is audible — the [DuplexGate] reads this. */
     val isSounding: StateFlow<Boolean>

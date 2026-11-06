@@ -11,6 +11,7 @@ import com.kazaeza.muzykalka.dsp.DefaultSynth
 import com.kazaeza.muzykalka.dsp.SAMPLE_RATE
 import com.kazaeza.muzykalka.dsp.Synth
 import com.kazaeza.muzykalka.music.DEFAULT_A4_HZ
+import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Score
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -157,8 +158,16 @@ class AndroidAudioOutput(
 
     override fun stop() {
         synth.stopAll()
+        synth.setDrone(emptyList())
         soundingUntilFrame = 0
         if (sounding.value) markSilent()
+    }
+
+    override fun drone(notes: List<MidiNote>?) {
+        val hz = notes.orEmpty().map { it.frequency(a4Hz) }
+        if (hz.isNotEmpty() && !ensureRunning()) return
+        lastActivityNanos = System.nanoTime()
+        synth.setDrone(hz)
     }
 
     private companion object {

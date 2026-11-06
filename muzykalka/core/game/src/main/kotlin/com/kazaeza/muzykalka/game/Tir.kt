@@ -13,13 +13,16 @@ import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.Score
+import com.kazaeza.muzykalka.music.Voice
 import kotlin.random.Random
 
 /** What a Tir question asks for. */
 enum class TirKind { NOTE, MELODY, CHORD, PROGRESSION }
 
 /**
- * One Tir question. The prompt audio is the cadence followed by [question].
+ * One Tir question. With a [drone] (single notes and melodies, ADR-017) the tonic sounds all
+ * the time and the prompt audio is just the [question] (after a quick scale when the key has
+ * just changed). Without one (chords) the prompt is the cadence followed by [question].
  * For PROGRESSION the first chord (always the tonic) is given; the user names chords 2..4.
  */
 data class TirTask(
@@ -34,6 +37,8 @@ data class TirTask(
     val noteChoices: List<Degree>,
     val chordChoices: List<ChordDegree>,
     val question: Score,
+    /** Notes to hold under this question; null = no drone, the cadence sets the key. */
+    val drone: List<MidiNote>? = null,
 ) : Task {
     /** Taps the answer pad collects before the answer is submitted. */
     val answerLength: Int
@@ -45,9 +50,12 @@ data class TirTask(
 }
 
 /**
- * Tir — sound → name (ticket G-02). Every question: a fresh random key (rule 2), the cadence of its
- * mode, then the question. A right answer is rewarded with the resolution to the tonic; a wrong one
- * replays the question and resolves it (rule 5).
+ * Tir — sound → name (ticket G-02). Single notes and melodies are heard over a tonic drone in one
+ * soft timbre (ADR-017): the key (random, rule 2) holds for [KEY_BLOCK] questions so the ear can
+ * settle into «home», and every new key opens with a quick scale that sets major or minor.
+ * Chords keep the old context: a fresh key and the cadence of its mode before every question.
+ * A right answer is rewarded with the resolution to the tonic; a wrong one replays the question
+ * and resolves it (rule 5).
  *
  * Anti-guessing (ADR-015): questions are independent — the same degree may come twice in a row, so
  * «не похоже на прошлый — значит iii» stops working; level 1 shows all seven keys and slips in
@@ -69,48 +77,77 @@ class TirDriver(
         Answer.Pass::class.java,
     )
 
+    /** The drone's key and how many questions it still has (state of the current round). */
+    private var blockKey: Key? = null
+    private var blockLevel = 0
+    private var blockLeft = 0
+
+    private fun pickMode(level: Int, r: Random): Mode = when (level) {
+        1 -> Mode.MAJOR
+        7 -> MODAL_LEVEL_MODES[r.nextInt(MODAL_LEVEL_MODES.size)]
+        else -> if (r.nextDouble() < 0.3) Mode.MINOR else Mode.MAJOR
+    }
+
     override fun nextTask(context: DriverContext): TirTask {
         val level = context.level.coerceIn(1, Levels.TIR.size)
         val r = context.random
-        val mode = when (level) {
-            1 -> Mode.MAJOR
-            7 -> MODAL_LEVEL_MODES[r.nextInt(MODAL_LEVEL_MODES.size)]
-            else -> if (r.nextDouble() < 0.3) Mode.MINOR else Mode.MAJOR
+        if (!usesDrone(level)) {
+            val key = keyPicker.next(pickMode(level, r))
+            val cadence = arranger.chords(Harmony.cadence(key.mode), key, beatsEach = 1.0, tempoBpm = TEMPO)
+            return if (level == 5) chordTask(key, cadence, context) else progressionTask(key, cadence, r)
         }
-        val key = keyPicker.next(mode)
-        val tonic = key.tonicAtOrAbove(MidiNote(55))
-        val cadence = arranger.chords(Harmony.cadence(mode), key, beatsEach = 1.0, tempoBpm = TEMPO)
+        val kept = blockKey?.takeIf { blockLeft > 0 && blockLevel == level }
+        val key = kept ?: keyPicker.next(pickMode(level, r))
+        val newKey = kept == null
+        if (newKey) {
+            blockKey = key
+            blockLevel = level
+            blockLeft = KEY_BLOCK
+        }
+        blockLeft--
+        val ctx = Context(key, key.tonicAtOrAbove(MidiNote(55)), arranger.drone(key), if (newKey) orientation(key) else null)
         return when (level) {
-            1 -> noteTask(level, key, tonic, cadence, CORE, mode.degrees, context)
-            2 -> noteTask(level, key, tonic, cadence, mode.degrees, mode.degrees, context)
-            3 -> noteTask(level, key, tonic, cadence, Degree.CHROMATIC, Degree.CHROMATIC, context)
-            4 -> melodyTask(key, tonic, cadence, r)
-            5 -> chordTask(key, cadence, context)
-            6 -> progressionTask(key, cadence, r)
-            else -> noteTask(level, key, tonic, cadence, mode.degrees, mode.degrees, context)
+            1 -> noteTask(level, ctx, CORE, key.mode.degrees, context)
+            2 -> noteTask(level, ctx, key.mode.degrees, key.mode.degrees, context)
+            3 -> noteTask(level, ctx, Degree.CHROMATIC, Degree.CHROMATIC, context)
+            4 -> melodyTask(ctx, r)
+            else -> noteTask(level, ctx, key.mode.degrees, key.mode.degrees, context)
         }
+    }
+
+    /** Where a drone question lives: its key, the tonic of its register, the drone, the intro. */
+    private class Context(val key: Key, val tonic: MidiNote, val drone: List<MidiNote>, val intro: Score?)
+
+    /** New key over the drone: the scale up to the octave and back to 1 — major or minor is set. */
+    private fun orientation(key: Key): Score {
+        val up = key.mode.degrees.map { DegreeNote(it) } + DegreeNote(Degree.ONE, 1)
+        return arranger.line(up + DegreeNote(Degree.ONE), key, Voice.TONE, beatsEach = 0.4, tempoBpm = TEMPO, tonicFloor = key.tonicAtOrAbove(MidiNote(55)))
     }
 
     /**
      * [pool] is what is mostly asked, [pad] what can be answered. When the pad is wider than the
      * pool, [GUEST_SHARE] of the questions come from the rest of the pad.
      */
-    private fun noteTask(level: Int, key: Key, tonic: MidiNote, cadence: Score, pool: List<Degree>, pad: List<Degree>, ctx: DriverContext): TirTask {
+    private fun noteTask(level: Int, c: Context, pool: List<Degree>, pad: List<Degree>, ctx: DriverContext): TirTask {
+        val key = c.key
+        val tonic = c.tonic
         val prefix = if (level == 7) "tir:L7:${key.mode.name}:" else "tir:L$level:"
         val guests = pad.filter { d -> pool.none { it sameSoundAs d } }
         val from = if (guests.isNotEmpty() && ctx.random.nextDouble() < GUEST_SHARE) guests else pool
         val degree = ItemWeights.pick(ctx.random, from) { ItemWeights.weight(prefix + it, ctx.history) }
         val octaves = listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in 50..79 }
         val note = DegreeNote(degree, octaves[ctx.random.nextInt(octaves.size)])
-        val question = arranger.line(listOf(note), key, beatsEach = 1.5, tempoBpm = TEMPO, tonicFloor = tonic)
+        val question = arranger.line(listOf(note), key, Voice.TONE, beatsEach = 2.0, tempoBpm = TEMPO, tonicFloor = tonic)
         return TirTask(
-            itemKey = prefix + degree, prompt = prompt(key, cadence, question), kind = TirKind.NOTE, level = level,
+            itemKey = prefix + degree, prompt = prompt(key, c.intro, question), kind = TirKind.NOTE, level = level,
             key = key, tonic = tonic, notes = listOf(note), chords = emptyList(), noteChoices = pad,
-            chordChoices = emptyList(), question = question,
+            chordChoices = emptyList(), question = question, drone = c.drone,
         )
     }
 
-    private fun melodyTask(key: Key, tonic: MidiNote, cadence: Score, r: Random): TirTask {
+    private fun melodyTask(c: Context, r: Random): TirTask {
+        val key = c.key
+        val tonic = c.tonic
         val length = 2 + r.nextInt(4)
         var idx = r.nextInt(7)
         val indices = mutableListOf(idx)
@@ -127,11 +164,11 @@ class TirDriver(
             if (idx != indices.last()) indices += idx
         }
         val notes = indices.map { i -> DegreeNote(key.mode.degrees[Math.floorMod(i, 7)], Math.floorDiv(i, 7)) }
-        val question = arranger.line(notes, key, beatsEach = 0.8, tempoBpm = TEMPO, tonicFloor = tonic)
+        val question = arranger.line(notes, key, Voice.TONE, beatsEach = 0.9, tempoBpm = TEMPO, tonicFloor = tonic)
         return TirTask(
-            itemKey = "tir:L4:len$length", prompt = prompt(key, cadence, question), kind = TirKind.MELODY, level = 4,
+            itemKey = "tir:L4:len$length", prompt = prompt(key, c.intro, question), kind = TirKind.MELODY, level = 4,
             key = key, tonic = tonic, notes = notes, chords = emptyList(), noteChoices = key.mode.degrees,
-            chordChoices = emptyList(), question = question,
+            chordChoices = emptyList(), question = question, drone = c.drone,
         )
     }
 
@@ -164,8 +201,8 @@ class TirDriver(
         )
     }
 
-    private fun prompt(key: Key, cadence: Score, question: Score) =
-        Prompt(title = "?", subtitle = null, audio = cadence.then(question, gapBeats = 0.5), key = key)
+    private fun prompt(key: Key, intro: Score?, question: Score) =
+        Prompt(title = "?", subtitle = null, audio = intro?.then(question, gapBeats = 1.0) ?: question, key = key)
 
     override fun evaluate(task: TirTask, answer: Answer): Evaluation {
         val expectedText: String
@@ -228,7 +265,7 @@ class TirDriver(
     private fun confirmation(task: TirTask): Score = when (task.kind) {
         TirKind.NOTE, TirKind.MELODY -> {
             val last = task.notes.last()
-            arranger.line(listOf(last) + Harmony.resolution(last, task.key.mode), task.key, beatsEach = 0.5, tempoBpm = TEMPO, tonicFloor = task.tonic)
+            arranger.line(listOf(last) + Harmony.resolution(last, task.key.mode), task.key, task.voice, beatsEach = 0.5, tempoBpm = TEMPO, tonicFloor = task.tonic)
         }
         TirKind.CHORD -> arranger.chords(listOf(task.chords[0], Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 0.75, tempoBpm = TEMPO)
         TirKind.PROGRESSION -> arranger.chords(listOf(Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.0, tempoBpm = TEMPO)
@@ -238,7 +275,7 @@ class TirDriver(
     private fun correction(task: TirTask): Score = when (task.kind) {
         TirKind.NOTE, TirKind.MELODY -> {
             val last = task.notes.last()
-            val resolution = arranger.line(listOf(last) + Harmony.resolution(last, task.key.mode), task.key, beatsEach = 0.75, tempoBpm = TEMPO, tonicFloor = task.tonic)
+            val resolution = arranger.line(listOf(last) + Harmony.resolution(last, task.key.mode), task.key, task.voice, beatsEach = 0.75, tempoBpm = TEMPO, tonicFloor = task.tonic)
             task.question.then(resolution, gapBeats = 0.5)
         }
         TirKind.CHORD -> task.question.then(
@@ -248,8 +285,16 @@ class TirDriver(
         TirKind.PROGRESSION -> task.question
     }
 
+    private val TirTask.voice: Voice get() = if (drone != null) Voice.TONE else Voice.PIANO
+
     companion object {
         const val TEMPO = 120.0
+
+        /** Questions per drone key: long enough to settle into «home», short enough to stay random. */
+        const val KEY_BLOCK = 8
+
+        /** Single notes and melodies are heard over the drone; chords keep the cadence. */
+        fun usesDrone(level: Int): Boolean = level != 5 && level != 6
 
         /** Level 1 asks mostly these; the other scale degrees come as guests. */
         val CORE = listOf(Degree.ONE, Degree.THREE, Degree.FIVE)

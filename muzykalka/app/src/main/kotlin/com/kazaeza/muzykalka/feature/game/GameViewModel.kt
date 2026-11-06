@@ -105,6 +105,9 @@ data class GameUi(
 
 fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES
 
+/** After the drone starts or changes key, before the first sound over it. */
+private const val DRONE_SETTLE_MS = 1_500L
+
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(Variant.TIR_CLASSIC, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE, Variant.TAPER_STEPS)
@@ -180,6 +183,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     private var feedbackSerial = 0
     private var lastFeedback: FeedbackEvent? = null
     private var finished = false
+    private var currentDrone: List<MidiNote>? = null
     private var micLevel = -90.0
     private var heard: MidiNote? = null
 
@@ -245,7 +249,14 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         when (s.phase) {
             RoundPhase.PROMPTING -> {
                 val audio = s.task?.prompt?.audio
+                val drone = (s.task as? TirTask)?.drone
                 viewModelScope.launch {
+                    if (drone != currentDrone) {
+                        // New key (or no drone): crossfade, and let the ear settle into «home».
+                        graph.audioOutput.drone(drone)
+                        currentDrone = drone
+                        if (drone != null) delay(DRONE_SETTLE_MS)
+                    }
                     if (audio != null) graph.audioOutput.play(audio)
                     e.promptFinished(now())
                     react(e)
@@ -286,7 +297,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         react(e)
     }
 
-    /** Tir: hear the question again (cadence not repeated). */
+    /** Tir: hear the question again (cadence/scale not repeated; the drone keeps sounding). */
     fun replay() {
         val e = engine ?: return
         val task = e.state.task as? TirTask ?: return
@@ -340,6 +351,8 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         if (finished) return
         finished = true
         stopMic()
+        graph.audioOutput.drone(null)
+        currentDrone = null
         val s = e.state
         val summary = withContext(NonCancellable) {
             graph.practice.saveAttempts(s.attempts, sessionId)

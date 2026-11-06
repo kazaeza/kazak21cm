@@ -1,7 +1,10 @@
 package com.kazaeza.muzykalka.music
 
-/** Sound sources the synth (core:dsp) can render. */
-enum class Voice { PIANO, GUITAR, BASS, KICK, SNARE, HAT, CLICK }
+/**
+ * Sound sources the synth (core:dsp) can render. [TONE] is the soft sustained voice that sings
+ * over the tonic drone (ADR-017): one timbre family for the reference and the question.
+ */
+enum class Voice { PIANO, GUITAR, BASS, TONE, KICK, SNARE, HAT, CLICK }
 
 /**
  * One timed sound. Drum voices ignore [note] (may be null). Times are in beats; the renderer
@@ -53,6 +56,11 @@ class Arranger(
     private val pianoCenter: MidiNote = MidiNote(60),
     private val bassFloor: MidiNote = MidiNote(36),
 ) {
+    companion object {
+        /** A2: the lowest drone tonic. Phone speakers barely reproduce anything lower. */
+        val DRONE_FLOOR = MidiNote(45)
+    }
+
     /** Close voicing of [chord] in [key]: root-position bass + upper structure nearest to [pianoCenter]. */
     fun voicing(chord: ChordDegree, key: Key): List<MidiNote> {
         val rootPc = key.pitchClassOf(chord.root)
@@ -73,6 +81,15 @@ class Arranger(
                 ScoreNote(start, beatsEach * 0.95, Voice.BASS, bassNote(c, key), 0.8f)
         }
         return Score(tempoBpm, notes)
+    }
+
+    /**
+     * The tonic drone of [key] (ADR-017): the tonic and its octave, low but still audible on a
+     * phone speaker. Mode-neutral on purpose — every degree is heard against home alone.
+     */
+    fun drone(key: Key): List<MidiNote> {
+        val low = key.tonicAtOrAbove(DRONE_FLOOR)
+        return listOf(low, low + 12)
     }
 
     /** A melodic line; the tonic of octave 0 is placed at or above [tonicFloor]. */

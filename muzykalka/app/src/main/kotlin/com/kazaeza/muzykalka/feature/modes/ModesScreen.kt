@@ -96,7 +96,7 @@ private fun ModeTile(mode: ModeId, progress: GameProgress, modifier: Modifier, o
 /** What the mode is and how to play it, in plain words: the first thing on its screen. */
 private fun howTo(mode: ModeId): String? = when (mode) {
     ModeId.TIR ->
-        "Сначала звучит каденция — это «дом», тональность. Потом одна нота: нажми её ступень. " +
+        "Гудит дрон — это «дом», тоника; в новой тональности сначала пробегает гамма. Потом звучит нота: нажми её ступень. " +
             "Не уверен — жми «🤷 не знаю»: это честнее, чем угадывать, а правильный ответ и путь домой ты всё равно услышишь."
     ModeId.HUNT ->
         "На экране нота — найди её на грифе и сыграй, телефон слушает. «Обратная охота» — наоборот: " +
