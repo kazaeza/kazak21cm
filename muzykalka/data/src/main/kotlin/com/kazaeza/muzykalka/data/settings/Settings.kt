@@ -15,8 +15,10 @@ import com.kazaeza.muzykalka.music.NoteNaming
 import com.kazaeza.muzykalka.music.Tuning
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
 
 /** Everything on the «Настройки» screen. Defaults answer the plan's open questions; all changeable. */
+@Serializable
 data class Settings(
     val tuningId: String = Tuning.STANDARD.id,
     val fretCount: Int = 22,
@@ -32,6 +34,8 @@ data class Settings(
     /** Study day starts at this local hour (see core:srs StudyDay). */
     val dayStartHour: Int = 4,
     val leftHanded: Boolean = false,
+    /** Haptic feedback in games. */
+    val haptics: Boolean = true,
 ) {
     val tuning: Tuning get() = Tuning.byId(tuningId) ?: Tuning.STANDARD
 }
@@ -53,6 +57,7 @@ class SettingsRepository(context: Context) {
         val MINUTES = intPreferencesKey("daily_minutes")
         val DAY_START = intPreferencesKey("day_start_hour")
         val LEFTY = booleanPreferencesKey("left_handed")
+        val HAPTICS = booleanPreferencesKey("haptics")
     }
 
     val settings: Flow<Settings> = store.data.map(::read)
@@ -72,6 +77,7 @@ class SettingsRepository(context: Context) {
             p[K.MINUTES] = next.dailyMinutes
             p[K.DAY_START] = next.dayStartHour
             p[K.LEFTY] = next.leftHanded
+            p[K.HAPTICS] = next.haptics
         }
     }
 
@@ -89,6 +95,10 @@ class SettingsRepository(context: Context) {
             dailyMinutes = p[K.MINUTES] ?: d.dailyMinutes,
             dayStartHour = p[K.DAY_START] ?: d.dayStartHour,
             leftHanded = p[K.LEFTY] ?: d.leftHanded,
+            haptics = p[K.HAPTICS] ?: d.haptics,
         )
     }
+
+    /** Replaces everything (backup import). */
+    suspend fun replace(settings: Settings) = update { settings }
 }

@@ -19,6 +19,12 @@ interface LibraryDao {
 
     @Query("SELECT * FROM library_item")
     suspend fun all(): List<LibraryItemEntity>
+
+    @Query("UPDATE library_item SET archived = :archived, updatedAtEpochMs = :now WHERE id = :id")
+    suspend fun setArchived(id: String, archived: Boolean, now: Long)
+
+    @Query("DELETE FROM library_item WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 @Dao
@@ -38,6 +44,9 @@ interface SrsDao {
 
     @Query("SELECT * FROM srs_card")
     suspend fun all(): List<SrsCardEntity>
+
+    @Query("SELECT * FROM srs_card")
+    fun observeAll(): Flow<List<SrsCardEntity>>
 }
 
 @Dao
@@ -56,6 +65,12 @@ interface OrderLogDao {
 
     @Query("SELECT * FROM order_log")
     suspend fun all(): List<OrderLogEntity>
+
+    @Query("SELECT * FROM order_log ORDER BY atEpochMs")
+    fun observeAll(): Flow<List<OrderLogEntity>>
+
+    @Query("SELECT * FROM order_log WHERE itemId = :itemId ORDER BY atEpochMs DESC")
+    fun observeFor(itemId: String): Flow<List<OrderLogEntity>>
 }
 
 @Dao
@@ -68,6 +83,9 @@ interface AttemptDao {
 
     @Query("SELECT * FROM attempt")
     suspend fun all(): List<AttemptEntity>
+
+    @Query("SELECT * FROM attempt ORDER BY atEpochMs")
+    fun observeAll(): Flow<List<AttemptEntity>>
 }
 
 @Dao
@@ -96,4 +114,22 @@ interface ExamDao {
 
     @Query("SELECT * FROM exam_result")
     suspend fun all(): List<ExamResultEntity>
+}
+
+/** Bulk access used only by export/import (D-03). */
+@Dao
+interface BackupDao {
+    @Insert suspend fun insertItems(rows: List<LibraryItemEntity>)
+    @Insert suspend fun insertCards(rows: List<SrsCardEntity>)
+    @Insert suspend fun insertOrders(rows: List<OrderLogEntity>)
+    @Insert suspend fun insertAttempts(rows: List<AttemptEntity>)
+    @Insert suspend fun insertSessions(rows: List<SessionEntity>)
+    @Insert suspend fun insertExams(rows: List<ExamResultEntity>)
+
+    @Query("DELETE FROM exam_result") suspend fun clearExams()
+    @Query("DELETE FROM session") suspend fun clearSessions()
+    @Query("DELETE FROM attempt") suspend fun clearAttempts()
+    @Query("DELETE FROM order_log") suspend fun clearOrders()
+    @Query("DELETE FROM srs_card") suspend fun clearCards()
+    @Query("DELETE FROM library_item") suspend fun clearItems()
 }

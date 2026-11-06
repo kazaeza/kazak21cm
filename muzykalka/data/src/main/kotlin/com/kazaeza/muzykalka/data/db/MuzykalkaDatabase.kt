@@ -24,6 +24,7 @@ abstract class MuzykalkaDatabase : RoomDatabase() {
     abstract fun attempts(): AttemptDao
     abstract fun sessions(): SessionDao
     abstract fun exams(): ExamDao
+    abstract fun backup(): BackupDao
 
     companion object {
         const val FILE_NAME = "muzykalka.db"
@@ -34,6 +35,12 @@ abstract class MuzykalkaDatabase : RoomDatabase() {
         fun open(context: Context): MuzykalkaDatabase =
             Room.databaseBuilder(context.applicationContext, MuzykalkaDatabase::class.java, FILE_NAME)
                 .addMigrations(*MIGRATIONS)
+                .build()
+
+        /** For tests. */
+        fun inMemory(context: Context): MuzykalkaDatabase =
+            Room.inMemoryDatabaseBuilder(context.applicationContext, MuzykalkaDatabase::class.java)
+                .allowMainThreadQueries()
                 .build()
     }
 }

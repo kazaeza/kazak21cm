@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * Schema v1. RULES (see docs/ARCHITECTURE.md §Data):
@@ -14,6 +15,7 @@ import androidx.room.PrimaryKey
  */
 
 /** Songs, riffs, tunes and lexicon phrases. [payloadJson] is a dto.LibraryPayload. */
+@Serializable
 @Entity(tableName = "library_item", indices = [Index("kind"), Index("archived")])
 data class LibraryItemEntity(
     @PrimaryKey val id: String,
@@ -28,6 +30,7 @@ data class LibraryItemEntity(
 )
 
 /** FSRS memory state, one per orderable library item (songs, riffs, phrases). */
+@Serializable
 @Entity(
     tableName = "srs_card",
     foreignKeys = [ForeignKey(LibraryItemEntity::class, ["id"], ["itemId"], onDelete = ForeignKey.CASCADE)],
@@ -44,6 +47,7 @@ data class SrsCardEntity(
 )
 
 /** One Taper order (or Lexicon review): the facts behind each SRS rating and «Играю с ходу». */
+@Serializable
 @Entity(
     tableName = "order_log",
     foreignKeys = [ForeignKey(LibraryItemEntity::class, ["id"], ["itemId"], onDelete = ForeignKey.CASCADE)],
@@ -69,6 +73,7 @@ data class OrderLogEntity(
 )
 
 /** Rule 8: one row per judged answer in any drill. All drill metrics are queries over this table. */
+@Serializable
 @Entity(tableName = "attempt", indices = [Index("variant", "atEpochMs"), Index("sessionId")])
 data class AttemptEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -88,6 +93,7 @@ data class AttemptEntity(
 )
 
 /** A practice session: daily set, minimal day, free play, exam or credit. Drives the streak. */
+@Serializable
 @Entity(tableName = "session", indices = [Index("studyDay")])
 data class SessionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -99,6 +105,7 @@ data class SessionEntity(
 )
 
 /** Result of one skill check inside an exam/credit session (report card «табель»). */
+@Serializable
 @Entity(
     tableName = "exam_result",
     foreignKeys = [ForeignKey(SessionEntity::class, ["id"], ["sessionId"], onDelete = ForeignKey.CASCADE)],
