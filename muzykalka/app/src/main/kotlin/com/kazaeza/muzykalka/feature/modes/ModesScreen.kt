@@ -115,6 +115,7 @@ fun ModeDetailScreen(
     onBack: () -> Unit,
     onPlay: (Variant, Int) -> Unit,
     onTaper: () -> Unit,
+    onBlind: () -> Unit = {},
     onFeel: () -> Unit = {},
     onLibrary: () -> Unit = {},
 ) {
@@ -122,7 +123,7 @@ fun ModeDetailScreen(
     val progress by graph.progress.progress.collectAsState(initial = GameProgress())
     val scope = rememberCoroutineScope()
     val accent = ModeVisuals.accent(mode)
-    val (ready, later) = Variant.entries.filter { it.mode == mode }.partition { it.isAvailable() && (it in Drills.PLAYABLE || it == Variant.TAPER_ORDER) }
+    val (ready, later) = Variant.entries.filter { it.mode == mode }.partition { it.isAvailable() && (it in Drills.PLAYABLE || it == Variant.TAPER_ORDER || it == Variant.TAPER_BLIND) }
     ScreenFrame(title = "${ModeVisuals.emoji(mode)} ${mode.ru}", subtitle = mode.goal, accent = accent, onBack = onBack) {
         howTo(mode)?.let { text ->
             item(key = "how") {
@@ -190,6 +191,16 @@ fun ModeDetailScreen(
                         }
                         Spacer(Modifier.height(12.dp))
                         JuicyButton("Играть", onClick = { onPlay(v, selected) }, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "▶️")
+                    } else if (v == Variant.TAPER_BLIND) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Случайная песня из твоих лайков в случайной тональности — но без названия. На экране только ступени: " +
+                                "не за что зацепиться, кроме самих аккордов. Сыграй, а кто это был, узнаешь в конце.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Juicy.TextDim,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        JuicyButton("Играть вслепую", onClick = onBlind, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "🎭")
                     } else if (v == Variant.TAPER_ORDER) {
                         Spacer(Modifier.height(8.dp))
                         Text(

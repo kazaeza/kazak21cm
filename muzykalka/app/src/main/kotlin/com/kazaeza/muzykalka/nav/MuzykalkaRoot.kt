@@ -40,6 +40,7 @@ import com.kazaeza.muzykalka.feature.progress.ProgressScreen
 import com.kazaeza.muzykalka.feature.set.SetScreen
 import com.kazaeza.muzykalka.feature.settings.SettingsScreen
 import com.kazaeza.muzykalka.feature.settings.SoundCheckScreen
+import com.kazaeza.muzykalka.feature.taper.BlindScreen
 import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
 import com.kazaeza.muzykalka.feature.today.TodayScreen
@@ -103,6 +104,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                             onBack = { nav.popBackStack() },
                             onPlay = { v, level -> nav.navigate(GameRoute(v.name, level)) },
                             onTaper = { nav.navigate(TaperRoute()) },
+                            onBlind = { nav.navigate(BlindRoute) },
                             onFeel = { nav.navigate(FeelRoute) },
                             onLibrary = { tab(LibraryRoute) },
                         )
@@ -145,6 +147,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                             onOpenLibrary = { tab(LibraryRoute) },
                         )
                     }
+                    composable<BlindRoute> { BlindScreen(onExit = { nav.popBackStack() }) }
                     composable<SetRoute> { back ->
                         SetScreen(minimal = back.toRoute<SetRoute>().minimal, onExit = { nav.popBackStack() }, onLibrary = { tab(LibraryRoute) })
                     }

@@ -23,6 +23,9 @@ import kotlinx.serialization.Serializable
 /** The Taper; [itemId] orders exactly that item. */
 @Serializable data class TaperRoute(val itemId: String? = null)
 
+/** O-10: a random song from the likes, without its name. */
+@Serializable data object BlindRoute
+
 @Serializable data class SetRoute(val minimal: Boolean)
 
 @Serializable data class ItemRoute(val id: String)

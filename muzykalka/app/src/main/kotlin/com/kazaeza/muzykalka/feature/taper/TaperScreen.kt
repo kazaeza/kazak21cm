@@ -54,6 +54,9 @@ import com.kazaeza.muzykalka.game.HintStep
 import com.kazaeza.muzykalka.game.SelfGrade
 import com.kazaeza.muzykalka.game.TaperPhase
 import com.kazaeza.muzykalka.music.DegreeFormatter
+import com.kazaeza.muzykalka.music.DegreeNotation
+import com.kazaeza.muzykalka.music.Key
+import com.kazaeza.muzykalka.music.Song
 import com.kazaeza.muzykalka.srs.Rating
 import com.kazaeza.muzykalka.ui.component.CountUpText
 import com.kazaeza.muzykalka.ui.component.DegreeChip
@@ -201,7 +204,7 @@ private fun OrderFlow(ui: TaperUi, vm: TaperViewModel) {
 }
 
 @Composable
-private fun OrderTicket(title: String, artist: String?, keyText: String, fresh: Boolean) {
+internal fun OrderTicket(title: String, artist: String?, keyText: String, fresh: Boolean, caption: String = "✦ СЫГРАЙ ✦") {
     val tilt by animateFloatAsState(if (fresh) -2.5f else 0f, tween(400), label = "tilt")
     Box(
         Modifier
@@ -214,7 +217,7 @@ private fun OrderTicket(title: String, artist: String?, keyText: String, fresh: 
             .padding(20.dp),
     ) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("✦ СЫГРАЙ ✦", style = MaterialTheme.typography.labelSmall, color = Juicy.PaperInk.copy(alpha = 0.6f))
+            Text(caption, style = MaterialTheme.typography.labelSmall, color = Juicy.PaperInk.copy(alpha = 0.6f))
             Spacer(Modifier.height(6.dp))
             Text(title, style = MaterialTheme.typography.headlineLarge, color = Juicy.PaperInk, textAlign = TextAlign.Center)
             if (!artist.isNullOrBlank()) Text(artist, style = MaterialTheme.typography.bodyMedium, color = Juicy.PaperInk.copy(alpha = 0.7f))
@@ -244,32 +247,7 @@ private fun HintCard(ui: TaperUi, vm: TaperViewModel) {
                 }
             }
             if (ui.hint >= HintStep.DEGREES) {
-                val key = vm.currentKey()
-                song.sections.forEach { section ->
-                    Spacer(Modifier.height(10.dp))
-                    Text(section.label, style = MaterialTheme.typography.titleLarge, color = Juicy.Gold)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        section.bars.forEach { bar ->
-                            Row(
-                                Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Juicy.Ink4.copy(alpha = 0.6f))
-                                    .padding(4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                bar.chords.forEach { c ->
-                                    // Rule 1: absolute names only on the very last step of the ladder.
-                                    val label = if (ui.hint == HintStep.FULL_SHEET && key != null) {
-                                        c.absoluteSymbol(key) + " · " + DegreeFormatter.chord(c, notation)
-                                    } else {
-                                        DegreeFormatter.chord(c, notation)
-                                    }
-                                    DegreeChip(label, DegreeColors.of(c.root))
-                                }
-                            }
-                        }
-                    }
-                }
+                SongSheet(song, vm.currentKey(), notation, letters = ui.hint == HintStep.FULL_SHEET)
             }
         } else if (melody != null) {
             Text("${melody.notes.size} нот", style = MaterialTheme.typography.titleMedium)
@@ -279,6 +257,39 @@ private fun HintCard(ui: TaperUi, vm: TaperViewModel) {
             if (ui.hint >= HintStep.DEGREES) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     melody.notes.forEach { n -> DegreeChip(DegreeFormatter.degree(n.degree, notation), DegreeColors.of(n.degree)) }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The song as bars of degree chips. Rule 1: [letters] (absolute chord names next to the degrees)
+ * is only ever true on the very last step of the hint ladder.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun SongSheet(song: Song, key: Key?, notation: DegreeNotation, letters: Boolean) {
+    song.sections.forEach { section ->
+        Spacer(Modifier.height(10.dp))
+        Text(section.label, style = MaterialTheme.typography.titleLarge, color = Juicy.Gold)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            section.bars.forEach { bar ->
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Juicy.Ink4.copy(alpha = 0.6f))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    bar.chords.forEach { c ->
+                        val label = if (letters && key != null) {
+                            c.absoluteSymbol(key) + " · " + DegreeFormatter.chord(c, notation)
+                        } else {
+                            DegreeFormatter.chord(c, notation)
+                        }
+                        DegreeChip(label, DegreeColors.of(c.root))
+                    }
                 }
             }
         }

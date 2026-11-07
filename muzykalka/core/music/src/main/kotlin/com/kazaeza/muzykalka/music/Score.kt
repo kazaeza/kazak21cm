@@ -84,6 +84,16 @@ class Arranger(
     }
 
     /**
+     * A sketch of [song] in [key]: every section once, in the order they first appear, a chord per
+     * [beatsEach] beats, at most [maxChords] chords — enough to check by ear what was just played,
+     * not a recording of the song.
+     */
+    fun sketch(song: Song, key: Key, beatsEach: Double = 2.0, tempoBpm: Double = 84.0, maxChords: Int = 32): Score {
+        val chords = song.performanceOrder.distinct().flatMap { s -> s.bars.flatMap { it.chords } }.take(maxChords)
+        return chords(chords, key, beatsEach, tempoBpm)
+    }
+
+    /**
      * The tonic drone of [key] (ADR-017): the tonic and its octave, low but still audible on a
      * phone speaker. Mode-neutral on purpose — every degree is heard against home alone.
      */

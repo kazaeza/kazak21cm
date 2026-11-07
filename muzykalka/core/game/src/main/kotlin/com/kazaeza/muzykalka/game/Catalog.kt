@@ -51,6 +51,7 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     PARROT_CALL_RESPONSE(ModeId.PARROT, "Перекличка", GuitarNeed.REQUIRED, "0.3"),
     TAPER_STEPS(ModeId.TAPER, "Ходы", GuitarNeed.REQUIRED, "0.1"),
     TAPER_ORDER(ModeId.TAPER, "Песни из библиотеки", GuitarNeed.REQUIRED, "0.1"),
+    TAPER_BLIND(ModeId.TAPER, "Вслепую", GuitarNeed.REQUIRED, "0.1"),
     FORMULA_ALOUD(ModeId.TAPER, "Формула вслух", GuitarNeed.NONE, "0.2"),
     RECORDER_FREE(ModeId.RECORDER, "Магнитофон", GuitarNeed.REQUIRED, "0.3"),
     DIALOG(ModeId.RECORDER, "Диалог", GuitarNeed.REQUIRED, "0.3"),
