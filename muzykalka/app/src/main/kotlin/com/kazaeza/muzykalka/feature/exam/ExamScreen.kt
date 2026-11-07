@@ -163,6 +163,7 @@ fun ExamScreen(onExit: () -> Unit) {
                 onExit = { vm.stageDone(null) },
                 onFinished = { vm.stageDone(it) },
                 vmKey = "exam-${ui.sessionId}-${ui.stage}",
+                exitLabel = "Пропустить этап",
             )
         }
         ExamPhase.MEMORY -> TaperScreen(
@@ -170,6 +171,7 @@ fun ExamScreen(onExit: () -> Unit) {
             onExit = { vm.memoryDone() },
             onFinished = { vm.memoryDone() },
             vmKey = "exam-memory-${ui.sessionId}",
+            exitLabel = "Закончить этап",
         )
         ExamPhase.DONE -> ScreenFrame(title = "Табель", subtitle = "сохранён в «Прогрессе»", accent = Accents.Good, onBack = onExit) {
             ui.results.forEachIndexed { i, r ->

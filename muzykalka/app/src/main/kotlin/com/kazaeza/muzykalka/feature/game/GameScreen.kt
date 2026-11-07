@@ -42,6 +42,7 @@ import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.feature.common.KeepScreenOn
 import com.kazaeza.muzykalka.feature.common.MicPermissionGate
 import com.kazaeza.muzykalka.feature.common.ModeVisuals
+import com.kazaeza.muzykalka.feature.common.PauseOverlay
 import com.kazaeza.muzykalka.game.HuntTask
 import com.kazaeza.muzykalka.game.RoundPhase
 import com.kazaeza.muzykalka.game.StepsTask
@@ -69,7 +70,9 @@ import kotlin.math.ceil
 
 /**
  * Full-screen game. [onFinished] receives the summary when the user leaves the result screen
- * (sets and exams use it to move on); [onExit] is for closing.
+ * (sets and exams use it to move on); [onExit] is for closing. ⏸ and the back gesture pause the
+ * round and ask (ADR-019); [onNext] adds «Следующее упражнение» to that question (sets only) and
+ * [onLeave] replaces [onExit] there — both get how many answers this round already has.
  */
 @Composable
 fun GameScreen(
@@ -77,16 +80,28 @@ fun GameScreen(
     onExit: () -> Unit,
     onFinished: ((RoundSummary) -> Unit)? = null,
     vmKey: String = "game-${spec.variant}-${spec.level}-${spec.sessionId}",
+    onNext: ((answered: Int) -> Unit)? = null,
+    onLeave: ((answered: Int) -> Unit)? = null,
+    exitLabel: String = "Закончить раунд",
 ) {
+    val leave = onLeave ?: { _: Int -> onExit() }
     if (spec.variant.needsMic()) {
-        MicPermissionGate(onCancel = onExit) { GameHost(spec, onExit, onFinished, vmKey) }
+        MicPermissionGate(onCancel = { onNext?.invoke(0) ?: onExit() }) { GameHost(spec, onFinished, vmKey, onNext, leave, exitLabel, onExit) }
     } else {
-        GameHost(spec, onExit, onFinished, vmKey)
+        GameHost(spec, onFinished, vmKey, onNext, leave, exitLabel, onExit)
     }
 }
 
 @Composable
-private fun GameHost(spec: RoundSpec, onExit: () -> Unit, onFinished: ((RoundSummary) -> Unit)?, vmKey: String) {
+private fun GameHost(
+    spec: RoundSpec,
+    onFinished: ((RoundSummary) -> Unit)?,
+    vmKey: String,
+    onNext: ((Int) -> Unit)?,
+    onLeave: (Int) -> Unit,
+    exitLabel: String,
+    onExit: () -> Unit,
+) {
     val graph = LocalAppGraph.current
     var round by remember { mutableIntStateOf(0) }
     val vm: GameViewModel = viewModel(key = "$vmKey-$round") { GameViewModel(graph, spec) }
@@ -101,8 +116,11 @@ private fun GameHost(spec: RoundSpec, onExit: () -> Unit, onFinished: ((RoundSum
 
     KeepScreenOn()
     BackHandler {
-        vm.quit()
-        onExit()
+        val s = ui.summary
+        when {
+            s != null -> if (onFinished != null) onFinished(s) else onExit()
+            else -> vm.pause()
+        }
     }
 
     LaunchedEffect(ui.feedback?.serial) {
@@ -134,10 +152,7 @@ private fun GameHost(spec: RoundSpec, onExit: () -> Unit, onFinished: ((RoundSum
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp),
         ) {
-            GameTopBar(ui, accent, onClose = {
-                vm.quit()
-                onExit()
-            })
+            GameTopBar(ui, accent, onPause = vm::pause)
             Spacer(Modifier.height(8.dp))
             Box(
                 Modifier
@@ -161,6 +176,25 @@ private fun GameHost(spec: RoundSpec, onExit: () -> Unit, onFinished: ((RoundSum
         }
         FlashOverlay(flashTrigger, flashColor)
         ParticleLayer(particles)
+        if (ui.paused && ui.summary == null) {
+            PauseOverlay(
+                onResume = vm::resume,
+                onExit = {
+                    val answered = ui.answered
+                    vm.quit()
+                    onLeave(answered)
+                },
+                exitLabel = exitLabel,
+                onNext = onNext?.let { next ->
+                    {
+                        val answered = ui.answered
+                        vm.quit()
+                        next(answered)
+                    }
+                },
+                hint = if (ui.exam) "Замер стоит — время ответа не идёт." else "Таймер стоит. Вопрос прозвучит ещё раз.",
+            )
+        }
         ui.summary?.let { s ->
             SummaryOverlay(
                 summary = s,
@@ -174,16 +208,16 @@ private fun GameHost(spec: RoundSpec, onExit: () -> Unit, onFinished: ((RoundSum
 }
 
 @Composable
-private fun GameTopBar(ui: GameUi, accent: List<Color>, onClose: () -> Unit) {
+private fun GameTopBar(ui: GameUi, accent: List<Color>, onPause: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier
                 .size(44.dp)
                 .clip(CircleShape)
                 .background(Juicy.Ink3.copy(alpha = 0.7f))
-                .clickable(onClick = onClose),
+                .clickable(onClickLabel = "Пауза", onClick = onPause),
             contentAlignment = Alignment.Center,
-        ) { Text("✕", style = MaterialTheme.typography.titleMedium, color = Juicy.Text) }
+        ) { Text("⏸", style = MaterialTheme.typography.titleMedium, color = Juicy.Text) }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(

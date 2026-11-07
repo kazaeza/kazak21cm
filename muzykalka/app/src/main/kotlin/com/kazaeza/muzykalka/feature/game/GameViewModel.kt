@@ -101,6 +101,8 @@ data class GameUi(
     val settings: Settings = Settings(),
     val summary: RoundSummary? = null,
     val exam: Boolean = false,
+    /** ADR-019: the round clock is stopped, sound is off, answers are ignored. */
+    val paused: Boolean = false,
 )
 
 fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES
@@ -194,7 +196,28 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         }
     }
 
-    private fun now() = System.nanoTime() / 1_000_000
+    private var pausedAtMs: Long? = null
+    private var pausedTotalMs = 0L
+
+    private fun realNow() = System.nanoTime() / 1_000_000
+
+    /** Round clock: stands still while paused, so the timer, task limits and latencies skip the pause. */
+    private fun now() = (pausedAtMs ?: realNow()) - pausedTotalMs
+
+    private val paused: Boolean get() = pausedAtMs != null
+    private var promptPlaying = false
+
+    private suspend fun awaitUnpaused() {
+        while (paused) delay(50)
+    }
+
+    /** New key (or no drone): crossfade, and let the ear settle into «home». */
+    private suspend fun ensureDrone(drone: List<MidiNote>?) {
+        if (drone == currentDrone) return
+        graph.audioOutput.drone(drone)
+        currentDrone = drone
+        if (drone != null) delay(DRONE_SETTLE_MS)
+    }
 
     private suspend fun setup() {
         settings = graph.settings.settings.first()
@@ -251,13 +274,15 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 val audio = s.task?.prompt?.audio
                 val drone = (s.task as? TirTask)?.drone
                 viewModelScope.launch {
-                    if (drone != currentDrone) {
-                        // New key (or no drone): crossfade, and let the ear settle into «home».
-                        graph.audioOutput.drone(drone)
-                        currentDrone = drone
-                        if (drone != null) delay(DRONE_SETTLE_MS)
+                    awaitUnpaused()
+                    ensureDrone(drone)
+                    awaitUnpaused()
+                    ensureDrone(drone)
+                    if (audio != null) {
+                        promptPlaying = true
+                        graph.audioOutput.play(audio)
+                        promptPlaying = false
                     }
-                    if (audio != null) graph.audioOutput.play(audio)
                     e.promptFinished(now())
                     react(e)
                 }
@@ -293,6 +318,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     /** Button / pad answers. */
     fun answer(answer: Answer) {
         val e = engine ?: return
+        if (paused) return
         e.answer(answer, now())
         react(e)
     }
@@ -301,8 +327,38 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     fun replay() {
         val e = engine ?: return
         val task = e.state.task as? TirTask ?: return
-        if (e.state.phase != RoundPhase.LISTENING || replayJob?.isActive == true) return
+        if (paused || e.state.phase != RoundPhase.LISTENING || replayJob?.isActive == true) return
         replayJob = viewModelScope.launch { graph.audioOutput.play(task.question) }
+    }
+
+    /** ⏸ or the back gesture: stop the clock and the sound (drone included). */
+    fun pause() {
+        if (paused || finished || engine == null) return
+        pausedAtMs = realNow()
+        replayJob?.cancel()
+        graph.audioOutput.stop()
+        currentDrone = null
+        state.update { it.copy(paused = true) }
+    }
+
+    /** Back to the same question: the drone returns and the question sounds again. */
+    fun resume() {
+        val at = pausedAtMs ?: return
+        pausedTotalMs += realNow() - at
+        pausedAtMs = null
+        state.update { it.copy(paused = false) }
+        val e = engine ?: return
+        val task = e.state.task ?: return
+        // A prompt that has not started yet resumes by itself; a cut one or a pending answer gets the question again.
+        val cutPrompt = e.state.phase == RoundPhase.PROMPTING && promptPlaying
+        if (e.state.phase != RoundPhase.LISTENING && !cutPrompt) return
+        val drone = (task as? TirTask)?.drone
+        val sound = (task as? TirTask)?.question ?: task.prompt.audio
+        replayJob = viewModelScope.launch {
+            ensureDrone(drone)
+            while (e.state.phase == RoundPhase.PROMPTING && e.state.task === task) delay(30)
+            if (sound != null && e.state.phase == RoundPhase.LISTENING && e.state.task === task) graph.audioOutput.play(sound)
+        }
     }
 
     /** User closed the round: keep what was answered. */
@@ -321,7 +377,8 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         micJobs += viewModelScope.launch {
             graph.gate.onsets(graph.pitchInput, graph.audioOutput, null, headphones).collect { onset ->
                 val e = engine ?: return@collect
-                e.answer(Answer.NotePlayed(onset.note, onset.cents), onset.timeNanos / 1_000_000)
+                if (paused) return@collect
+                e.answer(Answer.NotePlayed(onset.note, onset.cents), onset.timeNanos / 1_000_000 - pausedTotalMs)
                 react(e)
             }
         }

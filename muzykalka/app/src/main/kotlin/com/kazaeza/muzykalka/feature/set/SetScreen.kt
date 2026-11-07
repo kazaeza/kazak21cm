@@ -2,6 +2,7 @@ package com.kazaeza.muzykalka.feature.set
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,6 +31,7 @@ import com.kazaeza.muzykalka.AppGraph
 import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.data.repo.SessionKind
 import com.kazaeza.muzykalka.feature.common.ModeVisuals
+import com.kazaeza.muzykalka.feature.common.PauseOverlay
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.feature.game.GameScreen
@@ -71,6 +74,8 @@ data class SetUi(
     val sessionId: Long? = null,
     val streak: Int = 0,
     val activity: Int = 0,
+    /** «Выйти из сета» before the last part (ADR-019). */
+    val endedEarly: Boolean = false,
 ) {
     val current: SetSegment? get() = segments.getOrNull(index)
     fun roundsOf(s: SetSegment): Int = if (s.variant == Variant.TAPER_ORDER) 1 else maxOf(1, (s.minutes * 60 / 75).roundToInt())
@@ -114,7 +119,15 @@ class SetViewModel(private val graph: AppGraph, minimal: Boolean) : ViewModel() 
         }
     }
 
-    fun skipSegment() = advance(state.value.activity)
+    /** «Пропустить» / «Следующее упражнение»; [didSomething] = the interrupted round had answers. */
+    fun skipSegment(didSomething: Boolean = false) = advance(state.value.activity + if (didSomething) 1 else 0)
+
+    /** «Выйти из сета» from the pause: what was done still counts for the streak. */
+    fun endSet(didSomething: Boolean = false) {
+        if (state.value.phase == SetPhase.DONE) return
+        state.update { it.copy(endedEarly = true, activity = it.activity + if (didSomething) 1 else 0) }
+        finish()
+    }
 
     private fun advance(activity: Int) {
         val s = state.value
@@ -144,28 +157,35 @@ fun SetScreen(minimal: Boolean, onExit: () -> Unit, onLibrary: () -> Unit) {
 
     when (ui.phase) {
         SetPhase.INTRO -> SetIntro(ui, onStart = vm::start, onExit = onExit)
-        SetPhase.NEXT_UP -> if (seg != null) NextUp(ui, seg, onGo = vm::go, onSkip = vm::skipSegment, onExit = onExit)
+        SetPhase.NEXT_UP -> if (seg != null) NextUp(ui, seg, onGo = vm::go, onSkip = { vm.skipSegment() }, onEndSet = { vm.endSet() })
         SetPhase.RUNNING -> if (seg != null) {
             if (seg.variant == Variant.TAPER_ORDER) {
                 TaperScreen(
                     spec = TaperSpec(budgetMinutes = seg.minutes, sessionId = ui.sessionId),
-                    onExit = { vm.roundDone(true) },
+                    onExit = { vm.endSet() },
                     onFinished = { vm.roundDone(true) },
                     onOpenLibrary = onLibrary,
                     vmKey = "set-taper-${ui.sessionId}-${ui.index}",
+                    onNext = { vm.roundDone(true) },
+                    exitLabel = EXIT_SET,
                 )
             } else {
                 GameScreen(
                     spec = RoundSpec(seg.variant, sessionId = ui.sessionId, durationMs = ui.roundMsOf(seg)),
-                    onExit = { vm.skipSegment() },
+                    onExit = { vm.endSet() },
                     onFinished = { vm.roundDone(it.answered > 0) },
                     vmKey = "set-${ui.sessionId}-${ui.index}-${ui.round}",
+                    onNext = { vm.skipSegment(it > 0) },
+                    onLeave = { vm.endSet(it > 0) },
+                    exitLabel = EXIT_SET,
                 )
             }
         }
         SetPhase.DONE -> SetDone(ui, onExit)
     }
 }
+
+private const val EXIT_SET = "Выйти из сета"
 
 @Composable
 private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
@@ -195,34 +215,50 @@ private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
 }
 
 @Composable
-private fun NextUp(ui: SetUi, seg: SetSegment, onGo: () -> Unit, onSkip: () -> Unit, onExit: () -> Unit) {
+private fun NextUp(ui: SetUi, seg: SetSegment, onGo: () -> Unit, onSkip: () -> Unit, onEndSet: () -> Unit) {
     var count by remember(ui.index) { mutableIntStateOf(3) }
-    LaunchedEffect(ui.index) {
+    var paused by remember(ui.index) { mutableStateOf(false) }
+    // ADR-019: back pauses the countdown and asks; it never skips or leaves on its own.
+    LaunchedEffect(ui.index, paused) {
+        if (paused) return@LaunchedEffect
         while (count > 0) {
             delay(800)
             count--
         }
         onGo()
     }
-    BackHandler(onBack = onExit)
-    AuroraBackground(ModeVisuals.accent(seg.variant), Modifier.fillMaxSize(), intensity = 0.8f) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            SectionLabel("часть ${ui.index + 1} из ${ui.segments.size}")
-            Spacer(Modifier.height(12.dp))
-            Text(ModeVisuals.emoji(seg.variant.mode), style = MaterialTheme.typography.displayLarge)
-            Text(seg.variant.ru, style = MaterialTheme.typography.displaySmall)
-            Text("${seg.minutes.roundToInt()} мин · ${seg.variant.guitar.ru}", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
-            Spacer(Modifier.height(24.dp))
-            GradientText(if (count > 0) "$count" else "!", MaterialTheme.typography.displayLarge, ModeVisuals.accent(seg.variant), Modifier.pop(count + 1, 0.5f))
-            Spacer(Modifier.height(24.dp))
-            GhostButton("Пропустить", onClick = onSkip)
+    BackHandler(enabled = !paused) { paused = true }
+    Box(Modifier.fillMaxSize()) {
+        AuroraBackground(ModeVisuals.accent(seg.variant), Modifier.fillMaxSize(), intensity = 0.8f) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                SectionLabel("часть ${ui.index + 1} из ${ui.segments.size}")
+                Spacer(Modifier.height(12.dp))
+                Text(ModeVisuals.emoji(seg.variant.mode), style = MaterialTheme.typography.displayLarge)
+                Text(seg.variant.ru, style = MaterialTheme.typography.displaySmall)
+                Text("${seg.minutes.roundToInt()} мин · ${seg.variant.guitar.ru}", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+                Spacer(Modifier.height(24.dp))
+                GradientText(if (count > 0) "$count" else "!", MaterialTheme.typography.displayLarge, ModeVisuals.accent(seg.variant), Modifier.pop(count + 1, 0.5f))
+                Spacer(Modifier.height(24.dp))
+                GhostButton("Пропустить", onClick = onSkip)
+                Spacer(Modifier.height(10.dp))
+                GhostButton("Пауза", onClick = { paused = true }, colors = Accents.Calm, leading = "⏸")
+            }
+        }
+        if (paused) {
+            PauseOverlay(
+                onResume = { paused = false },
+                onExit = onEndSet,
+                exitLabel = EXIT_SET,
+                onNext = onSkip,
+                hint = "Следующая часть — ${seg.variant.ru}. Отсчёт стоит.",
+            )
         }
     }
 }
@@ -244,6 +280,9 @@ private fun SetDone(ui: SetUi, onExit: () -> Unit) {
         ) {
             Text(if (ui.activity > 0) "🔥" else "😴", style = MaterialTheme.typography.displayLarge)
             Text(if (ui.activity > 0) "Сет закрыт!" else "Сет пропущен", style = MaterialTheme.typography.displaySmall)
+            if (ui.endedEarly && ui.activity > 0) {
+                Text("вышли на части ${ui.index + 1} из ${ui.segments.size} — сделанное засчитано", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+            }
             Spacer(Modifier.height(10.dp))
             if (ui.activity > 0) {
                 GradientText("серия: ${ui.streak} ${plural(ui.streak, "день", "дня", "дней")}", MaterialTheme.typography.headlineMedium, Accents.Tir)

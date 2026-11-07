@@ -29,6 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +47,7 @@ import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.feature.common.ChordInputPanel
 import com.kazaeza.muzykalka.feature.common.DegreeInputPanel
 import com.kazaeza.muzykalka.feature.common.KeepScreenOn
+import com.kazaeza.muzykalka.feature.common.PauseOverlay
 import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.feature.common.ruDue
 import com.kazaeza.muzykalka.game.HintStep
@@ -70,7 +74,10 @@ import com.kazaeza.muzykalka.ui.theme.Juicy
 
 private val BAR = listOf(Juicy.Gold, Juicy.Orange, Juicy.Hot)
 
-/** «Тапёр» · songs (ticket G-03): library pieces, due by the SRS schedule, each in a random key. */
+/**
+ * «Тапёр» · songs (ticket G-03): library pieces, due by the SRS schedule, each in a random key.
+ * ✕ and the back gesture ask first (ADR-019); [onNext] adds «Следующее упражнение» (sets only).
+ */
 @Composable
 fun TaperScreen(
     spec: TaperSpec,
@@ -78,6 +85,8 @@ fun TaperScreen(
     onFinished: (() -> Unit)? = null,
     onOpenLibrary: () -> Unit = onExit,
     vmKey: String = "taper-${spec.sessionId}-${spec.onlyItemId}-${spec.exam}",
+    onNext: (() -> Unit)? = null,
+    exitLabel: String = "Выйти",
 ) {
     val graph = LocalAppGraph.current
     val vm: TaperViewModel = viewModel(key = vmKey) { TaperViewModel(graph, spec) }
@@ -85,7 +94,8 @@ fun TaperScreen(
     val haptics = rememberHaptics(ui.settings.haptics)
     val particles = rememberParticleState()
     KeepScreenOn()
-    BackHandler { onExit() }
+    var asking by remember { mutableStateOf(false) }
+    BackHandler(enabled = !asking) { asking = true }
 
     LaunchedEffect(ui.result) {
         val r = ui.result ?: return@LaunchedEffect
@@ -113,9 +123,9 @@ fun TaperScreen(
                         .size(44.dp)
                         .clip(CircleShape)
                         .background(Juicy.Ink3.copy(alpha = 0.7f))
-                        .clickable(onClick = onExit),
+                        .clickable(onClickLabel = "Пауза") { asking = true },
                     contentAlignment = Alignment.Center,
-                ) { Text("✕", style = MaterialTheme.typography.titleMedium) }
+                ) { Text("⏸", style = MaterialTheme.typography.titleMedium) }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(if (spec.exam) "🎸 Память · замер" else "🎸 Песни", style = MaterialTheme.typography.titleLarge)
@@ -140,6 +150,15 @@ fun TaperScreen(
             }
         }
         ParticleLayer(particles)
+        if (asking) {
+            PauseOverlay(
+                onResume = { asking = false },
+                onExit = onExit,
+                exitLabel = exitLabel,
+                onNext = onNext,
+                hint = "Сыгранные песни уже сохранены.",
+            )
+        }
     }
 }
 
