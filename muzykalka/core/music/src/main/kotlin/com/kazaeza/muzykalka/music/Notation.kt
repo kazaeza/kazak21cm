@@ -52,6 +52,30 @@ object RuNames {
     fun inKey(key: Key, naming: NoteNaming = NoteNaming.SOLFEGE_RU): String =
         "в " + note(key.tonic, naming) + " " + key.mode.ruPrepositional
 
+    /**
+     * O-14: the interval from the tonic up to [degree], by ear-size (semitones): «квинта», «малая
+     * терция». [accusative] for the prompt «спой квинту».
+     */
+    fun interval(degree: Degree, accusative: Boolean = false): String {
+        val (nom, acc) = INTERVALS[degree.semitones]
+        return if (accusative) acc else nom
+    }
+
+    private val INTERVALS = listOf(
+        "тоника" to "тонику",
+        "малая секунда" to "малую секунду",
+        "большая секунда" to "большую секунду",
+        "малая терция" to "малую терцию",
+        "большая терция" to "большую терцию",
+        "кварта" to "кварту",
+        "тритон" to "тритон",
+        "квинта" to "квинту",
+        "малая секста" to "малую сексту",
+        "большая секста" to "большую сексту",
+        "малая септима" to "малую септиму",
+        "большая септима" to "большую септиму",
+    )
+
     /** "5-я" — string ordinal as in the doc ("F♯ · 5-я"). */
     fun stringOrdinal(string: Int): String = "$string-я"
 }

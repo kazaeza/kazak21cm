@@ -20,9 +20,13 @@ import kotlin.random.Random
 /** A trivial driver: "which degree is it?" with a sounding prompt. */
 private class FakeTask(val degree: Degree, override val itemKey: String, override val prompt: Prompt) : Task
 
-private class FakeDriver(private val withAudio: Boolean = true, private val limitMs: Long? = null) : ModeDriver<FakeTask> {
+private class FakeDriver(
+    private val withAudio: Boolean = true,
+    private val limitMs: Long? = null,
+    override val searches: Boolean = false,
+) : ModeDriver<FakeTask> {
     override val variant = Variant.TIR_CLASSIC
-    override val accepts = setOf(Answer.DegreeChoice::class.java)
+    override val accepts = setOf(Answer.DegreeChoice::class.java, Answer.Pass::class.java)
     private val beep = Score(60.0, listOf(ScoreNote(0.0, 1.0, Voice.CLICK)))
     override fun nextTask(context: DriverContext): FakeTask {
         val d = Degree.NATURALS[context.random.nextInt(7)]
@@ -69,6 +73,49 @@ class RoundEngineTest {
         assertTrue(s.lastEvaluation.correction != null)
         assertEquals(2, s.livesLeft)
         assertEquals(0, s.streak)
+    }
+
+    @Test
+    fun `search mode - a miss keeps listening, only the first try is recorded, the find ends the task (ADR-028)`() {
+        val e = RoundEngine(FakeDriver(searches = true), RoundConfig(durationMs = 90_000, lives = null), Random(42), level = 1)
+        e.start(0); e.promptFinished(1_000)
+        val task = e.state.task as FakeTask
+        val wrong = Degree.NATURALS.filter { it != task.degree }
+        var s = e.answer(Answer.DegreeChoice(wrong[0]), 2_000)
+        assertEquals(RoundPhase.LISTENING, s.phase)
+        assertEquals(1, s.tries)
+        assertEquals(1, s.attempts.size)
+        assertTrue(!s.attempts.single().correct)
+        assertEquals(1_000, s.attempts.single().latencyMs)
+        s = e.answer(Answer.Pass, 3_000) // «подскажи» is a try too, and the search goes on
+        assertEquals(RoundPhase.LISTENING, s.phase)
+        assertEquals(2, s.tries)
+        s = e.answer(Answer.DegreeChoice(task.degree), 4_000)
+        assertEquals(RoundPhase.FEEDBACK, s.phase)
+        assertEquals(1, s.attempts.size, "statistics stay first-try (rule 4)")
+        assertEquals(listOf(3), s.foundOn)
+        assertEquals(Scoring.found(3), s.lastPoints)
+        assertTrue(s.lastEvaluation!!.correct)
+        e.tick(5_000)
+        assertEquals(0, e.state.tries, "a new task starts a new search")
+    }
+
+    @Test
+    fun `search mode - found at once is a correct first try with full points`() {
+        val e = RoundEngine(FakeDriver(searches = true), RoundConfig(durationMs = 90_000, lives = null), Random(42), level = 1)
+        e.start(0); e.promptFinished(0)
+        val s = e.answer(Answer.DegreeChoice((e.state.task as FakeTask).degree), 500)
+        assertEquals(RoundPhase.FEEDBACK, s.phase)
+        assertTrue(s.attempts.single().correct)
+        assertEquals(listOf(1), s.foundOn)
+        assertEquals(Scoring.points(500, 1), s.lastPoints)
+        assertEquals(1, s.streak)
+    }
+
+    @Test
+    fun `search points shrink with the tries but never reach zero`() {
+        assertEquals(80, Scoring.found(2))
+        assertEquals(20, Scoring.found(9))
     }
 
     @Test

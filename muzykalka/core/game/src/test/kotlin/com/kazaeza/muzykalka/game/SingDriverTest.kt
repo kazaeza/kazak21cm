@@ -3,6 +3,7 @@ package com.kazaeza.muzykalka.game
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.MidiNote
+import com.kazaeza.muzykalka.music.RuNames
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -79,6 +80,30 @@ class SingDriverTest {
             assertNotNull(ev.correction)
             assertNull(ev.centsError)
         }
+    }
+
+    @Test
+    fun `«Пропевка» searches, names the interval and starts with 1 3 5 (O-14)`() {
+        val driver = SingDriver(KeyPicker(Random(3)), variant = Variant.KAMERTON_SEARCH)
+        assertTrue(driver.searches)
+        assertFalse(SingDriver(KeyPicker(Random(3))).searches)
+        val tasks = List(40) { driver.nextTask(ctx(it)) }
+        assertTrue(tasks.all { it.degree.number in setOf(1, 3, 5) })
+        assertTrue(tasks.all { it.itemKey.startsWith("pevka:L1:") })
+        val fifth = tasks.first { it.degree.number == 5 }
+        assertEquals("спой квинту", fifth.prompt.subtitle)
+        val level2 = List(60) { driver.nextTask(DriverContext(Random(it), 2, emptyList())) }
+        assertTrue(level2.any { it.degree.number !in setOf(1, 3, 5) })
+        assertTrue(level2.all { it.itemKey.startsWith("pevka:L2:") })
+    }
+
+    @Test
+    fun `interval names by ear size`() {
+        assertEquals("квинта", RuNames.interval(Degree.parse("5")))
+        assertEquals("малую терцию", RuNames.interval(Degree.parse("b3"), accusative = true))
+        assertEquals("большая терция", RuNames.interval(Degree.parse("3")))
+        assertEquals("тонику", RuNames.interval(Degree.ONE, accusative = true))
+        assertEquals("тритон", RuNames.interval(Degree.parse("#4")))
     }
 
     @Test

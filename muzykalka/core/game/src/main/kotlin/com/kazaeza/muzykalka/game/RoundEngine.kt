@@ -15,11 +15,17 @@ import kotlin.random.Random
  *    the caller plays `lastEvaluation.correction` on entering FEEDBACK.
  *  - Rule 6 (60–90 s rounds): [RoundConfig] refuses other durations.
  *  - Rule 8 (every result is a number): each judged answer appends one [AttemptRecord].
+ *  - Search mode ([ModeDriver.searches], ADR-028): a wrong answer keeps the task in LISTENING and
+ *    only counts [RoundState.tries]; the record is written for the FIRST answer only, so the
+ *    statistics stay first-try. The search ends in FEEDBACK when the right answer comes; its sound
+ *    is the confirmation. A [Answer.Pass] here is «подскажи»: the caller plays the correction and
+ *    the search goes on.
  *
  * Caller protocol (ViewModel):
  *  1. `start(now)`; if phase == PROMPTING play `task.prompt.audio`, then `promptFinished(now)`.
  *  2. Forward answers with `answer(a, now)`; call `tick(now)` every ~50 ms.
  *  3. On entering FEEDBACK play `lastEvaluation.correction` (wrong) or the driver's confirmation.
+ *     In search mode, when `tries` grows after a [Answer.Pass], play `lastEvaluation.correction`.
  *  4. On FINISHED persist `attempts` (if not streamed already) and show the summary.
  */
 class RoundEngine<T : Task>(
@@ -64,7 +70,7 @@ class RoundEngine<T : Task>(
         if (phase == RoundPhase.LISTENING) listeningSince = nowMs
         state = state.copy(
             phase = phase, task = task, lastEvaluation = null, remainingMs = remaining(nowMs),
-            taskSerial = state.taskSerial + 1, lastPoints = 0,
+            taskSerial = state.taskSerial + 1, lastPoints = 0, tries = 0,
         )
         return state
     }
@@ -89,6 +95,7 @@ class RoundEngine<T : Task>(
             latencyMs = latency, centsError = evaluation.centsError, hintLevel = 0,
             keyLabel = task.prompt.key?.toString(), atEpochMs = nowMs + epochOffsetMs,
         )
+        if (driver.searches) return search(evaluation, record, latency, nowMs)
         history += record
         val streak = if (evaluation.correct) state.streak + 1 else 0
         val multiplier = min(4, 1 + streak / config.comboStep)
@@ -99,6 +106,30 @@ class RoundEngine<T : Task>(
             phase = RoundPhase.FEEDBACK, score = state.score + points, streak = streak, multiplier = multiplier,
             livesLeft = lives, lastEvaluation = evaluation, attempts = state.attempts + record, remainingMs = remaining(nowMs),
             lastPoints = points, bestStreak = max(state.bestStreak, streak),
+        )
+        return state
+    }
+
+    /** ADR-028: one try of a search. Wrong → keep listening; right → feedback with the confirmation. */
+    private fun search(evaluation: Evaluation, record: AttemptRecord, latency: Long, nowMs: Long): RoundState<T> {
+        val first = state.tries == 0
+        if (first) history += record
+        val attempts = if (first) state.attempts + record else state.attempts
+        if (!evaluation.correct) {
+            state = state.copy(
+                tries = state.tries + 1, lastEvaluation = evaluation, attempts = attempts, streak = 0, multiplier = 1,
+                lastPoints = 0, remainingMs = remaining(nowMs),
+            )
+            return state
+        }
+        val streak = if (first) state.streak + 1 else 0
+        val multiplier = min(4, 1 + streak / config.comboStep)
+        val points = if (first) Scoring.points(latency, multiplier) else Scoring.found(state.tries + 1)
+        feedbackUntil = nowMs + config.feedbackMs
+        state = state.copy(
+            phase = RoundPhase.FEEDBACK, score = state.score + points, streak = streak, multiplier = multiplier,
+            lastEvaluation = evaluation, attempts = attempts, remainingMs = remaining(nowMs), lastPoints = points,
+            bestStreak = max(state.bestStreak, streak), foundOn = state.foundOn + (state.tries + 1),
         )
         return state
     }
@@ -136,4 +167,7 @@ object Scoring {
         val speed = ((2_500 - latencyMs).coerceIn(0, 2_000) / 2_000.0 * 50).toInt()
         return (100 + speed) * multiplier
     }
+
+    /** Search mode: found on try [n] ≥ 2 — fewer points, never nothing (ADR-028). */
+    fun found(n: Int): Int = maxOf(20, 100 - 20 * (n - 1))
 }

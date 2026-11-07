@@ -44,6 +44,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_OVER_CHORDS(ModeId.TIR, "Над аккордами", GuitarNeed.NONE, "0.1"),
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.2"),
     TIR_RADIO(ModeId.TIR, "Радио", GuitarNeed.NONE, "0.3"),
+    /** O-14: «спой квинту» — search with the voice until it is found (ADR-028). */
+    KAMERTON_SEARCH(ModeId.KAMERTON, "Пропевка", GuitarNeed.NONE, "0.1"),
     KAMERTON_SING(ModeId.KAMERTON, "Спой ступень", GuitarNeed.NONE, "0.1"),
     KAMERTON_PREDICT(ModeId.KAMERTON, "Предскажи лад", GuitarNeed.REQUIRED, "0.2"),
     KAMERTON_DIGITS(ModeId.KAMERTON, "Угадай по цифрам", GuitarNeed.NONE, "0.2"),
@@ -92,6 +94,9 @@ object Levels {
         "джаз: септаккорды, ii–V–I",
     )
     val KAMERTON = listOf("ступени от тоники", "интервалы от любой ступени", "мелодии из 3–8 нот")
+
+    /** «Пропевка» (O-14): the steady degrees first, then the whole mode. */
+    val KAMERTON_SEARCH = listOf("опоры: 1, 3, 5", "все ступени лада")
     val PARROT = listOf("шаги в одной позиции", "скачки", "смена позиции", "6 нот", "в темп с бэкингом")
 
     fun of(mode: ModeId): List<String> = when (mode) {

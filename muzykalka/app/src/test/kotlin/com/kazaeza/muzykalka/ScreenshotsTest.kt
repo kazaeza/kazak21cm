@@ -44,6 +44,7 @@ class ScreenshotsTest {
     val rule = createComposeRule()
 
     private val audio = FakeAudioOutput()
+    private val mic = FakePitchInput()
     private lateinit var graph: AppGraph
 
     @Before
@@ -51,14 +52,16 @@ class ScreenshotsTest {
         assumeTrue(System.getenv("MUZYKALKA_SCREENSHOTS") == "1")
         graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
             override val audioOutput: AudioOutput = audio
+            override val pitchInput: com.kazaeza.muzykalka.audio.PitchInput = mic
         }
     }
 
-    private fun shot(name: String, content: @androidx.compose.runtime.Composable () -> Unit, waitFor: String? = null) {
+    private fun shot(name: String, content: @androidx.compose.runtime.Composable () -> Unit, waitFor: String? = null, then: () -> Unit = {}) {
         rule.setContent {
             CompositionLocalProvider(LocalAppGraph provides graph) { MuzykalkaTheme { content() } }
         }
         if (waitFor != null) rule.waitUntil(10_000) { rule.onAllNodesWithText(waitFor, substring = true).fetchSemanticsNodes().isNotEmpty() }
+        then()
         rule.mainClock.advanceTimeBy(1_500)
         rule.waitForIdle()
         val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
@@ -83,6 +86,17 @@ class ScreenshotsTest {
 
     @Test
     fun feel() = shot("04c-feel", { FeelScreen(onBack = {}, onTir = {}) }, "Вайб ступеней")
+
+    /** «Пропевка» after one sung note: a miss shows what it was, a hit shows the try. */
+    @Test
+    fun search() {
+        org.robolectric.Shadows.shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>())
+            .grantPermissions(android.Manifest.permission.RECORD_AUDIO)
+        shot("04d-search", { GameScreen(RoundSpec(Variant.KAMERTON_SEARCH, level = 1), onExit = {}) }, "Не спеши") {
+            mic.sing(com.kazaeza.muzykalka.music.MidiNote(50))
+            rule.waitUntil(5_000) { rule.onAllNodesWithText("попытк", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        }
+    }
 
     @Test
     fun tir() = shot("04-tir", { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 2), onExit = {}) }, "Какая ступень?")

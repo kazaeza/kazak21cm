@@ -85,6 +85,12 @@ interface ModeDriver<T : Task> {
 
     /** Per-task answer deadline (Hunt: shrinking timer). null = no deadline. */
     fun timeLimitMs(task: T, context: DriverContext): Long? = null
+
+    /**
+     * O-14 (ADR-028), search mode: a wrong answer does not end the task — the user keeps looking
+     * until it is right. Only the first answer is recorded (rule 4); see [RoundEngine.answer].
+     */
+    val searches: Boolean get() = false
 }
 
 data class DriverContext(
@@ -145,7 +151,7 @@ enum class RoundPhase {
     /** Prompt audio is playing; answers are ignored and the mic is gated. */
     PROMPTING,
 
-    /** Waiting for the FIRST answer (rule 4). */
+    /** Waiting for the FIRST answer (rule 4) — or, in search mode, for the right one. */
     LISTENING,
 
     /** Showing/playing the evaluation; answers ignored. */
@@ -169,6 +175,10 @@ data class RoundState<T : Task>(
     /** Points earned by the last answer (for the "+150" pop-up). */
     val lastPoints: Int = 0,
     val bestStreak: Int = 0,
+    /** Search mode (ADR-028): wrong tries on the current task so far. */
+    val tries: Int = 0,
+    /** Search mode: on which try each found task was found (1 = first). */
+    val foundOn: List<Int> = emptyList(),
 ) {
     val correctCount: Int get() = attempts.count { it.correct }
     val accuracy: Double get() = if (attempts.isEmpty()) 0.0 else correctCount.toDouble() / attempts.size

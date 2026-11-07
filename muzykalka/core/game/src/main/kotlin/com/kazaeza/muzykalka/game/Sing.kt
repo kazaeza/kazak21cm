@@ -12,6 +12,7 @@ import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.PitchReading
+import com.kazaeza.muzykalka.music.RuNames
 import com.kazaeza.muzykalka.music.Score
 import com.kazaeza.muzykalka.music.Voice
 import kotlin.math.abs
@@ -51,14 +52,23 @@ data class SingTask(
  * the microphone and be «heard» as a sung note, so the drone stays off and every question opens
  * with the tonic instead (ADR-021). The key holds for [TirDriver.KEY_BLOCK] questions; a new key
  * opens with its scale.
+ *
+ * «Пропевка» ([Variant.KAMERTON_SEARCH], O-14, ADR-028) is the same task in search mode: «спой
+ * квинту», and a miss does not end it — the engine keeps listening until the degree is found.
+ * Level 1 asks only the steady degrees 1 · 3 · 5.
  */
 class SingDriver(
     private val keyPicker: KeyPicker,
     private val notation: DegreeNotation = DegreeNotation.ARABIC,
     private val withDrone: Boolean = true,
     private val arranger: Arranger = Arranger(),
+    override val variant: Variant = Variant.KAMERTON_SING,
 ) : ModeDriver<SingTask> {
-    override val variant: Variant = Variant.KAMERTON_SING
+    init {
+        require(variant == Variant.KAMERTON_SING || variant == Variant.KAMERTON_SEARCH) { "SingDriver plays $variant" }
+    }
+
+    override val searches: Boolean get() = variant == Variant.KAMERTON_SEARCH
 
     override val accepts: Set<Class<out Answer>> = setOf(Answer.Sung::class.java, Answer.NotePlayed::class.java, Answer.Pass::class.java)
 
@@ -75,7 +85,9 @@ class SingDriver(
         }
         blockLeft--
         val tonic = key.tonicAtOrAbove(VOICE_FLOOR)
-        val degree = ItemWeights.pick(r, key.mode.degrees) { ItemWeights.weight(PREFIX + it, context.history) }
+        val prefix = prefix(context.level)
+        val pool = if (searches && context.level <= 1) key.mode.degrees.filter { it.number in STEADY } else key.mode.degrees
+        val degree = ItemWeights.pick(r, pool) { ItemWeights.weight(prefix + it, context.history) }
         val reference = arranger.line(listOf(DegreeNote(Degree.ONE)), key, Voice.TONE, beatsEach = 1.5, tempoBpm = TirDriver.TEMPO, tonicFloor = tonic)
         val scale = if (kept == null) {
             val up = key.mode.degrees.map { DegreeNote(it) } + DegreeNote(Degree.ONE, 1)
@@ -87,9 +99,10 @@ class SingDriver(
             !withDrone -> scale?.then(reference, gapBeats = 0.5) ?: reference
             else -> scale
         }
+        val subtitle = if (searches) "спой " + RuNames.interval(degree, accusative = true) else "спой ступень"
         return SingTask(
-            itemKey = PREFIX + degree,
-            prompt = Prompt(title = DegreeFormatter.degree(degree, notation), subtitle = "спой ступень", audio = audio, key = key),
+            itemKey = prefix + degree,
+            prompt = Prompt(title = DegreeFormatter.degree(degree, notation), subtitle = subtitle, audio = audio, key = key),
             key = key, tonic = tonic, degree = degree,
             drone = if (withDrone) arranger.drone(key) else null,
             reference = reference,
@@ -128,6 +141,8 @@ class SingDriver(
         )
     }
 
+    private fun prefix(level: Int) = if (searches) "$SEARCH_PREFIX$level:" else PREFIX
+
     /** The asked degree (in the octave of [home]) walking home to the tonic. */
     private fun walkHome(task: SingTask, home: MidiNote): Score {
         val start = DegreeNote(task.degree)
@@ -142,6 +157,15 @@ class SingDriver(
 
     companion object {
         const val PREFIX = "sing:L1:"
+
+        /** «Пропевка» item keys: "pevka:L1:5". */
+        const val SEARCH_PREFIX = "pevka:L"
+
+        /** Level 1 of «Пропевка»: the steady degrees. */
+        private val STEADY = setOf(1, 3, 5)
+
+        /** Search mode: first-try median latency target, a little slower than «Спой ступень». */
+        const val SEARCH_PROMOTION_TARGET_MS = 4_000L
         private const val MINOR_SHARE = 0.3
 
         /** C3: the reference tonic sits in C3–B3, comfortable for a low voice; a high one sings an octave up. */

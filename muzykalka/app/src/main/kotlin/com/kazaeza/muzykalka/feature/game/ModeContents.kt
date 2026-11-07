@@ -475,6 +475,106 @@ internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnsw
     }
 }
 
+/**
+ * «Пропевка» (O-14, ADR-028): «спой квинту», and the screen waits until the voice finds it. A miss
+ * says what was sung and which way to go; «подскажи» plays the note walking home; the try count
+ * is shown, not punished.
+ */
+@Composable
+internal fun SearchContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnswer: (Answer) -> Unit, onReplay: () -> Unit) {
+    val listening = ui.phase == RoundPhase.LISTENING
+    val found = ui.phase == RoundPhase.FEEDBACK && ui.feedback?.correct == true
+    val color = DegreeColors.of(task.degree)
+    val vibe = DegreeVibes.of(task.degree)
+
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        PromptCard(ui, accent) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DegreeChip("🔑 " + RuNames.key(task.key), Juicy.Gold)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "🔁",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable(enabled = listening, onClickLabel = "Тоника ещё раз", onClick = onReplay)
+                            .padding(6.dp),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(task.prompt.subtitle.orEmpty().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.headlineSmall, color = color)
+                if (found) {
+                    GradientText(task.prompt.title, MaterialTheme.typography.displayLarge, listOf(Juicy.Good, Juicy.Mint), Modifier.pop(ui.taskSerial, 0.3f))
+                } else {
+                    GradientText(task.prompt.title, MaterialTheme.typography.displayLarge, DegreeColors.gradient(color), if (listening) Modifier.breathe() else Modifier)
+                }
+                Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = color)
+                Spacer(Modifier.height(6.dp))
+                SearchStatus(task, ui, found)
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            MicPulse(levelDb = ui.micLevelDb, label = if (listening) "🎤" else null, color = color)
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                SectionLabel("пой «а-а» и тяни ровно")
+                Text(
+                    if (task.drone != null) "любая октава — я подожду, сколько нужно" else "без наушников дрон молчит: 🔁 — тоника ещё раз",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Juicy.TextDim,
+                )
+                ui.micError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Juicy.Hot) }
+            }
+        }
+        ExtraKeyView(ExtraKey("🔊", "подскажи") { onAnswer(Answer.Pass) }, enabled = listening, height = 72.dp, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(6.dp))
+    }
+}
+
+@Composable
+private fun SearchStatus(task: SingTask, ui: GameUi, found: Boolean) {
+    val dim = MaterialTheme.typography.bodyLarge
+    val f = ui.feedback
+    val t = ui.lastTry
+    when {
+        found -> {
+            val n = ui.tries + 1
+            Text(
+                if (n == 1) "С первой попытки! 🔥" else "Нашёл с $n-й попытки!",
+                style = MaterialTheme.typography.titleLarge, color = Juicy.Good, modifier = Modifier.pop(ui.taskSerial),
+            )
+            Text("${f?.given?.substringAfter(" · ") ?: ""}   +${f?.points ?: 0}", style = MaterialTheme.typography.titleMedium, color = Juicy.Gold)
+            Text(DegreeVibes.pathHome(task.degree, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim, textAlign = TextAlign.Center)
+        }
+        ui.phase == RoundPhase.PROMPTING -> Text("Слушай дом…", style = dim, color = Juicy.TextDim)
+        t == null -> Text("Не спеши: найди её голосом", style = dim, color = Juicy.TextDim)
+        t.sung == null -> {
+            Text("Послушай и спой так же", style = MaterialTheme.typography.titleMedium, color = Juicy.Text, modifier = Modifier.pop(t.serial))
+            Text("попытка ${ui.tries + 1}", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextFaint)
+        }
+        else -> {
+            val sung = t.sung
+            val err = t.centsError ?: 0.0
+            val down = if (err > 0) "ниже ↓" else "выше ↑"
+            // Any octave counts, so a far miss has two ways to go: then no arrow.
+            val way = when {
+                kotlin.math.abs(err) <= 150 -> "Почти! Чуть $down · "
+                kotlin.math.abs(err) <= 450 -> "Тяни $down · "
+                else -> ""
+            }
+            Text(
+                "Это ${DegreeFormatter.degree(sung, ui.notation)} — ${RuNames.interval(sung)}. Красиво, но ищем ${RuNames.interval(task.degree, accusative = true)}",
+                style = MaterialTheme.typography.titleMedium, color = Juicy.Text, textAlign = TextAlign.Center, modifier = Modifier.pop(t.serial, 0.08f),
+            )
+            Text("${way}попытка ${ui.tries + 1}", style = MaterialTheme.typography.titleMedium, color = DegreeColors.of(task.degree))
+        }
+    }
+}
+
 @Composable
 private fun NoteNamePad(naming: NoteNaming, enabled: Boolean, highlight: (NoteName) -> KeyHighlight, onName: (NoteName) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

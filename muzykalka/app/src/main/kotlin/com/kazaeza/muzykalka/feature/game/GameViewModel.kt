@@ -6,6 +6,7 @@ import com.kazaeza.muzykalka.AppGraph
 import com.kazaeza.muzykalka.data.repo.SessionKind
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.game.Answer
+import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.DegreeAnchor
@@ -72,10 +73,24 @@ data class RoundSummary(
     val newRecord: Boolean,
     val unlockedLevel: Int?,
     val attempts: List<AttemptRecord>,
+    /** «Пропевка» (O-14): on which try each found note was found (1 = first). */
+    val foundOn: List<Int> = emptyList(),
 ) {
     val accuracy: Double get() = if (answered == 0) 0.0 else correct.toDouble() / answered
+
+    /** «Пропевка»: the mean try on which a note was found; null if none was. */
+    val averageTry: Double? get() = if (foundOn.isEmpty()) null else foundOn.average()
+
     val stars: Int get() = when {
         answered == 0 -> 0
+        variant == Variant.KAMERTON_SEARCH -> averageTry.let { avg ->
+            when {
+                avg == null -> 0
+                avg <= 1.5 -> 3
+                avg <= 2.5 -> 2
+                else -> 1
+            }
+        }
         accuracy >= 0.9 -> 3
         accuracy >= 0.7 -> 2
         accuracy >= 0.5 -> 1
@@ -84,6 +99,12 @@ data class RoundSummary(
 }
 
 data class FeedbackEvent(val serial: Int, val correct: Boolean, val points: Int, val expected: String, val given: String)
+
+/**
+ * O-14 «Пропевка»: one miss of the search. [sung] — what the voice held (null after «подскажи»);
+ * [centsError] — signed distance to the nearest octave of the asked degree (+ = sung too high).
+ */
+data class TryEvent(val serial: Int, val sung: Degree?, val centsError: Double?)
 
 data class GameUi(
     val variant: Variant,
@@ -118,14 +139,23 @@ data class GameUi(
     val anchors: Map<Int, DegreeAnchor> = emptyMap(),
     /** O-09: anchors of the degrees this round missed, offered in the summary. */
     val summaryAnchors: List<DegreeAnchor> = emptyList(),
+    /** O-14: misses on the current note so far, and the latest one. */
+    val tries: Int = 0,
+    val lastTry: TryEvent? = null,
     /** The anchor that is sounding in the summary. */
     val playingAnchor: DegreeAnchor? = null,
 )
 
-fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || this == Variant.KAMERTON_SING
+fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || isSung()
 
-/** «Спой ступень»: how long a sung note is listened to after its onset (K-01, steady part). */
-private const val SUNG_WINDOW_MS = 350L
+/** The voice answers: «Спой ступень» and «Пропевка». */
+fun Variant.isSung(): Boolean = this == Variant.KAMERTON_SING || this == Variant.KAMERTON_SEARCH
+
+/**
+ * How long a sung note is listened to after its onset before it is judged (K-01, steady part).
+ * O-14: longer than the 350 ms of O-07 — a voice needs time to settle; «Пропевка» waits longest.
+ */
+private fun sungWindowMs(v: Variant): Long = if (v == Variant.KAMERTON_SEARCH) 700L else 500L
 
 /** After the drone starts or changes key, before the first sound over it. */
 private const val DRONE_SETTLE_MS = 1_500L
@@ -135,7 +165,10 @@ private const val ANCHOR_TAIL_MS = 600L
 
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
-    val PLAYABLE = setOf(Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE, Variant.TAPER_STEPS, Variant.KAMERTON_SING)
+    val PLAYABLE = setOf(
+        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
+        Variant.TAPER_STEPS, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING,
+    )
 
     fun maxLevel(v: Variant): Int = when (v) {
         Variant.HUNT_FIND -> Levels.HUNT.size
@@ -146,6 +179,7 @@ object Drills {
         Variant.TAPER_STEPS -> Levels.STEPS.size
         // Only «ступени от тоники» so far; intervals and melodies are later levels of K-01.
         Variant.KAMERTON_SING -> 1
+        Variant.KAMERTON_SEARCH -> Levels.KAMERTON_SEARCH.size
         else -> 1
     }
 
@@ -155,18 +189,21 @@ object Drills {
     /** Guitar-paced drills: the longest round rule 6 allows, and no lives for honest self-grades. */
     fun guitarPaced(v: Variant): Boolean = v == Variant.TAPER_STEPS
 
+    /** No lives and the longest round: guitar-paced drills and the calm search of «Пропевка» (O-14). */
+    fun relaxed(v: Variant): Boolean = guitarPaced(v) || v == Variant.KAMERTON_SEARCH
+
     fun levelName(v: Variant, level: Int): String = when (v.mode) {
         ModeId.HUNT -> if (v == Variant.HUNT_ALL_OCTAVES) "весь гриф" else Levels.HUNT.getOrElse(level - 1) { "" }
         ModeId.TIR -> (if (v == Variant.TIR_OVER_CHORDS) Levels.TIR_CHORDS else Levels.TIR).getOrElse(level - 1) { "" }
         ModeId.TAPER -> Levels.STEPS.getOrElse(level - 1) { "" }
-        ModeId.KAMERTON -> Levels.KAMERTON.getOrElse(level - 1) { "" }
+        ModeId.KAMERTON -> (if (v == Variant.KAMERTON_SEARCH) Levels.KAMERTON_SEARCH else Levels.KAMERTON).getOrElse(level - 1) { "" }
         else -> ""
     }
 
     fun promotionTargetMs(v: Variant, level: Int): Long = when (v.mode) {
         ModeId.TIR -> if (v == Variant.TIR_OVER_CHORDS) TirDriver.OVER_CHORDS_TARGET_MS else TirDriver.promotionTargetMs(level)
         ModeId.TAPER -> StepsDriver.PROMOTION_TARGET_MS
-        ModeId.KAMERTON -> SingDriver.PROMOTION_TARGET_MS
+        ModeId.KAMERTON -> if (v == Variant.KAMERTON_SEARCH) SingDriver.SEARCH_PROMOTION_TARGET_MS else SingDriver.PROMOTION_TARGET_MS
         else -> HuntDriver.promotionTargetMs(level)
     }
 
@@ -181,7 +218,7 @@ object Drills {
     ): RoundEngine<*> {
         val config = when {
             spec.exam -> RoundConfig.exam(spec.examTasks)
-            guitarPaced(spec.variant) -> RoundConfig(durationMs = 90_000, lives = null)
+            relaxed(spec.variant) -> RoundConfig(durationMs = 90_000, lives = null)
             else -> RoundConfig(durationMs = spec.durationMs, lives = 3)
         }
         val random = Random(System.nanoTime())
@@ -190,7 +227,8 @@ object Drills {
             Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_DUEL, Variant.TIR_RADIO ->
                 RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review), config, random, level, history, epochOffsetMs)
             // Without headphones the drone would leak into the microphone (ADR-021).
-            Variant.KAMERTON_SING -> RoundEngine(SingDriver(KeyPicker(random), settings.degreeNotation, withDrone = headphones), config, random, level, history, epochOffsetMs)
+            Variant.KAMERTON_SING, Variant.KAMERTON_SEARCH ->
+                RoundEngine(SingDriver(KeyPicker(random), settings.degreeNotation, withDrone = headphones, variant = spec.variant), config, random, level, history, epochOffsetMs)
             Variant.HUNT_FIND, Variant.HUNT_REVERSE, Variant.HUNT_ALL_OCTAVES ->
                 RoundEngine(
                     HuntDriver(spec.variant, Fretboard(settings.tuning, settings.fretCount), settings.noteNaming, settings.degreeNotation, adaptiveTimer = !spec.exam),
@@ -273,8 +311,8 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
             it.copy(
                 loading = false, level = level, needsMic = needsMic, notation = settings.degreeNotation, naming = settings.noteNaming,
                 settings = settings, anchors = anchors,
-                totalMs = if (spec.exam) 0 else if (Drills.guitarPaced(spec.variant)) 90_000 else spec.durationMs,
-                maxLives = if (spec.exam || Drills.guitarPaced(spec.variant)) 0 else 3,
+                totalMs = if (spec.exam) 0 else if (Drills.relaxed(spec.variant)) 90_000 else spec.durationMs,
+                maxLives = if (spec.exam || Drills.relaxed(spec.variant)) 0 else 3,
                 taskLimit = if (spec.exam) spec.examTasks else null,
             )
         }
@@ -297,16 +335,40 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
 
     private var lastPhase: RoundPhase? = null
     private var lastSerial = -1
+    private var lastTries = 0
+    private var trySerial = 0
+    private var lastTry: TryEvent? = null
+    private var hintJob: Job? = null
 
     /** Reacts to a state change at once (sound, feedback), not on the next tick. */
     private fun react(e: RoundEngine<*>) {
         val s = e.state
         if (s.phase != lastPhase || s.taskSerial != lastSerial) {
+            if (s.taskSerial != lastSerial) lastTry = null
             lastPhase = s.phase
             lastSerial = s.taskSerial
             onEnter(e, s)
         }
+        if (s.tries != lastTries) {
+            if (s.tries > lastTries && s.phase == RoundPhase.LISTENING) onTry(s)
+            lastTries = s.tries
+        }
         publish(e)
+    }
+
+    /**
+     * O-14, a miss of the search (ADR-028): show what was sung and where to look. After «подскажи»
+     * the right note walks home (rule 5, at the moment it was asked for) and the search goes on.
+     */
+    private fun onTry(s: RoundState<*>) {
+        val ev = s.lastEvaluation ?: return
+        val sung = if (ev.centsError != null) runCatching { Degree.parse(ev.givenCode) }.getOrNull() else null
+        lastTry = TryEvent(++trySerial, sung, ev.centsError)
+        val correction = ev.correction
+        if (ev.centsError == null && correction != null) {
+            hintJob?.cancel()
+            hintJob = viewModelScope.launch { graph.audioOutput.play(correction) }
+        }
     }
 
     private suspend fun loop() {
@@ -366,6 +428,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 phase = s.phase, task = s.task, taskSerial = s.taskSerial, score = s.score, streak = s.streak,
                 multiplier = s.multiplier, lives = s.livesLeft, remainingMs = s.remainingMs, answered = s.attempts.size,
                 taskFraction = fraction, feedback = lastFeedback, micLevelDb = micLevel, heard = heard,
+                tries = s.tries, lastTry = lastTry,
             )
         }
     }
@@ -434,7 +497,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 val e = engine ?: return@collect
                 if (paused) return@collect
                 val at = onset.timeNanos / 1_000_000 - pausedTotalMs
-                if (spec.variant == Variant.KAMERTON_SING) {
+                if (spec.variant.isSung()) {
                     if (e.state.phase != RoundPhase.LISTENING || sungJob?.isActive == true) return@collect
                     sungJob = viewModelScope.launch { answerSung(e, onset.note, onset.cents, at) }
                 } else {
@@ -464,7 +527,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     /** K-01: listen to the steady part of the sung note, then answer with its median pitch (time = onset). */
     private suspend fun answerSung(e: RoundEngine<*>, note: MidiNote, cents: Double, atMs: Long) {
         val hz = mutableListOf<Double>()
-        withTimeoutOrNull(SUNG_WINDOW_MS) {
+        withTimeoutOrNull(sungWindowMs(spec.variant)) {
             graph.pitchInput.frames.collect { f ->
                 val est = f.estimate
                 if (est != null && est.clarity > 0.85 && f.rmsDb > -50) hz += est.hz
@@ -503,6 +566,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 correct = s.attempts.count { it.correct },
                 medianMs = s.attempts.filter { it.correct }.map { it.latencyMs }.sorted().let { if (it.isEmpty()) null else it[it.size / 2] },
                 bestStreak = s.bestStreak, newRecord = newRecord, unlockedLevel = unlocked, attempts = s.attempts,
+                foundOn = s.foundOn,
             )
         }
         val anchors = state.value.anchors

@@ -48,6 +48,7 @@ import com.kazaeza.muzykalka.game.RoundPhase
 import com.kazaeza.muzykalka.game.StepsTask
 import com.kazaeza.muzykalka.game.SingTask
 import com.kazaeza.muzykalka.game.TirTask
+import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.ui.component.ComboBadge
 import com.kazaeza.muzykalka.ui.component.CountUpText
 import com.kazaeza.muzykalka.ui.component.GhostButton
@@ -174,7 +175,11 @@ private fun GameHost(
             ) {
                 when (val task = ui.task) {
                     is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
-                    is SingTask -> SingContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
+                    is SingTask -> if (ui.variant == Variant.KAMERTON_SEARCH) {
+                        SearchContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
+                    } else {
+                        SingContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
+                    }
                     is HuntTask -> HuntContent(task, ui, accent, onAnswer = vm::answer)
                     is StepsTask -> StepsContent(task, ui, accent, onAnswer = vm::answer)
                     else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -338,10 +343,17 @@ private fun SummaryOverlay(
             }
             GlassCard(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    BigStat("${(summary.accuracy * 100).toInt()}%", "точность", colors = accent)
-                    BigStat(summary.medianMs?.let { String.format(java.util.Locale.US, "%.1f с", it / 1000.0) } ?: "—", "медиана", colors = accent)
-                    BigStat("${summary.bestStreak}", "серия", colors = accent)
-                    BigStat("${summary.answered}", "ответов", colors = accent)
+                    if (summary.variant == Variant.KAMERTON_SEARCH) {
+                        // ADR-028: a search is told by how soon the note was found, not by misses.
+                        BigStat("${summary.foundOn.size}", "нашёл", colors = accent)
+                        BigStat("${summary.foundOn.count { it == 1 }}", "с первой", colors = accent)
+                        BigStat(summary.averageTry?.let { String.format(java.util.Locale.US, "%.1f", it) } ?: "—", "попыток в ср.", colors = accent)
+                    } else {
+                        BigStat("${(summary.accuracy * 100).toInt()}%", "точность", colors = accent)
+                        BigStat(summary.medianMs?.let { String.format(java.util.Locale.US, "%.1f с", it / 1000.0) } ?: "—", "медиана", colors = accent)
+                        BigStat("${summary.bestStreak}", "серия", colors = accent)
+                        BigStat("${summary.answered}", "ответов", colors = accent)
+                    }
                 }
             }
             if (anchors.isNotEmpty()) AnchorsCard(anchors.take(MAX_SUMMARY_ANCHORS), playing, notation, onAnchor)

@@ -91,6 +91,7 @@ object ModesCatalog {
         is ModeEntry.Drill -> when (e.variant) {
             Variant.TIR_CLASSIC -> "🎯"
             Variant.TIR_OVER_CHORDS -> "🎹"
+            Variant.KAMERTON_SEARCH -> "🧘"
             Variant.KAMERTON_SING -> "🎤"
             Variant.TAPER_STEPS -> "🪜"
             Variant.HUNT_FIND -> "🏹"
@@ -107,7 +108,8 @@ object ModesCatalog {
         is ModeEntry.Drill -> when (e.variant) {
             Variant.TIR_CLASSIC -> "Гудит тоника, звучит нота — жми её ступень. Не уверен — «🤷 не знаю», ответ всё равно услышишь."
             Variant.TIR_OVER_CHORDS -> "Та же нота, но под ней меняются аккорды лада."
-            Variant.KAMERTON_SING -> "Видишь ступень — поёшь её. Засчитывается первая спетая нота."
+            Variant.KAMERTON_SEARCH -> "Спокойно: «спой квинту» — и ищешь голосом, пока не попадёшь. Промахнулся — скажу, что спел и куда тянуть. Без жизней."
+            Variant.KAMERTON_SING -> "Видишь ступень — поёшь её. Засчитывается первая спетая нота, на скорость."
             Variant.TAPER_STEPS -> "Тональность и ступени, например «ре мажор: I – V». Сыграй ход аккордами и отметь, как вышло."
             Variant.HUNT_FIND -> "На экране нота — найди её на грифе и сыграй, телефон слушает."
             Variant.HUNT_ALL_OCTAVES -> "Та же нота во всех октавах подряд."
