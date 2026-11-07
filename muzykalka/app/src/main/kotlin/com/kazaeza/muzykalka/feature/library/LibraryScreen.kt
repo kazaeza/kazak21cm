@@ -61,7 +61,7 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
     val settings by graph.settings.settings.collectAsState(initial = Settings())
     val scope = rememberCoroutineScope()
     var filter by remember { mutableStateOf(Filter.ALL) }
-    var genre by remember { mutableStateOf(BookGenre.POP) }
+    var genre by remember { mutableStateOf(BookGenre.LIKED) }
     val today = graph.today(settings)
     val list = entries ?: emptyList()
     val shown = list.filter {

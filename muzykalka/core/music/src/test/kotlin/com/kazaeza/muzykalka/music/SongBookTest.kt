@@ -38,6 +38,19 @@ class SongBookTest {
     }
 
     @Test
+    fun `my likes are a full shelf, stored in degrees with the tonic of the record`() {
+        val liked = SongBook.ENTRIES.filter { it.genre == BookGenre.LIKED }
+        assertTrue(liked.size >= 30, "liked shelf has ${liked.size}")
+        val opening = { id: String, bars: Int -> SongBook.byId(id)!!.song.sections[0].bars.take(bars).flatMap { it.chords } }
+        val parse = { text: String -> text.split(' ').map(ChordParser::parse) }
+        assertEquals(parse("I V ii IV"), opening("just-like-heaven", 4))
+        assertEquals(parse("bIII6 bVI IVsus2 I"), opening("something-changed", 4))
+        assertEquals(parse("i bvii i bvii"), opening("in-the-afternoon", 4))
+        assertEquals(Mode.PHRYGIAN, SongBook.byId("in-the-afternoon")!!.song.mode)
+        liked.forEach { e -> assertTrue(e.song.artist != null, "${e.id} has an artist") }
+    }
+
+    @Test
     fun `every degree has its own vibe and the path home matches the resolution`() {
         val words = Degree.CHROMATIC.map { DegreeVibes.of(it).word }
         assertEquals(12, words.toSet().size)

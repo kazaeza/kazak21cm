@@ -1,7 +1,7 @@
 package com.kazaeza.muzykalka.music
 
 /** Shelf of the built-in songbook. */
-enum class BookGenre(val ru: String) { POP("поп и рок"), BLUES("блюз"), JAZZ("джаз") }
+enum class BookGenre(val ru: String) { LIKED("мои лайки"), POP("поп и рок"), BLUES("блюз"), JAZZ("джаз") }
 
 /**
  * One built-in teaching piece: the harmony of a well-known song (or a standard form like the blues)
@@ -26,9 +26,277 @@ data class BookEntry(
  * only (rule 1). Changes are the common lead-sheet versions, simplified to triads and sevenths;
  * passing chords and reharmonisations are left out on purpose — edit after adding if your
  * version differs.
+ *
+ * The [BookGenre.LIKED] shelf (ADR-018) is the user's own favourites from their Spotify likes:
+ * the tonic is checked against the track's key, chords come from popular community charts,
+ * slash basses and colour tones are dropped, and only the harmony in degrees is kept.
  */
 object SongBook {
     val ENTRIES: List<BookEntry> = listOf(
+        // ---------------------------------------------------------------- my likes (ADR-018)
+        entry(
+            "covet", BookGenre.LIKED, 1, "Covet", "Basement", Mode.MAJOR, "AABAA",
+            "I–vi–iii–V по кругу и подход на IV",
+            """
+            A: | I | vi | iii | V |
+            B: | IV | IV |
+            """,
+        ),
+        entry(
+            "whole", BookGenre.LIKED, 1, "Whole", "Basement", Mode.MAJOR, "AABAB",
+            "мажорная III — яркий шаг вверх вместо минорной iii",
+            """
+            A: | I | III | I | III |
+            B: | IV | III | IV | I |
+            """,
+        ),
+        entry(
+            "flume", BookGenre.LIKED, 1, "Flume", "Bon Iver", Mode.MAJOR, "ABCABCAC",
+            "I–iii–vi и IV–vi–I: соседние аккорды с общими нотами",
+            """
+            A: | I | iii | vi | iii |
+            B: | I | iii | V | V |
+            C: | IV | vi | I | I |
+            """,
+        ),
+        entry(
+            "heaviside", BookGenre.LIKED, 2, "Heaviside", "Citizen", Mode.MINOR, "ABCABCA",
+            "минор с дорийскими ii и IV рядом с обычной iv",
+            """
+            A: | i ii | bIII bVII | v | bVII IV |
+            B: | i | bVII | i | bVII | iv | iv |
+            C: | i | bVII | iv | v |
+            """,
+        ),
+        entry(
+            "how-does-it-feel", BookGenre.LIKED, 1, "How Does It Feel?", "Citizen", Mode.MINOR, "AAAAB",
+            "♭VI–i–♭VII, а в конце мажорная IV — дорийский свет",
+            """
+            A: | bVImaj7 | bVIadd9 | i | bVII |
+            B: | i | bIII | bVII | IV |
+            """,
+        ),
+        entry(
+            "numb-yourself", BookGenre.LIKED, 1, "Numb Yourself", "Citizen", Mode.MINOR, "ABABC",
+            "i–♭VI–v: минор с минорной доминантой",
+            """
+            A: | i | bVI v | i | bVI v |
+            B: | bVI | i | bVI | i |
+            C: | bVI | bIII | bVI | bIII |
+            """,
+        ),
+        entry(
+            "in-blur", BookGenre.LIKED, 2, "In Blur", "Deafheaven", Mode.MINOR, "ABCABC",
+            "iv–♭VImaj⁷–♭III–i: шугейзовый минор",
+            """
+            A: | i | bVImaj7 | bIII | i |
+            B: | iv | bVImaj7 | bIII | i | iv | bVImaj7 | i | bVII |
+            C: | i | bVImaj7 iv | i | bVImaj7 iv | bVI | i | bVII iv | bVI bVII |
+            """,
+        ),
+        entry(
+            "between-the-bars", BookGenre.LIKED, 2, "Between the Bars", "Elliott Smith", Mode.MINOR, "AABAAB",
+            "V⁷ из гармонического минора и минорная ♭vi в конце припева",
+            """
+            A: | i7 | bVI | bIII | bVII | i7 | bVI | bIII V7 | bVI |
+            B: | bVI bVII | i | bVI bVII | i | bVI bVII | i bVI | bvi | bvi |
+            """,
+        ),
+        entry(
+            "full-circle", BookGenre.LIKED, 2, "Full Circle", "Half Moon Run", Mode.MINOR, "AAABA",
+            "♭VImaj⁷–v–iv⁶–i: минор шагами вниз",
+            """
+            A: | bVImaj7 | v | iv6 | i | i bIIImaj7 | bVII |
+            B: | i bIIImaj7 | bVII | i bIIImaj7 | bVII |
+            """,
+        ),
+        entry(
+            "bloodhail", BookGenre.LIKED, 1, "Bloodhail", "Have A Nice Life", Mode.MINOR, "AABAC",
+            "♭VI–i: два аккорда и вся тяжесть минора",
+            """
+            A: | bVI | i | bVI | i |
+            B: | bVI i | bVII |
+            C: | bIII | i | bVI | i |
+            """,
+        ),
+        entry(
+            "sea-of-worry", BookGenre.LIKED, 1, "Sea of Worry", "Have A Nice Life", Mode.MAJOR, "AABCC",
+            "IV и минорная iv подряд — заимствование из минора",
+            """
+            A: | iii | I | I | IVmaj7 iv |
+            B: | I | vi | I | vi | I | vi | iii | I |
+            C: | Imaj7 | vi | Imaj7 | vi | Imaj7 | vi | iii | I |
+            """,
+        ),
+        entry(
+            "obstacle-1", BookGenre.LIKED, 1, "Obstacle 1", "Interpol", Mode.LYDIAN, "ABABC",
+            "лидийский лад: Vmaj⁷ с #4 вместо обычной доминанты",
+            """
+            A: | I | iii | I | iii |
+            B: | Imaj7 | V | iii | Vmaj7 |
+            C: | I | Vmaj7 | I | Vmaj7 |
+            """,
+        ),
+        entry(
+            "something-changed", BookGenre.LIKED, 2, "Something Changed", "Interpol", Mode.MAJOR, "ABCDABCD",
+            "♭III⁶–♭VI–IV–I: тёмные краски из минора, а дом мажорный",
+            """
+            A: | bIII6 | bVI | IVsus2 | I |
+            B: | bIII6 | bVI | IVsus4 | I I7 |
+            C: | bIII6 | bVI | IVsus2 | I I7 |
+            D: | bIII6 | bVI | iv | I |
+            """,
+        ),
+        entry(
+            "dum-surfer", BookGenre.LIKED, 2, "Dum Surfer", "King Krule", Mode.MAJOR, "A",
+            "iiø⁷ и VImaj⁷ — джазовые краски вне лада",
+            "A: | Imaj7 iiø7 | Imaj7 iiø7 | Imaj7 iiø7 | VImaj7 IVmaj7 |",
+        ),
+        entry(
+            "my-kind-of-woman", BookGenre.LIKED, 1, "My Kind of Woman", "Mac DeMarco", Mode.MINOR, "AABAAB",
+            "♭III–iv–v–♭VI: лестница по натуральному минору",
+            """
+            A: | bVII bVI | bVII bIII | i | i |
+            B: | bIII iv | v bVI | iv | iv |
+            """,
+        ),
+        entry(
+            "january-1979", BookGenre.LIKED, 1, "January 1979", "mewithoutYou", Mode.MAJOR, "ABABCA",
+            "мажорная II в припеве — лидийский подъём",
+            """
+            A: | I | iii | I | iii |
+            B: | II | iii | II | II |
+            C: | I | V | I | Imaj7 | V | iii | V | V |
+            """,
+        ),
+        entry(
+            "in-the-afternoon", BookGenre.LIKED, 2, "In the Afternoon", "MGMT", Mode.PHRYGIAN, "ABABB",
+            "фригийский лад: ♭II над минорной тоникой",
+            """
+            A: | i | bvii | i | bvii | i | bII | bIII | bvii |
+            B: | bVI | bII | i | bvii | i | bII | bVI | bII |
+            """,
+        ),
+        entry(
+            "all-i-need", BookGenre.LIKED, 1, "All I Need", "Radiohead", Mode.MINOR, "ABAB",
+            "♭VI–i–♭III: минор, который звучит почти как мажор",
+            """
+            A: | bVI | i | bIII | bVI |
+            B: | bVI | i | bVI | i | bVI | i | bIII | bVI |
+            """,
+        ),
+        entry(
+            "daydreaming", BookGenre.LIKED, 2, "Daydreaming", "Radiohead", Mode.MINOR, "AABCAABC",
+            "IV и iv рядом: дорийская и обычная шестая ступень",
+            """
+            A: | i | bVImaj7 | bIII | bVImaj7 |
+            B: | i | bVImaj7 | bIII | IVsus2 |
+            C: | IVsus2 | iv | IVsus2 | iv |
+            """,
+        ),
+        entry(
+            "pyramid-song", BookGenre.LIKED, 2, "Pyramid Song", "Radiohead", Mode.PHRYGIAN, "AABABAB",
+            "♭II и ♭III над мажорной тоникой — фригийский вайб",
+            """
+            A: | I | bIImaj7 | bIII6 | bIImaj7 |
+            B: | i | bVIIadd9 | bIImaj7 | bIImaj7 |
+            """,
+        ),
+        entry(
+            "reckoner", BookGenre.LIKED, 2, "Reckoner", "Radiohead", Mode.MINOR, "AABCA",
+            "мажорная IV в миноре и V рядом с v",
+            """
+            A: | i bVII | bVI | i | bVI |
+            B: | i bVII | bVI i | bVII IV | bVI |
+            C: | bVI | i | V | V | bVI | i | V v | i |
+            """,
+        ),
+        entry(
+            "less-i-know", BookGenre.LIKED, 2, "The Less I Know the Better", "Tame Impala", Mode.MINOR, "ABCABC",
+            "неаполитанская ♭II в припеве",
+            """
+            A: | i | bVII | bIII | v bVII |
+            B: | v | i | bVII | bIII |
+            C: | bIII | i | bII | bII | bIII | i | bII | bVII |
+            """,
+        ),
+        entry(
+            "a-fragile-thing", BookGenre.LIKED, 1, "A Fragile Thing", "The Cure", Mode.MINOR, "AABCAABC",
+            "весь натуральный минор: i–iv–v–♭VI–♭VII",
+            """
+            A: | i | iv | v | bVI | bVII | iv |
+            B: | v | iv | v | bVI | v | iv | bVI | bVII |
+            C: | i bVII | i iv | i bVII | i |
+            """,
+        ),
+        entry(
+            "never-say-goodbye", BookGenre.LIKED, 1, "I Can Never Say Goodbye", "The Cure", Mode.MINOR, "ABAB",
+            "i–♭VII–v–♭VI: минор шагами вниз",
+            """
+            A: | i | bVII6 | v | bVI | i | bVII6 | v | iv |
+            B: | i | bVII6 | v | bVImaj7 | v | bVI | v | iv |
+            """,
+        ),
+        entry(
+            "someday", BookGenre.LIKED, 1, "Someday", "The Strokes", Mode.MAJOR, "AABCAB",
+            "I–ii–IV и I–V–vi–IV: классика гаражного рока",
+            """
+            A: | I | ii7 | IV | I |
+            B: | I V7 | vi | IV | I |
+            C: | V | V |
+            """,
+        ),
+        entry(
+            "head-in-the-ceiling-fan", BookGenre.LIKED, 1, "Head in the Ceiling Fan", "Title Fight", Mode.MAJOR, "ABCB",
+            "качели I–IV и минорная vii — редкий цвет",
+            """
+            A: | I | IV | V | I | iii | IV |
+            B: | I | IV | I | IV |
+            C: | vii | I | iii | IV |
+            """,
+        ),
+        entry(
+            "lefty", BookGenre.LIKED, 1, "Lefty", "Title Fight", Mode.MAJOR, "ABCABC",
+            "IV–ii–I и мажорная III в припеве",
+            """
+            A: | IV | ii | I | I |
+            B: | IV | iii | I | I |
+            C: | IV | ii | III | III |
+            """,
+        ),
+        entry(
+            "numb-but-i-still-feel-it", BookGenre.LIKED, 1, "Numb, But I Still Feel It", "Title Fight", Mode.MAJOR, "ABCAB",
+            "iii–IV–I: припев, который тянется к дому",
+            """
+            A: | I | iii | IV | vi |
+            B: | iii | IV | iii | IV | I | I |
+            C: | Imaj7 | vi | iii | iii |
+            """,
+        ),
+        entry(
+            "earfquake", BookGenre.LIKED, 2, "EARFQUAKE", "Tyler, The Creator", Mode.PHRYGIAN, "AABA",
+            "фригийский ♭IImaj⁷ над тоникой i⁷ и II⁷ в бридже",
+            """
+            A: | bIImaj7 | i7 | bvii7 | i7 |
+            B: | bIImaj7 | i7 | bvii7 | II7 |
+            """,
+        ),
+        entry(
+            "just-like-heaven", BookGenre.LIKED, 1, "Just Like Heaven", "The Cure", Mode.MAJOR, "AABAAB",
+            "I–V–ii–IV и ♭VII в припеве",
+            """
+            A: | I | V | ii | IV |
+            B: | vi | bVII | vi | bVII |
+            """,
+        ),
+        entry(
+            "all-the-rage-back-home", BookGenre.LIKED, 1, "All the Rage Back Home", "Interpol", Mode.MAJOR, "AABAAB",
+            "IV–vi–I: песня начинается не с дома",
+            """
+            A: | IV | vi | I | I |
+            B: | IV | vi | V | V |
+            """,
+        ),
         // ---------------------------------------------------------------- pop & rock
         entry(
             "stand-by-me", BookGenre.POP, 1, "Stand by Me", "Ben E. King", Mode.MAJOR, "A",

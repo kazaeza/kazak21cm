@@ -70,12 +70,12 @@ class AppSmokeTest {
     fun songbookPieceCanBeAddedAndOpened() {
         rule.onNodeWithContentDescription("Библиотека").performClick()
         rule.waitForIdle()
-        scrollTo("Stand by Me")
+        scrollTo("Covet")
         click("В мои")
         // The piece lands in «my songs» at the top of the list.
         rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
         rule.waitUntil(5_000) { rule.onAllNodesWithText("повтор:", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-        click("Stand by Me")
+        click("Covet")
         rule.waitForIdle()
         rule.onNodeWithText("Сыграть сейчас").assertIsDisplayed()
     }
