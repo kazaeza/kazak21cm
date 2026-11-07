@@ -45,40 +45,25 @@ class ChordAudition internal constructor(
     private val a4Hz: () -> Double,
     private val arranger: Arranger = Arranger(),
 ) {
-    /** The last tapped tile — it keeps its caption until the next tap or [clear]. */
+    /** The last tapped tile — it keeps its ring and its caption until the next tap or [clear]. */
     var heard: HeardChord? by mutableStateOf(null)
         private set
 
-    /** True while the strum still rings. */
-    var ringing: Boolean by mutableStateOf(false)
-        private set
-
     private var job: Job? = null
-    private var serial = 0
 
     fun tap(id: String, chord: ChordDegree, key: Key) {
         job?.cancel()
         output.a4Hz = a4Hz()
         heard = HeardChord(id, chord, key)
-        ringing = true
-        val mine = ++serial
-        job = scope.launch {
-            try {
-                output.play(arranger.strum(chord, key))
-            } finally {
-                if (serial == mine) ringing = false
-            }
-        }
+        job = scope.launch { output.play(arranger.strum(chord, key)) }
     }
 
-    /** True for the tile [id] while its chord rings. */
-    fun isRinging(id: String): Boolean = ringing && heard?.id == id
+    /** True for the tile [id] that was tapped last: it wears the ring while its caption is shown. */
+    fun isHeard(id: String): Boolean = heard?.id == id
 
     /** A new order, a new key: hush the chord and forget the caption. */
     fun clear() {
         job?.cancel()
-        serial++
-        ringing = false
         heard = null
     }
 }

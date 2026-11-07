@@ -678,7 +678,7 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
                             modifier = Modifier.heightIn(min = GameTouchTarget),
                             large = true,
                             onClick = if (listening) ({ audition.tap(id, c, task.key) }) else null,
-                            selected = feedback || audition.isRinging(id),
+                            selected = feedback || audition.isHeard(id),
                             onClickLabel = "Послушать аккорд",
                         )
                     }

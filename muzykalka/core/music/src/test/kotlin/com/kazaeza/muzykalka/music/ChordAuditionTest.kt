@@ -90,6 +90,9 @@ class ChordAuditionTest {
         assertEquals("рок-ход", role("bVII"))
         assertEquals("тоника", role("i", Mode.MINOR))
         assertEquals("параллельный мажор", role("bIII", Mode.MINOR))
+        assertEquals("доминанта параллельного мажора", role("bVII7", Mode.MINOR), "Autumn Leaves: the 7th chord on bVII leads to bIII")
+        assertEquals("седьмая ступень минора", role("bVII", Mode.MINOR))
+        assertEquals("рок-ход", role("bVII7"))
 
         assertTrue(quality("V9").startsWith("Нонаккорд"), quality("V9"))
         assertTrue(quality("Iadd9").contains("нона"), quality("Iadd9"))

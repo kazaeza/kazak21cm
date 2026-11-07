@@ -255,7 +255,7 @@ private fun HintCard(ui: TaperUi, audition: ChordAudition) {
                         DegreeFormatter.chord(song.firstChord, notation),
                         DegreeColors.of(song.firstChord.root),
                         onClick = ui.key?.let { k -> { audition.tap("first", song.firstChord, k) } },
-                        active = audition.isRinging("first"),
+                        active = audition.isHeard("first"),
                         onClickLabel = "Послушать аккорд",
                     )
                 }
@@ -310,7 +310,7 @@ internal fun SongSheet(song: Song, notation: DegreeNotation, audition: ChordAudi
                             DegreeFormatter.chord(c, notation),
                             DegreeColors.of(c.root),
                             onClick = if (tappable) ({ audition?.tap(id, c, key!!) }) else null,
-                            active = audition?.isRinging(id) == true,
+                            active = audition?.isHeard(id) == true,
                             onClickLabel = "Послушать аккорд",
                         )
                     }

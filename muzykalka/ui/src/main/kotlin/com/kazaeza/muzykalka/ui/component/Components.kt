@@ -378,7 +378,7 @@ fun DegreeChip(
  * one lightness, so every tile reads the same and none of them hides in the dark background.
  *
  * O-17: with [onClick] the tile is a button (a chord that sounds when tapped) and grows to the
- * game touch target; [active] draws the white ring around the one that is ringing now.
+ * game touch target; [active] draws the white ring around the one tapped last.
  */
 @Composable
 fun DegreeTile(
