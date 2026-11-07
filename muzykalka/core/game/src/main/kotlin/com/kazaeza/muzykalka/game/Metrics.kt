@@ -107,7 +107,7 @@ object Metrics {
     fun variantsOf(link: Link): Set<Variant> = when (link) {
         Link.NAME_TO_PLACE -> setOf(Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES)
         Link.PLACE_TO_NAME -> setOf(Variant.HUNT_REVERSE)
-        Link.SOUND_TO_NAME -> setOf(Variant.TIR_CLASSIC, Variant.TIR_DUEL, Variant.TIR_RADIO)
+        Link.SOUND_TO_NAME -> setOf(Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_DUEL, Variant.TIR_RADIO)
         Link.NAME_TO_SOUND -> setOf(Variant.KAMERTON_SING, Variant.KAMERTON_DIGITS)
         Link.PLACE_TO_SOUND -> setOf(Variant.KAMERTON_PREDICT)
         Link.SOUND_TO_PLACE -> setOf(Variant.PARROT_ECHO, Variant.PARROT_CALL_RESPONSE)

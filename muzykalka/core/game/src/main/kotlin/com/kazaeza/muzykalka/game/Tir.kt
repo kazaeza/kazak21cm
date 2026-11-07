@@ -41,6 +41,8 @@ data class TirTask(
     override val drone: List<MidiNote>? = null,
     /** O-06: brought back from an earlier day's miss. Shown only AFTER the answer — it would be a hint. */
     val review: TirReview? = null,
+    /** O-08: the chord held under the note instead of the tonic; the answer is still the degree in the key. */
+    val over: ChordDegree? = null,
 ) : DroneTask {
     override val replay: Score get() = question
 
@@ -103,6 +105,7 @@ class TirDriver(
 
     override fun nextTask(context: DriverContext): TirTask {
         settleReview(context.history)
+        if (variant == Variant.TIR_OVER_CHORDS) return overChordTask(context)
         val level = context.level.coerceIn(1, Levels.TIR.size)
         val r = context.random
         if (!usesDrone(level)) {
@@ -190,6 +193,42 @@ class TirDriver(
             key = key, tonic = tonic, notes = listOf(note), chords = emptyList(), noteChoices = pad,
             chordChoices = emptyList(), question = question, drone = c.drone,
             review = reviewOf(review?.second, prefix + degree) { code -> pad.firstOrNull { it.toString() == code }?.let { DegreeFormatter.degree(it, notation) } },
+        )
+    }
+
+    /**
+     * O-08 (RESEARCH §4 D): a degree's feeling depends on the chord under it (Arthur 2018), so a
+     * «vibe» learnt over the drone alone may not carry into songs. The key is set as in Tir — a
+     * block of [KEY_BLOCK] questions opening with the scale over I — then every question holds
+     * another chord of the key under the note. Level 1: I, IV, V, vi (i, iv, v, ♭VI in minor);
+     * level 2: every chord of the scale but vii°.
+     */
+    private fun overChordTask(context: DriverContext): TirTask {
+        val level = context.level.coerceIn(1, Levels.TIR_CHORDS.size)
+        val r = context.random
+        val blockId = OVER_CHORDS_BLOCK + level
+        val kept = blockKey?.takeIf { blockLeft > 0 && blockLevel == blockId }
+        val key = kept ?: keyPicker.next(pickMode(2, r))
+        val newKey = kept == null
+        if (newKey) {
+            blockKey = key
+            blockLevel = blockId
+            blockLeft = KEY_BLOCK
+        }
+        blockLeft--
+        val steps = if (level == 1) CHORD_STEPS_L1 else CHORD_STEPS_L2
+        val chord = Harmony.diatonicChord(key.mode, if (newKey) 0 else steps[r.nextInt(steps.size)])
+        val tonic = key.tonicAtOrAbove(MidiNote(55))
+        val pad = key.mode.degrees
+        val prefix = "tir:chords:L$level:${ChordParser.formatRoman(chord)}:"
+        val degree = ItemWeights.pick(r, pad) { ItemWeights.weight(prefix + it, context.history) }
+        val octaves = listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in 55..79 }
+        val note = DegreeNote(degree, octaves[r.nextInt(octaves.size)])
+        val question = arranger.line(listOf(note), key, Voice.TONE, beatsEach = 2.0, tempoBpm = TEMPO, tonicFloor = tonic)
+        return TirTask(
+            itemKey = prefix + degree, prompt = prompt(key, if (newKey) orientation(key) else null, question), kind = TirKind.NOTE,
+            level = level, key = key, tonic = tonic, notes = listOf(note), chords = emptyList(), noteChoices = pad,
+            chordChoices = emptyList(), question = question, drone = arranger.chordDrone(chord, key), over = chord,
         )
     }
 
@@ -347,6 +386,11 @@ class TirDriver(
         /** Single notes and melodies are heard over the drone; chords keep the cadence. */
         fun usesDrone(level: Int): Boolean = level != 5 && level != 6
 
+        /** O-08: chords under the note (steps of the scale, 0 = I). */
+        val CHORD_STEPS_L1 = listOf(0, 3, 4, 5)
+        val CHORD_STEPS_L2 = listOf(0, 1, 2, 3, 4, 5)
+        private const val OVER_CHORDS_BLOCK = 100
+
         /** O-06: while earlier days' misses wait, this share of questions comes from them. */
         const val REVIEW_SHARE = 0.7
         const val MAX_REVIEW_ASKS = 3
@@ -381,6 +425,9 @@ class TirDriver(
             0 to listOf(3, 5, 6, 2, 4), 1 to listOf(4, 0), 2 to listOf(5, 3, 6), 3 to listOf(0, 6, 4, 5),
             4 to listOf(0, 5), 5 to listOf(6, 2, 3), 6 to listOf(2, 0, 5),
         )
+
+        /** «Над аккордами»: a little slower than over the drone — the ear has to hold the key. */
+        const val OVER_CHORDS_TARGET_MS = 3_000L
 
         /** Median-latency targets for promotion, per level (ROADMAP G-02). */
         fun promotionTargetMs(level: Int): Long = when (level) {

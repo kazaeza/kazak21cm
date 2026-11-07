@@ -41,6 +41,7 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     HUNT_ALL_OCTAVES(ModeId.HUNT, "Все октавы", GuitarNeed.REQUIRED, "0.1"),
     HUNT_REVERSE(ModeId.HUNT, "Обратная охота", GuitarNeed.NONE, "0.1"),
     TIR_CLASSIC(ModeId.TIR, "Тир", GuitarNeed.NONE, "0.1"),
+    TIR_OVER_CHORDS(ModeId.TIR, "Над аккордами", GuitarNeed.NONE, "0.1"),
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.2"),
     TIR_RADIO(ModeId.TIR, "Радио", GuitarNeed.NONE, "0.3"),
     KAMERTON_SING(ModeId.KAMERTON, "Спой ступень", GuitarNeed.NONE, "0.1"),
@@ -75,6 +76,12 @@ object Levels {
         "ходы из 4 аккордов",
         "лады: дорийский, фригийский, гармонический минор",
     )
+    /** «Над аккордами» (O-08): the degree in the key, heard over chords of the key instead of the tonic. */
+    val TIR_CHORDS = listOf(
+        "над I · IV · V · vi",
+        "над всеми аккордами лада",
+    )
+
     /** Taper «Ходы»: progressions from the most banal up (see [StepsLadder]). */
     val STEPS = listOf(
         "два аккорда: I–V, I–IV",

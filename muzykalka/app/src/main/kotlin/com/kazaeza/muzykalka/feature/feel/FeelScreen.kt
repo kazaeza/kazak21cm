@@ -34,6 +34,7 @@ import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.ChordDegree
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNote
@@ -74,13 +75,21 @@ enum class FeelScope(val ru: String, val mode: Mode) {
     fun degrees(): List<Degree> = if (this == CHROMATIC) Degree.CHROMATIC else mode.degrees
 }
 
+/** O-08: what sounds under the degree — the tonic drone, or a chord of the key (step of the scale). */
+const val FEEL_DRONE = -1
+val FEEL_CONTEXTS = listOf(FEEL_DRONE, 0, 3, 4, 5)
+
 data class FeelUi(
     val key: Key? = null,
     val scope: FeelScope = FeelScope.MAJOR,
+    /** [FEEL_DRONE] or a step of the scale (0 = I): the degree is heard over that chord. */
+    val context: Int = FEEL_DRONE,
     val playing: Degree? = null,
     val droneOn: Boolean = false,
     val settings: Settings = Settings(),
-)
+) {
+    val chord: ChordDegree? get() = if (context == FEEL_DRONE) null else Harmony.diatonicChord(scope.mode, context)
+}
 
 /**
  * «Вайб ступеней» (ADR-015, ADR-017): the tonic drone is home; tap a degree to hear it sung over
@@ -113,6 +122,16 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
         state.update { it.copy(scope = scope, key = if (scope.mode != it.scope.mode) keys.next(scope.mode) else it.key) }
     }
 
+    /** Same degree, another chord under it (RESEARCH §4 D): «5 над I — опора, 5 над IV — тянет вниз». */
+    fun setContext(step: Int) {
+        state.update { it.copy(context = step) }
+        val s = state.value
+        val key = s.key ?: return
+        if (s.droneOn) graph.audioOutput.drone(droneFor(key, s))
+    }
+
+    private fun droneFor(key: Key, s: FeelUi): List<MidiNote> = s.chord?.let { arranger.chordDrone(it, key) } ?: arranger.drone(key)
+
     fun play(degree: Degree) = launchPlay(listOf(degree))
 
     /** Every degree in turn over one drone: a passive listening loop for the commute. */
@@ -122,7 +141,7 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
     fun droneOnly() {
         val key = state.value.key ?: return
         job?.cancel()
-        graph.audioOutput.drone(arranger.drone(key))
+        graph.audioOutput.drone(droneFor(key, state.value))
         state.update { it.copy(droneOn = true, playing = null) }
     }
 
@@ -132,7 +151,7 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
         job?.cancel()
         job = viewModelScope.launch {
             if (!wasOn) {
-                graph.audioOutput.drone(arranger.drone(key))
+                graph.audioOutput.drone(droneFor(key, state.value))
                 state.update { it.copy(droneOn = true) }
                 delay(1_500)
             }
@@ -193,6 +212,14 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
         item(key = "controls") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ChoiceRow(FeelScope.entries, ui.scope, { it.ru }, vm::setScope, colors = Accents.Tir)
+                SectionLabel("под ступенью")
+                ChoiceRow(
+                    FEEL_CONTEXTS,
+                    ui.context,
+                    { step -> if (step == FEEL_DRONE) "дрон" else DegreeFormatter.chord(Harmony.diatonicChord(ui.scope.mode, step), notation) },
+                    vm::setContext,
+                    colors = Accents.Tir,
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (key != null) DegreeChip("🔑 " + RuNames.key(key), Juicy.Gold, large = true)
                     Spacer(Modifier.weight(1f))
@@ -204,7 +231,7 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
             item(key = "row-" + pair.joinToString { it.toString() }) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     pair.forEach { d ->
-                        VibeCard(d, playing = ui.playing == d, notation = notation, mode = ui.scope.mode, modifier = Modifier.weight(1f)) { vm.play(d) }
+                        VibeCard(d, playing = ui.playing == d, notation = notation, mode = ui.scope.mode, over = ui.chord, modifier = Modifier.weight(1f)) { vm.play(d) }
                     }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
@@ -233,6 +260,7 @@ private fun VibeCard(
     playing: Boolean,
     notation: com.kazaeza.muzykalka.music.DegreeNotation,
     mode: Mode,
+    over: ChordDegree?,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -261,6 +289,10 @@ private fun VibeCard(
         Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
         Spacer(Modifier.height(4.dp))
         Text(vibe.line, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+        if (over != null) {
+            Spacer(Modifier.height(4.dp))
+            Text(DegreeVibes.overChord(degree, over, mode, notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+        }
         Spacer(Modifier.height(6.dp))
         SectionLabel(DegreeVibes.pathHome(degree, mode, notation), color = color.copy(alpha = 0.9f))
     }

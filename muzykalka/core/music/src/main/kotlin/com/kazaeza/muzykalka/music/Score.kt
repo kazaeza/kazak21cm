@@ -92,6 +92,16 @@ class Arranger(
         return listOf(low, low + 12)
     }
 
+    /**
+     * O-08: a chord of [key] held as the drone instead of the tonic — its root low (from
+     * [DRONE_FLOOR]) and the triad an octave above. At most four notes, as the drone bank holds.
+     */
+    fun chordDrone(chord: ChordDegree, key: Key): List<MidiNote> {
+        val rootPc = key.pitchClassOf(chord.root)
+        val low = DRONE_FLOOR + (rootPc - DRONE_FLOOR.pitchClass)
+        return listOf(low) + chord.quality.intervals.take(3).map { low + 12 + it }
+    }
+
     /** A melodic line; the tonic of octave 0 is placed at or above [tonicFloor]. */
     fun line(
         notes: List<DegreeNote>,

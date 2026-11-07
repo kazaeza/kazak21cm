@@ -95,6 +95,10 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DegreeChip("🔑 " + RuNames.key(task.key), Juicy.Gold)
+                    task.over?.let { chord ->
+                        Spacer(Modifier.width(8.dp))
+                        DegreeChip("над " + DegreeFormatter.chord(chord, ui.notation), DegreeColors.of(chord.root))
+                    }
                     Spacer(Modifier.width(10.dp))
                     Text(
                         "🔁",
@@ -126,6 +130,9 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                             val vibe = DegreeVibes.of(d)
                             Spacer(Modifier.height(6.dp))
                             Text(vibe.word, style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(d))
+                            task.over?.let { chord ->
+                                Text(DegreeVibes.overChord(d, chord, task.key.mode, ui.notation), style = MaterialTheme.typography.titleMedium, color = Juicy.Text, textAlign = TextAlign.Center)
+                            }
                             Text(DegreeVibes.pathHome(d, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
                         }
                         task.review?.let { r ->

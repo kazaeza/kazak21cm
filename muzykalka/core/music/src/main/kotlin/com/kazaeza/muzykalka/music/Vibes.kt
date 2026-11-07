@@ -26,6 +26,29 @@ object DegreeVibes {
 
     fun of(degree: Degree): DegreeVibe = BY_SEMITONE[degree.semitones]
 
+    /**
+     * O-08 (RESEARCH §4 D): the same degree feels different over another chord. A chord tone rests
+     * on it («над IV — опора: терция»); any other degree leans to the nearest chord tone, down
+     * when both are as near («над IV — тянет вниз к 4»).
+     */
+    fun overChord(degree: Degree, chord: ChordDegree, mode: Mode, notation: DegreeNotation): String {
+        val name = DegreeFormatter.chord(chord, notation)
+        val tones = chord.quality.intervals.take(4).map { Math.floorMod(it, 12) }
+        val rel = Math.floorMod(degree.semitones - chord.root.semitones, 12)
+        when (tones.indexOf(rel)) {
+            0 -> return "над $name — опора: корень аккорда"
+            1 -> return "над $name — опора: терция аккорда"
+            2 -> return "над $name — опора: квинта аккорда"
+            3 -> return "над $name — опора: септима аккорда"
+        }
+        val down = tones.minOf { Math.floorMod(rel - it, 12) }
+        val up = tones.minOf { Math.floorMod(it - rel, 12) }
+        val goesDown = down <= up
+        val to = Math.floorMod(degree.semitones + if (goesDown) -down else up, 12)
+        val target = mode.degrees.firstOrNull { it.semitones == to } ?: Degree.canonical(to)
+        return "над $name — тянет ${if (goesDown) "вниз" else "вверх"} к ${DegreeFormatter.degree(target, notation)}"
+    }
+
     /** «путь домой: 6 7 1» — the resolution the app plays, in the user's notation. */
     fun pathHome(degree: Degree, mode: Mode, notation: DegreeNotation): String {
         val path = Harmony.resolution(DegreeNote(degree), mode)

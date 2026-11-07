@@ -119,13 +119,14 @@ private const val DRONE_SETTLE_MS = 1_500L
 
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
-    val PLAYABLE = setOf(Variant.TIR_CLASSIC, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE, Variant.TAPER_STEPS, Variant.KAMERTON_SING)
+    val PLAYABLE = setOf(Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE, Variant.TAPER_STEPS, Variant.KAMERTON_SING)
 
     fun maxLevel(v: Variant): Int = when (v) {
         Variant.HUNT_FIND -> Levels.HUNT.size
         Variant.HUNT_REVERSE -> 3
         Variant.HUNT_ALL_OCTAVES -> 1
         Variant.TIR_CLASSIC -> Levels.TIR.size
+        Variant.TIR_OVER_CHORDS -> Levels.TIR_CHORDS.size
         Variant.TAPER_STEPS -> Levels.STEPS.size
         // Only «ступени от тоники» so far; intervals and melodies are later levels of K-01.
         Variant.KAMERTON_SING -> 1
@@ -140,14 +141,14 @@ object Drills {
 
     fun levelName(v: Variant, level: Int): String = when (v.mode) {
         ModeId.HUNT -> if (v == Variant.HUNT_ALL_OCTAVES) "весь гриф" else Levels.HUNT.getOrElse(level - 1) { "" }
-        ModeId.TIR -> Levels.TIR.getOrElse(level - 1) { "" }
+        ModeId.TIR -> (if (v == Variant.TIR_OVER_CHORDS) Levels.TIR_CHORDS else Levels.TIR).getOrElse(level - 1) { "" }
         ModeId.TAPER -> Levels.STEPS.getOrElse(level - 1) { "" }
         ModeId.KAMERTON -> Levels.KAMERTON.getOrElse(level - 1) { "" }
         else -> ""
     }
 
     fun promotionTargetMs(v: Variant, level: Int): Long = when (v.mode) {
-        ModeId.TIR -> TirDriver.promotionTargetMs(level)
+        ModeId.TIR -> if (v == Variant.TIR_OVER_CHORDS) TirDriver.OVER_CHORDS_TARGET_MS else TirDriver.promotionTargetMs(level)
         ModeId.TAPER -> StepsDriver.PROMOTION_TARGET_MS
         ModeId.KAMERTON -> SingDriver.PROMOTION_TARGET_MS
         else -> HuntDriver.promotionTargetMs(level)
@@ -170,7 +171,7 @@ object Drills {
         val random = Random(System.nanoTime())
         return when (spec.variant) {
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
-            Variant.TIR_CLASSIC, Variant.TIR_DUEL, Variant.TIR_RADIO ->
+            Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_DUEL, Variant.TIR_RADIO ->
                 RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review), config, random, level, history, epochOffsetMs)
             // Without headphones the drone would leak into the microphone (ADR-021).
             Variant.KAMERTON_SING -> RoundEngine(SingDriver(KeyPicker(random), settings.degreeNotation, withDrone = headphones), config, random, level, history, epochOffsetMs)
