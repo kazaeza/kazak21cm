@@ -297,6 +297,56 @@ object SongBook {
             B: | IV | vi | V | V |
             """,
         ),
+        entry(
+            "lotus-flower", BookGenre.LIKED, 2, "Lotus Flower", "Radiohead", Mode.MINOR, "ABAB",
+            "в куплете IV мажорная (дорийский привкус), в припеве она же минорная: i–IV и ♭VI–iv–♭III",
+            """
+            A: | i | IV | i | i | IV | i |
+            B: | bVI iv | bIII | bVI iv | bIII bVI | iv | bIII | bVI iv | bIII i |
+            """,
+        ),
+        entry(
+            "let-it-happen", BookGenre.LIKED, 2, "Let It Happen", "Tame Impala", Mode.MAJOR, "AABAB",
+            "♭VI–iv–V над мажорной тоникой, а потом ii–♭VII–I–IV",
+            """
+            A: | bVI | iv | V |
+            B: | ii bVII | I IV | ii bVII | I IV |
+            """,
+        ),
+        entry(
+            "mrahc", BookGenre.LIKED, 1, "Mrahc", "Title Fight", Mode.MAJOR, "ABCAC",
+            "I–vi–III–IV, а в припеве ♭II и ♭VI: сдвиг на полтона вверх и вниз",
+            """
+            A: | I | vi | III | IV |
+            B: | I | III | I | III |
+            C: | I | vi | bII | bVI |
+            """,
+        ),
+        entry(
+            "sleep", BookGenre.LIKED, 1, "Sleep", "Citizen", Mode.MINOR, "AABB",
+            "минор по кругу: i–♭III и i–♭VII",
+            """
+            A: | i | bIII | i | bIII |
+            B: | i | bVII | i | bVII |
+            """,
+        ),
+        entry(
+            "call-me-in-the-afternoon", BookGenre.LIKED, 1, "Call Me In The Afternoon", "Half Moon Run", Mode.MAJOR, "AABAB",
+            "I–IV в куплете, в припеве опора уезжает на vi: vi–I–IV–V",
+            """
+            A: | I | IV | I | IV |
+            B: | vi | I | IV | IV | V | vi |
+            """,
+        ),
+        entry(
+            "if-you-really-love-nothing", BookGenre.LIKED, 2, "If You Really Love Nothing", "Interpol", Mode.MAJOR, "ABCAB",
+            "куплет в мажоре, припев в одноимённом миноре над той же тоникой: i–v–♭III–iv",
+            """
+            A: | I | vi iii II | I | vi iii | I vi | iii V |
+            B: | i v bIII | iv | i v bIII | iv |
+            C: | I vi | iii | I vi | iii | V |
+            """,
+        ),
         // ---------------------------------------------------------------- pop & rock
         entry(
             "stand-by-me", BookGenre.POP, 1, "Stand by Me", "Ben E. King", Mode.MAJOR, "A",
