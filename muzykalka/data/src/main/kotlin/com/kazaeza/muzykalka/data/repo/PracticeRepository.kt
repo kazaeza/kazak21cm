@@ -7,11 +7,14 @@ import com.kazaeza.muzykalka.data.db.MuzykalkaDatabase
 import com.kazaeza.muzykalka.data.db.OrderLogEntity
 import com.kazaeza.muzykalka.data.db.SessionEntity
 import com.kazaeza.muzykalka.game.AttemptRecord
+import com.kazaeza.muzykalka.game.HintStep
 import com.kazaeza.muzykalka.game.OrderFact
 import com.kazaeza.muzykalka.game.OrderResult
+import com.kazaeza.muzykalka.game.SelfGrade
 import com.kazaeza.muzykalka.game.Skill
 import com.kazaeza.muzykalka.game.Variant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 enum class SessionKind { SET, MINIMAL, FREE, ENTRANCE_EXAM, CREDIT }
@@ -23,7 +26,8 @@ data class OrderLogRow(
     val keyLabel: String,
     val maxHint: String,
     val selfGrade: String,
-    val formulaAccuracy: Double,
+    /** «Что это было?» score; null = not asked (every order since O-13). */
+    val formulaAccuracy: Double?,
     val rating: Int,
     val playableNow: Boolean,
     val tips: Int,
@@ -77,7 +81,7 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
             OrderLogEntity(
                 itemId = result.item.id, sessionId = sessionId, studyDay = studyDay, keyLabel = result.key.toString(),
                 maxHint = result.outcome.maxHint.name, selfGrade = result.outcome.self.name,
-                formulaAccuracy = result.outcome.formulaAccuracy, startLatencyMs = result.outcome.startLatencyMs,
+                formulaAccuracy = result.outcome.formulaAccuracy ?: OrderLogEntity.NOT_ASKED, startLatencyMs = result.outcome.startLatencyMs,
                 rating = result.rating.value, playableNow = result.playableNow, tips = result.tips, atEpochMs = clock(),
             ),
         )
@@ -90,8 +94,23 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
         db.orders().observeAll().map { rows -> rows.map { OrderFact(it.itemId, it.studyDay, it.playableNow, it.atEpochMs) } }
 
     fun observeOrdersFor(itemId: String): Flow<List<OrderLogRow>> = db.orders().observeFor(itemId).map { rows ->
-        rows.map { OrderLogRow(it.itemId, it.keyLabel, it.maxHint, it.selfGrade, it.formulaAccuracy, it.rating, it.playableNow, it.tips, it.atEpochMs) }
+        rows.map { OrderLogRow(it.itemId, it.keyLabel, it.maxHint, it.selfGrade, it.formulaAccuracy.takeIf { f -> f >= 0 }, it.rating, it.playableNow, it.tips, it.atEpochMs) }
     }
+
+    /**
+     * O-13: where the next order of each item starts on the hint ladder (vanishing cues), from its
+     * latest order. Items never ordered are absent.
+     */
+    suspend fun lastOrders(): Map<String, Pair<HintStep, SelfGrade>> =
+        db.orders().observeAll().first()
+            .groupBy { it.itemId }
+            .mapNotNull { (id, rows) ->
+                val last = rows.maxBy { it.atEpochMs }
+                val hint = runCatching { HintStep.valueOf(last.maxHint) }.getOrNull()
+                val self = runCatching { SelfGrade.valueOf(last.selfGrade) }.getOrNull()
+                if (hint == null || self == null) null else id to (hint to self)
+            }
+            .toMap()
 
     fun observeDueCount(today: Int): Flow<Int> = db.srs().observeDueCount(today)
 

@@ -44,22 +44,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kazaeza.muzykalka.LocalAppGraph
-import com.kazaeza.muzykalka.feature.common.ChordInputPanel
-import com.kazaeza.muzykalka.feature.common.DegreeInputPanel
 import com.kazaeza.muzykalka.feature.common.KeepScreenOn
 import com.kazaeza.muzykalka.feature.common.PauseOverlay
 import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.feature.common.ruDue
 import com.kazaeza.muzykalka.game.HintStep
 import com.kazaeza.muzykalka.game.SelfGrade
+import com.kazaeza.muzykalka.game.TaperGrading
 import com.kazaeza.muzykalka.game.TaperPhase
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
-import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.Song
 import com.kazaeza.muzykalka.srs.Rating
 import com.kazaeza.muzykalka.ui.component.CountUpText
-import com.kazaeza.muzykalka.ui.component.DegreeChip
+import com.kazaeza.muzykalka.ui.component.DegreeTile
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
 import com.kazaeza.muzykalka.ui.component.GradientText
@@ -171,7 +169,7 @@ private fun OrderFlow(ui: TaperUi, vm: TaperViewModel) {
     OrderTicket(item.title, item.song?.artist, ui.keyText, ui.phase == TaperPhase.PLAYING)
     when (ui.phase) {
         TaperPhase.PLAYING -> {
-            if (ui.hint != HintStep.NONE) HintCard(ui, vm)
+            if (ui.hint != HintStep.NONE) HintCard(ui)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 val next = ui.hint.next()
                 if (ui.hintsAllowed && next != null) {
@@ -186,7 +184,11 @@ private fun OrderFlow(ui: TaperUi, vm: TaperViewModel) {
             }
             JuicyButton("Сыграл", onClick = vm::played, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "✅")
             Text(
-                "Сыграй песню целиком в этой тональности, без листа. Застрял — бери подсказку: они открываются по одной ступеньке и срезают звёзды.",
+                if (ui.hint == HintStep.TOP) {
+                    "Пока песня новая, ступени открыты сразу. Сыграл чисто — в следующий раз подсказка будет на ступеньку меньше, и так до «по памяти»."
+                } else {
+                    "Сыграй в этой тональности. Застрял — бери подсказку: они открываются по одной ступеньке и срезают звёзды."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = Juicy.TextDim,
             )
@@ -197,7 +199,6 @@ private fun OrderFlow(ui: TaperUi, vm: TaperViewModel) {
             JuicyButton("С запинками", onClick = { vm.grade(SelfGrade.STUMBLED) }, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "😅")
             JuicyButton("Не вспомнил", onClick = { vm.grade(SelfGrade.FAILED) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Bad, leading = "🙈")
         }
-        TaperPhase.FORMULA -> FormulaEntry(ui, vm)
         TaperPhase.RESULT -> ResultCard(ui, vm)
         TaperPhase.FINISHED -> Unit
     }
@@ -229,7 +230,7 @@ internal fun OrderTicket(title: String, artist: String?, keyText: String, fresh:
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HintCard(ui: TaperUi, vm: TaperViewModel) {
+private fun HintCard(ui: TaperUi) {
     val item = ui.item ?: return
     val notation = ui.settings.degreeNotation
     GlassCard(Modifier.fillMaxWidth(), accent = BAR) {
@@ -239,24 +240,22 @@ private fun HintCard(ui: TaperUi, vm: TaperViewModel) {
         val melody = item.melody
         if (song != null) {
             Text("Форма: ${song.formString} · ${song.barCount} тактов", style = MaterialTheme.typography.titleMedium)
-            if (ui.hint >= HintStep.FIRST_CHORD) {
+            if (ui.hint == HintStep.FIRST_CHORD) {
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Начало: ", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)
-                    DegreeChip(DegreeFormatter.chord(song.firstChord, notation), DegreeColors.of(song.firstChord.root), large = true)
+                    DegreeTile(DegreeFormatter.chord(song.firstChord, notation), DegreeColors.of(song.firstChord.root))
                 }
             }
-            if (ui.hint >= HintStep.DEGREES) {
-                SongSheet(song, vm.currentKey(), notation, letters = ui.hint == HintStep.FULL_SHEET)
-            }
+            if (ui.hint >= HintStep.DEGREES) SongSheet(song, notation)
         } else if (melody != null) {
             Text("${melody.notes.size} нот", style = MaterialTheme.typography.titleMedium)
             if (ui.hint >= HintStep.FIRST_CHORD) {
                 Text("Начало: " + DegreeFormatter.degree(melody.notes.first().degree, notation), style = MaterialTheme.typography.titleMedium)
             }
             if (ui.hint >= HintStep.DEGREES) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    melody.notes.forEach { n -> DegreeChip(DegreeFormatter.degree(n.degree, notation), DegreeColors.of(n.degree)) }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    melody.notes.forEach { n -> DegreeTile(DegreeFormatter.degree(n.degree, notation), DegreeColors.of(n.degree)) }
                 }
             }
         }
@@ -264,70 +263,29 @@ private fun HintCard(ui: TaperUi, vm: TaperViewModel) {
 }
 
 /**
- * The song as bars of degree chips. Rule 1: [letters] (absolute chord names next to the degrees)
- * is only ever true on the very last step of the hint ladder.
+ * The song as bars of big degree tiles (O-13): solid colours of one lightness, dark ink, so each
+ * chord is read at a glance. Degrees only — chords in letters are never shown (rule 1, ADR-027).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun SongSheet(song: Song, key: Key?, notation: DegreeNotation, letters: Boolean) {
+internal fun SongSheet(song: Song, notation: DegreeNotation) {
     song.sections.forEach { section ->
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Text(section.label, style = MaterialTheme.typography.titleLarge, color = Juicy.Gold)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Spacer(Modifier.height(6.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             section.bars.forEach { bar ->
                 Row(
                     Modifier
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(Juicy.Ink4.copy(alpha = 0.6f))
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    bar.chords.forEach { c ->
-                        val label = if (letters && key != null) {
-                            c.absoluteSymbol(key) + " · " + DegreeFormatter.chord(c, notation)
-                        } else {
-                            DegreeFormatter.chord(c, notation)
-                        }
-                        DegreeChip(label, DegreeColors.of(c.root))
-                    }
+                    bar.chords.forEach { c -> DegreeTile(DegreeFormatter.chord(c, notation), DegreeColors.of(c.root)) }
                 }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun FormulaEntry(ui: TaperUi, vm: TaperViewModel) {
-    val item = ui.item ?: return
-    val notation = ui.settings.degreeNotation
-    GlassCard(Modifier.fillMaxWidth(), accent = BAR) {
-        Text("Что это было?", style = MaterialTheme.typography.headlineMedium)
-        Text(
-            if (item.song != null) "Набери аккорды ступенями: каждую часть по разу, повторы подряд не нужны." else "Набери рифф ступенями.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Juicy.TextDim,
-        )
-        Spacer(Modifier.height(10.dp))
-        val count = if (item.song != null) ui.enteredChords.size else ui.enteredDegrees.size
-        Text("$count / ${ui.expectedLength}", style = MaterialTheme.typography.titleMedium, color = Juicy.Gold)
-        Spacer(Modifier.height(6.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (item.song != null) {
-                ui.enteredChords.forEachIndexed { i, c -> DegreeChip(DegreeFormatter.chord(c, notation), DegreeColors.of(c.root), modifier = Modifier.pop(i + 1)) }
-            } else {
-                ui.enteredDegrees.forEachIndexed { i, d -> DegreeChip(DegreeFormatter.degree(d, notation), DegreeColors.of(d), modifier = Modifier.pop(i + 1)) }
-            }
-        }
-    }
-    if (item.song != null) {
-        ChordInputPanel(item.mode, notation, onChord = vm::addChord)
-    } else {
-        DegreeInputPanel(notation, onNote = { vm.addDegree(it.degree) })
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        GhostButton("⌫", onClick = vm::undo, modifier = Modifier.weight(0.3f))
-        JuicyButton("Готово", onClick = vm::submitFormula, modifier = Modifier.weight(0.7f), colors = BAR, leading = "🧾")
     }
 }
 
@@ -348,7 +306,13 @@ private fun ResultCard(ui: TaperUi, vm: TaperViewModel) {
             Spacer(Modifier.height(6.dp))
             CountUpText(r.tips, MaterialTheme.typography.displayMedium, colors = BAR, prefix = "+", suffix = " ⭐")
             Spacer(Modifier.height(8.dp))
-            Text("Формула: ${(r.outcome.formulaAccuracy * 100).toInt()}% · подсказка: ${r.outcome.maxHint.ru}", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+            Text("подсказка: ${r.outcome.maxHint.ru}", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+            val nextStart = TaperGrading.startHint(r.outcome.maxHint, r.outcome.self)
+            Text(
+                if (nextStart == HintStep.NONE) "В следующий раз — по памяти" else "В следующий раз начнём с подсказки «${nextStart.ru}»",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Juicy.TextDim,
+            )
             Text(
                 "Снова попрошу: " + ruDue(r.newCard.dueDay, ui.today),
                 style = MaterialTheme.typography.titleMedium,

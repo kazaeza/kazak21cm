@@ -1,7 +1,5 @@
 package com.kazaeza.muzykalka.game
 
-import com.kazaeza.muzykalka.music.ChordDegree
-import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.Melody
@@ -19,6 +17,8 @@ data class TaperItem(
     val song: Song? = null,
     val melody: Melody? = null,
     val card: CardState,
+    /** Where this order starts on the hint ladder — see [TaperGrading.startHint]. */
+    val startHint: HintStep = HintStep.NONE,
 ) {
     init {
         require((song == null) != (melody == null)) { "A Taper item is either a song or a melody" }
@@ -33,9 +33,6 @@ enum class TaperPhase {
 
     /** «Как прошло?» — self-assessment. */
     SELF_GRADE,
-
-    /** «Что это было?» — the formula is entered in degrees. */
-    FORMULA,
 
     /** Tips and the verdict for this order. */
     RESULT,
@@ -56,9 +53,9 @@ data class OrderResult(
 )
 
 /**
- * The Taper loop (ticket G-03): order → play (optionally with hints, one step at a time) →
- * self-grade → «Что это было?» → FSRS. Pure: time comes in as arguments, the caller announces,
- * listens and persists.
+ * The Taper loop (ticket G-03): order → play (the hints start where [TaperItem.startHint] says and
+ * climb one step at a time) → self-grade → FSRS. Pure: time comes in as arguments, the caller
+ * announces, listens and persists. «Что это было?» (typing the formula) is gone since O-13.
  */
 class TaperSession(
     items: List<TaperItem>,
@@ -107,7 +104,7 @@ class TaperSession(
         }
         current = item
         key = keyPicker.next(item.mode)
-        hint = HintStep.NONE
+        hint = if (hintsAllowed) minOf(item.startHint, HintStep.TOP) else HintStep.NONE
         orderedAtMs = nowMs
         startLatencyMs = null
         selfGrade = null
@@ -134,28 +131,12 @@ class TaperSession(
         if (phase == TaperPhase.PLAYING) phase = TaperPhase.SELF_GRADE
     }
 
-    fun grade(grade: SelfGrade) {
-        if (phase != TaperPhase.SELF_GRADE) return
+    /** «Как прошло?» closes the order: rating, FSRS and tips. Null when not asked for a grade now. */
+    fun grade(grade: SelfGrade): OrderResult? {
+        if (phase != TaperPhase.SELF_GRADE) return null
         selfGrade = grade
-        phase = TaperPhase.FORMULA
-    }
-
-    /** «Что это было?» for a song. */
-    fun submitChords(chords: List<ChordDegree>): OrderResult {
-        val song = requireNotNull(current?.song) { "Current item is not a song" }
-        return complete(TaperGrading.formulaAccuracy(TaperGrading.expectedFormula(song), chords))
-    }
-
-    /** «Что это было?» for a riff. */
-    fun submitDegrees(degrees: List<Degree>): OrderResult {
-        val melody = requireNotNull(current?.melody) { "Current item is not a melody" }
-        return complete(TaperGrading.melodyAccuracy(melody.notes.map { it.degree }, degrees))
-    }
-
-    private fun complete(accuracy: Double): OrderResult {
-        check(phase == TaperPhase.FORMULA) { "Formula is entered after the self-grade" }
         val item = requireNotNull(current)
-        val outcome = OrderOutcome(item.id, hint, requireNotNull(selfGrade), accuracy, startLatencyMs)
+        val outcome = OrderOutcome(item.id, hint, grade, formulaAccuracy = null, startLatencyMs = startLatencyMs)
         val rating = TaperGrading.rating(outcome)
         val result = OrderResult(
             item = item,

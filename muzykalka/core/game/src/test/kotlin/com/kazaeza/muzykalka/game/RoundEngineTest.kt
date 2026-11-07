@@ -136,7 +136,7 @@ class RoundEngineTest {
 }
 
 class TaperGradingTest {
-    private fun outcome(hint: HintStep = HintStep.NONE, self: SelfGrade = SelfGrade.CLEAN, formula: Double = 1.0, start: Long? = 5_000) =
+    private fun outcome(hint: HintStep = HintStep.NONE, self: SelfGrade = SelfGrade.CLEAN, formula: Double? = 1.0, start: Long? = 5_000) =
         OrderOutcome("s", hint, self, formula, start)
 
     @Test
@@ -157,6 +157,8 @@ class TaperGradingTest {
         assertTrue(TaperGrading.playableNow(outcome(self = SelfGrade.STUMBLED)))
         assertTrue(!TaperGrading.playableNow(outcome(hint = HintStep.FORM)))
         assertTrue(!TaperGrading.playableNow(outcome(formula = 0.85)))
+        assertTrue(TaperGrading.playableNow(outcome(formula = null)), "not asked = no name check (O-13)")
+        assertTrue(!TaperGrading.playableNow(outcome(hint = HintStep.FORM, formula = null)))
     }
 
     @Test

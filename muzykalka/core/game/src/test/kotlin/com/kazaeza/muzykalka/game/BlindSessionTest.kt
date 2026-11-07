@@ -27,12 +27,9 @@ class BlindSessionTest {
     }
 
     @Test
-    fun `an order opens on the degrees, the only hint above them is the letters, and it is one step`() {
-        val s = session()
-        assertTrue(s.next(0))
-        assertEquals(HintStep.DEGREES, s.hint)
-        assertEquals(HintStep.FULL_SHEET, s.requestLetters())
-        assertEquals(HintStep.FULL_SHEET, s.requestLetters(), "nothing above the letters")
+    fun `an order shows the degrees and nothing above them (no letters since O-13)`() {
+        assertEquals(HintStep.DEGREES, BlindSession.BASE_HINT)
+        assertEquals(null, BlindSession.BASE_HINT.next())
     }
 
     @Test
@@ -53,7 +50,7 @@ class BlindSessionTest {
     }
 
     @Test
-    fun `the reveal follows the grade, with tips and the no-letters flag`() {
+    fun `the reveal follows the grade, with tips`() {
         val s = session()
         s.next(0)
         assertEquals(BlindPhase.PLAYING, s.phase)
@@ -69,15 +66,12 @@ class BlindSessionTest {
     }
 
     @Test
-    fun `letters cost tips and the clean-without-letters flag`() {
-        assertEquals(30, BlindGrading.LETTERS_COST)
-        assertEquals(100, BlindGrading.tips(SelfGrade.CLEAN, letters = false))
-        assertEquals(70, BlindGrading.tips(SelfGrade.CLEAN, letters = true))
-        assertEquals(50, BlindGrading.tips(SelfGrade.STUMBLED, letters = false))
-        assertEquals(0, BlindGrading.tips(SelfGrade.FAILED, letters = false))
-        assertTrue(BlindGrading.playableNow(SelfGrade.CLEAN, letters = false))
-        assertFalse(BlindGrading.playableNow(SelfGrade.CLEAN, letters = true))
-        assertFalse(BlindGrading.playableNow(SelfGrade.STUMBLED, letters = false))
+    fun `tips and the clean flag follow the self-grade`() {
+        assertEquals(100, BlindGrading.tips(SelfGrade.CLEAN))
+        assertEquals(50, BlindGrading.tips(SelfGrade.STUMBLED))
+        assertEquals(0, BlindGrading.tips(SelfGrade.FAILED))
+        assertTrue(BlindGrading.playableNow(SelfGrade.CLEAN))
+        assertFalse(BlindGrading.playableNow(SelfGrade.STUMBLED))
     }
 
     @Test
@@ -93,17 +87,16 @@ class BlindSessionTest {
     }
 
     @Test
-    fun `the attempt row keeps the song id and does not count letters as correct`() {
+    fun `the attempt row keeps the song id and counts a failure as wrong`() {
         val s = session()
         s.next(0)
-        s.requestLetters()
         s.finishPlaying(5_000)
-        val r = s.grade(SelfGrade.CLEAN)
+        val r = s.grade(SelfGrade.FAILED)
         val row = BlindGrading.attempt(r, 99)
         assertEquals(Variant.TAPER_BLIND, row.variant)
         assertEquals("blind:${r.entry.id}", row.itemKey)
         assertFalse(row.correct)
-        assertEquals(HintStep.FULL_SHEET.ordinal, row.hintLevel)
+        assertEquals(HintStep.DEGREES.ordinal, row.hintLevel)
         assertEquals(5_000, row.latencyMs)
     }
 }

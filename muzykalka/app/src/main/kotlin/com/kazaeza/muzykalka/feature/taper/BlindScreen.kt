@@ -39,9 +39,7 @@ import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.feature.common.KeepScreenOn
 import com.kazaeza.muzykalka.feature.common.PauseOverlay
 import com.kazaeza.muzykalka.feature.common.plural
-import com.kazaeza.muzykalka.game.BlindGrading
 import com.kazaeza.muzykalka.game.BlindPhase
-import com.kazaeza.muzykalka.game.HintStep
 import com.kazaeza.muzykalka.game.SelfGrade
 import com.kazaeza.muzykalka.ui.component.CountUpText
 import com.kazaeza.muzykalka.ui.component.GhostButton
@@ -151,19 +149,10 @@ private fun BlindFlow(ui: BlindUi, vm: BlindViewModel) {
         BlindPhase.PLAYING -> {
             OrderTicket(BLIND_TITLE, "песня из твоих лайков", ui.keyText, fresh = true, caption = "✦ ВСЛЕПУЮ ✦")
             GlassCard(Modifier.fillMaxWidth(), accent = BAR) {
-                SectionLabel(if (ui.hint == HintStep.FULL_SHEET) "лист · ступени и аккорды" else "лист · ступени")
+                SectionLabel("лист · ступени")
                 Spacer(Modifier.height(6.dp))
                 Text("Форма: ${entry.song.formString} · ${entry.song.barCount} тактов", style = MaterialTheme.typography.titleMedium)
-                SongSheet(entry.song, ui.key, notation, letters = ui.hint == HintStep.FULL_SHEET)
-            }
-            ui.hint.next()?.let { next ->
-                GhostButton(
-                    "Подсказка: аккорды буквами (−${BlindGrading.LETTERS_COST} ⭐)",
-                    onClick = vm::letters,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = BAR,
-                    leading = "💡",
-                )
+                SongSheet(entry.song, notation)
             }
             JuicyButton("Сыграл", onClick = vm::played, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "✅")
             Text(
@@ -202,7 +191,6 @@ private fun ResultCard(ui: BlindUi, vm: BlindViewModel) {
             )
             Spacer(Modifier.height(6.dp))
             CountUpText(r.tips, MaterialTheme.typography.displayMedium, colors = BAR, prefix = "+", suffix = " ⭐")
-            if (r.usedLetters) Text("аккорды буквами: −${BlindGrading.LETTERS_COST} ⭐", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
             Spacer(Modifier.height(6.dp))
             Text(entry.teaches, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
         }

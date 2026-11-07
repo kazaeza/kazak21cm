@@ -12,8 +12,6 @@ import com.kazaeza.muzykalka.game.TaperGrading
 import com.kazaeza.muzykalka.game.TaperItem
 import com.kazaeza.muzykalka.game.TaperPhase
 import com.kazaeza.muzykalka.game.TaperSession
-import com.kazaeza.muzykalka.music.ChordDegree
-import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.RuNames
 import kotlinx.coroutines.Job
@@ -49,9 +47,6 @@ data class TaperUi(
     val hintsAllowed: Boolean = true,
     val orderedAtMs: Long = 0,
     val startLatencyMs: Long? = null,
-    val enteredChords: List<ChordDegree> = emptyList(),
-    val enteredDegrees: List<Degree> = emptyList(),
-    val expectedLength: Int = 0,
     val result: OrderResult? = null,
     val totalTips: Int = 0,
     val ordersDone: Int = 0,
@@ -62,8 +57,9 @@ data class TaperUi(
 )
 
 /**
- * Ticket G-03: drives [TaperSession] — announce, hints, self-grade, formula, FSRS. No microphone
- * (ADR-014): the user plays when ready and says how it went; start speed is not measured.
+ * Ticket G-03: drives [TaperSession] — announce, hints, self-grade, FSRS. No microphone (ADR-014):
+ * the user plays when ready and says how it went; start speed is not measured. O-13: each piece
+ * starts where its last order leaves it on the hint ladder (vanishing cues, ADR-027).
  */
 class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) : ViewModel() {
     private val state = MutableStateFlow(TaperUi(hintsAllowed = !spec.exam))
@@ -87,7 +83,11 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
     private suspend fun load() {
         settings = graph.settings.settings.first()
         today = graph.today(settings)
-        allItems = graph.library.allOrderable().mapNotNull { it.toTaperItem() }
+        val last = graph.practice.lastOrders()
+        allItems = graph.library.allOrderable().mapNotNull { it.toTaperItem() }.map { item ->
+            val (hint, self) = last[item.id] ?: (null to null)
+            item.copy(startHint = TaperGrading.startHint(hint, self))
+        }
         val pool = when {
             spec.onlyItemId != null -> allItems.filter { it.id == spec.onlyItemId }
             spec.exam -> allItems.shuffled(random).take(spec.examItems)
@@ -139,19 +139,9 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
         publish()
     }
 
+    /** «Как прошло?» closes the order: it is graded and saved at once. */
     fun grade(g: SelfGrade) {
-        session?.grade(g)
-        publish()
-    }
-
-    fun addChord(c: ChordDegree) = state.update { it.copy(enteredChords = it.enteredChords + c) }
-    fun addDegree(d: Degree) = state.update { it.copy(enteredDegrees = it.enteredDegrees + d) }
-    fun undo() = state.update { it.copy(enteredChords = it.enteredChords.dropLast(1), enteredDegrees = it.enteredDegrees.dropLast(1)) }
-
-    fun submitFormula() {
-        val s = session ?: return
-        val cur = s.current ?: return
-        val result = if (cur.song != null) s.submitChords(state.value.enteredChords) else s.submitDegrees(state.value.enteredDegrees)
+        val result = session?.grade(g) ?: return
         publish()
         viewModelScope.launch {
             withContext(NonCancellable) { graph.practice.recordOrder(result, sessionId, today) }
@@ -161,11 +151,6 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
     private fun publish() {
         val s = session ?: return
         val cur = s.current
-        val expected = when {
-            cur?.song != null -> TaperGrading.expectedFormula(cur.song!!).size
-            cur?.melody != null -> cur.melody!!.notes.size
-            else -> 0
-        }
         state.update {
             it.copy(
                 phase = s.phase,
@@ -174,9 +159,6 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
                 hint = s.hint,
                 orderedAtMs = s.orderedAtMs,
                 startLatencyMs = s.startLatencyMs,
-                expectedLength = expected,
-                enteredChords = if (s.phase == TaperPhase.PLAYING) emptyList() else it.enteredChords,
-                enteredDegrees = if (s.phase == TaperPhase.PLAYING) emptyList() else it.enteredDegrees,
                 result = s.lastResult,
                 totalTips = s.totalTips,
                 ordersDone = s.results.size,
@@ -191,9 +173,6 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
         val done = session?.results?.isNotEmpty() == true
         if (ownSession && done) graph.appScope.launch { graph.practice.finishSession(id) }
     }
-
-    /** Key of the current order (for the full-sheet hint). */
-    fun currentKey() = session?.key
 
     override fun onCleared() {
         announceJob?.cancel()

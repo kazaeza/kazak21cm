@@ -130,7 +130,7 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
                         Column(Modifier.weight(1f)) {
                             Text(SimpleDateFormat("d MMM, HH:mm", Locale.forLanguageTag("ru")).format(Date(o.atEpochMs)) + " · " + o.keyLabel, style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                "подсказка: " + (runCatching { HintStep.valueOf(o.maxHint).ru }.getOrDefault(o.maxHint)) + " · формула ${(o.formulaAccuracy * 100).toInt()}% · +${o.tips} ⭐",
+                                "подсказка: " + (runCatching { HintStep.valueOf(o.maxHint).ru }.getOrDefault(o.maxHint)) + (o.formulaAccuracy?.let { f -> " · формула ${(f * 100).toInt()}%" } ?: "") + " · +${o.tips} ⭐",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Juicy.TextDim,
                             )

@@ -273,9 +273,9 @@ class TaperSessionTest {
         assertTrue(s.next(0))
         s.onFirstNote(2_000)
         s.finishPlaying()
-        s.grade(SelfGrade.CLEAN)
-        val r = s.submitChords(TaperGrading.expectedFormula(song))
+        val r = requireNotNull(s.grade(SelfGrade.CLEAN))
         assertTrue(r.playableNow)
+        assertEquals(null, r.outcome.formulaAccuracy, "«Что это было?» is not asked since O-13")
         assertEquals(Rating.EASY, r.rating)
         assertTrue(r.newCard.dueDay!! > 100)
         assertEquals(TaperPhase.RESULT, s.phase)
@@ -284,15 +284,16 @@ class TaperSessionTest {
     }
 
     @Test
-    fun `hints climb one step at a time and cost the order`() {
+    fun `hints climb one step at a time, stop at the degrees and cost the order`() {
         val s = session(listOf(TaperItem("al", "Autumn Leaves", song = song, card = CardState())))
         s.next(0)
+        assertEquals(HintStep.NONE, s.hint)
         assertEquals(HintStep.FORM, s.requestHint())
         assertEquals(HintStep.FIRST_CHORD, s.requestHint())
         assertEquals(HintStep.DEGREES, s.requestHint())
+        assertEquals(HintStep.DEGREES, s.requestHint(), "no letters above the degrees (O-13)")
         s.finishPlaying()
-        s.grade(SelfGrade.CLEAN)
-        val r = s.submitChords(TaperGrading.expectedFormula(song))
+        val r = requireNotNull(s.grade(SelfGrade.CLEAN))
         assertEquals(Rating.AGAIN, r.rating)
         assertFalse(r.playableNow)
         assertEquals(101, r.newCard.dueDay) // forgotten → ordered tomorrow
@@ -306,14 +307,39 @@ class TaperSessionTest {
     }
 
     @Test
-    fun `riffs are checked by degrees`() {
+    fun `riffs are graded by the self-grade alone`() {
         val s = session(listOf(TaperItem("r", "Мой рифф", melody = riff, card = CardState())))
         s.next(0)
         s.finishPlaying()
-        s.grade(SelfGrade.STUMBLED)
-        val r = s.submitDegrees(riff.notes.map { it.degree })
-        assertEquals(1.0, r.outcome.formulaAccuracy)
+        val r = requireNotNull(s.grade(SelfGrade.STUMBLED))
         assertEquals(Rating.HARD, r.rating)
+        assertEquals(TaperPhase.RESULT, s.phase)
+    }
+
+    @Test
+    fun `an order starts where the vanishing cues say, but never in an exam`() {
+        val item = TaperItem("al", "Autumn Leaves", song = song, card = CardState(), startHint = HintStep.DEGREES)
+        val s = session(listOf(item))
+        s.next(0)
+        assertEquals(HintStep.DEGREES, s.hint)
+        val exam = session(listOf(item), hints = false)
+        exam.next(0)
+        assertEquals(HintStep.NONE, exam.hint)
+        val old = session(listOf(item.copy(startHint = HintStep.FULL_SHEET)))
+        old.next(0)
+        assertEquals(HintStep.DEGREES, old.hint, "letters are never shown")
+    }
+
+    @Test
+    fun `vanishing cues - new songs open on the degrees, a clean play takes a step off`() {
+        assertEquals(HintStep.DEGREES, TaperGrading.startHint(null, null))
+        assertEquals(HintStep.FIRST_CHORD, TaperGrading.startHint(HintStep.DEGREES, SelfGrade.CLEAN))
+        assertEquals(HintStep.FORM, TaperGrading.startHint(HintStep.FIRST_CHORD, SelfGrade.CLEAN))
+        assertEquals(HintStep.NONE, TaperGrading.startHint(HintStep.FORM, SelfGrade.CLEAN))
+        assertEquals(HintStep.NONE, TaperGrading.startHint(HintStep.NONE, SelfGrade.CLEAN))
+        assertEquals(HintStep.FORM, TaperGrading.startHint(HintStep.FORM, SelfGrade.STUMBLED))
+        assertEquals(HintStep.DEGREES, TaperGrading.startHint(HintStep.NONE, SelfGrade.FAILED))
+        assertEquals(HintStep.FIRST_CHORD, TaperGrading.startHint(HintStep.FULL_SHEET, SelfGrade.CLEAN))
     }
 
     @Test
@@ -332,7 +358,7 @@ class TaperSessionTest {
         val keys = mutableListOf<String>()
         while (s.next(0)) {
             keys += s.key.toString()
-            s.finishPlaying(); s.grade(SelfGrade.CLEAN); s.submitChords(TaperGrading.expectedFormula(song))
+            s.finishPlaying(); s.grade(SelfGrade.CLEAN)
         }
         assertEquals(6, keys.size)
         keys.windowed(2).forEach { (a, b) -> assertTrue(a != b) }

@@ -13,7 +13,6 @@ import com.kazaeza.muzykalka.data.settings.ProgressStore
 import com.kazaeza.muzykalka.data.settings.SettingsRepository
 import com.kazaeza.muzykalka.game.AttemptRecord
 import com.kazaeza.muzykalka.game.SelfGrade
-import com.kazaeza.muzykalka.game.TaperGrading
 import com.kazaeza.muzykalka.game.TaperSession
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.music.Degree
@@ -60,8 +59,7 @@ class RepositoriesTest {
         val session = TaperSession(listOf(entry.toTaperItem()!!), KeyPicker(Random(1)), Fsrs(), today = 10, random = Random(1))
         session.next(0)
         session.finishPlaying()
-        session.grade(SelfGrade.CLEAN)
-        val result = session.submitChords(TaperGrading.expectedFormula(entry.song))
+        val result = requireNotNull(session.grade(SelfGrade.CLEAN))
         val sessionId = practice.startSession(SessionKind.SET, 10)
         practice.recordOrder(result, sessionId, 10)
         practice.finishSession(sessionId)

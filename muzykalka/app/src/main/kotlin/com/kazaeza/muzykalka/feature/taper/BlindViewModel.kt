@@ -9,7 +9,6 @@ import com.kazaeza.muzykalka.game.BlindGrading
 import com.kazaeza.muzykalka.game.BlindPhase
 import com.kazaeza.muzykalka.game.BlindResult
 import com.kazaeza.muzykalka.game.BlindSession
-import com.kazaeza.muzykalka.game.HintStep
 import com.kazaeza.muzykalka.game.SelfGrade
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.music.Arranger
@@ -35,7 +34,6 @@ data class BlindUi(
     val entry: BookEntry? = null,
     val key: Key? = null,
     val keyText: String = "",
-    val hint: HintStep = BlindSession.BASE_HINT,
     val result: BlindResult? = null,
     val totalTips: Int = 0,
     val ordersDone: Int = 0,
@@ -92,12 +90,6 @@ class BlindViewModel(private val graph: AppGraph, private val budgetMinutes: Dou
         announceJob = viewModelScope.launch { graph.announcer.say("Песня вслепую, ${RuNames.inKey(key)}!") }
     }
 
-    /** The one hint above the degrees: chords in letters. */
-    fun letters() {
-        session?.requestLetters()
-        publish()
-    }
-
     fun played() {
         announceJob?.cancel()
         session?.finishPlaying(now())
@@ -150,7 +142,6 @@ class BlindViewModel(private val graph: AppGraph, private val budgetMinutes: Dou
                 entry = s.current,
                 key = s.key,
                 keyText = s.key?.let { k -> RuNames.inKey(k) } ?: "",
-                hint = s.hint,
                 result = s.lastResult,
                 totalTips = s.totalTips,
                 ordersDone = s.results.size,

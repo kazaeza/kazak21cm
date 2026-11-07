@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -273,7 +274,7 @@ fun JuicyKey(
 }
 
 /**
- * The I–VII answer pad (Tir, «Что это было?», Улов). Shows [degrees] in the user's notation,
+ * The I–VII answer pad (Tir, Улов). Shows [degrees] in the user's notation,
  * coloured by [DegreeColors], [columns] keys per row.
  */
 @Composable
@@ -370,6 +371,28 @@ fun DegreeChip(
         )
     }
 }
+
+/**
+ * O-13: a chord or degree on a song sheet — big, solid colour, dark ink. All [DegreeColors] share
+ * one lightness, so every tile reads the same and none of them hides in the dark background.
+ */
+@Composable
+fun DegreeTile(text: String, color: Color, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .heightIn(min = 56.dp)
+            .widthIn(min = 64.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(color)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = MaterialTheme.typography.headlineSmall, color = DegreeInk, maxLines = 1)
+    }
+}
+
+/** Ink on a degree colour. */
+val DegreeInk = Color(0xFF15111F)
 
 /** Small stat with an emoji: "🔥 3 дня". */
 @Composable

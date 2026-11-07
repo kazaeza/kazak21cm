@@ -63,6 +63,7 @@ data class OrderLogEntity(
     val maxHint: String,
     /** SelfGrade.name */
     val selfGrade: String,
+    /** «Что это было?» score 0..1, or [NOT_ASKED] (every order since O-13, ADR-027). */
     val formulaAccuracy: Double,
     val startLatencyMs: Long?,
     /** Rating.value 1..4 */
@@ -70,7 +71,12 @@ data class OrderLogEntity(
     val playableNow: Boolean,
     val tips: Int,
     val atEpochMs: Long,
-)
+) {
+    companion object {
+        /** The formula was not asked: no schema change, a value no score can have. */
+        const val NOT_ASKED = -1.0
+    }
+}
 
 /** Rule 8: one row per judged answer in any drill. All drill metrics are queries over this table. */
 @Serializable

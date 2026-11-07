@@ -26,8 +26,6 @@ data class BlindResult(
     val entry: BookEntry,
     val key: Key,
     val self: SelfGrade,
-    /** The only hint of this mode was taken: chords in letters. */
-    val usedLetters: Boolean,
     val tips: Int,
     val playableNow: Boolean,
     val elapsedMs: Long,
@@ -40,10 +38,10 @@ data class BlindResult(
  * so what is trained is name → place, not recall of the record. The reveal comes after the
  * self-grade, as the reward.
  *
- * The hint ladder (rule 3) keeps its order: this mode starts on [HintStep.DEGREES] and the one step
- * above it, [HintStep.FULL_SHEET] (chords in letters, rule 1), costs tips. Nothing is written to the
- * library (rule 7): the pool is the built-in shelf itself, so there is no FSRS card either — the
- * attempt goes to the statistics only.
+ * The mode stands on the top of the hint ladder, [HintStep.DEGREES], and has no hints above it:
+ * chords in letters were dropped in O-13 (ADR-027). Nothing is written to the library (rule 7): the
+ * pool is the built-in shelf itself, so there is no FSRS card either — the attempt goes to the
+ * statistics only.
  */
 class BlindSession(
     pool: List<BookEntry>,
@@ -63,9 +61,6 @@ class BlindSession(
     var key: Key? = null
         private set
 
-    /** The step the screen is on: [HintStep.DEGREES], or [HintStep.FULL_SHEET] once letters were asked for. */
-    var hint: HintStep = BASE_HINT
-        private set
     var orderedAtMs: Long = 0
         private set
     var lastResult: BlindResult? = null
@@ -86,18 +81,10 @@ class BlindSession(
         }
         current = entry
         key = keyPicker.next(entry.song.mode)
-        hint = BASE_HINT
         orderedAtMs = nowMs
         lastResult = null
         phase = BlindPhase.PLAYING
         return true
-    }
-
-    /** Rule 3: one step up, and there is only one — letters. */
-    fun requestLetters(): HintStep {
-        if (phase != BlindPhase.PLAYING) return hint
-        hint = hint.next() ?: hint
-        return hint
     }
 
     fun finishPlaying(nowMs: Long) {
@@ -109,14 +96,12 @@ class BlindSession(
     fun grade(grade: SelfGrade): BlindResult {
         check(phase == BlindPhase.SELF_GRADE) { "Grade comes after playing" }
         val entry = requireNotNull(current)
-        val letters = hint == HintStep.FULL_SHEET
         val result = BlindResult(
             entry = entry,
             key = requireNotNull(key),
             self = grade,
-            usedLetters = letters,
-            tips = BlindGrading.tips(grade, letters),
-            playableNow = BlindGrading.playableNow(grade, letters),
+            tips = BlindGrading.tips(grade),
+            playableNow = BlindGrading.playableNow(grade),
             elapsedMs = max(0, playedAtMs - orderedAtMs),
         )
         results += result
@@ -128,8 +113,8 @@ class BlindSession(
     val totalTips: Int get() = results.sumOf { it.tips }
 
     companion object {
-        /** Blind orders start with the degrees already open. */
-        val BASE_HINT = HintStep.DEGREES
+        /** Blind orders show the degrees from the start, and nothing more is ever shown. */
+        val BASE_HINT = HintStep.TOP
 
         /** Songs of the likes shelf: the pool of this mode. */
         fun pool(): List<BookEntry> = SongBook.ENTRIES.filter { it.genre == BookGenre.LIKED }
@@ -149,11 +134,8 @@ class BlindSession(
 }
 
 object BlindGrading {
-    /** Cost of the letters over the base step, from the same ladder as the Taper's. */
-    val LETTERS_COST: Int = HintStep.FULL_SHEET.tipCost - BlindSession.BASE_HINT.tipCost
-
-    fun tips(self: SelfGrade, letters: Boolean): Int {
-        val base = max(0, TaperGrading.BASE_TIP - if (letters) LETTERS_COST else 0)
+    fun tips(self: SelfGrade): Int {
+        val base = TaperGrading.BASE_TIP
         val factor = when (self) {
             SelfGrade.CLEAN -> 1.0
             SelfGrade.STUMBLED -> 0.5
@@ -162,8 +144,8 @@ object BlindGrading {
         return (base * factor).toInt()
     }
 
-    /** «С ходу» here: played clean off the degrees alone, no letters. */
-    fun playableNow(self: SelfGrade, letters: Boolean): Boolean = self == SelfGrade.CLEAN && !letters
+    /** «С ходу» here: played clean off the degrees alone. */
+    fun playableNow(self: SelfGrade): Boolean = self == SelfGrade.CLEAN
 
     /** The attempt row for the statistics: the song id is the item, the grade is what was given. */
     fun attempt(result: BlindResult, nowEpochMs: Long): AttemptRecord = AttemptRecord(
@@ -172,10 +154,10 @@ object BlindGrading {
         itemKey = BlindSession.itemKey(result.entry),
         expected = result.entry.id,
         given = result.self.name,
-        correct = result.self != SelfGrade.FAILED && !result.usedLetters,
+        correct = result.self != SelfGrade.FAILED,
         latencyMs = result.elapsedMs,
         centsError = null,
-        hintLevel = if (result.usedLetters) HintStep.FULL_SHEET.ordinal else BlindSession.BASE_HINT.ordinal,
+        hintLevel = BlindSession.BASE_HINT.ordinal,
         keyLabel = result.key.toString(),
         atEpochMs = nowEpochMs,
     )

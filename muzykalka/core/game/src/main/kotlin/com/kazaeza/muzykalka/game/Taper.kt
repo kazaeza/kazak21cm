@@ -8,7 +8,8 @@ import kotlin.math.min
 
 /**
  * Rule 3 («сначала минимальная подсказка»): the hint ladder is climbed one step at a time and
- * every step costs tips. Absolute chord names appear ONLY at [FULL_SHEET] (rule 1).
+ * every step costs tips. The ladder ends at [TOP] = [DEGREES] (O-13, ADR-027): chords in letters
+ * are not offered any more. [FULL_SHEET] stays only so that orders logged before O-13 still read.
  */
 enum class HintStep(val ru: String, val tipCost: Int) {
     NONE("без подсказок", 0),
@@ -17,7 +18,16 @@ enum class HintStep(val ru: String, val tipCost: Int) {
     DEGREES("ступени", 70),
     FULL_SHEET("лист целиком", 100);
 
-    fun next(): HintStep? = entries.getOrNull(ordinal + 1)
+    /** The next step of the ladder; null at the top. Never [FULL_SHEET]. */
+    fun next(): HintStep? = entries.getOrNull(ordinal + 1)?.takeIf { it <= TOP }
+
+    /** One step down (vanishing cues); [NONE] stays [NONE]. */
+    fun previous(): HintStep = entries[maxOf(0, ordinal - 1)]
+
+    companion object {
+        /** The highest step that is ever shown: the whole song in degrees. */
+        val TOP: HintStep = DEGREES
+    }
 }
 
 /** Self-assessment after an order (v0.1 has no chord recognition). */
@@ -32,8 +42,11 @@ data class OrderOutcome(
     val songId: String,
     val maxHint: HintStep,
     val self: SelfGrade,
-    /** «Что это было?» score, 0..1 — see [TaperGrading.formulaAccuracy]. */
-    val formulaAccuracy: Double,
+    /**
+     * «Что это было?» score, 0..1 — see [TaperGrading.formulaAccuracy]; null = not asked. Since O-13
+     * the Taper does not ask (ADR-027): orders logged before it carry a score.
+     */
+    val formulaAccuracy: Double?,
     /** From the order to the first note played; null if not measured (no mic). */
     val startLatencyMs: Long?,
 )
@@ -46,16 +59,34 @@ object TaperGrading {
     const val FORMULA_FAIL = 0.6
 
     /** Maps an order to an FSRS rating. The single source of truth for «держится / вылетела». */
-    fun rating(o: OrderOutcome): Rating = when {
-        o.self == SelfGrade.FAILED || o.maxHint >= HintStep.DEGREES || o.formulaAccuracy < FORMULA_FAIL -> Rating.AGAIN
-        o.maxHint > HintStep.NONE || o.self == SelfGrade.STUMBLED || o.formulaAccuracy < FORMULA_PASS -> Rating.HARD
-        o.formulaAccuracy >= 1.0 && o.startLatencyMs != null && o.startLatencyMs <= QUICK_START_MS -> Rating.EASY
-        else -> Rating.GOOD
+    fun rating(o: OrderOutcome): Rating {
+        val formula = o.formulaAccuracy
+        return when {
+            o.self == SelfGrade.FAILED || o.maxHint >= HintStep.DEGREES || (formula != null && formula < FORMULA_FAIL) -> Rating.AGAIN
+            o.maxHint > HintStep.NONE || o.self == SelfGrade.STUMBLED || (formula != null && formula < FORMULA_PASS) -> Rating.HARD
+            (formula == null || formula >= 1.0) && o.startLatencyMs != null && o.startLatencyMs <= QUICK_START_MS -> Rating.EASY
+            else -> Rating.GOOD
+        }
     }
 
-    /** «Играю с ходу»: no hints, remembered, and the name check passed. Main metric of the app. */
-    fun playableNow(o: OrderOutcome): Boolean =
-        o.maxHint == HintStep.NONE && o.self != SelfGrade.FAILED && o.formulaAccuracy >= FORMULA_PASS
+    /** «Играю с ходу»: no hints, remembered, and the name check passed if there was one. Main metric of the app. */
+    fun playableNow(o: OrderOutcome): Boolean {
+        val formula = o.formulaAccuracy
+        return o.maxHint == HintStep.NONE && o.self != SelfGrade.FAILED && (formula == null || formula >= FORMULA_PASS)
+    }
+
+    /**
+     * O-13 (ADR-027), vanishing cues: where the next order of a piece starts on the hint ladder,
+     * from how its last order went. A piece never played opens with the whole song in degrees; a
+     * clean play takes one step off next time, a stumble keeps the step, a failure goes back to
+     * the degrees. Climbing up within an order is still one step at a time (rule 3).
+     */
+    fun startHint(lastHint: HintStep?, lastSelf: SelfGrade?): HintStep = when {
+        lastHint == null || lastSelf == null -> HintStep.TOP
+        lastSelf == SelfGrade.FAILED -> HintStep.TOP
+        lastSelf == SelfGrade.CLEAN -> minOf(lastHint, HintStep.TOP).previous()
+        else -> minOf(lastHint, HintStep.TOP)
+    }
 
     fun tips(o: OrderOutcome): Int {
         val base = max(0, BASE_TIP - o.maxHint.tipCost)
@@ -69,7 +100,7 @@ object TaperGrading {
     }
 
     /**
-     * What «Что это было?» asks for: each distinct section once (in declaration order), with
+     * What «Что это было?» asked for before O-13: each distinct section once (in declaration order), with
      * immediate repeats inside a section collapsed (i i → i). Keeps entry to ~20 taps per song.
      */
     fun expectedFormula(song: Song): List<ChordDegree> = song.sections.flatMap { section ->
