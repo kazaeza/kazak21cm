@@ -1,0 +1,23 @@
+Chordonomicon — chord progressions (CC BY-NC 4.0)
+
+The harmony of the extra pieces on the «мои лайки» shelf of the built-in songbook (O-11, ADR-033; LikesShelf in
+SongBookLikes.kt) comes from the open Chordonomicon dataset: community chord charts of 666,000 songs, each with the
+Spotify track id, the genre and the section names of the chart. Only the chord symbols are used (no lyrics, no melody),
+and only as degrees of a tonic that was worked out separately, simplified. The comment above each piece is the row id of
+the chart in the dataset file (chordonomicon_v2.csv).
+
+The dataset is released under the Creative Commons Attribution-NonCommercial 4.0 International licence
+(https://creativecommons.org/licenses/by-nc/4.0/): attribution is required, commercial use is not allowed. The app is a
+personal sideloaded build that is not sold. If it is ever distributed commercially, this shelf has to be removed or
+re-sourced first. The authors ask users to cite:
+
+  Spyridon Kantarelis, Konstantinos Thomas, Vassilis Lyberatos, Edmund Dervakos and Giorgos Stamou. "CHORDONOMICON: A
+  Dataset of 666,000 Songs and their Chord Progressions." arXiv preprint arXiv:2410.22046, 2024.
+  https://doi.org/10.48550/arXiv.2410.22046
+
+Dataset page: https://huggingface.co/datasets/ailsntua/Chordonomicon
+
+The tonic of a piece is not part of the dataset. It was chosen from the chart itself and the key that Spotify reports for
+the track. The keys were looked up by track id in two public tables of audio features on Hugging Face
+(GildasLeDrogoff/spotify-huge-track-analysis-dataset, CC BY-NC 4.0; maharshipandya/spotify-tracks-dataset, BSD),
+on the build machine only. Nothing from those tables, and no Spotify track id, is stored in this repository.

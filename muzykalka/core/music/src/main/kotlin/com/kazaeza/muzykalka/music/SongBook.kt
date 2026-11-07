@@ -37,7 +37,9 @@ data class BookEntry(
  *
  * The [BookGenre.LIKED] shelf (ADR-018) is the user's own favourites from their Spotify likes:
  * the tonic is checked against the track's key, chords come from popular community charts,
- * slash basses and colour tones are dropped, and only the harmony in degrees is kept.
+ * slash basses and colour tones are dropped, and only the harmony in degrees is kept. The first
+ * pieces are listed below; more were added from an open chart dataset (O-11, ADR-033) and live
+ * in [LikesShelf], appended after them.
  *
  * The [BookGenre.HITS] shelf (ADR-032) is the harmony of ~100 chart hits from the open McGill
  * Billboard annotations; it lives in [HitsShelf] and is appended below.
@@ -543,7 +545,7 @@ object SongBook {
             "i⁷–♭VI⁷–vi⁷: три аккорда по четыре такта",
             "A: | i7 | i7 | i7 | i7 | bVI7 | bVI7 | bVI7 | bVI7 | vi7 | vi7 | vi7 | vi7 | i7 | i7 | i7 | i7 |",
         ),
-    ) + HitsShelf.ENTRIES
+    ) + LikesShelf.ENTRIES + HitsShelf.ENTRIES
 
     fun byId(id: String): BookEntry? = ENTRIES.firstOrNull { it.id == id }
 

@@ -24,6 +24,8 @@ class BlindSessionTest {
         assertTrue(pool.isNotEmpty())
         assertTrue(pool.all { it.genre == BookGenre.LIKED })
         assertEquals(SongBook.ENTRIES.count { it.genre == BookGenre.LIKED }, pool.size)
+        // O-11: the pieces added from the open chart dataset widen the pool, the hits shelf does not
+        assertTrue(pool.size >= 80, "the pool has ${pool.size} pieces")
     }
 
     @Test

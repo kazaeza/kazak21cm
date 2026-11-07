@@ -40,7 +40,7 @@ class SongBookTest {
     @Test
     fun `my likes are a full shelf, stored in degrees with the tonic of the record`() {
         val liked = SongBook.ENTRIES.filter { it.genre == BookGenre.LIKED }
-        assertTrue(liked.size >= 41, "liked shelf has ${liked.size}")
+        assertTrue(liked.size >= 80, "liked shelf has ${liked.size}") // 41 by hand + 39 from the open chart dataset (O-11)
         val opening = { id: String, bars: Int -> SongBook.byId(id)!!.song.sections[0].bars.take(bars).flatMap { it.chords } }
         val parse = { text: String -> text.split(' ').map(ChordParser::parse) }
         assertEquals(parse("I V ii IV"), opening("just-like-heaven", 4))
@@ -102,6 +102,60 @@ class SongBookTest {
         }
         // the blues in sevenths: I⁷ for four bars, then IV⁷ for two
         assertEquals(parse("I7 I7 I7 I7 IV7 IV7"), SongBook.byId("treat-her-right")!!.song.section("A").bars.take(6).flatMap { it.chords })
+    }
+
+    @Test
+    fun `the extra likes are chart harmony in degrees, each loop short enough to learn`() {
+        val extra = LikesShelf.ENTRIES
+        val extraIds = extra.map { it.id }.toSet()
+        assertEquals(extra.size, extraIds.size, "duplicate ids on the extra shelf")
+        assertTrue(extra.size >= 39, "the extra shelf has ${extra.size}")
+        assertTrue(extra.all { it.genre == BookGenre.LIKED }, "the extra pieces sit on the likes shelf")
+        assertEquals(extra, SongBook.ENTRIES.filter { it.id in extraIds }, "they are appended to the book, in order")
+        val others = SongBook.ENTRIES.filter { it.id !in extraIds }.map { it.song.title.lowercase() }.toSet()
+        val titles = extra.map { it.song.title.lowercase() }
+        assertEquals(titles.size, titles.toSet().size, "a title twice on the extra shelf")
+        val slug = Regex("[a-z0-9]+(-[a-z0-9]+)*")
+        extra.forEach { e ->
+            val song = e.song
+            assertTrue(slug.matches(e.id), "${e.id} is not a slug")
+            assertTrue(song.artist != null, "${e.id} has an artist")
+            assertTrue(song.title.lowercase() !in others, "${e.id} is already in the book")
+            // sections are labelled A, B, C … with no hole, every one is played, and none is a whole song long
+            assertEquals(('A'..'D').take(song.sections.size).map { it.toString() }, song.sections.map { it.label }, "${e.id} labels")
+            assertTrue(song.sections.size in 1..4, "${e.id} has ${song.sections.size} sections")
+            assertEquals(song.sections.map { it.label }.toSet(), song.form.toSet(), "${e.id} has a section that is never played")
+            assertTrue(song.form.size <= 8, "${e.id} form ${song.formString}")
+            song.sections.forEach { s ->
+                assertTrue(s.bars.size in 1..8, "${e.id} ${s.label} has ${s.bars.size} bars")
+                // the charts do not say how long a chord lasts: one chart chord is one bar
+                assertTrue(s.bars.all { it.chords.size == 1 }, "${e.id} ${s.label}: a chart chord is one bar")
+            }
+            // the difficulty counts the different chords (root + major/minor family), as the book's own scale says
+            val distinct = song.chordsInOrder.map { it.root to it.quality.lowerCaseRoman }.toSet().size
+            assertEquals(if (distinct <= 4) 1 else if (distinct <= 8) 2 else 3, e.difficulty, "${e.id}: $distinct different chords")
+        }
+        assertEquals(setOf(Mode.MAJOR, Mode.MINOR), extra.map { it.song.mode }.toSet())
+        assertEquals(setOf(1, 2), extra.map { it.difficulty }.toSet())
+    }
+
+    @Test
+    fun `the extra likes are stored the way the charts play them`() {
+        assertEquals(parse("i bIII bVII bVI"), chordsOf("peacefall", "A"))
+        assertEquals(parse("bVI iv i"), chordsOf("below-the-clavicle", "A"))
+        assertEquals(parse("I ii iii V"), chordsOf("i-want-to-be-with-you", "A"))
+        assertEquals(parse("vi iii II I"), chordsOf("liars-love", "B"))
+        assertEquals(parse("ii V iii vi IV ii V I"), chordsOf("alter-ego", "B"))
+        assertEquals(parse("I5 bIII5"), chordsOf("16-psyche", "A"))
+        assertEquals(parse("i7 bVImaj7 v7"), chordsOf("unmade", "A"))
+        // the surprises of these pieces: a major III in a major key, a minor v in a minor key, a major V in a minor key
+        assertEquals(ChordDegree(Degree.THREE, ChordQuality.MAJOR), chordsOf("discard", "A").last())
+        assertEquals(ChordDegree(Degree.FIVE, ChordQuality.MINOR), chordsOf("go-easy-palermo", "A").last())
+        assertEquals(ChordDegree(Degree.FIVE, ChordQuality.MAJOR), chordsOf("sea-castle", "A").last())
+        assertEquals(Mode.MINOR, SongBook.byId("16-psyche")!!.song.mode)
+        assertEquals(Mode.MAJOR, SongBook.byId("alter-ego")!!.song.mode)
+        // a one-loop piece plays that loop all the way
+        assertEquals("A", SongBook.byId("below-the-clavicle")!!.song.formString)
     }
 
     @Test
