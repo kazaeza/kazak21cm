@@ -36,6 +36,7 @@ import com.kazaeza.muzykalka.game.HuntDriver
 import com.kazaeza.muzykalka.game.HuntKind
 import com.kazaeza.muzykalka.game.HuntTask
 import com.kazaeza.muzykalka.game.RoundPhase
+import com.kazaeza.muzykalka.game.SingTask
 import com.kazaeza.muzykalka.game.StepsTask
 import com.kazaeza.muzykalka.game.TirKind
 import com.kazaeza.muzykalka.game.TirReview
@@ -380,6 +381,79 @@ internal fun HuntContent(task: HuntTask, ui: GameUi, accent: List<Color>, onAnsw
                 }
             }
         }
+        Spacer(Modifier.height(6.dp))
+    }
+}
+
+// ---------------------------------------------------------------- Камертон «Спой ступень»
+
+/**
+ * O-07: name → sound. The degree, its feeling and the drone (or, without headphones, the tonic
+ * before the question). What was sung is shown only after the answer — a live readout would let
+ * the voice slide into the note instead of finding it.
+ */
+@Composable
+internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnswer: (Answer) -> Unit, onReplay: () -> Unit) {
+    val listening = ui.phase == RoundPhase.LISTENING
+    val feedback = ui.phase == RoundPhase.FEEDBACK
+    val correct = feedback && ui.feedback?.correct == true
+    val color = DegreeColors.of(task.degree)
+
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        PromptCard(ui, accent) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DegreeChip("🔑 " + RuNames.key(task.key), Juicy.Gold)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "🔁",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable(enabled = listening, onClickLabel = "Тоника ещё раз", onClick = onReplay)
+                            .padding(6.dp),
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                val f = ui.feedback
+                when {
+                    feedback && correct -> {
+                        GradientText(task.prompt.title, MaterialTheme.typography.displayLarge, listOf(Juicy.Good, Juicy.Mint), Modifier.pop(ui.taskSerial, 0.3f))
+                        Text(f?.given?.substringAfter(" · ") ?: "", style = MaterialTheme.typography.headlineSmall, color = Juicy.Good)
+                        Text("+${f?.points ?: 0}", style = MaterialTheme.typography.headlineMedium, color = Juicy.Gold, modifier = Modifier.pop(ui.taskSerial))
+                    }
+                    feedback -> {
+                        Text("спел " + (f?.given ?: ""), style = MaterialTheme.typography.headlineSmall, color = Juicy.Hot, textAlign = TextAlign.Center)
+                        Text("→ " + (f?.expected ?: ""), style = MaterialTheme.typography.displaySmall, color = Juicy.Good)
+                    }
+                    else -> {
+                        GradientText(task.prompt.title, MaterialTheme.typography.displayLarge, DegreeColors.gradient(color), if (listening) Modifier.breathe() else Modifier)
+                        Text(if (ui.phase == RoundPhase.PROMPTING) "Слушай дом…" else "Спой ступень", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                val vibe = DegreeVibes.of(task.degree)
+                Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = color)
+                if (feedback) Text(DegreeVibes.pathHome(task.degree, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            MicPulse(levelDb = ui.micLevelDb, label = if (listening) "🎤" else null, color = color)
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                SectionLabel("пой «а-а» ровно")
+                Text(
+                    if (task.drone != null) "любая октава; засчитывается первая устойчивая нота" else "без наушников дрон молчит: дом — тоника перед вопросом, 🔁 — ещё раз",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Juicy.TextDim,
+                )
+                ui.micError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Juicy.Hot) }
+            }
+        }
+        ExtraKeyView(ExtraKey("🤷", "не знаю") { onAnswer(Answer.Pass) }, enabled = listening, height = 72.dp, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(6.dp))
     }
 }

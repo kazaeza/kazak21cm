@@ -29,7 +29,7 @@ enum class ModeId(
 ) {
     HUNT("Охота", "любая нота на грифе быстрее секунды", setOf(Link.NAME_TO_PLACE, Link.PLACE_TO_NAME), GuitarNeed.OPTIONAL, "0.1"),
     TIR("Тир", "слышишь ноту или аккорд — сразу знаешь ступень", setOf(Link.SOUND_TO_NAME), GuitarNeed.NONE, "0.1"),
-    KAMERTON("Камертон", "слышать ноту до того, как ударил по струне", setOf(Link.NAME_TO_SOUND, Link.PLACE_TO_SOUND), GuitarNeed.OPTIONAL, "0.2"),
+    KAMERTON("Камертон", "слышать ноту до того, как ударил по струне", setOf(Link.NAME_TO_SOUND, Link.PLACE_TO_SOUND), GuitarNeed.OPTIONAL, "0.1"),
     PARROT("Попугай", "услышал — сыграл сразу, без поиска", setOf(Link.SOUND_TO_PLACE), GuitarNeed.REQUIRED, "0.2"),
     TAPER("Тапёр", "видишь ступени — играешь на гитаре в любой тональности", setOf(Link.NAME_TO_PLACE), GuitarNeed.REQUIRED, "0.1"),
     RECORDER("Магнитофон", "игра на ощущениях становится словарём", emptySet(), GuitarNeed.REQUIRED, "0.3"),
@@ -43,7 +43,7 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_CLASSIC(ModeId.TIR, "Тир", GuitarNeed.NONE, "0.1"),
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.2"),
     TIR_RADIO(ModeId.TIR, "Радио", GuitarNeed.NONE, "0.3"),
-    KAMERTON_SING(ModeId.KAMERTON, "Спой раньше", GuitarNeed.NONE, "0.2"),
+    KAMERTON_SING(ModeId.KAMERTON, "Спой ступень", GuitarNeed.NONE, "0.1"),
     KAMERTON_PREDICT(ModeId.KAMERTON, "Предскажи лад", GuitarNeed.REQUIRED, "0.2"),
     KAMERTON_DIGITS(ModeId.KAMERTON, "Угадай по цифрам", GuitarNeed.NONE, "0.2"),
     PARROT_ECHO(ModeId.PARROT, "Попугай", GuitarNeed.REQUIRED, "0.2"),

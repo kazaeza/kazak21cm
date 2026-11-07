@@ -19,7 +19,8 @@ import com.kazaeza.muzykalka.game.SpacedReview
 import com.kazaeza.muzykalka.game.StepsDriver
 import com.kazaeza.muzykalka.game.Task
 import com.kazaeza.muzykalka.game.TirDriver
-import com.kazaeza.muzykalka.game.TirTask
+import com.kazaeza.muzykalka.game.DroneTask
+import com.kazaeza.muzykalka.game.SingDriver
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.Fretboard
@@ -38,6 +39,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import kotlin.random.Random
 
@@ -107,14 +109,17 @@ data class GameUi(
     val paused: Boolean = false,
 )
 
-fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES
+fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || this == Variant.KAMERTON_SING
+
+/** «Спой ступень»: how long a sung note is listened to after its onset (K-01, steady part). */
+private const val SUNG_WINDOW_MS = 350L
 
 /** After the drone starts or changes key, before the first sound over it. */
 private const val DRONE_SETTLE_MS = 1_500L
 
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
-    val PLAYABLE = setOf(Variant.TIR_CLASSIC, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE, Variant.TAPER_STEPS)
+    val PLAYABLE = setOf(Variant.TIR_CLASSIC, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE, Variant.TAPER_STEPS, Variant.KAMERTON_SING)
 
     fun maxLevel(v: Variant): Int = when (v) {
         Variant.HUNT_FIND -> Levels.HUNT.size
@@ -122,6 +127,8 @@ object Drills {
         Variant.HUNT_ALL_OCTAVES -> 1
         Variant.TIR_CLASSIC -> Levels.TIR.size
         Variant.TAPER_STEPS -> Levels.STEPS.size
+        // Only «ступени от тоники» so far; intervals and melodies are later levels of K-01.
+        Variant.KAMERTON_SING -> 1
         else -> 1
     }
 
@@ -135,12 +142,14 @@ object Drills {
         ModeId.HUNT -> if (v == Variant.HUNT_ALL_OCTAVES) "весь гриф" else Levels.HUNT.getOrElse(level - 1) { "" }
         ModeId.TIR -> Levels.TIR.getOrElse(level - 1) { "" }
         ModeId.TAPER -> Levels.STEPS.getOrElse(level - 1) { "" }
+        ModeId.KAMERTON -> Levels.KAMERTON.getOrElse(level - 1) { "" }
         else -> ""
     }
 
     fun promotionTargetMs(v: Variant, level: Int): Long = when (v.mode) {
         ModeId.TIR -> TirDriver.promotionTargetMs(level)
         ModeId.TAPER -> StepsDriver.PROMOTION_TARGET_MS
+        ModeId.KAMERTON -> SingDriver.PROMOTION_TARGET_MS
         else -> HuntDriver.promotionTargetMs(level)
     }
 
@@ -151,6 +160,7 @@ object Drills {
         history: List<AttemptRecord>,
         epochOffsetMs: Long,
         review: List<SpacedReview.Item> = emptyList(),
+        headphones: Boolean = false,
     ): RoundEngine<*> {
         val config = when {
             spec.exam -> RoundConfig.exam(spec.examTasks)
@@ -162,6 +172,8 @@ object Drills {
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_CLASSIC, Variant.TIR_DUEL, Variant.TIR_RADIO ->
                 RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review), config, random, level, history, epochOffsetMs)
+            // Without headphones the drone would leak into the microphone (ADR-021).
+            Variant.KAMERTON_SING -> RoundEngine(SingDriver(KeyPicker(random), settings.degreeNotation, withDrone = headphones), config, random, level, history, epochOffsetMs)
             Variant.HUNT_FIND, Variant.HUNT_REVERSE, Variant.HUNT_ALL_OCTAVES ->
                 RoundEngine(
                     HuntDriver(spec.variant, Fretboard(settings.tuning, settings.fretCount), settings.noteNaming, settings.degreeNotation, adaptiveTimer = !spec.exam),
@@ -234,7 +246,8 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         val progress = graph.progress.current()
         level = (spec.level ?: progress.selectedLevel(spec.variant)).coerceIn(1, Drills.maxLevel(spec.variant))
         history = graph.practice.recentAttempts(spec.variant, 300)
-        engine = Drills.engine(spec, level, settings, history, System.currentTimeMillis() - now(), review = review())
+        val wearsHeadphones = graph.headphones.connected.value || settings.headphones
+        engine = Drills.engine(spec, level, settings, history, System.currentTimeMillis() - now(), review = review(), headphones = wearsHeadphones)
         sessionId = spec.sessionId ?: graph.practice.startSession(SessionKind.FREE, graph.today(settings)).also { ownSession = true }
         val needsMic = spec.variant.needsMic()
         state.update {
@@ -295,7 +308,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         when (s.phase) {
             RoundPhase.PROMPTING -> {
                 val audio = s.task?.prompt?.audio
-                val drone = (s.task as? TirTask)?.drone
+                val drone = (s.task as? DroneTask)?.drone
                 viewModelScope.launch {
                     awaitUnpaused()
                     ensureDrone(drone)
@@ -346,12 +359,12 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         react(e)
     }
 
-    /** Tir: hear the question again (cadence/scale not repeated; the drone keeps sounding). */
+    /** 🔁: Tir — the question again, «Спой ступень» — the tonic (scale not repeated; the drone keeps sounding). */
     fun replay() {
         val e = engine ?: return
-        val task = e.state.task as? TirTask ?: return
+        val sound = (e.state.task as? DroneTask)?.replay ?: return
         if (paused || e.state.phase != RoundPhase.LISTENING || replayJob?.isActive == true) return
-        replayJob = viewModelScope.launch { graph.audioOutput.play(task.question) }
+        replayJob = viewModelScope.launch { graph.audioOutput.play(sound) }
     }
 
     /** ⏸ or the back gesture: stop the clock and the sound (drone included). */
@@ -375,8 +388,8 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         // A prompt that has not started yet resumes by itself; a cut one or a pending answer gets the question again.
         val cutPrompt = e.state.phase == RoundPhase.PROMPTING && promptPlaying
         if (e.state.phase != RoundPhase.LISTENING && !cutPrompt) return
-        val drone = (task as? TirTask)?.drone
-        val sound = (task as? TirTask)?.question ?: task.prompt.audio
+        val drone = (task as? DroneTask)?.drone
+        val sound = (task as? DroneTask)?.replay ?: task.prompt.audio
         replayJob = viewModelScope.launch {
             ensureDrone(drone)
             while (e.state.phase == RoundPhase.PROMPTING && e.state.task === task) delay(30)
@@ -401,8 +414,14 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
             graph.gate.onsets(graph.pitchInput, graph.audioOutput, null, headphones).collect { onset ->
                 val e = engine ?: return@collect
                 if (paused) return@collect
-                e.answer(Answer.NotePlayed(onset.note, onset.cents), onset.timeNanos / 1_000_000 - pausedTotalMs)
-                react(e)
+                val at = onset.timeNanos / 1_000_000 - pausedTotalMs
+                if (spec.variant == Variant.KAMERTON_SING) {
+                    if (e.state.phase != RoundPhase.LISTENING || sungJob?.isActive == true) return@collect
+                    sungJob = viewModelScope.launch { answerSung(e, onset.note, onset.cents, at) }
+                } else {
+                    e.answer(Answer.NotePlayed(onset.note, onset.cents), at)
+                    react(e)
+                }
             }
         }
         micJobs += viewModelScope.launch {
@@ -419,6 +438,23 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
             }
         }
         micJobs += viewModelScope.launch { graph.pitchInput.error.collect { err -> state.update { it.copy(micError = err) } } }
+    }
+
+    private var sungJob: Job? = null
+
+    /** K-01: listen to the steady part of the sung note, then answer with its median pitch (time = onset). */
+    private suspend fun answerSung(e: RoundEngine<*>, note: MidiNote, cents: Double, atMs: Long) {
+        val hz = mutableListOf<Double>()
+        withTimeoutOrNull(SUNG_WINDOW_MS) {
+            graph.pitchInput.frames.collect { f ->
+                val est = f.estimate
+                if (est != null && est.clarity > 0.85 && f.rmsDb > -50) hz += est.hz
+            }
+        }
+        if (paused) return
+        val steady = SingDriver.steadyPitch(hz, settings.a4Hz)
+        e.answer(Answer.Sung(steady?.note ?: note, steady?.cents ?: cents), atMs)
+        react(e)
     }
 
     private fun stopMic() {

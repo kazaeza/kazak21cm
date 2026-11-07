@@ -46,6 +46,7 @@ import com.kazaeza.muzykalka.feature.common.PauseOverlay
 import com.kazaeza.muzykalka.game.HuntTask
 import com.kazaeza.muzykalka.game.RoundPhase
 import com.kazaeza.muzykalka.game.StepsTask
+import com.kazaeza.muzykalka.game.SingTask
 import com.kazaeza.muzykalka.game.TirTask
 import com.kazaeza.muzykalka.ui.component.ComboBadge
 import com.kazaeza.muzykalka.ui.component.CountUpText
@@ -166,6 +167,7 @@ private fun GameHost(
             ) {
                 when (val task = ui.task) {
                     is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
+                    is SingTask -> SingContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
                     is HuntTask -> HuntContent(task, ui, accent, onAnswer = vm::answer)
                     is StepsTask -> StepsContent(task, ui, accent, onAnswer = vm::answer)
                     else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

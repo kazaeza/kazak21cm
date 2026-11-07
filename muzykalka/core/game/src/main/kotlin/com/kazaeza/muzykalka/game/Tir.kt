@@ -38,10 +38,12 @@ data class TirTask(
     val chordChoices: List<ChordDegree>,
     val question: Score,
     /** Notes to hold under this question; null = no drone, the cadence sets the key. */
-    val drone: List<MidiNote>? = null,
+    override val drone: List<MidiNote>? = null,
     /** O-06: brought back from an earlier day's miss. Shown only AFTER the answer — it would be a hint. */
     val review: TirReview? = null,
-) : Task {
+) : DroneTask {
+    override val replay: Score get() = question
+
     /** Taps the answer pad collects before the answer is submitted. */
     val answerLength: Int
         get() = when (kind) {
