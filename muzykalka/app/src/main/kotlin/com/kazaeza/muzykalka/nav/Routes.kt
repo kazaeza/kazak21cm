@@ -14,9 +14,6 @@ import kotlinx.serialization.Serializable
 /** «Вайб ступеней»: listen to every degree against its tonic (ADR-015). */
 @Serializable data object FeelRoute
 
-/** [mode] is a `ModeId.name`. */
-@Serializable data class ModeRoute(val mode: String)
-
 /** Full-screen drill; [variant] is a `Variant.name`, [level] 0 = selected level. */
 @Serializable data class GameRoute(val variant: String, val level: Int = 0)
 

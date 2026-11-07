@@ -88,17 +88,20 @@ class AppSmokeTest {
         rule.onNodeWithText("Ступень — это не высота, а ощущение").assertIsDisplayed()
     }
 
+    /** O-12: every mode is on the «Режимы» tab itself — «Вслепую» and «Вайб ступеней» included. */
     @Test
-    fun modesShowWhatIsPlayableAndExplainTheTaper() {
+    fun modesListEveryModeOnOneScreen() {
         rule.onNodeWithContentDescription("Режимы").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Тир").assertIsDisplayed()
-        rule.onNodeWithText("Охота").assertIsDisplayed()
-        scrollTo("Тапёр")
-        rule.onNodeWithText("Тапёр").performClick()
+        for (t in listOf("Над аккордами", "Вайб ступеней", "Спой ступень", "Ходы", "Песни", "Вслепую", "Обратная охота")) {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(t, substring = true))
+            rule.waitForIdle()
+        }
+        rule.onAllNodesWithText("КАК ИГРАТЬ").assertCountEquals(0)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Вайб ступеней", substring = true))
+        rule.onNodeWithContentDescription("Играть: Вайб ступеней").performSemanticsAction(SemanticsActions.OnClick)
         rule.waitForIdle()
-        rule.onNodeWithText("КАК ИГРАТЬ").assertIsDisplayed()
-        scrollTo("Ходы")
-        rule.onNodeWithText("Ходы").assertIsDisplayed()
+        rule.onNodeWithText("Ступень — это не высота, а ощущение").assertIsDisplayed()
     }
 }

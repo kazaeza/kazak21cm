@@ -13,14 +13,12 @@ import com.kazaeza.muzykalka.audio.AudioOutput
 import com.kazaeza.muzykalka.feature.feel.FeelScreen
 import com.kazaeza.muzykalka.feature.game.GameScreen
 import com.kazaeza.muzykalka.feature.game.RoundSpec
-import com.kazaeza.muzykalka.feature.modes.ModeDetailScreen
 import com.kazaeza.muzykalka.feature.modes.ModesScreen
 import com.kazaeza.muzykalka.feature.progress.ProgressScreen
 import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
 import com.kazaeza.muzykalka.feature.today.TodayScreen
 import com.kazaeza.muzykalka.feature.library.LibraryScreen
-import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.music.SongBook
 import com.kazaeza.muzykalka.ui.theme.MuzykalkaTheme
@@ -72,16 +70,13 @@ class ScreenshotsTest {
     fun today() = shot("01-today", { TodayScreen({}, {}, {}, {}, {}, {}) }, "Начать сет")
 
     @Test
-    fun modes() = shot("02-modes", { ModesScreen(onOpen = {}) }, "Тапёр")
+    fun modes() = shot("02-modes", { ModesScreen(onPlay = { _, _ -> }) }, "Над аккордами")
 
     @Test
     fun library() {
         runBlocking { graph.library.addFromBook(SongBook.byId("autumn-leaves")!!) }
         shot("03-library", { LibraryScreen(onCapture = {}, onOpen = {}) }, "Autumn Leaves")
     }
-
-    @Test
-    fun taperMode() = shot("02b-taper-mode", { ModeDetailScreen(ModeId.TAPER, onBack = {}, onPlay = { _, _ -> }, onTaper = {}) }, "КАК ИГРАТЬ")
 
     @Test
     fun steps() = shot("04b-steps", { GameScreen(RoundSpec(Variant.TAPER_STEPS, level = 2), onExit = {}) }, "Получилось")

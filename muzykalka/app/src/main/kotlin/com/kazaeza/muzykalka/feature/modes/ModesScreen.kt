@@ -5,12 +5,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,6 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.data.settings.GameProgress
@@ -30,91 +37,103 @@ import com.kazaeza.muzykalka.feature.common.ModeVisuals
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.isAvailable
 import com.kazaeza.muzykalka.feature.game.Drills
+import com.kazaeza.muzykalka.game.GuitarNeed
 import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.Variant
-import com.kazaeza.muzykalka.ui.component.Badge
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
-import com.kazaeza.muzykalka.ui.component.JuicyButton
-import com.kazaeza.muzykalka.ui.component.SectionLabel
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import kotlinx.coroutines.launch
 
-/** «Режимы»: the modes of this build as tiles; later ones collapse into one «скоро» line. */
-@Composable
-fun ModesScreen(onOpen: (ModeId) -> Unit) {
-    val graph = LocalAppGraph.current
-    val progress by graph.progress.progress.collectAsState(initial = GameProgress())
-    val (ready, later) = ModeId.entries.partition { it.isAvailable() }
-    ScreenFrame(title = "Режимы", subtitle = "каждый тренирует один навык", accent = Accents.Recorder) {
-        ready.chunked(2).forEach { pair ->
-            item(key = pair.first().name) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    pair.forEach { mode -> ModeTile(mode, progress, Modifier.weight(1f)) { onOpen(mode) } }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-        if (later.isNotEmpty()) {
-            item(key = "later") {
-                Text(
-                    "Скоро: " + later.joinToString(", ") { it.ru } + ".",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Juicy.TextFaint,
-                    modifier = Modifier.padding(horizontal = 6.dp),
-                )
-            }
-        }
-    }
+/** What a card of the «Режимы» screen starts. */
+sealed interface ModeEntry {
+    /** A drill on the round engine, with levels. */
+    data class Drill(val variant: Variant) : ModeEntry
+
+    /** «Песни» — the Taper on the user's library. */
+    data object Songs : ModeEntry
+
+    /** «Вслепую» — a liked song without its name (ADR-024). */
+    data object Blind : ModeEntry
+
+    /** «Вайб ступеней» — listen to every degree over its tonic, no score (ADR-015). */
+    data object Feel : ModeEntry
 }
 
-@Composable
-private fun ModeTile(mode: ModeId, progress: GameProgress, modifier: Modifier, onClick: () -> Unit) {
-    val accent = ModeVisuals.accent(mode)
-    val main = Variant.entries.firstOrNull { it.mode == mode && it in Drills.PLAYABLE }
-    GlassCard(modifier.heightIn(min = 210.dp), accent = accent, onClick = onClick, contentPadding = 16.dp) {
-        Box(
-            Modifier
-                .clip(RoundedCornerShape(18.dp))
-                .background(Brush.linearGradient(accent.map { it.copy(alpha = 0.35f) }))
-                .padding(10.dp),
-        ) { Text(ModeVisuals.emoji(mode), style = MaterialTheme.typography.displaySmall) }
-        Spacer(Modifier.height(10.dp))
-        Text(mode.ru, style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
-        Spacer(Modifier.height(4.dp))
-        Text(mode.goal, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim, maxLines = 3)
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Badge(mode.guitar.ru, listOf(Juicy.Ink4, Juicy.Ink4))
-            val rec = main?.let { progress.record(it) } ?: 0
-            if (rec > 0) Badge("🏆 $rec", accent)
+/**
+ * O-12: every mode on one screen, grouped by skill. Before, the tab showed four tiles and each
+ * led to its own screen; «Вслепую» and «Вайб ступеней» were two taps deep and easy to miss.
+ */
+object ModesCatalog {
+    /** Sections in screen order: the ear first, the guitar after. */
+    val SECTIONS: List<ModeId> = listOf(ModeId.TIR, ModeId.KAMERTON, ModeId.TAPER, ModeId.HUNT)
+
+    fun entries(mode: ModeId): List<ModeEntry> {
+        val drills = Variant.entries
+            .filter { it.mode == mode && it.isAvailable() && it in Drills.PLAYABLE }
+            .map { ModeEntry.Drill(it) }
+        return when (mode) {
+            ModeId.TIR -> drills + ModeEntry.Feel
+            ModeId.TAPER -> drills + ModeEntry.Songs + ModeEntry.Blind
+            else -> drills
         }
     }
+
+    fun title(e: ModeEntry): String = when (e) {
+        is ModeEntry.Drill -> e.variant.ru
+        ModeEntry.Songs -> "Песни"
+        ModeEntry.Blind -> "Вслепую"
+        ModeEntry.Feel -> "Вайб ступеней"
+    }
+
+    fun emoji(e: ModeEntry): String = when (e) {
+        is ModeEntry.Drill -> when (e.variant) {
+            Variant.TIR_CLASSIC -> "🎯"
+            Variant.TIR_OVER_CHORDS -> "🎹"
+            Variant.KAMERTON_SING -> "🎤"
+            Variant.TAPER_STEPS -> "🪜"
+            Variant.HUNT_FIND -> "🏹"
+            Variant.HUNT_ALL_OCTAVES -> "🎼"
+            Variant.HUNT_REVERSE -> "🔁"
+            else -> ModeVisuals.emoji(e.variant.mode)
+        }
+        ModeEntry.Songs -> "🎸"
+        ModeEntry.Blind -> "🎭"
+        ModeEntry.Feel -> "🎧"
+    }
+
+    fun about(e: ModeEntry): String = when (e) {
+        is ModeEntry.Drill -> when (e.variant) {
+            Variant.TIR_CLASSIC -> "Гудит тоника, звучит нота — жми её ступень. Не уверен — «🤷 не знаю», ответ всё равно услышишь."
+            Variant.TIR_OVER_CHORDS -> "Та же нота, но под ней меняются аккорды лада."
+            Variant.KAMERTON_SING -> "Видишь ступень — поёшь её. Засчитывается первая спетая нота."
+            Variant.TAPER_STEPS -> "Тональность и ступени, например «ре мажор: I – V». Сыграй ход аккордами и отметь, как вышло."
+            Variant.HUNT_FIND -> "На экране нота — найди её на грифе и сыграй, телефон слушает."
+            Variant.HUNT_ALL_OCTAVES -> "Та же нота во всех октавах подряд."
+            Variant.HUNT_REVERSE -> "Показано место на грифе — назови ноту."
+            else -> e.variant.mode.goal
+        }
+        ModeEntry.Songs -> "Песни из твоей библиотеки по графику повторений, каждый раз в новой тональности."
+        ModeEntry.Blind -> "Случайная песня из твоих лайков, но без названия: только ступени. Кто это был — узнаешь в конце."
+        ModeEntry.Feel -> "Послушать, как звучит каждая ступень над тоникой. Без очков и таймера."
+    }
+
+    fun guitar(e: ModeEntry): GuitarNeed = when (e) {
+        is ModeEntry.Drill -> e.variant.guitar
+        ModeEntry.Songs, ModeEntry.Blind -> GuitarNeed.REQUIRED
+        ModeEntry.Feel -> GuitarNeed.NONE
+    }
+
+    /** All cards of the screen, in order. */
+    fun all(): List<ModeEntry> = SECTIONS.flatMap(::entries)
 }
 
-/** What the mode is and how to play it, in plain words: the first thing on its screen. */
-private fun howTo(mode: ModeId): String? = when (mode) {
-    ModeId.TIR ->
-        "Гудит дрон — это «дом», тоника; в новой тональности сначала пробегает гамма. Потом звучит нота: нажми её ступень. " +
-            "Не уверен — жми «🤷 не знаю»: это честнее, чем угадывать, а правильный ответ и путь домой ты всё равно услышишь."
-    ModeId.HUNT ->
-        "На экране нота — найди её на грифе и сыграй, телефон слушает. «Обратная охота» — наоборот: " +
-            "показано место на грифе, назови ноту. Гитара не нужна."
-    ModeId.TAPER ->
-        "Тапёр — это ты за гитарой, а приложение заказывает музыку. В «Ходах» на экране тональность и ступени, " +
-            "например «ре мажор: I – V». Сыграй эти аккорды, отметь «получилось» или «не вышло» — и сразу услышишь, " +
-            "как это должно звучать. Микрофон не нужен. Начни с первого уровня, даже если кажется слишком просто."
-    else -> null
-}
-
-/** One mode: how to play, then its playable variants. */
+/** «Режимы»: every mode on one screen, grouped by skill (O-12). */
 @Composable
-fun ModeDetailScreen(
-    mode: ModeId,
-    onBack: () -> Unit,
+fun ModesScreen(
     onPlay: (Variant, Int) -> Unit,
-    onTaper: () -> Unit,
+    onSongs: () -> Unit = {},
     onBlind: () -> Unit = {},
     onFeel: () -> Unit = {},
     onLibrary: () -> Unit = {},
@@ -122,108 +141,159 @@ fun ModeDetailScreen(
     val graph = LocalAppGraph.current
     val progress by graph.progress.progress.collectAsState(initial = GameProgress())
     val scope = rememberCoroutineScope()
-    val accent = ModeVisuals.accent(mode)
-    val (ready, later) = Variant.entries.filter { it.mode == mode }.partition { it.isAvailable() && (it in Drills.PLAYABLE || it == Variant.TAPER_ORDER || it == Variant.TAPER_BLIND) }
-    ScreenFrame(title = "${ModeVisuals.emoji(mode)} ${mode.ru}", subtitle = mode.goal, accent = accent, onBack = onBack) {
-        howTo(mode)?.let { text ->
-            item(key = "how") {
-                GlassCard(Modifier.fillMaxWidth(), accent = accent) {
-                    SectionLabel("как играть")
-                    Spacer(Modifier.height(6.dp))
-                    Text(text, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
-                    if (mode == ModeId.TIR) {
-                        Spacer(Modifier.height(12.dp))
-                        GhostButton("Сначала послушать вайб ступеней", onClick = onFeel, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "🎧")
-                    }
-                }
-            }
-        }
-        ready.forEach { v ->
-            item(key = v.name) {
-                GlassCard(Modifier.fillMaxWidth(), accent = accent) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(v.ru, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                        Badge(v.guitar.ru, accent)
-                    }
-                    if (v in Drills.PLAYABLE) {
-                        val max = Drills.maxLevel(v)
-                        val allOpen = Drills.allLevelsOpen(v)
-                        val unlocked = if (allOpen) max else progress.unlockedLevel(v)
-                        val selected = progress.selectedLevel(v)
-                        if (max > 1) {
-                            Spacer(Modifier.height(10.dp))
-                            SectionLabel(if (allOpen) "уровень — любой, начни с первого" else "уровень")
-                            Spacer(Modifier.height(6.dp))
-                            (1..max).forEach { level ->
-                                val open = level <= unlocked
-                                val isSel = level == selected
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 3.dp)
-                                        .clip(RoundedCornerShape(14.dp))
-                                        .background(if (isSel) Brush.horizontalGradient(accent.map { it.copy(alpha = 0.45f) }) else Brush.horizontalGradient(listOf(Juicy.Ink3, Juicy.Ink3)))
-                                        .then(
-                                            if (open) {
-                                                Modifier.clickable {
-                                                    scope.launch {
-                                                        if (allOpen) graph.progress.unlock(v, level)
-                                                        graph.progress.select(v, level)
-                                                    }
-                                                }
-                                            } else {
-                                                Modifier
-                                            },
-                                        )
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(if (open) "$level" else "🔒", style = MaterialTheme.typography.titleMedium, color = if (isSel) Color.White else Juicy.TextDim)
-                                    Spacer(Modifier.padding(horizontal = 6.dp))
-                                    Text(Drills.levelName(v, level), style = MaterialTheme.typography.bodyMedium, color = if (open) Juicy.Text else Juicy.TextFaint)
-                                }
+    ScreenFrame(title = "Режимы", subtitle = "всё в одном месте: выбирай и играй", accent = Accents.Recorder) {
+        ModesCatalog.SECTIONS.forEach { mode ->
+            val entries = ModesCatalog.entries(mode)
+            if (entries.isEmpty()) return@forEach
+            item(key = "head-${mode.name}") { SectionHead(mode) }
+            entries.forEach { e ->
+                item(key = "entry-" + ModesCatalog.title(e)) {
+                    EntryCard(
+                        entry = e,
+                        mode = mode,
+                        progress = progress,
+                        onSelectLevel = { v, level, allOpen ->
+                            scope.launch {
+                                if (allOpen) graph.progress.unlock(v, level)
+                                graph.progress.select(v, level)
                             }
-                        }
-                        val record = progress.record(v)
-                        if (record > 0 && !Drills.guitarPaced(v)) {
-                            Spacer(Modifier.height(6.dp))
-                            Text("🏆 рекорд: $record", style = MaterialTheme.typography.bodyMedium, color = Juicy.Gold)
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        JuicyButton("Играть", onClick = { onPlay(v, selected) }, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "▶️")
-                    } else if (v == Variant.TAPER_BLIND) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Случайная песня из твоих лайков в случайной тональности — но без названия. На экране только ступени: " +
-                                "не за что зацепиться, кроме самих аккордов. Сыграй, а кто это был, узнаешь в конце.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Juicy.TextDim,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        JuicyButton("Играть вслепую", onClick = onBlind, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "🎭")
-                    } else if (v == Variant.TAPER_ORDER) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "То же, но целые песни из твоей библиотеки. Каждая приходит по графику повторений и каждый раз в новой тональности — " +
-                                "так песня запоминается ступенями, а не пальцами.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Juicy.TextDim,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        JuicyButton("Играть песни", onClick = onTaper, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "🎸")
-                        Spacer(Modifier.height(8.dp))
-                        GhostButton("Взять песню из сборника", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "📚")
-                    }
+                        },
+                        onStart = {
+                            when (e) {
+                                is ModeEntry.Drill -> onPlay(e.variant, progress.selectedLevel(e.variant))
+                                ModeEntry.Songs -> onSongs()
+                                ModeEntry.Blind -> onBlind()
+                                ModeEntry.Feel -> onFeel()
+                            }
+                        },
+                        onLibrary = onLibrary,
+                    )
                 }
             }
         }
         item(key = "rules") {
             Text(
-                (if (later.isNotEmpty()) "Скоро: " + later.joinToString(", ") { it.ru } + ". " else "") +
-                    if (mode == ModeId.TAPER) "Раунд 90 секунд, без жизней: оценку ставишь ты сам, честно." else "Раунд 60–90 секунд · ошибся — сразу слышишь правильный ответ.",
+                "Игры идут раундами по 60–90 секунд: ошибся — сразу слышишь правильный ответ. В Тапёре оценку ставишь сам, честно.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Juicy.TextFaint,
+                modifier = Modifier.padding(horizontal = 6.dp),
             )
         }
     }
+}
+
+@Composable
+private fun SectionHead(mode: ModeId) {
+    val accent = ModeVisuals.accent(mode)
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Brush.linearGradient(accent.map { it.copy(alpha = 0.4f) })),
+            contentAlignment = Alignment.Center,
+        ) { Text(ModeVisuals.emoji(mode), style = MaterialTheme.typography.headlineSmall) }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(mode.ru, style = MaterialTheme.typography.headlineSmall, color = Juicy.Text)
+            Text(mode.goal, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun EntryCard(
+    entry: ModeEntry,
+    mode: ModeId,
+    progress: GameProgress,
+    onSelectLevel: (Variant, Int, Boolean) -> Unit,
+    onStart: () -> Unit,
+    onLibrary: () -> Unit,
+) {
+    val accent = ModeVisuals.accent(mode)
+    val title = ModesCatalog.title(entry)
+    GlassCard(Modifier.fillMaxWidth(), accent = accent, contentPadding = 16.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("${ModesCatalog.emoji(entry)} $title", style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
+                Spacer(Modifier.height(4.dp))
+                Text(ModesCatalog.about(entry), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+            }
+            Spacer(Modifier.width(12.dp))
+            PlayDisc(accent, label = "Играть: $title", onClick = onStart)
+        }
+        Spacer(Modifier.height(10.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(guitarText(ModesCatalog.guitar(entry)), style = MaterialTheme.typography.labelLarge, color = Juicy.TextFaint)
+            val v = (entry as? ModeEntry.Drill)?.variant
+            val record = v?.let { progress.record(it) } ?: 0
+            if (v != null && record > 0 && !Drills.guitarPaced(v)) {
+                Text("🏆 $record", style = MaterialTheme.typography.labelLarge, color = Juicy.Gold)
+            }
+        }
+        if (entry is ModeEntry.Drill) Levels(entry.variant, accent, progress, onSelectLevel)
+        if (entry == ModeEntry.Songs) {
+            Spacer(Modifier.height(10.dp))
+            GhostButton("Взять песню из сборника", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "📚")
+        }
+    }
+}
+
+private fun guitarText(g: GuitarNeed): String = when (g) {
+    GuitarNeed.REQUIRED -> "🎸 нужна гитара"
+    GuitarNeed.OPTIONAL -> "🎸 можно без гитары"
+    GuitarNeed.NONE -> "🎧 гитара не нужна"
+}
+
+/** Round «play» button on the right of a card. */
+@Composable
+private fun PlayDisc(accent: List<Color>, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(64.dp)
+            .clip(CircleShape)
+            .background(Brush.linearGradient(accent))
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) { Text("▶", style = MaterialTheme.typography.headlineSmall, color = Color.White, textAlign = TextAlign.Center) }
+}
+
+/** Chips for the open levels, one line for the locked rest, and the name of the chosen level. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Levels(v: Variant, accent: List<Color>, progress: GameProgress, onSelect: (Variant, Int, Boolean) -> Unit) {
+    val max = Drills.maxLevel(v)
+    if (max <= 1) return
+    val allOpen = Drills.allLevelsOpen(v)
+    val unlocked = (if (allOpen) max else progress.unlockedLevel(v)).coerceIn(1, max)
+    val selected = progress.selectedLevel(v).coerceIn(1, unlocked)
+    Spacer(Modifier.height(10.dp))
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("уровень", style = MaterialTheme.typography.labelLarge, color = Juicy.TextFaint)
+        (1..unlocked).forEach { level ->
+            val isSel = level == selected
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isSel) Brush.linearGradient(accent) else Brush.linearGradient(listOf(Juicy.Ink4, Juicy.Ink3)))
+                    .clickable { onSelect(v, level, allOpen) }
+                    .semantics { contentDescription = "Уровень $level" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("$level", style = MaterialTheme.typography.titleMedium, color = if (isSel) Color.White else Juicy.Text)
+            }
+        }
+        if (unlocked < max) {
+            Text("🔒 ещё ${max - unlocked}", style = MaterialTheme.typography.labelLarge, color = Juicy.TextFaint)
+        }
+    }
+    Spacer(Modifier.height(6.dp))
+    Text(Drills.levelName(v, selected), style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
 }

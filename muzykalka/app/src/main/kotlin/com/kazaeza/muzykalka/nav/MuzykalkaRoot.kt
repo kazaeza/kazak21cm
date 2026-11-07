@@ -34,7 +34,6 @@ import com.kazaeza.muzykalka.feature.game.GameScreen
 import com.kazaeza.muzykalka.feature.game.RoundSpec
 import com.kazaeza.muzykalka.feature.library.ItemScreen
 import com.kazaeza.muzykalka.feature.library.LibraryScreen
-import com.kazaeza.muzykalka.feature.modes.ModeDetailScreen
 import com.kazaeza.muzykalka.feature.modes.ModesScreen
 import com.kazaeza.muzykalka.feature.progress.ProgressScreen
 import com.kazaeza.muzykalka.feature.set.SetScreen
@@ -44,7 +43,6 @@ import com.kazaeza.muzykalka.feature.taper.BlindScreen
 import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
 import com.kazaeza.muzykalka.feature.today.TodayScreen
-import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.ui.component.FloatingTabBar
 import com.kazaeza.muzykalka.ui.component.FloatingTabBarMargin
@@ -96,14 +94,10 @@ fun MuzykalkaRoot(graph: AppGraph) {
                             onLibrary = { tab(LibraryRoute) },
                         )
                     }
-                    composable<ModesRoute> { ModesScreen(onOpen = { m -> nav.navigate(ModeRoute(m.name)) }) }
-                    composable<ModeRoute> { back ->
-                        val mode = ModeId.valueOf(back.toRoute<ModeRoute>().mode)
-                        ModeDetailScreen(
-                            mode = mode,
-                            onBack = { nav.popBackStack() },
+                    composable<ModesRoute> {
+                        ModesScreen(
                             onPlay = { v, level -> nav.navigate(GameRoute(v.name, level)) },
-                            onTaper = { nav.navigate(TaperRoute()) },
+                            onSongs = { nav.navigate(TaperRoute()) },
                             onBlind = { nav.navigate(BlindRoute) },
                             onFeel = { nav.navigate(FeelRoute) },
                             onLibrary = { tab(LibraryRoute) },
