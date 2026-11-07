@@ -347,6 +347,38 @@ object SongBook {
             C: | I vi | iii | I vi | iii | V |
             """,
         ),
+        entry(
+            "samaritans", BookGenre.LIKED, 1, "Samaritans", "IDLES", Mode.MAJOR, "ABAB",
+            "кусок: рифф с ♭III и ♭II рядом с тоникой, а в припеве минорная iv",
+            """
+            A: | I bIII | bII | I | bIII | bII | I | bIII bII |
+            B: | I | bIII iv I | bIII IV I | bIII iv bII |
+            """,
+        ),
+        entry(
+            "toni", BookGenre.LIKED, 2, "Toni", "Interpol", Mode.MAJOR, "ABAB",
+            "кусок: V–♭VII–I — подъём к тонике через ♭VII; в припеве ii–I и iii–I",
+            """
+            A: | V bVII I | V bVII vi | I bVII IV | V bVII vi |
+            B: | iii I | ii I | ii vi | I |
+            """,
+        ),
+        entry(
+            "gospel-for-a-new-century", BookGenre.LIKED, 2, "Gospel For A New Century", "Yves Tumor", Mode.MINOR, "ABAB",
+            "кусок: ♭VI–♭III–i–♭III по кругу, в припеве ♭VI–♭III–iv",
+            """
+            A: | bVI bIII | i bIII | bVI bIII | i bIII |
+            B: | bVI bIII iv | bVI bIII iv |
+            """,
+        ),
+        entry(
+            "igors-theme", BookGenre.LIKED, 2, "IGOR'S THEME", "Tyler, The Creator", Mode.MINOR, "ABAB",
+            "кусок: минорная петля i–♭VI, а в конце круга мажорная V7",
+            """
+            A: | i bVI | v bVII V7 | i bVI | v bVII V7 |
+            B: | i bVI bVII | i bVI bVII | i bVI | v bVII V7 |
+            """,
+        ),
         // ---------------------------------------------------------------- pop & rock
         entry(
             "stand-by-me", BookGenre.POP, 1, "Stand by Me", "Ben E. King", Mode.MAJOR, "A",

@@ -40,7 +40,7 @@ class SongBookTest {
     @Test
     fun `my likes are a full shelf, stored in degrees with the tonic of the record`() {
         val liked = SongBook.ENTRIES.filter { it.genre == BookGenre.LIKED }
-        assertTrue(liked.size >= 37, "liked shelf has ${liked.size}")
+        assertTrue(liked.size >= 41, "liked shelf has ${liked.size}")
         val opening = { id: String, bars: Int -> SongBook.byId(id)!!.song.sections[0].bars.take(bars).flatMap { it.chords } }
         val parse = { text: String -> text.split(' ').map(ChordParser::parse) }
         assertEquals(parse("I V ii IV"), opening("just-like-heaven", 4))
@@ -49,6 +49,8 @@ class SongBookTest {
         assertEquals(Mode.PHRYGIAN, SongBook.byId("in-the-afternoon")!!.song.mode)
         assertEquals(parse("bVI iv bIII bVI"), SongBook.byId("lotus-flower")!!.song.section("B").bars.flatMap { it.chords }.take(4))
         assertEquals(parse("i v bIII iv"), SongBook.byId("if-you-really-love-nothing")!!.song.section("B").bars.flatMap { it.chords }.take(4))
+        assertEquals(parse("i bVI v bVII V7"), SongBook.byId("igors-theme")!!.song.section("A").bars.flatMap { it.chords }.take(5))
+        assertEquals(parse("V bVII I"), SongBook.byId("toni")!!.song.section("A").bars.first().chords)
         liked.forEach { e -> assertTrue(e.song.artist != null, "${e.id} has an artist") }
     }
 
