@@ -1,7 +1,15 @@
 package com.kazaeza.muzykalka.music
 
 /** Shelf of the built-in songbook. */
-enum class BookGenre(val ru: String) { LIKED("мои лайки"), POP("поп и рок"), BLUES("блюз"), JAZZ("джаз") }
+enum class BookGenre(val ru: String) {
+    LIKED("мои лайки"),
+    POP("поп и рок"),
+    BLUES("блюз"),
+    JAZZ("джаз"),
+
+    /** O-18 (ADR-032): chart hits of 1958–1990, from the open McGill Billboard annotations. */
+    HITS("хиты 60–80-х"),
+}
 
 /**
  * One built-in teaching piece: the harmony of a well-known song (or a standard form like the blues)
@@ -11,7 +19,7 @@ enum class BookGenre(val ru: String) { LIKED("мои лайки"), POP("поп �
 data class BookEntry(
     val id: String,
     val genre: BookGenre,
-    /** 1 — two to four chords, 2 — a real song form, 3 — jazz changes. */
+    /** 1 — two to four different chords, 2 — five to eight (a real song form), 3 — nine and more, or jazz changes. */
     val difficulty: Int,
     val teaches: String,
     val song: Song,
@@ -30,6 +38,9 @@ data class BookEntry(
  * The [BookGenre.LIKED] shelf (ADR-018) is the user's own favourites from their Spotify likes:
  * the tonic is checked against the track's key, chords come from popular community charts,
  * slash basses and colour tones are dropped, and only the harmony in degrees is kept.
+ *
+ * The [BookGenre.HITS] shelf (ADR-032) is the harmony of ~100 chart hits from the open McGill
+ * Billboard annotations; it lives in [HitsShelf] and is appended below.
  */
 object SongBook {
     val ENTRIES: List<BookEntry> = listOf(
@@ -532,7 +543,7 @@ object SongBook {
             "i⁷–♭VI⁷–vi⁷: три аккорда по четыре такта",
             "A: | i7 | i7 | i7 | i7 | bVI7 | bVI7 | bVI7 | bVI7 | vi7 | vi7 | vi7 | vi7 | i7 | i7 | i7 | i7 |",
         ),
-    )
+    ) + HitsShelf.ENTRIES
 
     fun byId(id: String): BookEntry? = ENTRIES.firstOrNull { it.id == id }
 
@@ -549,19 +560,35 @@ object SongBook {
         form: String,
         teaches: String,
         progression: String,
-    ) = BookEntry(
-        id = id,
-        genre = genre,
-        difficulty = difficulty,
-        teaches = teaches,
-        song = Song(
-            id = "book:$id",
-            title = title,
-            artist = artist,
-            mode = mode,
-            sections = ProgressionText.parseSections(progression.trimIndent()),
-            form = ProgressionText.parseForm(form),
-            notes = "Из встроенного сборника: $teaches. Гармония упрощена — поправь под свою версию.",
-        ),
-    )
+    ) = bookEntry(id, genre, difficulty, title, artist, mode, form, teaches, progression)
 }
+
+/**
+ * Builds one book piece from the text the shelves are written in: [progression] is `A: | I | vi |` lines
+ * (`ProgressionText`), [form] the letters of the sections in the order they are played.
+ */
+internal fun bookEntry(
+    id: String,
+    genre: BookGenre,
+    difficulty: Int,
+    title: String,
+    artist: String?,
+    mode: Mode,
+    form: String,
+    teaches: String,
+    progression: String,
+) = BookEntry(
+    id = id,
+    genre = genre,
+    difficulty = difficulty,
+    teaches = teaches,
+    song = Song(
+        id = "book:$id",
+        title = title,
+        artist = artist,
+        mode = mode,
+        sections = ProgressionText.parseSections(progression.trimIndent()),
+        form = ProgressionText.parseForm(form),
+        notes = "Из встроенного сборника: $teaches. Гармония упрощена — поправь под свою версию.",
+    ),
+)

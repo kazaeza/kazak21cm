@@ -103,7 +103,7 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
                 Spacer(Modifier.height(10.dp))
                 Text("📖 Сборник", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Гармония известных обучающих песен и джазовых стандартов, ступенями. Упрощено до основных аккордов — после добавления можно поправить под свою версию.",
+                    "Гармония известных песен — обучающих, хитов 1958–1990 годов и джазовых стандартов — ступенями. Упрощено до основных аккордов: после добавления можно поправить под свою версию.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Juicy.TextDim,
                 )

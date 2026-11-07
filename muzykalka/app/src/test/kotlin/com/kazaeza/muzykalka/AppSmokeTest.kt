@@ -80,6 +80,19 @@ class AppSmokeTest {
         rule.onNodeWithText("Сыграть сейчас").assertIsDisplayed()
     }
 
+    /** O-18: the «хиты 60–80-х» shelf is one chip away, and a piece can be read before it is added. */
+    @Test
+    fun hitsShelfIsOneChipAway() {
+        rule.onNodeWithContentDescription("Библиотека").performClick()
+        rule.waitForIdle()
+        scrollTo("хиты 60–80-х")
+        click("хиты 60–80-х")
+        rule.onAllNodesWithText("Covet").assertCountEquals(0)
+        scrollTo("With or Without You")
+        rule.onNodeWithText("With or Without You").assertIsDisplayed()
+        rule.onNodeWithText("I–V–vi–IV: четыре аккорда, по такту на каждый").assertIsDisplayed()
+    }
+
     @Test
     fun feelLessonOpensFromToday() {
         scrollTo("Вайб ступеней")
