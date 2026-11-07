@@ -25,6 +25,16 @@ interface DroneTask : Task {
 
     /** What «🔁» (and the return from a pause) plays again. */
     val replay: Score?
+
+    /**
+     * O-15 (ADR-029): played before [Prompt.audio] over [introDrone] instead of [drone] — a new key
+     * is set over its tonic, then the drone moves to the task's own chord. null = no such intro
+     * (the key's scale, if any, is already part of the prompt audio).
+     */
+    val intro: Score? get() = null
+
+    /** The drone under [intro]. */
+    val introDrone: List<MidiNote>? get() = null
 }
 
 /** «Спой ступень»: the degree is shown, the user sings it. */

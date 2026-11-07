@@ -87,6 +87,9 @@ class ScreenshotsTest {
     @Test
     fun feel() = shot("04c-feel", { FeelScreen(onBack = {}, onTir = {}) }, "Вайб ступеней")
 
+    @Test
+    fun underNote() = shot("04e-under-note", { GameScreen(RoundSpec(Variant.TIR_UNDER_NOTE, level = 2), onExit = {}) }, "Какой аккорд под ней?")
+
     /** «Пропевка» after one sung note: a miss shows what it was, a hit shows the try. */
     @Test
     fun search() {

@@ -118,10 +118,23 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                     )
                 }
                 Spacer(Modifier.height(12.dp))
+                // O-15 «Под нотой»: the note on top is given, the chord under it is the question.
+                val shown = if (task.underNote) task.notes.single().degree else null
                 when {
-                    ui.phase == RoundPhase.PROMPTING -> {
+                    ui.phase == RoundPhase.PROMPTING && shown == null -> {
                         Text("🎧", style = MaterialTheme.typography.displayMedium, modifier = Modifier.breathe(amount = 0.12f, periodMs = 900))
                         Text("Слушай…", style = MaterialTheme.typography.headlineSmall, color = Juicy.TextDim)
+                    }
+                    shown != null && !feedback -> {
+                        val c = DegreeColors.of(shown)
+                        Text("сверху нота", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+                        GradientText(DegreeFormatter.degree(shown, ui.notation), MaterialTheme.typography.displayLarge, DegreeColors.gradient(c), if (listening) Modifier.breathe() else Modifier)
+                        Text(DegreeVibes.of(shown).word, style = MaterialTheme.typography.titleLarge, color = c)
+                        Text(
+                            if (ui.phase == RoundPhase.PROMPTING) "Слушай…" else "Какой аккорд под ней?",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Juicy.TextDim,
+                        )
                     }
                     feedback -> {
                         val f = ui.feedback
@@ -143,6 +156,15 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                             }
                             Text(DegreeVibes.pathHome(d, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
                             if (!correct) AnchorHint(ui, d)
+                        }
+                        if (shown != null) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                DegreeVibes.overChord(shown, task.chords[0], task.key.mode, ui.notation).replaceFirst("над", "${DegreeFormatter.degree(shown, ui.notation)} над"),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Juicy.Text,
+                                textAlign = TextAlign.Center,
+                            )
                         }
                         task.review?.let { r ->
                             Spacer(Modifier.height(6.dp))

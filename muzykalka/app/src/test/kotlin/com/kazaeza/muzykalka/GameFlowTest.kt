@@ -61,4 +61,26 @@ class GameFlowTest {
         rule.onAllNodesWithText("1").onFirst().performClick()
         rule.waitUntil(5_000) { audio.played.size >= 2 } // confirmation or correction (rule 5)
     }
+
+    /** O-15 (ADR-029): the key is set over the tonic, then the chord drones under the shown note. */
+    @Test
+    fun underNoteSetsTheKeyOverTheTonicThenAsksTheChord() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_UNDER_NOTE, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Какой аккорд под ней?").fetchSemanticsNodes().isNotEmpty() }
+        val drones = audio.drones.filterNotNull()
+        assertTrue("the tonic drone under the scale first", drones.first().size == 2)
+        assertTrue("then the chord", drones.last().size == 4)
+        assertTrue("scale, then the note", audio.played.size >= 2)
+        val before = audio.played.size
+        rule.onAllNodesWithText("iv", ignoreCase = true).onFirst().performClick() // IV in major, iv in minor
+        rule.waitUntil(5_000) { audio.played.size > before } // the chord goes home, or the note over it again (rule 5)
+    }
 }

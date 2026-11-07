@@ -42,6 +42,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     HUNT_REVERSE(ModeId.HUNT, "Обратная охота", GuitarNeed.NONE, "0.1"),
     TIR_CLASSIC(ModeId.TIR, "Тир", GuitarNeed.NONE, "0.1"),
     TIR_OVER_CHORDS(ModeId.TIR, "Над аккордами", GuitarNeed.NONE, "0.1"),
+    /** O-15: the reverse — the note is shown, the chord droning under it is asked (ADR-029). */
+    TIR_UNDER_NOTE(ModeId.TIR, "Под нотой", GuitarNeed.NONE, "0.1"),
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.2"),
     TIR_RADIO(ModeId.TIR, "Радио", GuitarNeed.NONE, "0.3"),
     /** O-14: «спой квинту» — search with the voice until it is found (ADR-028). */
@@ -83,6 +85,12 @@ object Levels {
     val TIR_CHORDS = listOf(
         "над I · IV · V · vi",
         "над всеми аккордами лада",
+    )
+
+    /** «Под нотой» (O-15): which chord of the key is under the shown note. */
+    val TIR_UNDER = listOf(
+        "I · IV · V · vi",
+        "все аккорды лада",
     )
 
     /** Taper «Ходы»: progressions from the most banal up (see [StepsLadder]). */
