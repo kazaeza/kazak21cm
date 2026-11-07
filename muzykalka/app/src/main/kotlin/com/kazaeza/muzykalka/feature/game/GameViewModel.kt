@@ -6,6 +6,13 @@ import com.kazaeza.muzykalka.AppGraph
 import com.kazaeza.muzykalka.data.repo.SessionKind
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.game.Answer
+import com.kazaeza.muzykalka.music.Mode
+import com.kazaeza.muzykalka.music.Key
+import com.kazaeza.muzykalka.music.DegreeAnchor
+import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.game.TirTask
+import com.kazaeza.muzykalka.game.SingTask
+import com.kazaeza.muzykalka.game.AnchorHints
 import com.kazaeza.muzykalka.game.AttemptRecord
 import com.kazaeza.muzykalka.game.HuntDriver
 import com.kazaeza.muzykalka.game.LevelRules
@@ -107,6 +114,12 @@ data class GameUi(
     val exam: Boolean = false,
     /** ADR-019: the round clock is stopped, sound is off, answers are ignored. */
     val paused: Boolean = false,
+    /** O-09: the user's own anchor songs, by semitones of the degree (a hint after a miss). */
+    val anchors: Map<Int, DegreeAnchor> = emptyMap(),
+    /** O-09: anchors of the degrees this round missed, offered in the summary. */
+    val summaryAnchors: List<DegreeAnchor> = emptyList(),
+    /** The anchor that is sounding in the summary. */
+    val playingAnchor: DegreeAnchor? = null,
 )
 
 fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || this == Variant.KAMERTON_SING
@@ -116,6 +129,9 @@ private const val SUNG_WINDOW_MS = 350L
 
 /** After the drone starts or changes key, before the first sound over it. */
 private const val DRONE_SETTLE_MS = 1_500L
+
+/** The drone holds a moment after an anchor's last note, so it lands home. */
+private const val ANCHOR_TAIL_MS = 600L
 
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
@@ -203,6 +219,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     private var feedbackAudio: Job? = null
     private var replayJob: Job? = null
     private val micJobs = mutableListOf<Job>()
+    private val arranger = Arranger()
     private val headphones = MutableStateFlow(false)
     private var feedbackSerial = 0
     private var lastFeedback: FeedbackEvent? = null
@@ -251,10 +268,11 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         engine = Drills.engine(spec, level, settings, history, System.currentTimeMillis() - now(), review = review(), headphones = wearsHeadphones)
         sessionId = spec.sessionId ?: graph.practice.startSession(SessionKind.FREE, graph.today(settings)).also { ownSession = true }
         val needsMic = spec.variant.needsMic()
+        val anchors = graph.anchors.current()
         state.update {
             it.copy(
                 loading = false, level = level, needsMic = needsMic, notation = settings.degreeNotation, naming = settings.noteNaming,
-                settings = settings,
+                settings = settings, anchors = anchors,
                 totalMs = if (spec.exam) 0 else if (Drills.guitarPaced(spec.variant)) 90_000 else spec.durationMs,
                 maxLives = if (spec.exam || Drills.guitarPaced(spec.variant)) 0 else 3,
                 taskLimit = if (spec.exam) spec.examTasks else null,
@@ -487,7 +505,46 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 bestStreak = s.bestStreak, newRecord = newRecord, unlockedLevel = unlocked, attempts = s.attempts,
             )
         }
-        state.update { it.copy(summary = summary, phase = RoundPhase.FINISHED) }
+        val anchors = state.value.anchors
+        val offered = AnchorHints.missed(s.attempts).mapNotNull { anchors[it.semitones] }
+        anchorKey = (s.task as? TirTask)?.key ?: (s.task as? SingTask)?.key
+        state.update { it.copy(summary = summary, phase = RoundPhase.FINISHED, summaryAnchors = offered) }
+    }
+
+    /** The key of the round's last question: the anchor is heard where the ear just was. */
+    private var anchorKey: Key? = null
+    private var anchorJob: Job? = null
+
+    /** O-09, summary ▶: the tonic drone, a breath, the opening; tapped again — silence. */
+    fun playAnchor(anchor: DegreeAnchor) {
+        anchorJob?.cancel()
+        graph.audioOutput.stop()
+        if (state.value.playingAnchor == anchor) {
+            state.update { it.copy(playingAnchor = null) }
+            return
+        }
+        val key = anchorKey ?: KeyPicker(Random.Default).next(Mode.MAJOR).also { anchorKey = it }
+        state.update { it.copy(playingAnchor = anchor) }
+        // stop() above already silenced the drone; a cancelled job leaves the sound to whoever cancelled it.
+        anchorJob = viewModelScope.launch {
+            try {
+                graph.audioOutput.drone(arranger.drone(key))
+                delay(DRONE_SETTLE_MS)
+                graph.audioOutput.play(anchor.score(key, arranger))
+                delay(ANCHOR_TAIL_MS)
+                graph.audioOutput.drone(null)
+            } finally {
+                state.update { if (it.playingAnchor == anchor) it.copy(playingAnchor = null) else it }
+            }
+        }
+    }
+
+    /** New round or leaving the summary: the anchor stops. */
+    fun stopAnchor() {
+        if (anchorJob?.isActive != true) return
+        anchorJob?.cancel()
+        graph.audioOutput.stop()
+        state.update { it.copy(playingAnchor = null) }
     }
 
     override fun onCleared() {

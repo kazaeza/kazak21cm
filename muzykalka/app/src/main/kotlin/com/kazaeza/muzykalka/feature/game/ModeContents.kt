@@ -80,6 +80,14 @@ private fun reviewText(r: TirReview, correct: Boolean): String {
     return "повтор: $ago ошибся$then" + if (correct) " — теперь верно" else ""
 }
 
+/** O-09: after a miss, the user's own song for the asked degree — a hook, shown only after the answer. */
+@Composable
+private fun AnchorHint(ui: GameUi, degree: Degree) {
+    val anchor = ui.anchors[degree.semitones] ?: return
+    Spacer(Modifier.height(6.dp))
+    DegreeChip("⚓ ${DegreeFormatter.degree(degree, ui.notation)} — как «${anchor.title}»", DegreeColors.of(degree))
+}
+
 @Composable
 internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer: (Answer) -> Unit, onReplay: () -> Unit) {
     val enteredNotes = remember(task.itemKey, ui.taskSerial) { mutableStateListOf<Degree>() }
@@ -134,6 +142,7 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                                 Text(DegreeVibes.overChord(d, chord, task.key.mode, ui.notation), style = MaterialTheme.typography.titleMedium, color = Juicy.Text, textAlign = TextAlign.Center)
                             }
                             Text(DegreeVibes.pathHome(d, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                            if (!correct) AnchorHint(ui, d)
                         }
                         task.review?.let { r ->
                             Spacer(Modifier.height(6.dp))
@@ -442,6 +451,7 @@ internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnsw
                 val vibe = DegreeVibes.of(task.degree)
                 Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = color)
                 if (feedback) Text(DegreeVibes.pathHome(task.degree, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                if (feedback && !correct) AnchorHint(ui, task.degree)
             }
         }
 

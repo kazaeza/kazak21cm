@@ -58,6 +58,13 @@ import com.kazaeza.muzykalka.ui.component.LivesRow
 import com.kazaeza.muzykalka.ui.component.StarRow
 import com.kazaeza.muzykalka.ui.component.BigStat
 import com.kazaeza.muzykalka.ui.component.TimerRing
+import com.kazaeza.muzykalka.ui.component.DegreeChip
+import com.kazaeza.muzykalka.ui.component.GameTouchTarget
+import com.kazaeza.muzykalka.ui.component.SectionLabel
+import com.kazaeza.muzykalka.ui.theme.DegreeColors
+import com.kazaeza.muzykalka.music.DegreeAnchor
+import com.kazaeza.muzykalka.music.DegreeFormatter
+import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.ui.effect.AuroraBackground
 import com.kazaeza.muzykalka.ui.effect.FlashOverlay
 import com.kazaeza.muzykalka.ui.effect.ParticleLayer
@@ -202,8 +209,18 @@ private fun GameHost(
                 summary = s,
                 accent = accent,
                 inSequence = onFinished != null,
-                onAgain = { round++ },
-                onClose = { if (onFinished != null) onFinished(s) else onExit() },
+                onAgain = {
+                    vm.stopAnchor()
+                    round++
+                },
+                onClose = {
+                    vm.stopAnchor()
+                    if (onFinished != null) onFinished(s) else onExit()
+                },
+                anchors = ui.summaryAnchors,
+                playing = ui.playingAnchor,
+                notation = ui.notation,
+                onAnchor = vm::playAnchor,
             )
         }
     }
@@ -278,6 +295,10 @@ private fun SummaryOverlay(
     inSequence: Boolean,
     onAgain: () -> Unit,
     onClose: () -> Unit,
+    anchors: List<DegreeAnchor> = emptyList(),
+    playing: DegreeAnchor? = null,
+    notation: DegreeNotation = DegreeNotation.ARABIC,
+    onAnchor: (DegreeAnchor) -> Unit = {},
 ) {
     Box(
         Modifier
@@ -323,6 +344,7 @@ private fun SummaryOverlay(
                     BigStat("${summary.answered}", "ответов", colors = accent)
                 }
             }
+            if (anchors.isNotEmpty()) AnchorsCard(anchors.take(MAX_SUMMARY_ANCHORS), playing, notation, onAnchor)
             JuicyButton(if (inSequence) "Дальше" else "Ещё раунд", onClick = if (inSequence) onClose else onAgain, Modifier.fillMaxWidth(), colors = accent, leading = if (inSequence) "➡️" else "🔁")
             if (!inSequence) GhostButton("Готово", onClick = onClose, Modifier.fillMaxWidth())
             Text(
@@ -331,6 +353,36 @@ private fun SummaryOverlay(
                 color = Juicy.TextFaint,
                 textAlign = TextAlign.Center,
             )
+        }
+    }
+}
+
+private const val MAX_SUMMARY_ANCHORS = 3
+
+/** O-09: the degrees this round missed, each with the user's own song that leans on it. */
+@Composable
+private fun AnchorsCard(anchors: List<DegreeAnchor>, playing: DegreeAnchor?, notation: DegreeNotation, onAnchor: (DegreeAnchor) -> Unit) {
+    GlassCard(Modifier.fillMaxWidth()) {
+        SectionLabel("⚓ якоря к ошибкам")
+        anchors.forEach { anchor ->
+            val color = DegreeColors.of(anchor.degree)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(GameTouchTarget)
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable(onClickLabel = if (anchor == playing) "Стоп" else "Послушать") { onAnchor(anchor) }
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DegreeChip(DegreeFormatter.degree(anchor.degree, notation), color)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(anchor.title, style = MaterialTheme.typography.titleMedium, color = Juicy.Text, maxLines = 1)
+                    Text(anchor.melodyText, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim, maxLines = 1)
+                }
+                Text(if (anchor == playing) "⏹" else "▶", style = MaterialTheme.typography.headlineSmall, color = color)
+            }
         }
     }
 }

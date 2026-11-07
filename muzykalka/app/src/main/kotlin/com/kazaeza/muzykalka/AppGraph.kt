@@ -14,6 +14,7 @@ import com.kazaeza.muzykalka.data.backup.BackupManager
 import com.kazaeza.muzykalka.data.db.MuzykalkaDatabase
 import com.kazaeza.muzykalka.data.repo.LibraryRepository
 import com.kazaeza.muzykalka.data.repo.PracticeRepository
+import com.kazaeza.muzykalka.data.settings.AnchorStore
 import com.kazaeza.muzykalka.data.settings.ProgressStore
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.data.settings.SettingsRepository
@@ -39,10 +40,11 @@ open class AppGraph(context: Context) {
 
     val settings: SettingsRepository by lazy { SettingsRepository(app) }
     val progress: ProgressStore by lazy { ProgressStore(app) }
+    val anchors: AnchorStore by lazy { AnchorStore(app) }
     val database: MuzykalkaDatabase by lazy { MuzykalkaDatabase.open(app) }
     val library: LibraryRepository by lazy { LibraryRepository(database) }
     val practice: PracticeRepository by lazy { PracticeRepository(database) }
-    val backup: BackupManager by lazy { BackupManager(app, database, settings, progress, BuildConfig.VERSION_NAME) }
+    val backup: BackupManager by lazy { BackupManager(app, database, settings, progress, BuildConfig.VERSION_NAME, anchors) }
 
     open val audioOutput: AudioOutput by lazy { AndroidAudioOutput(app) }
     open val pitchInput: PitchInput by lazy { AndroidPitchInput(app) }

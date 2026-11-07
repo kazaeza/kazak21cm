@@ -8,6 +8,7 @@ import com.kazaeza.muzykalka.data.repo.LibraryRepository
 import com.kazaeza.muzykalka.data.repo.MemoryStatus
 import com.kazaeza.muzykalka.data.repo.PracticeRepository
 import com.kazaeza.muzykalka.data.repo.SessionKind
+import com.kazaeza.muzykalka.data.settings.AnchorStore
 import com.kazaeza.muzykalka.data.settings.ProgressStore
 import com.kazaeza.muzykalka.data.settings.SettingsRepository
 import com.kazaeza.muzykalka.game.AttemptRecord
@@ -15,6 +16,8 @@ import com.kazaeza.muzykalka.game.SelfGrade
 import com.kazaeza.muzykalka.game.TaperGrading
 import com.kazaeza.muzykalka.game.TaperSession
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.music.Degree
+import com.kazaeza.muzykalka.music.DegreeAnchor
 import com.kazaeza.muzykalka.music.DegreeNote
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.Melody
@@ -121,6 +124,24 @@ class RepositoriesTest {
         assertEquals(1, summary.items)
         assertEquals(1, summary.attempts)
         assertEquals("Autumn Leaves", LibraryRepository(other).allOrderable().single().title)
+        other.close()
+    }
+
+    @Test
+    fun anchorsKeepOnePerDegreeAndTravelInTheBackup() = runBlocking {
+        val store = AnchorStore(context)
+        store.set(DegreeAnchor.parse(Degree.FIVE, "Моя песня", "5 5 6 5 1' 7").getOrThrow())
+        store.set(DegreeAnchor.parse(Degree.FIVE, "Другая", "5 3 1").getOrThrow()) // same degree: replaces
+        store.set(DegreeAnchor.parse(Degree.SHARP_FOUR, "Тритон", "#4 5").getOrThrow())
+        store.remove(Degree.FLAT_FIVE) // ♭5 is the slot of ♯4
+        assertEquals(mapOf(7 to "Другая"), store.current().mapValues { it.value.title })
+
+        val json = BackupManager(context, db, SettingsRepository(context), ProgressStore(context), "test", store).export()
+        store.remove(Degree.FIVE)
+        assertTrue(store.current().isEmpty())
+        val other = MuzykalkaDatabase.inMemory(context)
+        BackupManager(context, other, SettingsRepository(context), ProgressStore(context), "test", store).import(json)
+        assertEquals("5 3 1", store.current()[7]?.melodyText)
         other.close()
     }
 }

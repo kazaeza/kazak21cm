@@ -9,6 +9,7 @@ import com.kazaeza.muzykalka.data.db.MuzykalkaDatabase
 import com.kazaeza.muzykalka.data.db.OrderLogEntity
 import com.kazaeza.muzykalka.data.db.SessionEntity
 import com.kazaeza.muzykalka.data.db.SrsCardEntity
+import com.kazaeza.muzykalka.data.settings.AnchorStore
 import com.kazaeza.muzykalka.data.settings.ProgressStore
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.data.settings.SettingsRepository
@@ -32,6 +33,8 @@ data class BackupV1(
     val exams: List<ExamResultEntity>,
     val settings: Settings? = null,
     val progressJson: String? = null,
+    /** O-09; absent in older backups. */
+    val anchorsJson: String? = null,
 ) {
     companion object {
         const val FORMAT = "muzykalka-backup"
@@ -46,6 +49,7 @@ class BackupManager(
     private val settings: SettingsRepository,
     private val progress: ProgressStore,
     private val appVersion: String,
+    private val anchors: AnchorStore? = null,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val json = Json {
@@ -66,6 +70,7 @@ class BackupManager(
             exams = db.exams().all(),
             settings = settings.settings.first(),
             progressJson = progress.exportJson(),
+            anchorsJson = anchors?.exportJson(),
         )
         return json.encodeToString(BackupV1.serializer(), backup)
     }
@@ -89,6 +94,7 @@ class BackupManager(
         }
         backup.settings?.let { settings.replace(it) }
         backup.progressJson?.let { progress.importJson(it) }
+        backup.anchorsJson?.let { anchors?.importJson(it) }
         return ImportSummary(backup.items.size, backup.orders.size, backup.attempts.size)
     }
 
