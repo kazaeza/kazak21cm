@@ -354,6 +354,7 @@ fun DegreeChip(
     large: Boolean = false,
     onClick: (() -> Unit)? = null,
     selected: Boolean = false,
+    onClickLabel: String? = null,
 ) {
     val shape = RoundedCornerShape(if (large) 16.dp else 12.dp)
     val bg by animateColorAsState(if (selected) color else color.copy(alpha = 0.18f), label = "chip")
@@ -361,7 +362,7 @@ fun DegreeChip(
         .clip(shape)
         .background(bg)
         .border(BorderStroke(1.5.dp, color.copy(alpha = 0.9f)), shape)
-    if (onClick != null) m = m.clickable(onClick = onClick)
+    if (onClick != null) m = m.clickable(onClickLabel = onClickLabel, onClick = onClick)
     Box(m.padding(horizontal = if (large) 14.dp else 10.dp, vertical = if (large) 8.dp else 5.dp), contentAlignment = Alignment.Center) {
         Text(
             text,
@@ -375,18 +376,28 @@ fun DegreeChip(
 /**
  * O-13: a chord or degree on a song sheet — big, solid colour, dark ink. All [DegreeColors] share
  * one lightness, so every tile reads the same and none of them hides in the dark background.
+ *
+ * O-17: with [onClick] the tile is a button (a chord that sounds when tapped) and grows to the
+ * game touch target; [active] draws the white ring around the one that is ringing now.
  */
 @Composable
-fun DegreeTile(text: String, color: Color, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .heightIn(min = 56.dp)
-            .widthIn(min = 64.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(color)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
+fun DegreeTile(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    active: Boolean = false,
+    onClickLabel: String? = null,
+) {
+    val shape = RoundedCornerShape(14.dp)
+    var m = modifier
+        .heightIn(min = if (onClick != null) GameTouchTarget else 56.dp)
+        .widthIn(min = 64.dp)
+        .clip(shape)
+        .background(color)
+    if (active) m = m.border(BorderStroke(3.dp, Color.White), shape)
+    if (onClick != null) m = m.clickable(onClickLabel = onClickLabel, onClick = onClick)
+    Box(m.padding(horizontal = 12.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
         Text(text, style = MaterialTheme.typography.headlineSmall, color = DegreeInk, maxLines = 1)
     }
 }

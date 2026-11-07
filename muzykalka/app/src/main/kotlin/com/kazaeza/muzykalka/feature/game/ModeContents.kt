@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -30,7 +31,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kazaeza.muzykalka.feature.common.ChordCaption
 import com.kazaeza.muzykalka.feature.common.plural
+import com.kazaeza.muzykalka.feature.common.rememberChordAudition
 import com.kazaeza.muzykalka.game.Answer
 import com.kazaeza.muzykalka.game.HuntDriver
 import com.kazaeza.muzykalka.game.HuntKind
@@ -52,6 +55,7 @@ import com.kazaeza.muzykalka.music.NoteName
 import com.kazaeza.muzykalka.music.NoteNaming
 import com.kazaeza.muzykalka.music.RuNames
 import com.kazaeza.muzykalka.ui.component.DegreeChip
+import com.kazaeza.muzykalka.ui.component.GameTouchTarget
 import com.kazaeza.muzykalka.ui.component.DeadlineBar
 import com.kazaeza.muzykalka.ui.component.DegreeKeypad
 import com.kazaeza.muzykalka.ui.component.ExtraKey
@@ -651,6 +655,10 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
     val listening = ui.phase == RoundPhase.LISTENING
     val feedback = ui.phase == RoundPhase.FEEDBACK
     val correct = feedback && ui.feedback?.correct == true
+    // O-17 (ADR-031): a tap on a chord plays it. Only while the engine is silent (LISTENING):
+    // cutting a strum stops everything, and the correction in FEEDBACK must not be cut.
+    val audition = rememberChordAudition(settings.a4Hz)
+    LaunchedEffect(ui.taskSerial) { audition.clear() }
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         PromptCard(ui, accent) {
@@ -663,9 +671,27 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
                 ) {
                     task.pattern.chords.forEachIndexed { i, c ->
                         if (i > 0) Text("→", style = MaterialTheme.typography.headlineSmall, color = Juicy.TextFaint, modifier = Modifier.align(Alignment.CenterVertically))
-                        DegreeChip(DegreeFormatter.chord(c, ui.notation), DegreeColors.of(c.root), large = true, selected = feedback)
+                        val id = "step$i"
+                        DegreeChip(
+                            DegreeFormatter.chord(c, ui.notation),
+                            DegreeColors.of(c.root),
+                            modifier = Modifier.heightIn(min = GameTouchTarget),
+                            large = true,
+                            onClick = if (listening) ({ audition.tap(id, c, task.key) }) else null,
+                            selected = feedback || audition.isRinging(id),
+                            onClickLabel = "Послушать аккорд",
+                        )
                     }
                 }
+                if (listening) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "👆 Нажми на аккорд — он прозвучит",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Juicy.TextDim,
+                    )
+                }
+                ChordCaption(audition, ui.notation, Modifier.padding(top = 10.dp))
                 task.pattern.like?.let {
                     Spacer(Modifier.height(10.dp))
                     Text("как в «$it»", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)

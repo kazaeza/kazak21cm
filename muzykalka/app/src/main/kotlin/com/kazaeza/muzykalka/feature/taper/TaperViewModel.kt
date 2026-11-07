@@ -12,6 +12,7 @@ import com.kazaeza.muzykalka.game.TaperGrading
 import com.kazaeza.muzykalka.game.TaperItem
 import com.kazaeza.muzykalka.game.TaperPhase
 import com.kazaeza.muzykalka.game.TaperSession
+import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.RuNames
 import kotlinx.coroutines.Job
@@ -42,6 +43,8 @@ data class TaperUi(
     val emptyLibrary: Boolean = false,
     val nothingDue: Boolean = false,
     val item: TaperItem? = null,
+    /** The key of this order — chords tapped on the sheet sound in it (O-17). */
+    val key: Key? = null,
     val keyText: String = "",
     val hint: HintStep = HintStep.NONE,
     val hintsAllowed: Boolean = true,
@@ -155,6 +158,7 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
             it.copy(
                 phase = s.phase,
                 item = cur,
+                key = s.key,
                 keyText = s.key?.let { k -> RuNames.inKey(k) } ?: "",
                 hint = s.hint,
                 orderedAtMs = s.orderedAtMs,

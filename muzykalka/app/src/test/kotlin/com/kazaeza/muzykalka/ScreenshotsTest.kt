@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazaeza.muzykalka.audio.AudioOutput
@@ -119,6 +120,16 @@ class ScreenshotsTest {
     fun taper() {
         runBlocking { graph.library.addFromBook(SongBook.byId("autumn-leaves")!!) }
         shot("06-taper", { TaperScreen(TaperSpec(), onExit = {}) }, "СЫГРАЙ")
+    }
+
+    /** O-17: a tapped chord of the sheet — its words are pinned under the scroll. */
+    @Test
+    fun taperChordTap() {
+        runBlocking { graph.library.addFromBook(SongBook.byId("autumn-leaves")!!) }
+        shot("06b-taper-chord", { TaperScreen(TaperSpec(), onExit = {}) }, "СЫГРАЙ") {
+            rule.onAllNodesWithText("V⁷", substring = false)[0].performScrollTo().performClick()
+            rule.waitUntil(5_000) { rule.onAllNodesWithText("доминанта", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        }
     }
 
     @Test

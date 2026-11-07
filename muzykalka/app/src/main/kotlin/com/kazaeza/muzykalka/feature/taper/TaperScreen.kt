@@ -44,9 +44,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kazaeza.muzykalka.LocalAppGraph
+import com.kazaeza.muzykalka.feature.common.ChordAudition
+import com.kazaeza.muzykalka.feature.common.ChordCaption
 import com.kazaeza.muzykalka.feature.common.KeepScreenOn
 import com.kazaeza.muzykalka.feature.common.PauseOverlay
 import com.kazaeza.muzykalka.feature.common.plural
+import com.kazaeza.muzykalka.feature.common.rememberChordAudition
 import com.kazaeza.muzykalka.feature.common.ruDue
 import com.kazaeza.muzykalka.game.HintStep
 import com.kazaeza.muzykalka.game.SelfGrade
@@ -54,6 +57,7 @@ import com.kazaeza.muzykalka.game.TaperGrading
 import com.kazaeza.muzykalka.game.TaperPhase
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
+import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.Song
 import com.kazaeza.muzykalka.srs.Rating
 import com.kazaeza.muzykalka.ui.component.CountUpText
@@ -94,9 +98,11 @@ fun TaperScreen(
     val ui by vm.ui.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(ui.settings.haptics)
     val particles = rememberParticleState()
+    val audition = rememberChordAudition(ui.settings.a4Hz)
     KeepScreenOn()
     var asking by remember { mutableStateOf(false) }
     BackHandler(enabled = !asking) { asking = true }
+    LaunchedEffect(ui.item?.id, ui.key, ui.phase) { audition.clear() }
 
     LaunchedEffect(ui.result) {
         val r = ui.result ?: return@LaunchedEffect
@@ -146,9 +152,10 @@ fun TaperScreen(
                     ui.emptyLibrary -> EmptyBar(onOpenLibrary)
                     ui.nothingDue -> NothingDue(onExtra = vm::orderExtra, onDone = { onFinished?.invoke() ?: onExit() })
                     ui.phase == TaperPhase.FINISHED -> ClosingTime(ui, onDone = { onFinished?.invoke() ?: onExit() })
-                    else -> OrderFlow(ui, vm)
+                    else -> OrderFlow(ui, vm, audition)
                 }
             }
+            ChordCaption(audition, ui.settings.degreeNotation, Modifier.padding(vertical = 8.dp))
         }
         ParticleLayer(particles)
         if (asking) {
@@ -164,12 +171,12 @@ fun TaperScreen(
 }
 
 @Composable
-private fun OrderFlow(ui: TaperUi, vm: TaperViewModel) {
+private fun OrderFlow(ui: TaperUi, vm: TaperViewModel, audition: ChordAudition) {
     val item = ui.item ?: return
     OrderTicket(item.title, item.song?.artist, ui.keyText, ui.phase == TaperPhase.PLAYING)
     when (ui.phase) {
         TaperPhase.PLAYING -> {
-            if (ui.hint != HintStep.NONE) HintCard(ui)
+            if (ui.hint != HintStep.NONE) HintCard(ui, audition)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 val next = ui.hint.next()
                 if (ui.hintsAllowed && next != null) {
@@ -230,7 +237,7 @@ internal fun OrderTicket(title: String, artist: String?, keyText: String, fresh:
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HintCard(ui: TaperUi) {
+private fun HintCard(ui: TaperUi, audition: ChordAudition) {
     val item = ui.item ?: return
     val notation = ui.settings.degreeNotation
     GlassCard(Modifier.fillMaxWidth(), accent = BAR) {
@@ -244,10 +251,16 @@ private fun HintCard(ui: TaperUi) {
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Начало: ", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)
-                    DegreeTile(DegreeFormatter.chord(song.firstChord, notation), DegreeColors.of(song.firstChord.root))
+                    DegreeTile(
+                        DegreeFormatter.chord(song.firstChord, notation),
+                        DegreeColors.of(song.firstChord.root),
+                        onClick = ui.key?.let { k -> { audition.tap("first", song.firstChord, k) } },
+                        active = audition.isRinging("first"),
+                        onClickLabel = "Послушать аккорд",
+                    )
                 }
             }
-            if (ui.hint >= HintStep.DEGREES) SongSheet(song, notation)
+            if (ui.hint >= HintStep.DEGREES) SongSheet(song, notation, audition, ui.key)
         } else if (melody != null) {
             Text("${melody.notes.size} нот", style = MaterialTheme.typography.titleMedium)
             if (ui.hint >= HintStep.FIRST_CHORD) {
@@ -265,16 +278,25 @@ private fun HintCard(ui: TaperUi) {
 /**
  * The song as bars of big degree tiles (O-13): solid colours of one lightness, dark ink, so each
  * chord is read at a glance. Degrees only — chords in letters are never shown (rule 1, ADR-027).
+ * O-17: with an [audition] and the order's [key] every chord is a button that sounds (ADR-031).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun SongSheet(song: Song, notation: DegreeNotation) {
-    song.sections.forEach { section ->
+internal fun SongSheet(song: Song, notation: DegreeNotation, audition: ChordAudition? = null, key: Key? = null) {
+    val tappable = audition != null && key != null
+    if (tappable) {
+        Text(
+            "👆 Нажми на аккорд — он прозвучит в этой тональности",
+            style = MaterialTheme.typography.bodySmall,
+            color = Juicy.TextDim,
+        )
+    }
+    song.sections.forEachIndexed { si, section ->
         Spacer(Modifier.height(12.dp))
         Text(section.label, style = MaterialTheme.typography.titleLarge, color = Juicy.Gold)
         Spacer(Modifier.height(6.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            section.bars.forEach { bar ->
+            section.bars.forEachIndexed { bi, bar ->
                 Row(
                     Modifier
                         .clip(RoundedCornerShape(16.dp))
@@ -282,7 +304,16 @@ internal fun SongSheet(song: Song, notation: DegreeNotation) {
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    bar.chords.forEach { c -> DegreeTile(DegreeFormatter.chord(c, notation), DegreeColors.of(c.root)) }
+                    bar.chords.forEachIndexed { ci, c ->
+                        val id = "$si.$bi.$ci"
+                        DegreeTile(
+                            DegreeFormatter.chord(c, notation),
+                            DegreeColors.of(c.root),
+                            onClick = if (tappable) ({ audition?.tap(id, c, key!!) }) else null,
+                            active = audition?.isRinging(id) == true,
+                            onClickLabel = "Послушать аккорд",
+                        )
+                    }
                 }
             }
         }

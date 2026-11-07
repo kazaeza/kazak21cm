@@ -36,8 +36,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kazaeza.muzykalka.LocalAppGraph
+import com.kazaeza.muzykalka.feature.common.ChordAudition
+import com.kazaeza.muzykalka.feature.common.ChordCaption
 import com.kazaeza.muzykalka.feature.common.KeepScreenOn
 import com.kazaeza.muzykalka.feature.common.PauseOverlay
+import com.kazaeza.muzykalka.feature.common.rememberChordAudition
 import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.game.BlindPhase
 import com.kazaeza.muzykalka.game.SelfGrade
@@ -71,9 +74,11 @@ fun BlindScreen(onExit: () -> Unit, vmKey: String = "blind") {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(ui.settings.haptics)
     val particles = rememberParticleState()
+    val audition = rememberChordAudition(ui.settings.a4Hz)
     KeepScreenOn()
     var asking by remember { mutableStateOf(false) }
     BackHandler(enabled = !asking) { asking = true }
+    LaunchedEffect(ui.entry?.id, ui.key, ui.phase) { audition.clear() }
 
     LaunchedEffect(ui.result) {
         val r = ui.result ?: return@LaunchedEffect
@@ -125,9 +130,10 @@ fun BlindScreen(onExit: () -> Unit, vmKey: String = "blind") {
                 when {
                     ui.loading -> Spacer(Modifier.height(1.dp))
                     ui.phase == BlindPhase.FINISHED -> ClosingTime(ui, onDone = onExit)
-                    else -> BlindFlow(ui, vm)
+                    else -> BlindFlow(ui, vm, audition)
                 }
             }
+            ChordCaption(audition, ui.settings.degreeNotation, Modifier.padding(vertical = 8.dp))
         }
         ParticleLayer(particles)
         if (asking) {
@@ -142,7 +148,7 @@ fun BlindScreen(onExit: () -> Unit, vmKey: String = "blind") {
 }
 
 @Composable
-private fun BlindFlow(ui: BlindUi, vm: BlindViewModel) {
+private fun BlindFlow(ui: BlindUi, vm: BlindViewModel, audition: ChordAudition) {
     val entry = ui.entry ?: return
     val notation = ui.settings.degreeNotation
     when (ui.phase) {
@@ -152,7 +158,7 @@ private fun BlindFlow(ui: BlindUi, vm: BlindViewModel) {
                 SectionLabel("лист · ступени")
                 Spacer(Modifier.height(6.dp))
                 Text("Форма: ${entry.song.formString} · ${entry.song.barCount} тактов", style = MaterialTheme.typography.titleMedium)
-                SongSheet(entry.song, notation)
+                SongSheet(entry.song, notation, audition, ui.key)
             }
             JuicyButton("Сыграл", onClick = vm::played, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "✅")
             Text(

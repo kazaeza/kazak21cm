@@ -3,7 +3,9 @@ package com.kazaeza.muzykalka
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -13,6 +15,7 @@ import com.kazaeza.muzykalka.feature.game.RoundSpec
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Score
+import com.kazaeza.muzykalka.music.Voice
 import com.kazaeza.muzykalka.ui.theme.MuzykalkaTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +24,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** Speaker that "plays" instantly and remembers what it was asked to play. */
 class FakeAudioOutput : AudioOutput {
@@ -82,5 +86,26 @@ class GameFlowTest {
         val before = audio.played.size
         rule.onAllNodesWithText("iv", ignoreCase = true).onFirst().performClick() // IV in major, iv in minor
         rule.waitUntil(5_000) { audio.played.size > before } // the chord goes home, or the note over it again (rule 5)
+    }
+
+    /** O-17 (ADR-031): in «Ходы» a chord of the pattern sounds when tapped — while the engine is silent. */
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun aChordOfTheStepsPatternSoundsWhenTapped() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TAPER_STEPS, level = 2), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Нажми на аккорд", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        val before = audio.played.size
+        rule.onAllNodes(hasClickLabel("Послушать аккорд")).onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > before }
+        assertTrue(audio.played.last().notes.all { it.voice == Voice.GUITAR })
+        rule.onRoot().captureToImage() // the caption is drawn for real
     }
 }

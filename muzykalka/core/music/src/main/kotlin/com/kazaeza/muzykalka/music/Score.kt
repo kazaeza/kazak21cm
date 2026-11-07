@@ -59,6 +59,12 @@ class Arranger(
     companion object {
         /** A2: the lowest drone tonic. Phone speakers barely reproduce anything lower. */
         val DRONE_FLOOR = MidiNote(45)
+
+        /** O-17: the lowest note of a strummed chord (G2): the bass string, still audible on a phone. */
+        val STRUM_FLOOR = MidiNote(43)
+
+        /** Gap between the strings of one strum, in beats: a quick downstroke, not a cluster. */
+        const val STRUM_STAGGER_BEATS = 0.06
     }
 
     /** Close voicing of [chord] in [key]: root-position bass + upper structure nearest to [pianoCenter]. */
@@ -81,6 +87,23 @@ class Arranger(
                 ScoreNote(start, beatsEach * 0.95, Voice.BASS, bassNote(c, key), 0.8f)
         }
         return Score(tempoBpm, notes)
+    }
+
+    /**
+     * O-17: [chord] of [key] strummed once on the guitar — what a tap on a tile of the song sheet
+     * plays, so «где доминанта, где девятка, где минорный» can be settled by ear. Root position (the
+     * slash bass, if any, goes below), the strings stagger upward like a downstroke and ring out.
+     */
+    fun strum(chord: ChordDegree, key: Key, tempoBpm: Double = 100.0): Score {
+        val bassPc = key.pitchClassOf(chord.bass ?: chord.root)
+        val bass = STRUM_FLOOR + (bassPc - STRUM_FLOOR.pitchClass)
+        val root = bass + (key.pitchClassOf(chord.root) - bass.pitchClass)
+        val tones = chord.quality.intervals.map { root + it }
+        val strings = if (root == bass) tones else listOf(bass) + tones
+        return Score(
+            tempoBpm,
+            strings.mapIndexed { i, n -> ScoreNote(i * STRUM_STAGGER_BEATS, 2.5, Voice.GUITAR, n, 0.75f) },
+        )
     }
 
     /**
