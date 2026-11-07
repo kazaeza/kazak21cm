@@ -61,6 +61,21 @@ object RuNames {
         return if (accusative) acc else nom
     }
 
+    /**
+     * O-16: a degree read aloud — «пять», «бемоль три», «диез четыре». Numbers, not ordinals:
+     * it is what the screen shows, and short enough to come before the note fades.
+     */
+    fun spokenDegree(degree: Degree): String {
+        val number = SPOKEN_NUMBERS[degree.number - 1]
+        return when (degree.accidental) {
+            Accidental.FLAT -> "бемоль $number"
+            Accidental.SHARP -> "диез $number"
+            else -> number
+        }
+    }
+
+    private val SPOKEN_NUMBERS = listOf("один", "два", "три", "четыре", "пять", "шесть", "семь")
+
     private val INTERVALS = listOf(
         "тоника" to "тонику",
         "малая секунда" to "малую секунду",

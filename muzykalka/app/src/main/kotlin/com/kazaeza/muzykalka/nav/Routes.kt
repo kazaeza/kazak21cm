@@ -14,6 +14,9 @@ import kotlinx.serialization.Serializable
 /** «Вайб ступеней»: listen to every degree against its tonic (ADR-015). */
 @Serializable data object FeelRoute
 
+/** O-16 «Угадай про себя»: hands-free, the answer after a pause (ADR-030). */
+@Serializable data object ListenRoute
+
 /** Full-screen drill; [variant] is a `Variant.name`, [level] 0 = selected level. */
 @Serializable data class GameRoute(val variant: String, val level: Int = 0)
 

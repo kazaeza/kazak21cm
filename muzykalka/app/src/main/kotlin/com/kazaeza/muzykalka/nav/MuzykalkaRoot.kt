@@ -30,6 +30,7 @@ import com.kazaeza.muzykalka.feature.capture.EditorScreen
 import com.kazaeza.muzykalka.feature.common.LocalTabBarSpace
 import com.kazaeza.muzykalka.feature.exam.ExamScreen
 import com.kazaeza.muzykalka.feature.feel.FeelScreen
+import com.kazaeza.muzykalka.feature.listen.ListenScreen
 import com.kazaeza.muzykalka.feature.game.GameScreen
 import com.kazaeza.muzykalka.feature.game.RoundSpec
 import com.kazaeza.muzykalka.feature.library.ItemScreen
@@ -100,6 +101,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                             onSongs = { nav.navigate(TaperRoute()) },
                             onBlind = { nav.navigate(BlindRoute) },
                             onFeel = { nav.navigate(FeelRoute) },
+                            onListen = { nav.navigate(ListenRoute) },
                             onLibrary = { tab(LibraryRoute) },
                         )
                     }
@@ -146,6 +148,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                         SetScreen(minimal = back.toRoute<SetRoute>().minimal, onExit = { nav.popBackStack() }, onLibrary = { tab(LibraryRoute) })
                     }
                     composable<ExamRoute> { ExamScreen(onExit = { nav.popBackStack() }) }
+                    composable<ListenRoute> { ListenScreen(onBack = { nav.popBackStack() }) }
                     composable<FeelRoute> {
                         FeelScreen(onBack = { nav.popBackStack() }, onTir = { nav.navigate(GameRoute(Variant.TIR_CLASSIC.name)) })
                     }

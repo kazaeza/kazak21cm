@@ -7,6 +7,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazaeza.muzykalka.audio.AudioOutput
@@ -86,6 +87,13 @@ class ScreenshotsTest {
 
     @Test
     fun feel() = shot("04c-feel", { FeelScreen(onBack = {}, onTir = {}) }, "Вайб ступеней")
+
+    /** «Угадай про себя» during the pause. */
+    @Test
+    fun listen() = shot("04f-listen", { com.kazaeza.muzykalka.feature.listen.ListenScreen(onBack = {}) }, "Слушать") {
+        rule.onAllNodesWithText("Слушать", substring = false)[0].performClick()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Назови про себя").fetchSemanticsNodes().isNotEmpty() }
+    }
 
     @Test
     fun underNote() = shot("04e-under-note", { GameScreen(RoundSpec(Variant.TIR_UNDER_NOTE, level = 2), onExit = {}) }, "Какой аккорд под ней?")

@@ -59,6 +59,9 @@ sealed interface ModeEntry {
 
     /** «Вайб ступеней» — listen to every degree over its tonic, no score (ADR-015). */
     data object Feel : ModeEntry
+
+    /** «Угадай про себя» — hands-free, the answer after a pause (O-16, ADR-030). */
+    data object Listen : ModeEntry
 }
 
 /**
@@ -74,7 +77,7 @@ object ModesCatalog {
             .filter { it.mode == mode && it.isAvailable() && it in Drills.PLAYABLE }
             .map { ModeEntry.Drill(it) }
         return when (mode) {
-            ModeId.TIR -> drills + ModeEntry.Feel
+            ModeId.TIR -> drills + ModeEntry.Listen + ModeEntry.Feel
             ModeId.TAPER -> drills + ModeEntry.Songs + ModeEntry.Blind
             else -> drills
         }
@@ -85,6 +88,7 @@ object ModesCatalog {
         ModeEntry.Songs -> "Песни"
         ModeEntry.Blind -> "Вслепую"
         ModeEntry.Feel -> "Вайб ступеней"
+        ModeEntry.Listen -> "Угадай про себя"
     }
 
     fun emoji(e: ModeEntry): String = when (e) {
@@ -103,6 +107,7 @@ object ModesCatalog {
         ModeEntry.Songs -> "🎸"
         ModeEntry.Blind -> "🎭"
         ModeEntry.Feel -> "🎧"
+        ModeEntry.Listen -> "🤫"
     }
 
     fun about(e: ModeEntry): String = when (e) {
@@ -121,12 +126,13 @@ object ModesCatalog {
         ModeEntry.Songs -> "Песни из твоей библиотеки по графику повторений, каждый раз в новой тональности."
         ModeEntry.Blind -> "Случайная песня из твоих лайков, но без названия: только ступени. Кто это был — узнаешь в конце."
         ModeEntry.Feel -> "Послушать, как звучит каждая ступень над тоникой. Без очков и таймера."
+        ModeEntry.Listen -> "С задержкой и без кнопок: ступень над аккордом, пауза — назови её про себя, потом ответ вслух. Можно в наушниках, не глядя в экран."
     }
 
     fun guitar(e: ModeEntry): GuitarNeed = when (e) {
         is ModeEntry.Drill -> e.variant.guitar
         ModeEntry.Songs, ModeEntry.Blind -> GuitarNeed.REQUIRED
-        ModeEntry.Feel -> GuitarNeed.NONE
+        ModeEntry.Feel, ModeEntry.Listen -> GuitarNeed.NONE
     }
 
     /** All cards of the screen, in order. */
@@ -140,6 +146,7 @@ fun ModesScreen(
     onSongs: () -> Unit = {},
     onBlind: () -> Unit = {},
     onFeel: () -> Unit = {},
+    onListen: () -> Unit = {},
     onLibrary: () -> Unit = {},
 ) {
     val graph = LocalAppGraph.current
@@ -168,6 +175,7 @@ fun ModesScreen(
                                 ModeEntry.Songs -> onSongs()
                                 ModeEntry.Blind -> onBlind()
                                 ModeEntry.Feel -> onFeel()
+                                ModeEntry.Listen -> onListen()
                             }
                         },
                         onLibrary = onLibrary,
