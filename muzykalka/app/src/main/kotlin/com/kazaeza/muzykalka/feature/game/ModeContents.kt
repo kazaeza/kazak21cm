@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.game.Answer
 import com.kazaeza.muzykalka.game.HuntDriver
 import com.kazaeza.muzykalka.game.HuntKind
@@ -37,6 +38,7 @@ import com.kazaeza.muzykalka.game.HuntTask
 import com.kazaeza.muzykalka.game.RoundPhase
 import com.kazaeza.muzykalka.game.StepsTask
 import com.kazaeza.muzykalka.game.TirKind
+import com.kazaeza.muzykalka.game.TirReview
 import com.kazaeza.muzykalka.game.TirTask
 import com.kazaeza.muzykalka.music.ChordDegree
 import com.kazaeza.muzykalka.music.Degree
@@ -65,6 +67,17 @@ import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
 
 // ---------------------------------------------------------------- Tir
+
+/** O-06, after the answer only: why this question came back. */
+private fun reviewText(r: TirReview, correct: Boolean): String {
+    val ago = when (r.daysAgo) {
+        1 -> "вчера"
+        2 -> "позавчера"
+        else -> "${r.daysAgo} ${plural(r.daysAgo, "день", "дня", "дней")} назад"
+    }
+    val then = r.confusedWith.takeIf { it.isNotEmpty() }?.joinToString(", ", prefix = ", ответил ") ?: ""
+    return "повтор: $ago ошибся$then" + if (correct) " — теперь верно" else ""
+}
 
 @Composable
 internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer: (Answer) -> Unit, onReplay: () -> Unit) {
@@ -113,6 +126,10 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                             Spacer(Modifier.height(6.dp))
                             Text(vibe.word, style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(d))
                             Text(DegreeVibes.pathHome(d, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                        }
+                        task.review?.let { r ->
+                            Spacer(Modifier.height(6.dp))
+                            DegreeChip("🔁 " + reviewText(r, correct), Juicy.Cyan)
                         }
                     }
                     else -> {

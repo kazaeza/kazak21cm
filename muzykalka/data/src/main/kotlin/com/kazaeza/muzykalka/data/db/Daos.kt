@@ -87,6 +87,9 @@ interface AttemptDao {
     @Query("SELECT * FROM attempt")
     suspend fun all(): List<AttemptEntity>
 
+    @Query("SELECT * FROM attempt WHERE variant = :variant AND atEpochMs >= :fromEpochMs ORDER BY atEpochMs")
+    suspend fun since(variant: String, fromEpochMs: Long): List<AttemptEntity>
+
     @Query("SELECT * FROM attempt ORDER BY atEpochMs")
     fun observeAll(): Flow<List<AttemptEntity>>
 }

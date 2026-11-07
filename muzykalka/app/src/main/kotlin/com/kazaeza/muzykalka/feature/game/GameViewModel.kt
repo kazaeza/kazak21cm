@@ -15,6 +15,7 @@ import com.kazaeza.muzykalka.game.RoundConfig
 import com.kazaeza.muzykalka.game.RoundEngine
 import com.kazaeza.muzykalka.game.RoundPhase
 import com.kazaeza.muzykalka.game.RoundState
+import com.kazaeza.muzykalka.game.SpacedReview
 import com.kazaeza.muzykalka.game.StepsDriver
 import com.kazaeza.muzykalka.game.Task
 import com.kazaeza.muzykalka.game.TirDriver
@@ -37,6 +38,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import kotlin.random.Random
 
 /** What to play. [level] null = the level selected in Modes. */
@@ -142,7 +144,14 @@ object Drills {
         else -> HuntDriver.promotionTargetMs(level)
     }
 
-    fun engine(spec: RoundSpec, level: Int, settings: Settings, history: List<AttemptRecord>, epochOffsetMs: Long): RoundEngine<*> {
+    fun engine(
+        spec: RoundSpec,
+        level: Int,
+        settings: Settings,
+        history: List<AttemptRecord>,
+        epochOffsetMs: Long,
+        review: List<SpacedReview.Item> = emptyList(),
+    ): RoundEngine<*> {
         val config = when {
             spec.exam -> RoundConfig.exam(spec.examTasks)
             guitarPaced(spec.variant) -> RoundConfig(durationMs = 90_000, lives = null)
@@ -152,7 +161,7 @@ object Drills {
         return when (spec.variant) {
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_CLASSIC, Variant.TIR_DUEL, Variant.TIR_RADIO ->
-                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant), config, random, level, history, epochOffsetMs)
+                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review), config, random, level, history, epochOffsetMs)
             Variant.HUNT_FIND, Variant.HUNT_REVERSE, Variant.HUNT_ALL_OCTAVES ->
                 RoundEngine(
                     HuntDriver(spec.variant, Fretboard(settings.tuning, settings.fretCount), settings.noteNaming, settings.degreeNotation, adaptiveTimer = !spec.exam),
@@ -225,7 +234,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         val progress = graph.progress.current()
         level = (spec.level ?: progress.selectedLevel(spec.variant)).coerceIn(1, Drills.maxLevel(spec.variant))
         history = graph.practice.recentAttempts(spec.variant, 300)
-        engine = Drills.engine(spec, level, settings, history, System.currentTimeMillis() - now())
+        engine = Drills.engine(spec, level, settings, history, System.currentTimeMillis() - now(), review = review())
         sessionId = spec.sessionId ?: graph.practice.startSession(SessionKind.FREE, graph.today(settings)).also { ownSession = true }
         val needsMic = spec.variant.needsMic()
         state.update {
@@ -238,6 +247,20 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
             )
         }
         if (needsMic) startMic()
+    }
+
+    /** O-06: earlier days' Tir misses come back first (not in exams — they measure, not train). */
+    private suspend fun review(): List<SpacedReview.Item> {
+        if (spec.exam || spec.variant != Variant.TIR_CLASSIC) return emptyList()
+        val wallNow = System.currentTimeMillis()
+        val since = wallNow - (SpacedReview.LOOKBACK_DAYS + 1) * 86_400_000L
+        val studyDay = graph.studyDay(settings)
+        return SpacedReview.queue(
+            history = graph.practice.attemptsSince(spec.variant, since),
+            today = studyDay.of(Instant.ofEpochMilli(wallNow)),
+            dayOf = { studyDay.of(Instant.ofEpochMilli(it)) },
+            normalize = TirDriver::reviewKey,
+        )
     }
 
     private var lastPhase: RoundPhase? = null

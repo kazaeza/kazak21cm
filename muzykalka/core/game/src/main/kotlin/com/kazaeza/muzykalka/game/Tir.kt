@@ -39,6 +39,8 @@ data class TirTask(
     val question: Score,
     /** Notes to hold under this question; null = no drone, the cadence sets the key. */
     val drone: List<MidiNote>? = null,
+    /** O-06: brought back from an earlier day's miss. Shown only AFTER the answer — it would be a hint. */
+    val review: TirReview? = null,
 ) : Task {
     /** Taps the answer pad collects before the answer is submitted. */
     val answerLength: Int
@@ -48,6 +50,9 @@ data class TirTask(
             TirKind.PROGRESSION -> chords.size - 1
         }
 }
+
+/** Why a question came back (O-06): missed [daysAgo] days ago, answered then as [confusedWith]. */
+data class TirReview(val daysAgo: Int, val confusedWith: List<String>)
 
 /**
  * Tir — sound → name (ticket G-02). Single notes and melodies are heard over a tonic drone in one
@@ -67,7 +72,13 @@ class TirDriver(
     private val notation: DegreeNotation = DegreeNotation.ARABIC,
     override val variant: Variant = Variant.TIR_CLASSIC,
     private val arranger: Arranger = Arranger(),
+    review: List<SpacedReview.Item> = emptyList(),
 ) : ModeDriver<TirTask> {
+
+    /** O-06: earlier days' misses (keys from [reviewKey]) still waiting for a right answer today. */
+    private val pendingReview = review.filter { it.key.startsWith(NOTE_GROUP) || it.key.startsWith(CHORD_GROUP) }.toMutableList()
+    private val reviewAsks = HashMap<String, Int>()
+    private var lastReview: Pair<String, String>? = null // review key → item key of the task that asked it
 
     override val accepts: Set<Class<out Answer>> = setOf(
         Answer.DegreeChoice::class.java,
@@ -89,6 +100,7 @@ class TirDriver(
     }
 
     override fun nextTask(context: DriverContext): TirTask {
+        settleReview(context.history)
         val level = context.level.coerceIn(1, Levels.TIR.size)
         val r = context.random
         if (!usesDrone(level)) {
@@ -115,6 +127,38 @@ class TirDriver(
         }
     }
 
+    /** The review task just answered: a right answer takes it off today's list. */
+    private fun settleReview(history: List<AttemptRecord>) {
+        val (key, itemKey) = lastReview ?: return
+        lastReview = null
+        val answer = history.lastOrNull() ?: return
+        if (answer.itemKey == itemKey && answer.correct) pendingReview.removeAll { it.key == key }
+    }
+
+    /**
+     * With [REVIEW_SHARE] chance, a pending review item of [group] that this question can ask
+     * ([resolve] maps its code to a choice, null = not on this pad). Each item at most
+     * [MAX_REVIEW_ASKS] times a round, so a stubborn one does not take the round over.
+     */
+    private fun <T> reviewPick(group: String, r: Random, resolve: (String) -> T?): Pair<T, SpacedReview.Item>? {
+        if (pendingReview.isEmpty() || r.nextDouble() >= REVIEW_SHARE) return null
+        val candidates = pendingReview.mapNotNull { item ->
+            if (!item.key.startsWith(group) || (reviewAsks[item.key] ?: 0) >= MAX_REVIEW_ASKS) return@mapNotNull null
+            resolve(item.key.removePrefix(group))?.let { it to item }
+        }
+        if (candidates.isEmpty()) return null
+        // The front of the list (the freshest misses) first, but not always the very first one.
+        val pick = candidates[r.nextInt(minOf(3, candidates.size))]
+        reviewAsks[pick.second.key] = (reviewAsks[pick.second.key] ?: 0) + 1
+        return pick
+    }
+
+    private fun reviewOf(item: SpacedReview.Item?, itemKey: String, show: (String) -> String?): TirReview? {
+        item ?: return null
+        lastReview = item.key to itemKey
+        return TirReview(item.daysAgo, item.confusedWith.mapNotNull(show))
+    }
+
     /** Where a drone question lives: its key, the tonic of its register, the drone, the intro. */
     private class Context(val key: Key, val tonic: MidiNote, val drone: List<MidiNote>, val intro: Score?)
 
@@ -134,7 +178,8 @@ class TirDriver(
         val prefix = if (level == 7) "tir:L7:${key.mode.name}:" else "tir:L$level:"
         val guests = pad.filter { d -> pool.none { it sameSoundAs d } }
         val from = if (guests.isNotEmpty() && ctx.random.nextDouble() < GUEST_SHARE) guests else pool
-        val degree = ItemWeights.pick(ctx.random, from) { ItemWeights.weight(prefix + it, ctx.history) }
+        val review = reviewPick(NOTE_GROUP, ctx.random) { code -> pad.firstOrNull { it.toString() == code } }
+        val degree = review?.first ?: ItemWeights.pick(ctx.random, from) { ItemWeights.weight(prefix + it, ctx.history) }
         val octaves = listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in 50..79 }
         val note = DegreeNote(degree, octaves[ctx.random.nextInt(octaves.size)])
         val question = arranger.line(listOf(note), key, Voice.TONE, beatsEach = 2.0, tempoBpm = TEMPO, tonicFloor = tonic)
@@ -142,6 +187,7 @@ class TirDriver(
             itemKey = prefix + degree, prompt = prompt(key, c.intro, question), kind = TirKind.NOTE, level = level,
             key = key, tonic = tonic, notes = listOf(note), chords = emptyList(), noteChoices = pad,
             chordChoices = emptyList(), question = question, drone = c.drone,
+            review = reviewOf(review?.second, prefix + degree) { code -> pad.firstOrNull { it.toString() == code }?.let { DegreeFormatter.degree(it, notation) } },
         )
     }
 
@@ -175,12 +221,15 @@ class TirDriver(
     private fun chordTask(key: Key, cadence: Score, ctx: DriverContext): TirTask {
         val choices = (0..6).map { Harmony.diatonicChord(key.mode, it) }
         val prefix = "tir:L5:"
-        val chord = ItemWeights.pick(ctx.random, choices) { ItemWeights.weight(prefix + ChordParser.formatRoman(it), ctx.history) }
+        val byCode = { code: String -> choices.firstOrNull { ChordParser.formatRoman(it) == code } }
+        val review = reviewPick(CHORD_GROUP, ctx.random, byCode)
+        val chord = review?.first ?: ItemWeights.pick(ctx.random, choices) { ItemWeights.weight(prefix + ChordParser.formatRoman(it), ctx.history) }
         val question = arranger.chords(listOf(chord), key, beatsEach = 2.0, tempoBpm = TEMPO)
         return TirTask(
             itemKey = prefix + ChordParser.formatRoman(chord), prompt = prompt(key, cadence, question), kind = TirKind.CHORD,
             level = 5, key = key, tonic = key.tonicAtOrAbove(MidiNote(55)), notes = emptyList(), chords = listOf(chord),
             noteChoices = emptyList(), chordChoices = choices, question = question,
+            review = reviewOf(review?.second, prefix + ChordParser.formatRoman(chord)) { code -> byCode(code)?.let { DegreeFormatter.chord(it, notation) } },
         )
     }
 
@@ -295,6 +344,26 @@ class TirDriver(
 
         /** Single notes and melodies are heard over the drone; chords keep the cadence. */
         fun usesDrone(level: Int): Boolean = level != 5 && level != 6
+
+        /** O-06: while earlier days' misses wait, this share of questions comes from them. */
+        const val REVIEW_SHARE = 0.7
+        const val MAX_REVIEW_ASKS = 3
+        private const val NOTE_GROUP = "note:"
+        private const val CHORD_GROUP = "chord:"
+
+        /**
+         * Review key of a Tir attempt: single notes merge across levels 1–3 and 7 («note:♭3»), so a
+         * degree missed on one level comes back on another; chords of level 5 are «chord:ii».
+         * Melodies and progressions are not reviewed item by item (null).
+         */
+        fun reviewKey(itemKey: String): String? {
+            val code = itemKey.substringAfterLast(':')
+            return when {
+                itemKey.startsWith("tir:L5:") -> CHORD_GROUP + code
+                itemKey.startsWith("tir:L1:") || itemKey.startsWith("tir:L2:") || itemKey.startsWith("tir:L3:") || itemKey.startsWith("tir:L7:") -> NOTE_GROUP + code
+                else -> null
+            }
+        }
 
         /** Level 1 asks mostly these; the other scale degrees come as guests. */
         val CORE = listOf(Degree.ONE, Degree.THREE, Degree.FIVE)

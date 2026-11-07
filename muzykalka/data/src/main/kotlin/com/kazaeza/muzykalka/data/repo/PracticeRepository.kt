@@ -65,6 +65,10 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
     suspend fun recentAttempts(variant: Variant, limit: Int = 200): List<AttemptRecord> =
         db.attempts().recent(variant.name, limit).mapNotNull { it.toRecord() }.reversed()
 
+    /** Everything of [variant] since [fromEpochMs], oldest first — for the spaced review (O-06). */
+    suspend fun attemptsSince(variant: Variant, fromEpochMs: Long): List<AttemptRecord> =
+        db.attempts().since(variant.name, fromEpochMs).mapNotNull { it.toRecord() }
+
     fun observeAttempts(): Flow<List<AttemptRecord>> = db.attempts().observeAll().map { rows -> rows.mapNotNull { it.toRecord() } }
 
     /** One Taper order: log row + new FSRS card, atomically. */
