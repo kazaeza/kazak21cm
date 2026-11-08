@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.kazaeza.muzykalka.AppGraph
 import com.kazaeza.muzykalka.data.repo.SessionKind
 import com.kazaeza.muzykalka.data.settings.Settings
+import com.kazaeza.muzykalka.dsp.DEFAULT_MIN_HOLD_MS
 import com.kazaeza.muzykalka.game.Answer
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.Mode
@@ -508,7 +509,10 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     }
 
     private fun startMic() {
-        graph.pitchInput.start(settings.inputDeviceId, settings.a4Hz)
+        graph.pitchInput.start(
+            settings.inputDeviceId, settings.a4Hz,
+            if (spec.variant.isSung()) SingDriver.VOICE_MIN_HOLD_MS else DEFAULT_MIN_HOLD_MS,
+        )
         micJobs += viewModelScope.launch {
             combine(graph.headphones.connected, flowOf(settings.headphones)) { a, b -> a || b }.collect { headphones.value = it }
         }

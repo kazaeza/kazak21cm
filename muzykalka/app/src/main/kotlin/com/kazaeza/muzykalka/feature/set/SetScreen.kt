@@ -38,6 +38,7 @@ import com.kazaeza.muzykalka.feature.game.GameScreen
 import com.kazaeza.muzykalka.feature.game.RoundSpec
 import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
+import com.kazaeza.muzykalka.game.SingUnlock
 import com.kazaeza.muzykalka.game.DailySet
 import com.kazaeza.muzykalka.game.Metrics
 import com.kazaeza.muzykalka.game.SetSegment
@@ -93,6 +94,9 @@ class SetViewModel(private val graph: AppGraph, minimal: Boolean) : ViewModel() 
             val today = graph.today(graph.settings.settings.first())
             val anyDue = graph.library.allOrderable().any { it.card?.isDue(today) ?: true }
             if (!anyDue) state.update { it.copy(segments = DailySet.withoutSongs(it.segments)) }
+            // «Спой ступень» is closed until «Пропевка» goes well: its minutes are sung as the search instead.
+            val singing = SingUnlock.status(graph.practice.recentAttempts(Variant.KAMERTON_SEARCH, SingUnlock.WINDOW))
+            state.update { it.copy(segments = SingUnlock.plan(it.segments, singing)) }
         }
     }
 

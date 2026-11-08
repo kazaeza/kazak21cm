@@ -20,6 +20,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.map
+import androidx.compose.ui.draw.alpha
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -37,6 +40,7 @@ import com.kazaeza.muzykalka.feature.common.ModeVisuals
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.isAvailable
 import com.kazaeza.muzykalka.feature.game.Drills
+import com.kazaeza.muzykalka.game.SingUnlock
 import com.kazaeza.muzykalka.game.GuitarNeed
 import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.Variant
@@ -152,6 +156,7 @@ fun ModesScreen(
     val graph = LocalAppGraph.current
     val progress by graph.progress.progress.collectAsState(initial = GameProgress())
     val scope = rememberCoroutineScope()
+    val singing by remember { graph.practice.observeAttempts().map { SingUnlock.status(it) } }.collectAsState(initial = SingUnlock.Status(false, 0, 0))
     ScreenFrame(title = "Режимы", subtitle = "всё в одном месте: выбирай и играй", accent = Accents.Recorder) {
         ModesCatalog.SECTIONS.forEach { mode ->
             val entries = ModesCatalog.entries(mode)
@@ -163,6 +168,7 @@ fun ModesScreen(
                         entry = e,
                         mode = mode,
                         progress = progress,
+                        singing = singing,
                         onSelectLevel = { v, level, allOpen ->
                             scope.launch {
                                 if (allOpen) graph.progress.unlock(v, level)
@@ -219,12 +225,14 @@ private fun EntryCard(
     entry: ModeEntry,
     mode: ModeId,
     progress: GameProgress,
+    singing: SingUnlock.Status,
     onSelectLevel: (Variant, Int, Boolean) -> Unit,
     onStart: () -> Unit,
     onLibrary: () -> Unit,
 ) {
     val accent = ModeVisuals.accent(mode)
     val title = ModesCatalog.title(entry)
+    val closed = entry is ModeEntry.Drill && entry.variant == Variant.KAMERTON_SING && !singing.open
     GlassCard(Modifier.fillMaxWidth(), accent = accent, contentPadding = 16.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -233,7 +241,14 @@ private fun EntryCard(
                 Text(ModesCatalog.about(entry), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
             }
             Spacer(Modifier.width(12.dp))
-            PlayDisc(accent, label = "Играть: $title", onClick = onStart)
+            PlayDisc(accent, label = "Играть: $title", enabled = !closed, onClick = onStart)
+        }
+        if (closed) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "🔒 Откроется, когда в «Пропевке» с первой попытки выходит половина нот (последние ${SingUnlock.WINDOW}, не меньше ${SingUnlock.MIN_TRIES}). Сейчас: ${singing.correct} из ${singing.tries}.",
+                style = MaterialTheme.typography.bodyMedium, color = Juicy.Gold,
+            )
         }
         Spacer(Modifier.height(10.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -260,13 +275,14 @@ private fun guitarText(g: GuitarNeed): String = when (g) {
 
 /** Round «play» button on the right of a card. */
 @Composable
-private fun PlayDisc(accent: List<Color>, label: String, onClick: () -> Unit) {
+private fun PlayDisc(accent: List<Color>, label: String, enabled: Boolean = true, onClick: () -> Unit) {
     Box(
         Modifier
             .size(64.dp)
+            .alpha(if (enabled) 1f else 0.3f)
             .clip(CircleShape)
             .background(Brush.linearGradient(accent))
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) { Text("▶", style = MaterialTheme.typography.headlineSmall, color = Color.White, textAlign = TextAlign.Center) }

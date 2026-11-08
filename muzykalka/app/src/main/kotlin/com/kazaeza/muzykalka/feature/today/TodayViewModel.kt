@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazaeza.muzykalka.AppGraph
 import com.kazaeza.muzykalka.feature.common.APP_STAGE
+import com.kazaeza.muzykalka.game.SingUnlock
 import com.kazaeza.muzykalka.game.DailySet
 import com.kazaeza.muzykalka.game.Link
 import com.kazaeza.muzykalka.game.Metrics
@@ -11,6 +12,8 @@ import com.kazaeza.muzykalka.game.SetSegment
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 
@@ -38,11 +41,12 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
         graph.practice.observePlayableNow(),
         graph.practice.observePracticeDays(),
         graph.library.observeEntries(),
-    ) { settings, playable, days, entries ->
+        graph.practice.observeAttempts().map { SingUnlock.status(it) }.distinctUntilChanged(),
+    ) { settings, playable, days, entries, singing ->
         val today = graph.today(settings)
         val orderable = entries.filter { it.orderable }
         val due = orderable.count { it.card?.isDue(today) ?: true }
-        val plan = DailySet.available(DailySet.DEFAULT, APP_STAGE)
+        val plan = SingUnlock.plan(DailySet.available(DailySet.DEFAULT, APP_STAGE), singing)
         TodayUi(
             loading = false,
             playableNow = playable,

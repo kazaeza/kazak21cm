@@ -33,7 +33,7 @@ class FakePitchInput : PitchInput {
     override val notes = MutableSharedFlow<NoteEvent>(extraBufferCapacity = 16)
     override val isRunning = MutableStateFlow(false)
     override val error = MutableStateFlow<String?>(null)
-    override fun start(deviceId: Int?, a4Hz: Double) {
+    override fun start(deviceId: Int?, a4Hz: Double, minHoldMs: Int) {
         isRunning.value = true
     }
     override fun stop() {

@@ -49,11 +49,12 @@ class AndroidPitchInput(private val context: Context) : PitchInput {
     private var thread: Thread? = null
     private var currentDevice: Int? = null
     private var currentA4 = 0.0
+    private var currentHold = 0
 
     @SuppressLint("MissingPermission")
     @Synchronized
-    override fun start(deviceId: Int?, a4Hz: Double) {
-        if (active && deviceId == currentDevice && a4Hz == currentA4) return
+    override fun start(deviceId: Int?, a4Hz: Double, minHoldMs: Int) {
+        if (active && deviceId == currentDevice && a4Hz == currentA4 && minHoldMs == currentHold) return
         if (active) stopInternal()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             errorFlow.value = "Нет доступа к микрофону"
@@ -72,9 +73,10 @@ class AndroidPitchInput(private val context: Context) : PitchInput {
         errorFlow.value = null
         currentDevice = deviceId
         currentA4 = a4Hz
+        currentHold = minHoldMs
         active = true
         running.value = true
-        thread = Thread({ loop(record, a4Hz) }, "muzykalka-audio-in").apply {
+        thread = Thread({ loop(record, a4Hz, minHoldMs) }, "muzykalka-audio-in").apply {
             isDaemon = true
             start()
         }
@@ -106,13 +108,13 @@ class AndroidPitchInput(private val context: Context) : PitchInput {
         return record
     }
 
-    private fun loop(record: AudioRecord, a4Hz: Double) {
+    private fun loop(record: AudioRecord, a4Hz: Double, minHoldMs: Int) {
         try {
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
         } catch (_: Exception) {
         }
         val detector = McLeodPitchDetector(SAMPLE_RATE, WINDOW)
-        val segmenter = StableNoteSegmenter(NoteSegmenterConfig(a4Hz = a4Hz))
+        val segmenter = StableNoteSegmenter(NoteSegmenterConfig(minHoldMs = minHoldMs, a4Hz = a4Hz))
         val window = FloatArray(WINDOW)
         val hop = FloatArray(HOP)
         var filled = 0

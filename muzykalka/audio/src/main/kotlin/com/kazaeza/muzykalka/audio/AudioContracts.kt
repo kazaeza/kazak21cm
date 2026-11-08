@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.audio
 
+import com.kazaeza.muzykalka.dsp.DEFAULT_MIN_HOLD_MS
 import com.kazaeza.muzykalka.dsp.NoteEvent
 import com.kazaeza.muzykalka.dsp.PitchFrame
 import com.kazaeza.muzykalka.music.MidiNote
@@ -55,7 +56,7 @@ interface PitchInput {
     val error: StateFlow<String?>
 
     /** Requires RECORD_AUDIO. [deviceId] = AudioDeviceInfo.id of a preferred input, null = default. */
-    fun start(deviceId: Int?, a4Hz: Double)
+    fun start(deviceId: Int?, a4Hz: Double, minHoldMs: Int = DEFAULT_MIN_HOLD_MS)
 
     fun stop()
 }

@@ -176,8 +176,11 @@ sealed interface NoteEvent {
  * second" (risk table: room noise, false notes) is implemented. Rule 4 (first note only) is NOT
  * here — the game engine accepts the first Onset per task and ignores the rest.
  */
+/** A plucked string is stable almost at once; a voice scoops into a note and is given more (150 ms in the singing modes). */
+const val DEFAULT_MIN_HOLD_MS: Int = 90
+
 data class NoteSegmenterConfig(
-    val minHoldMs: Int = 90,
+    val minHoldMs: Int = DEFAULT_MIN_HOLD_MS,
     val maxWobbleCents: Double = 40.0,
     val minClarity: Double = 0.85,
     val gateDb: Double = -50.0,

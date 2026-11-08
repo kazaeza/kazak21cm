@@ -178,6 +178,9 @@ class SingDriver(
         const val SEARCH_PROMOTION_TARGET_MS = 4_000L
         private const val MINOR_SHARE = 0.3
 
+        /** A voice scoops into a note: it counts as a note only after this long on one pitch (a plucked string: 90 ms). */
+        const val VOICE_MIN_HOLD_MS = 150
+
         /** C3: the reference tonic sits in C3–B3, comfortable for a low voice; a high one sings an octave up. */
         val VOICE_FLOOR = MidiNote(48)
 
