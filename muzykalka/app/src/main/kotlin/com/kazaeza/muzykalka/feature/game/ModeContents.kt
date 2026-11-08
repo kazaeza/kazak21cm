@@ -60,6 +60,12 @@ import com.kazaeza.muzykalka.ui.component.DeadlineBar
 import com.kazaeza.muzykalka.ui.component.DegreeKeypad
 import com.kazaeza.muzykalka.ui.component.ExtraKey
 import com.kazaeza.muzykalka.ui.component.ExtraKeyView
+import com.kazaeza.muzykalka.ui.component.DegreeRing
+import com.kazaeza.muzykalka.ui.component.degreeRingMinSide
+import com.kazaeza.muzykalka.ui.effect.GlowOrb
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.min
 import com.kazaeza.muzykalka.ui.component.GradientText
 import com.kazaeza.muzykalka.ui.component.JuicyKey
 import com.kazaeza.muzykalka.ui.component.KeyHighlight
@@ -89,7 +95,7 @@ private fun reviewText(r: TirReview, correct: Boolean): String {
 private fun AnchorHint(ui: GameUi, degree: Degree) {
     val anchor = ui.anchors[degree.semitones] ?: return
     Spacer(Modifier.height(6.dp))
-    DegreeChip("⚓ ${DegreeFormatter.degree(degree, ui.notation)} — как «${anchor.title}»", DegreeColors.of(degree))
+    DegreeChip("${DegreeFormatter.degree(degree, ui.notation)} — как «${anchor.title}»", DegreeColors.of(degree))
 }
 
 @Composable
@@ -106,14 +112,14 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
         PromptCard(ui, accent) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    DegreeChip("🔑 " + RuNames.key(task.key), Juicy.Gold)
+                    DegreeChip(RuNames.key(task.key), Juicy.Gold)
                     task.over?.let { chord ->
                         Spacer(Modifier.width(8.dp))
                         DegreeChip("над " + DegreeFormatter.chord(chord, ui.notation), DegreeColors.of(chord.root))
                     }
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "🔁",
+                        "↻",
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier
                             .clip(CircleShape)
@@ -126,7 +132,7 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                 val shown = if (task.underNote) task.notes.single().degree else null
                 when {
                     ui.phase == RoundPhase.PROMPTING && shown == null -> {
-                        Text("🎧", style = MaterialTheme.typography.displayMedium, modifier = Modifier.breathe(amount = 0.12f, periodMs = 900))
+                        GlowOrb(accent, Modifier.size(56.dp).breathe(amount = 0.12f, periodMs = 900))
                         Text("Слушай…", style = MaterialTheme.typography.headlineSmall, color = Juicy.TextDim)
                     }
                     shown != null && !feedback -> {
@@ -172,7 +178,7 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                         }
                         task.review?.let { r ->
                             Spacer(Modifier.height(6.dp))
-                            DegreeChip("🔁 " + reviewText(r, correct), Juicy.Cyan)
+                            DegreeChip("↻" + reviewText(r, correct), Juicy.Cyan)
                         }
                     }
                     else -> {
@@ -204,39 +210,58 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
             )
         }
 
-        Spacer(Modifier.weight(1f))
-
-        val dontKnow = ExtraKey("🤷", "не знаю") { onAnswer(Answer.Pass) }
+        val dontKnow = ExtraKey("", "не знаю") { onAnswer(Answer.Pass) }
         when (task.kind) {
             TirKind.NOTE, TirKind.MELODY -> {
                 val expected = task.notes.lastOrNull()?.degree
-                DegreeKeypad(
-                    degrees = task.noteChoices,
-                    notation = ui.notation,
-                    enabled = listening,
-                    columns = 4,
-                    keyHeight = if (task.noteChoices.size > 8) 64.dp else 76.dp,
-                    extraKey = dontKnow,
-                    highlight = { d ->
-                        when {
-                            !feedback || task.kind == TirKind.MELODY -> KeyHighlight.NONE
-                            expected != null && d sameSoundAs expected -> KeyHighlight.CORRECT
-                            !correct && lastTapDegree == d -> KeyHighlight.WRONG
-                            else -> KeyHighlight.DIM
+                val highlight: (Degree) -> KeyHighlight = { d ->
+                    when {
+                        !feedback || task.kind == TirKind.MELODY -> KeyHighlight.NONE
+                        expected != null && d sameSoundAs expected -> KeyHighlight.CORRECT
+                        !correct && lastTapDegree == d -> KeyHighlight.WRONG
+                        else -> KeyHighlight.DIM
+                    }
+                }
+                val onDegree: (Degree) -> Unit = { d ->
+                    lastTapDegree = d
+                    if (task.kind == TirKind.NOTE) {
+                        onAnswer(Answer.DegreeChoice(d))
+                    } else {
+                        enteredNotes += d
+                        if (enteredNotes.size == task.answerLength) onAnswer(Answer.Formula(enteredNotes.map { DegreeNote(it) }))
+                    }
+                }
+                // O-23: the dial when there is room for it, the rows of keys otherwise
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                    if (min(maxWidth, maxHeight) >= degreeRingMinSide()) {
+                        DegreeRing(
+                            degrees = task.noteChoices,
+                            notation = ui.notation,
+                            onDegree = onDegree,
+                            modifier = Modifier.fillMaxSize(),
+                            enabled = listening,
+                            highlight = highlight,
+                            centre = if (feedback && task.kind == TirKind.NOTE) expected else null,
+                            breathing = listening || ui.phase == RoundPhase.PROMPTING,
+                        )
+                    } else {
+                        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom) {
+                            DegreeKeypad(
+                                degrees = task.noteChoices,
+                                notation = ui.notation,
+                                enabled = listening,
+                                columns = 4,
+                                keyHeight = if (task.noteChoices.size > 8) 64.dp else 76.dp,
+                                highlight = highlight,
+                                onDegree = onDegree,
+                            )
                         }
-                    },
-                    onDegree = { d ->
-                        lastTapDegree = d
-                        if (task.kind == TirKind.NOTE) {
-                            onAnswer(Answer.DegreeChoice(d))
-                        } else {
-                            enteredNotes += d
-                            if (enteredNotes.size == task.answerLength) onAnswer(Answer.Formula(enteredNotes.map { DegreeNote(it) }))
-                        }
-                    },
-                )
+                    }
+                }
+                ExtraKeyView(dontKnow, listening, 56.dp, Modifier.fillMaxWidth())
             }
             TirKind.CHORD, TirKind.PROGRESSION -> {
+                Spacer(Modifier.weight(1f))
                 ChordPad(
                     chords = task.chordChoices,
                     ui = ui,
@@ -445,10 +470,10 @@ internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnsw
         PromptCard(ui, accent) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    DegreeChip("🔑 " + RuNames.key(task.key), Juicy.Gold)
+                    DegreeChip(RuNames.key(task.key), Juicy.Gold)
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "🔁",
+                        "↻",
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier
                             .clip(CircleShape)
@@ -484,19 +509,19 @@ internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnsw
         Spacer(Modifier.weight(1f))
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            MicPulse(levelDb = ui.micLevelDb, label = if (listening) "🎤" else null, color = color)
+            MicPulse(levelDb = ui.micLevelDb, label = if (listening) "" else null, color = color)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 SectionLabel("пой «а-а» ровно")
                 Text(
-                    if (task.drone != null) "любая октава; засчитывается первая устойчивая нота" else "без наушников дрон молчит: дом — тоника перед вопросом, 🔁 — ещё раз",
+                    if (task.drone != null) "любая октава; засчитывается первая устойчивая нота" else "без наушников дрон молчит: дом — тоника перед вопросом, — ещё раз",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Juicy.TextDim,
                 )
                 ui.micError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Juicy.Hot) }
             }
         }
-        ExtraKeyView(ExtraKey("🤷", "не знаю") { onAnswer(Answer.Pass) }, enabled = listening, height = 72.dp, modifier = Modifier.fillMaxWidth())
+        ExtraKeyView(ExtraKey("", "не знаю") { onAnswer(Answer.Pass) }, enabled = listening, height = 72.dp, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(6.dp))
     }
 }
@@ -517,10 +542,10 @@ internal fun SearchContent(task: SingTask, ui: GameUi, accent: List<Color>, onAn
         PromptCard(ui, accent) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    DegreeChip("🔑 " + RuNames.key(task.key), Juicy.Gold)
+                    DegreeChip(RuNames.key(task.key), Juicy.Gold)
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "🔁",
+                        "↻",
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier
                             .clip(CircleShape)
@@ -544,19 +569,19 @@ internal fun SearchContent(task: SingTask, ui: GameUi, accent: List<Color>, onAn
         Spacer(Modifier.weight(1f))
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            MicPulse(levelDb = ui.micLevelDb, label = if (listening) "🎤" else null, color = color)
+            MicPulse(levelDb = ui.micLevelDb, label = if (listening) "" else null, color = color)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 SectionLabel("пой «а-а» и тяни ровно")
                 Text(
-                    if (task.drone != null) "любая октава — я подожду, сколько нужно" else "без наушников дрон молчит: 🔁 — тоника ещё раз",
+                    if (task.drone != null) "любая октава — я подожду, сколько нужно" else "без наушников дрон молчит: — тоника ещё раз",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Juicy.TextDim,
                 )
                 ui.micError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Juicy.Hot) }
             }
         }
-        ExtraKeyView(ExtraKey("🔊", "подскажи") { onAnswer(Answer.Pass) }, enabled = listening, height = 72.dp, modifier = Modifier.fillMaxWidth())
+        ExtraKeyView(ExtraKey("♪", "подскажи") { onAnswer(Answer.Pass) }, enabled = listening, height = 72.dp, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(6.dp))
     }
 }
@@ -570,10 +595,10 @@ private fun SearchStatus(task: SingTask, ui: GameUi, found: Boolean) {
         found -> {
             val n = ui.tries + 1
             Text(
-                if (n == 1) "С первой попытки! 🔥" else "Нашёл с $n-й попытки!",
+                if (n == 1) "С первой попытки!" else "Нашёл с $n-й попытки!",
                 style = MaterialTheme.typography.titleLarge, color = Juicy.Good, modifier = Modifier.pop(ui.taskSerial),
             )
-            Text("${f?.given?.substringAfter(" · ") ?: ""}   +${f?.points ?: 0}", style = MaterialTheme.typography.titleMedium, color = Juicy.Gold)
+            Text("${f?.given?.substringAfter(" · ") ?: ""} +${f?.points ?: 0}", style = MaterialTheme.typography.titleMedium, color = Juicy.Gold)
             Text(DegreeVibes.pathHome(task.degree, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim, textAlign = TextAlign.Center)
         }
         ui.phase == RoundPhase.PROMPTING -> Text("Слушай дом…", style = dim, color = Juicy.TextDim)
@@ -663,7 +688,7 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         PromptCard(ui, accent) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                DegreeChip("🔑 " + RuNames.key(task.key), Juicy.Gold, large = true)
+                DegreeChip(RuNames.key(task.key), Juicy.Gold, large = true)
                 Spacer(Modifier.height(14.dp))
                 androidx.compose.foundation.layout.FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -686,7 +711,7 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
                 if (listening) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "👆 Нажми на аккорд — он прозвучит",
+                        "Нажми на аккорд — он прозвучит",
                         style = MaterialTheme.typography.bodySmall,
                         color = Juicy.TextDim,
                     )
@@ -699,8 +724,8 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
                 Spacer(Modifier.height(10.dp))
                 Text(
                     when {
-                        feedback && correct -> "🎧 Так это звучит. Совпало?"
-                        feedback -> "🎧 Слушай, как должно звучать"
+                        feedback && correct -> "Так это звучит. Совпало?"
+                        feedback -> "Слушай, как должно звучать"
                         else -> "Сыграй на гитаре, потом честно оцени"
                     },
                     style = MaterialTheme.typography.titleMedium,
@@ -730,7 +755,7 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
                 onClick = { showRoots = true },
                 modifier = Modifier.fillMaxWidth(),
                 colors = accent,
-                leading = "💡",
+                leading = "",
                 enabled = listening,
                 height = 72.dp,
             )
