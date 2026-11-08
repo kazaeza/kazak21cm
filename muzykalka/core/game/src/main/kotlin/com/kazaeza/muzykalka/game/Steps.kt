@@ -76,7 +76,7 @@ class StepsDriver(
         val pool = StepsLadder.LEVELS[level - 1]
         val pattern = ItemWeights.pick(context.random, pool) { weight(itemKey(level, it), context.history) }
         val key = keyPicker.next(pattern.mode)
-        val sound = arranger.chords(pattern.chords + pattern.chords.first(), key, beatsEach = 2.0, tempoBpm = TEMPO)
+        val sound = arranger.chords(pattern.chords, key, beatsEach = 2.0, tempoBpm = TEMPO)
         return StepsTask(
             itemKey = itemKey(level, pattern),
             prompt = Prompt(title = formula(pattern), subtitle = pattern.like, audio = null, key = key),
