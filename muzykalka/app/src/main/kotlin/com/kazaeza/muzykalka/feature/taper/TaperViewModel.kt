@@ -94,7 +94,12 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
         val pool = when {
             spec.onlyItemId != null -> allItems.filter { it.id == spec.onlyItemId }
             spec.exam -> allItems.shuffled(random).take(spec.examItems)
-            else -> TaperSession.due(allItems, today, random)
+            // O-20: not the same overdue song every time — songs ordered in the last 12 hours go to the back.
+            else -> {
+                val since = System.currentTimeMillis() - RECENT_MS
+                val recent = graph.practice.lastOrderedAt().filterValues { it >= since }.keys
+                TaperSession.rotation(allItems, today, recent, random)
+            }
         }
         state.update { it.copy(loading = false, emptyLibrary = allItems.isEmpty(), nothingDue = allItems.isNotEmpty() && pool.isEmpty(), today = today, settings = settings) }
         if (pool.isNotEmpty()) start(pool)
@@ -110,6 +115,7 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
         session = TaperSession(
             pool, KeyPicker(random), graph.fsrs, today, random,
             budgetMs = TaperSession.budgetMs(spec.budgetMinutes), hintsAllowed = !spec.exam,
+            keepOrder = !spec.exam && spec.onlyItemId == null,
         )
         if (sessionId == null) {
             sessionId = spec.sessionId ?: graph.practice.startSession(if (spec.exam) SessionKind.ENTRANCE_EXAM else SessionKind.FREE, today).also { ownSession = true }
@@ -183,3 +189,6 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
         if (session?.phase != TaperPhase.FINISHED) finishSession()
     }
 }
+
+/** A song ordered within this long counts as played lately (O-20). */
+private const val RECENT_MS = 12 * 3_600_000L

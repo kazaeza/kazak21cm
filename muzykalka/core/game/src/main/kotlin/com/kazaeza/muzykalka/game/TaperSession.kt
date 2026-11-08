@@ -67,8 +67,10 @@ class TaperSession(
     private val budgetMs: Long = 8 * 60_000L,
     /** Exams forbid hints. */
     val hintsAllowed: Boolean = true,
+    /** The caller already put [items] in the order to play (see [rotation]). */
+    keepOrder: Boolean = false,
 ) {
-    private val queue = ArrayDeque(order(items, today, random))
+    private val queue = ArrayDeque(if (keepOrder) items else order(items, today, random))
     private var startedAtMs = -1L
 
     var phase: TaperPhase = TaperPhase.FINISHED
@@ -170,6 +172,20 @@ class TaperSession(
         /** Items due today (new items included), in queue order. */
         fun due(items: List<TaperItem>, today: Int, random: Random): List<TaperItem> =
             order(items.filter { it.card.isDue(today) }, today, random)
+
+        /**
+         * The set's queue (O-20): a song that was ordered lately goes to the back, so the same overdue song does not open
+         * every evening. First the due songs not played lately (shuffled), then up to [filler] other songs not played
+         * lately — random pieces of the library instead of an empty bar — then the due songs that were played lately.
+         */
+        fun rotation(items: List<TaperItem>, today: Int, recent: Set<String>, random: Random, filler: Int = 5): List<TaperItem> {
+            val fresh = items.filter { it.id !in recent }
+            val due = fresh.filter { it.card.isDue(today) }.shuffled(random)
+            val extra = fresh.filter { !it.card.isDue(today) }.shuffled(random).take(filler)
+            val again = items.filter { it.id in recent && it.card.isDue(today) }.shuffled(random)
+            if (due.isEmpty() && again.isEmpty()) return emptyList() // nothing is due: the screen says so
+            return due + extra + again
+        }
 
         fun budgetMs(minutes: Double): Long = max(60_000L, (minutes * 60_000).toLong())
     }

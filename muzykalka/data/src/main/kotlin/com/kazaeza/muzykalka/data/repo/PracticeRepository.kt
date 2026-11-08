@@ -112,6 +112,10 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
             }
             .toMap()
 
+    /** Item id -> when it was last ordered (epoch ms): the set rotates songs that were played lately. */
+    suspend fun lastOrderedAt(): Map<String, Long> =
+        db.orders().observeAll().first().groupBy { it.itemId }.mapValues { (_, rows) -> rows.maxOf { it.atEpochMs } }
+
     fun observeDueCount(today: Int): Flow<Int> = db.srs().observeDueCount(today)
 
     /** Playable-now orders of one session (exam memory stage). */
