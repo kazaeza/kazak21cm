@@ -21,7 +21,8 @@ import androidx.compose.ui.unit.min
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
-import com.kazaeza.muzykalka.ui.effect.GlowOrb
+import com.kazaeza.muzykalka.ui.effect.OvertoneOrb
+import androidx.compose.ui.graphics.lerp
 import com.kazaeza.muzykalka.ui.effect.breathe
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
@@ -53,9 +54,13 @@ fun DegreeRing(
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val side = min(maxWidth, maxHeight)
         val radius = side / 2 - key / 2
-        val tint = centre?.let { DegreeColors.of(it) } ?: Juicy.Gold
-        val c1 by animateColorAsState(tint, tween(Motion.MEDIUM), label = "orb1")
-        val c2 by animateColorAsState(if (centre != null) DegreeColors.gradient(tint).last() else Juicy.Orange, tween(Motion.MEDIUM), label = "orb2")
+        // O-25: the tonic as an overtone sphere — neon lights flowing inside; once the answer is
+        // shown, the colour of the right degree floods it
+        val tint = centre?.let { DegreeColors.of(it) }
+        val o1 by animateColorAsState(tint ?: Juicy.Magenta, tween(Motion.LONG), label = "orb1")
+        val o2 by animateColorAsState(tint?.let { lerp(it, Color.White, 0.3f) } ?: Juicy.Cyan, tween(Motion.LONG), label = "orb2")
+        val o3 by animateColorAsState(if (tint != null) Juicy.Magenta else Juicy.Blue, tween(Motion.LONG), label = "orb3")
+        val o4 by animateColorAsState(tint ?: Juicy.Violet, tween(Motion.LONG), label = "orb4")
         Canvas(Modifier.size(side)) {
             val c = Offset(size.width / 2, size.height / 2)
             val r = radius.toPx()
@@ -75,9 +80,9 @@ fun DegreeRing(
             }
             drawCircle(Color.White.copy(alpha = 0.06f), radius = r, center = c, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
         }
-        val orb = (side / 2 - key - 24.dp) * 0.9f
+        val orb = (side / 2 - key - 18.dp) * 2f
         if (orb > 0.dp) {
-            GlowOrb(listOf(c1, c2), Modifier.size(orb).breathe(enabled = breathing, amount = 0.05f, periodMs = 2400), glow = 0.8f)
+            OvertoneOrb(listOf(o1, o2, o3, o4), Modifier.size(orb).breathe(enabled = breathing, amount = 0.04f, periodMs = 3200), glow = 0.7f)
         }
         val seen = HashMap<Int, Int>()
         degrees.forEach { d ->

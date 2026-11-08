@@ -40,6 +40,16 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.unit.dp
+import kotlin.math.PI
+import kotlin.math.sqrt
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import kotlin.math.cos
 import kotlin.math.max
@@ -48,8 +58,10 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * O-24 «Обертон»: the base layer of every screen. Warm near-black, one big soft orb of light in the
- * accent colours that drifts and breathes very slowly, and a fine film grain over everything.
+ * O-24 «Обертон»: the base layer of every screen. Near-black, and over it soft lights in the accent
+ * colours that drift like overtones of one tone: the k-th light circles k times while the first
+ * one circles once (k = 1…5), each one fainter and smaller, all added together where they overlap.
+ * The whole picture repeats once a minute, so it never jumps. A fine film grain lies over everything.
  * [intensity] scales the light; the grain stays the same.
  */
 @Composable
@@ -60,11 +72,8 @@ fun AuroraBackground(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val t = rememberInfiniteTransition(label = "aurora")
-    val a by t.animateFloat(0f, 1f, infiniteRepeatable(tween(23_000, easing = LinearEasing), RepeatMode.Reverse), label = "a")
-    val b by t.animateFloat(0f, 1f, infiniteRepeatable(tween(31_000, easing = LinearEasing), RepeatMode.Reverse), label = "b")
-    val c1 = colors.getOrElse(0) { Juicy.Violet }
-    val c2 = colors.getOrElse(1) { c1 }
-    val c3 = colors.getOrElse(2) { c2 }
+    val phase by t.animateFloat(0f, 1f, infiniteRepeatable(tween(60_000, easing = LinearEasing), RepeatMode.Restart), label = "phase")
+    val lights = overtoneColors(colors)
     val grain = rememberGrain()
     Box(
         modifier
@@ -73,42 +82,91 @@ fun AuroraBackground(
                 val w = size.width
                 val h = size.height
                 val r = max(w, h)
-                // the orb: three overlapping lights, high on the screen, slightly off-centre
-                val center = Offset(w * (0.62f - 0.18f * a), h * (0.16f + 0.05f * b))
                 val k = intensity.coerceIn(0f, 1f)
-                drawCircle(Brush.radialGradient(listOf(c1.copy(alpha = 0.42f * k), c1.copy(alpha = 0.10f * k), Color.Transparent), center, r * 0.62f), r * 0.62f, center)
-                val c2c = center + Offset(w * (0.10f - 0.20f * b), h * 0.07f)
-                drawCircle(Brush.radialGradient(listOf(c2.copy(alpha = 0.34f * k), Color.Transparent), c2c, r * 0.42f), r * 0.42f, c2c)
-                val c3c = center + Offset(-w * 0.16f * a, -h * 0.04f)
-                drawCircle(Brush.radialGradient(listOf(c3.copy(alpha = 0.26f * k), Color.Transparent), c3c, r * 0.30f), r * 0.30f, c3c)
+                lights.forEachIndexed { i, c ->
+                    val n = i + 1
+                    val a = 2 * PI * (n * phase + i * 0.17)
+                    val centre = Offset(
+                        w * (0.5f + (0.36f / n + 0.06f) * sin(a).toFloat()),
+                        h * (0.20f + 0.05f * n + 0.06f * cos(a * 0.5 + i).toFloat()),
+                    )
+                    val rr = r * (0.58f / sqrt(n.toFloat())) * (1f + 0.08f * sin(a + i).toFloat())
+                    val alpha = 0.40f * k / sqrt(n.toFloat())
+                    drawCircle(
+                        Brush.radialGradient(listOf(c.copy(alpha = alpha), c.copy(alpha = alpha * 0.35f), Color.Transparent), centre, rr),
+                        rr, centre, blendMode = BlendMode.Screen,
+                    )
+                }
                 // the dark falls back in at the bottom, so content reads on calm ink
-                drawRect(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Juicy.Ink.copy(alpha = 0.85f)))
+                drawRect(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Juicy.Ink.copy(alpha = 0.8f)))
                 drawGrain(grain)
             },
         content = content,
     )
 }
 
+/** Five lights for the background: the accent colours first, then neighbours from the neon palette. */
+private fun overtoneColors(colors: List<Color>): List<Color> {
+    val extra = listOf(Juicy.Magenta, Juicy.Blue, Juicy.Cyan, Juicy.Violet, Juicy.Hot)
+    return (colors + extra).distinct().take(5)
+}
+
 /**
- * A soft sphere of light (the «шар» of O-24): a body of [colors] blurred at the edge, lit from the
- * upper left. [glow] 0..1 adds a halo around it — used to show the tonic, a right answer, a sound.
+ * A sphere of coloured light, like an overtone made visible: [colors] flow inside it, each one
+ * circling at its own harmonic speed, under a soft, slightly blurred edge with a coloured rim.
+ * [moving] = false freezes it (small marks in lists). [glow] adds a halo, [dim] fades it.
  */
 @Composable
-fun GlowOrb(colors: List<Color>, modifier: Modifier = Modifier, glow: Float = 0.5f, dim: Float = 1f) {
-    val c1 = colors.getOrElse(0) { Juicy.Gold }
-    val c2 = colors.getOrElse(1) { c1 }
-    Canvas(modifier) {
-        val r = size.minDimension / 2
-        val c = Offset(size.width / 2, size.height / 2)
-        if (glow > 0f) {
-            drawCircle(Brush.radialGradient(listOf(c1.copy(alpha = 0.45f * glow * dim), Color.Transparent), c, r * 1.9f), r * 1.9f, c)
+fun OvertoneOrb(
+    colors: List<Color>,
+    modifier: Modifier = Modifier,
+    moving: Boolean = true,
+    glow: Float = 0.6f,
+    dim: Float = 1f,
+    periodMs: Int = 18_000,
+) {
+    val cs = if (colors.size >= 3) colors else (colors + listOf(Juicy.Magenta, Juicy.Blue, Juicy.Cyan)).take(3)
+    val phase = if (moving) {
+        val t = rememberInfiniteTransition(label = "orb")
+        val p by t.animateFloat(0f, 1f, infiniteRepeatable(tween(periodMs, easing = LinearEasing), RepeatMode.Restart), label = "p")
+        p
+    } else {
+        0.13f
+    }
+    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+        val side = min(maxWidth.value, maxHeight.value)
+        Canvas(Modifier.fillMaxSize().blur((side * 0.035f).dp, BlurredEdgeTreatment.Unbounded)) {
+            val c = Offset(size.width / 2, size.height / 2)
+            val r = size.minDimension / 2 * 0.84f
+            if (glow > 0f) {
+                drawCircle(Brush.radialGradient(listOf(cs[0].copy(alpha = 0.40f * glow * dim), cs[1].copy(alpha = 0.12f * glow * dim), Color.Transparent), c, r * 1.7f), r * 1.7f, c)
+            }
+            val circle = Path().apply { addOval(Rect(c, r)) }
+            clipPath(circle) {
+                drawCircle(cs.last().copy(alpha = dim), r, c)
+                cs.forEachIndexed { i, col ->
+                    val n = i + 1
+                    val a = 2 * PI * (n * phase + i * 0.29)
+                    val at = c + Offset((r * 0.55f * cos(a)).toFloat(), (r * 0.45f * sin(a * 1.3 + i)).toFloat())
+                    val rr = r * (1.25f - 0.15f * i)
+                    drawCircle(Brush.radialGradient(listOf(col.copy(alpha = dim), col.copy(alpha = 0.55f * dim), Color.Transparent), at, rr), rr, at)
+                }
+                // a light band across, and a coloured rim where the sphere turns away
+                val band = 2 * PI * phase
+                drawCircle(
+                    Brush.radialGradient(listOf(Color.White.copy(alpha = 0.35f * dim), Color.Transparent), c + Offset((-r * 0.35f * cos(band)).toFloat(), (-r * 0.4f).toFloat()), r * 0.6f),
+                    r, c, blendMode = BlendMode.Screen,
+                )
+                drawCircle(Brush.radialGradient(0.72f to Color.Transparent, 1f to cs[1 % cs.size].copy(alpha = 0.9f * dim), center = c, radius = r), r, c)
+            }
         }
-        drawCircle(Brush.radialGradient(listOf(c1.copy(alpha = dim), c2.copy(alpha = 0.85f * dim), c2.copy(alpha = 0f)), c + Offset(-r * 0.25f, -r * 0.25f), r * 1.35f), r, c)
-        // the lit side: a pale highlight, and the far side sinking into the dark
-        drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.55f * dim), Color.Transparent), c + Offset(-r * 0.35f, -r * 0.4f), r * 0.7f), r, c)
-        drawCircle(Brush.radialGradient(0.55f to Color.Transparent, 1f to Juicy.Ink.copy(alpha = 0.55f), center = c + Offset(-r * 0.3f, -r * 0.3f), radius = r * 1.5f), r, c)
     }
 }
+
+/** A small, still overtone sphere (marks of modes, empty states). */
+@Composable
+fun GlowOrb(colors: List<Color>, modifier: Modifier = Modifier, glow: Float = 0.5f, dim: Float = 1f) =
+    OvertoneOrb(colors, modifier, moving = false, glow = glow, dim = dim)
 
 /** Film grain tile: fixed noise, so it never crawls. null where bitmaps cannot be made (JVM tests). */
 @Composable
@@ -294,11 +352,16 @@ fun FlashOverlay(trigger: Int, color: Color, modifier: Modifier = Modifier) {
     val alpha = remember { Animatable(0f) }
     LaunchedEffect(trigger) {
         if (trigger > 0) {
-            alpha.snapTo(0.22f)
-            alpha.animateTo(0f, tween(420))
+            alpha.animateTo(0.45f, tween(140))
+            alpha.animateTo(0f, tween(900))
         }
     }
     if (alpha.value > 0f) {
-        Box(modifier.fillMaxSize().background(color.copy(alpha = alpha.value)))
+        // a soft light from the edges of the screen, the middle stays clear
+        Box(
+            modifier.fillMaxSize().drawBehind {
+                drawRect(Brush.radialGradient(0.45f to Color.Transparent, 1f to color.copy(alpha = alpha.value), center = Offset(size.width / 2, size.height / 2), radius = max(size.width, size.height) * 0.75f))
+            },
+        )
     }
 }

@@ -108,8 +108,12 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
     val feedback = ui.phase == RoundPhase.FEEDBACK
     val correct = feedback && ui.feedback?.correct == true
 
+    // O-25: the dial has a fixed size and the question takes the rest, so an answer never moves it
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val ringSide = min(maxWidth, maxHeight * 0.56f)
+    val ring = ringSide >= degreeRingMinSide()
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PromptCard(ui, accent) {
+        PromptCard(ui, accent, Modifier.weight(1f), fill = true) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DegreeChip(RuNames.key(task.key), Juicy.Gold)
@@ -232,20 +236,20 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                     }
                 }
                 // O-23: the dial when there is room for it, the rows of keys otherwise
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                    if (min(maxWidth, maxHeight) >= degreeRingMinSide()) {
+                Box(Modifier.fillMaxWidth()) {
+                    if (ring) {
                         DegreeRing(
                             degrees = task.noteChoices,
                             notation = ui.notation,
                             onDegree = onDegree,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxWidth().height(ringSide),
                             enabled = listening,
                             highlight = highlight,
                             centre = if (feedback && task.kind == TirKind.NOTE) expected else null,
                             breathing = listening || ui.phase == RoundPhase.PROMPTING,
                         )
                     } else {
-                        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom) {
+                        Column(Modifier.fillMaxWidth()) {
                             DegreeKeypad(
                                 degrees = task.noteChoices,
                                 notation = ui.notation,
@@ -261,7 +265,6 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                 ExtraKeyView(dontKnow, listening, 56.dp, Modifier.fillMaxWidth())
             }
             TirKind.CHORD, TirKind.PROGRESSION -> {
-                Spacer(Modifier.weight(1f))
                 ChordPad(
                     chords = task.chordChoices,
                     ui = ui,
@@ -289,6 +292,7 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
         }
         Spacer(Modifier.height(6.dp))
     }
+}
 }
 
 @Composable
@@ -359,7 +363,7 @@ internal fun HuntContent(task: HuntTask, ui: GameUi, accent: List<Color>, onAnsw
     var lastNamed by remember(ui.taskSerial) { mutableStateOf<NoteName?>(null) }
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PromptCard(ui, accent) {
+        PromptCard(ui, accent, Modifier.weight(1f), fill = true) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 when {
                     feedback && correct -> {
@@ -406,7 +410,6 @@ internal fun HuntContent(task: HuntTask, ui: GameUi, accent: List<Color>, onAnsw
             height = 170.dp,
         )
 
-        Spacer(Modifier.weight(1f))
 
         if (task.kind == HuntKind.REVERSE) {
             NoteNamePad(
@@ -467,7 +470,7 @@ internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnsw
     val color = DegreeColors.of(task.degree)
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PromptCard(ui, accent) {
+        PromptCard(ui, accent, Modifier.weight(1f), fill = true) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DegreeChip(RuNames.key(task.key), Juicy.Gold)
@@ -506,7 +509,6 @@ internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnsw
             }
         }
 
-        Spacer(Modifier.weight(1f))
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
             MicPulse(levelDb = ui.micLevelDb, label = if (listening) "" else null, color = color)
@@ -539,7 +541,7 @@ internal fun SearchContent(task: SingTask, ui: GameUi, accent: List<Color>, onAn
     val vibe = DegreeVibes.of(task.degree)
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PromptCard(ui, accent) {
+        PromptCard(ui, accent, Modifier.weight(1f), fill = true) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DegreeChip(RuNames.key(task.key), Juicy.Gold)
@@ -566,7 +568,6 @@ internal fun SearchContent(task: SingTask, ui: GameUi, accent: List<Color>, onAn
             }
         }
 
-        Spacer(Modifier.weight(1f))
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
             MicPulse(levelDb = ui.micLevelDb, label = if (listening) "" else null, color = color)
@@ -686,7 +687,7 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
     LaunchedEffect(ui.taskSerial) { audition.clear() }
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PromptCard(ui, accent) {
+        PromptCard(ui, accent, Modifier.weight(1f), fill = true) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 DegreeChip(RuNames.key(task.key), Juicy.Gold, large = true)
                 Spacer(Modifier.height(14.dp))
@@ -747,7 +748,6 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
             Text("корни аккордов на басовых струнах", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
         }
 
-        Spacer(Modifier.weight(1f))
 
         if (!showRoots) {
             com.kazaeza.muzykalka.ui.component.GhostButton(

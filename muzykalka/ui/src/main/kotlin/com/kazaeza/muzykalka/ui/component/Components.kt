@@ -294,13 +294,13 @@ fun JuicyKey(
                 alpha = fade
             }
             .heightIn(min = height)
-            .shadow((4 + 24 * glow).dp, shape, ambientColor = fill.last(), spotColor = fill.first())
+            .shadow((10 + 22 * glow).dp, shape, ambientColor = fill.first(), spotColor = fill.first())
             .clip(shape)
             .background(Juicy.Ink2)
             .drawBehind {
-                drawRect(Brush.radialGradient(listOf(fill.first().copy(alpha = 0.22f + 0.78f * glow), fill.last().copy(alpha = 0.05f + 0.95f * glow)), center = Offset(size.width / 2, size.height * 0.3f), radius = size.maxDimension * 0.8f))
+                drawRect(Brush.radialGradient(listOf(fill.first().copy(alpha = 0.34f + 0.66f * glow), fill.last().copy(alpha = 0.08f + 0.92f * glow)), center = Offset(size.width / 2, size.height * 0.3f), radius = size.maxDimension * 0.8f))
             }
-            .border(BorderStroke(1.dp, fill.first().copy(alpha = 0.45f + 0.55f * glow)), shape)
+            .border(BorderStroke(1.5.dp, fill.first().copy(alpha = 0.8f + 0.2f * glow)), shape)
             .clickable(interactionSource = source, indication = null, enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

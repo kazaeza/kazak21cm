@@ -1,5 +1,11 @@
 package com.kazaeza.muzykalka.feature.game
 
+import com.kazaeza.muzykalka.ui.theme.Motion
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -72,7 +78,6 @@ import com.kazaeza.muzykalka.ui.effect.FlashOverlay
 import com.kazaeza.muzykalka.ui.effect.ParticleLayer
 import com.kazaeza.muzykalka.ui.effect.rememberParticleState
 import com.kazaeza.muzykalka.ui.effect.pop
-import com.kazaeza.muzykalka.ui.effect.shake
 import com.kazaeza.muzykalka.ui.rememberHaptics
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
@@ -119,7 +124,6 @@ private fun GameHost(
     val accent = ModeVisuals.accent(spec.variant)
     val particles = rememberParticleState()
     val haptics = rememberHaptics(ui.settings.haptics)
-    var shakeTrigger by remember { mutableIntStateOf(0) }
     var flashTrigger by remember { mutableIntStateOf(0) }
     var flashColor by remember { mutableStateOf(Juicy.Good) }
     var burstAt by remember { mutableStateOf(Offset(540f, 700f)) }
@@ -142,7 +146,6 @@ private fun GameHost(
         } else {
             haptics.error()
             flashColor = Juicy.Bad
-            shakeTrigger++
         }
         flashTrigger++
     }
@@ -168,7 +171,6 @@ private fun GameHost(
                 Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .shake(shakeTrigger)
                     .onGloballyPositioned { c ->
                         val b = c.boundsInRoot()
                         burstAt = Offset(b.center.x, b.top + b.height * 0.28f)
@@ -282,15 +284,28 @@ internal fun PromptCard(
     ui: GameUi,
     accent: List<Color>,
     modifier: Modifier = Modifier,
+    /** O-25: fill the height it is given and centre the content in it, so nothing below moves. */
+    fill: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    // O-25: a new question or the answer fades in; nothing pops or jumps
+    val shown = remember { Animatable(1f) }
+    LaunchedEffect(ui.taskSerial, ui.phase) {
+        shown.snapTo(0f)
+        shown.animateTo(1f, tween(Motion.MEDIUM))
+    }
     GlassCard(modifier.fillMaxWidth(), accent = accent, contentPadding = 20.dp) {
         Box(
-            Modifier
-                .fillMaxWidth()
-                .pop(ui.taskSerial * 10 + ui.phase.ordinal, 0.06f),
+            (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
+                .graphicsLayer { alpha = shown.value },
             contentAlignment = Alignment.Center,
-        ) { content() }
+        ) {
+            if (fill) {
+                Box(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) { content() }
+            } else {
+                content()
+            }
+        }
     }
 }
 
