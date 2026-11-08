@@ -46,7 +46,7 @@ class AppSmokeTest {
     @Test
     fun startsOnTodayAndAllTabsOpen() {
         rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
-        // Four tabs only; unselected tabs show just an icon, so they are found by description.
+        // Four tabs only, found by their description (O-24: the tabs are words, the text is not in semantics twice).
         for (tab in listOf("Режимы", "Библиотека", "Прогресс", "Сегодня")) {
             rule.onNodeWithContentDescription(tab).performClick()
             rule.waitForIdle()
@@ -106,7 +106,7 @@ class AppSmokeTest {
     fun modesListEveryModeOnOneScreen() {
         rule.onNodeWithContentDescription("Режимы").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Тир").assertIsDisplayed()
+        rule.onAllNodesWithText("Тир").onFirst().assertIsDisplayed()
         for (t in listOf("Над аккордами", "Вайб ступеней", "Спой ступень", "Ходы", "Песни", "Вслепую", "Обратная охота")) {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(t, substring = true))
             rule.waitForIdle()

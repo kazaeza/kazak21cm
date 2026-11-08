@@ -83,7 +83,7 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
                         Text("держится ~${it.toInt()} дн. · повторений ${e.card?.reps ?: 0} · вылетала ${e.card?.lapses ?: 0}", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
                     }
                     Spacer(Modifier.height(12.dp))
-                    JuicyButton("Сыграть сейчас", onClick = { onOrder(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "🎸")
+                    JuicyButton("Сыграть сейчас", onClick = { onOrder(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
                 }
             }
         }
@@ -125,12 +125,12 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
             orders.take(20).forEach { o ->
                 item(key = "o-" + o.atEpochMs) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (o.playableNow) "✅" else if (o.rating == Rating.AGAIN.value) "❌" else "🟡", style = MaterialTheme.typography.titleMedium)
+                        Text(if (o.playableNow) "✓" else if (o.rating == Rating.AGAIN.value) "✕" else "·", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.padding(horizontal = 4.dp))
                         Column(Modifier.weight(1f)) {
                             Text(SimpleDateFormat("d MMM, HH:mm", Locale.forLanguageTag("ru")).format(Date(o.atEpochMs)) + " · " + o.keyLabel, style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                "подсказка: " + (runCatching { HintStep.valueOf(o.maxHint).ru }.getOrDefault(o.maxHint)) + (o.formulaAccuracy?.let { f -> " · формула ${(f * 100).toInt()}%" } ?: "") + " · +${o.tips} ⭐",
+                                "подсказка: " + (runCatching { HintStep.valueOf(o.maxHint).ru }.getOrDefault(o.maxHint)) + (o.formulaAccuracy?.let { f -> " · формула ${(f * 100).toInt()}%" } ?: "") + " · +${o.tips} ★",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Juicy.TextDim,
                             )
@@ -141,9 +141,9 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
         }
         item(key = "actions") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                GhostButton("Изменить", onClick = { onEdit(e.id) }, modifier = Modifier.fillMaxWidth(), leading = "✏️")
-                GhostButton(if (e.archived) "Вернуть из архива" else "В архив", onClick = { scope.launch { graph.library.setArchived(e.id, !e.archived) } }, modifier = Modifier.fillMaxWidth(), leading = "🗄️")
-                GhostButton("Удалить", onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth(), colors = Accents.Bad, leading = "🗑️")
+                GhostButton("Изменить", onClick = { onEdit(e.id) }, modifier = Modifier.fillMaxWidth(), leading = "✎")
+                GhostButton(if (e.archived) "Вернуть из архива" else "В архив", onClick = { scope.launch { graph.library.setArchived(e.id, !e.archived) } }, modifier = Modifier.fillMaxWidth(), leading = "")
+                GhostButton("Удалить", onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth(), colors = Accents.Bad, leading = "✕")
             }
         }
     }

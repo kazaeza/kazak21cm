@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kazaeza.muzykalka.AppGraph
 import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.data.repo.SessionKind
+import com.kazaeza.muzykalka.feature.common.ModeOrb
 import com.kazaeza.muzykalka.feature.common.ModeVisuals
 import com.kazaeza.muzykalka.feature.common.PauseOverlay
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
@@ -203,7 +204,7 @@ private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
             item(key = "seg-$i") {
                 GlassCard(Modifier.fillMaxWidth(), accent = ModeVisuals.accent(s.variant)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(ModeVisuals.emoji(s.variant.mode), style = MaterialTheme.typography.headlineMedium)
+                        ModeOrb(s.variant.mode, size = 26.dp)
                         Spacer(Modifier.padding(horizontal = 8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(s.variant.ru, style = MaterialTheme.typography.titleLarge)
@@ -214,7 +215,7 @@ private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
                 }
             }
         }
-        item(key = "go") { JuicyButton("Поехали", onClick = onStart, modifier = Modifier.fillMaxWidth(), height = 72.dp, leading = "▶️") }
+        item(key = "go") { JuicyButton("Поехали", onClick = onStart, modifier = Modifier.fillMaxWidth(), height = 72.dp, leading = "►") }
     }
 }
 
@@ -244,7 +245,8 @@ private fun NextUp(ui: SetUi, seg: SetSegment, onGo: () -> Unit, onSkip: () -> U
             ) {
                 SectionLabel("часть ${ui.index + 1} из ${ui.segments.size}")
                 Spacer(Modifier.height(12.dp))
-                Text(ModeVisuals.emoji(seg.variant.mode), style = MaterialTheme.typography.displayLarge)
+                ModeOrb(seg.variant.mode, size = 120.dp)
+                Spacer(Modifier.height(20.dp))
                 Text(seg.variant.ru, style = MaterialTheme.typography.displaySmall)
                 Text("${seg.minutes.roundToInt()} мин · ${seg.variant.guitar.ru}", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
                 Spacer(Modifier.height(24.dp))
@@ -252,7 +254,7 @@ private fun NextUp(ui: SetUi, seg: SetSegment, onGo: () -> Unit, onSkip: () -> U
                 Spacer(Modifier.height(24.dp))
                 GhostButton("Пропустить", onClick = onSkip)
                 Spacer(Modifier.height(10.dp))
-                GhostButton("Пауза", onClick = { paused = true }, colors = Accents.Calm, leading = "⏸")
+                GhostButton("Пауза", onClick = { paused = true }, colors = Accents.Calm, leading = "❙❙")
             }
         }
         if (paused) {
@@ -282,7 +284,7 @@ private fun SetDone(ui: SetUi, onExit: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(if (ui.activity > 0) "🔥" else "😴", style = MaterialTheme.typography.displayLarge)
+            Text(if (ui.activity > 0) "" else "", style = MaterialTheme.typography.displayLarge)
             Text(if (ui.activity > 0) "Сет закрыт!" else "Сет пропущен", style = MaterialTheme.typography.displaySmall)
             if (ui.endedEarly && ui.activity > 0) {
                 Text("вышли на части ${ui.index + 1} из ${ui.segments.size} — сделанное засчитано", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)

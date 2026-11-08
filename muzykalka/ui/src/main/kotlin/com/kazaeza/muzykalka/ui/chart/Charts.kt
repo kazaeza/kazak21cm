@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import com.kazaeza.muzykalka.ui.theme.Manrope
-import com.kazaeza.muzykalka.ui.theme.Unbounded
 import kotlin.math.max
 
 /** Red → amber → green for a 0..1 score; grey when unknown. */
@@ -49,7 +48,7 @@ fun TriangleChart(scores: List<Double?>, modifier: Modifier = Modifier, compact:
     val measurer = rememberTextMeasurer()
     val grow = remember { Animatable(0f) }
     LaunchedEffect(scores) { grow.animateTo(1f, tween(900)) }
-    val label = TextStyle(fontFamily = Unbounded, fontWeight = FontWeight.Bold, fontSize = if (compact) 11.sp else 14.sp, color = Juicy.Text)
+    val label = TextStyle(fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = if (compact) 11.sp else 14.sp, color = Juicy.Text)
     Canvas(modifier.fillMaxWidth().aspectRatio(if (compact) 1.6f else 1.25f)) {
         val pad = size.minDimension * 0.16f
         val sound = Offset(size.width / 2, pad)

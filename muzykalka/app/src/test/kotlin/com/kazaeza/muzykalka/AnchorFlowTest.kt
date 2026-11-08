@@ -41,8 +41,8 @@ class AnchorFlowTest {
                 MuzykalkaTheme { FeelScreen(onBack = {}, onTir = {}) }
             }
         }
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("⚓ + якорь"))
-        rule.onAllNodesWithText("⚓ + якорь").onFirst().performClick()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("+ якорь"))
+        rule.onAllNodesWithText("+ якорь").onFirst().performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithText("Сохранить").fetchSemanticsNodes().isNotEmpty() }
 
         rule.onNodeWithText("Песня").performTextInput("Моя песня")
@@ -52,7 +52,7 @@ class AnchorFlowTest {
 
         rule.onNodeWithText("Мелодия ступенями").performTextReplacement("1 3 5 1'")
         rule.onNodeWithText("Сохранить").performClick()
-        rule.waitUntil(5_000) { rule.onAllNodesWithText("⚓ Моя песня").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("Сохранить").fetchSemanticsNodes().isEmpty() }
 
         val saved = runBlocking { graph.anchors.current() }.values.single()
         assertEquals("Моя песня", saved.title)

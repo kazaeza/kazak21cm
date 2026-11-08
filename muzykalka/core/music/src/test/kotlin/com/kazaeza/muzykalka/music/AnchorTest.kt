@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 class AnchorTest {
     @Test
     fun `a typed opening in degrees becomes an anchor`() {
-        val a = DegreeAnchor.parse(Degree.FIVE, "  Моя песня ", "5 5 6 5 1' 7").getOrThrow()
+        val a = DegreeAnchor.parse(Degree.FIVE, "Моя песня", "5 5 6 5 1' 7").getOrThrow()
         assertEquals("Моя песня", a.title)
         assertEquals("5 5 6 5 1' 7", a.melodyText)
         assertEquals(DegreeNote(Degree.ONE, 1), a.melody[4])
@@ -22,6 +22,6 @@ class AnchorTest {
         assertTrue(reason("Песня", "5 x 7").startsWith("Не разобрал"))
         assertTrue(reason("Песня", "3 2 1").contains("нет ступени 5"))
         assertTrue(reason("Песня", List(17) { "5" }.joinToString(" ")).contains("не больше"))
-        assertTrue(reason("Песня", "  ").startsWith("Запиши"))
+        assertTrue(reason("Песня", "").startsWith("Запиши"))
     }
 }

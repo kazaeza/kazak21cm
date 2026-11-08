@@ -74,7 +74,7 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
     ScreenFrame(title = "Настройки", accent = Accents.Calm, onBack = onBack) {
         item(key = "sound") {
             GlassCard(Modifier.fillMaxWidth(), accent = Accents.Kamerton, onClick = onSoundCheck) {
-                Text("🎙️ Проверка звука и тюнер", style = MaterialTheme.typography.titleLarge)
+                Text("Проверка звука и тюнер", style = MaterialTheme.typography.titleLarge)
                 Text("Убедись, что телефон слышит гитару, и подстрой её.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
             }
         }
@@ -157,12 +157,12 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
         }
         item(key = "backup") {
             GlassCard(Modifier.fillMaxWidth(), accent = Accents.Good) {
-                Text("💾 Данные", style = MaterialTheme.typography.titleLarge)
+                Text("Данные", style = MaterialTheme.typography.titleLarge)
                 Text("Библиотека и прогресс хранятся на телефоне и в резервной копии Google. Файл — на всякий случай.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
                 Spacer(Modifier.height(10.dp))
-                GhostButton("Экспорт в файл", onClick = { exportLauncher.launch("muzykalka-${LocalDate.now()}.json") }, modifier = Modifier.fillMaxWidth(), colors = Accents.Good, leading = "⬆️")
+                GhostButton("Экспорт в файл", onClick = { exportLauncher.launch("muzykalka-${LocalDate.now()}.json") }, modifier = Modifier.fillMaxWidth(), colors = Accents.Good, leading = "↑")
                 Spacer(Modifier.height(8.dp))
-                GhostButton("Импорт из файла", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "⬇️")
+                GhostButton("Импорт из файла", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "↓")
                 Text("Импорт заменяет всё; текущее состояние сначала сохраняется автоматически.", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
             }
         }

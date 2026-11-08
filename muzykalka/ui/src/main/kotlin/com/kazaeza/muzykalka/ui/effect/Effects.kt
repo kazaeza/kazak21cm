@@ -33,6 +33,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import kotlin.math.cos
@@ -42,8 +48,9 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Slowly drifting coloured light behind a screen — the "juicy" base layer. Three big radial blobs
- * in the accent colours over deep ink; cheap (one draw call per blob).
+ * O-24 «Обертон»: the base layer of every screen. Warm near-black, one big soft orb of light in the
+ * accent colours that drifts and breathes very slowly, and a fine film grain over everything.
+ * [intensity] scales the light; the grain stays the same.
  */
 @Composable
 fun AuroraBackground(
@@ -53,11 +60,12 @@ fun AuroraBackground(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val t = rememberInfiniteTransition(label = "aurora")
-    val a by t.animateFloat(0f, 1f, infiniteRepeatable(tween(14_000, easing = LinearEasing), RepeatMode.Reverse), label = "a")
-    val b by t.animateFloat(0f, 1f, infiniteRepeatable(tween(19_000, easing = LinearEasing), RepeatMode.Reverse), label = "b")
+    val a by t.animateFloat(0f, 1f, infiniteRepeatable(tween(23_000, easing = LinearEasing), RepeatMode.Reverse), label = "a")
+    val b by t.animateFloat(0f, 1f, infiniteRepeatable(tween(31_000, easing = LinearEasing), RepeatMode.Reverse), label = "b")
     val c1 = colors.getOrElse(0) { Juicy.Violet }
     val c2 = colors.getOrElse(1) { c1 }
-    val c3 = colors.getOrElse(2) { Juicy.Blue }
+    val c3 = colors.getOrElse(2) { c2 }
+    val grain = rememberGrain()
     Box(
         modifier
             .background(Juicy.Ink)
@@ -65,21 +73,68 @@ fun AuroraBackground(
                 val w = size.width
                 val h = size.height
                 val r = max(w, h)
-                drawCircle(
-                    Brush.radialGradient(listOf(c1.copy(alpha = 0.55f * intensity), Color.Transparent), Offset(w * (0.1f + 0.5f * a), h * 0.08f), r * 0.75f),
-                    radius = r * 0.75f, center = Offset(w * (0.1f + 0.5f * a), h * 0.08f),
-                )
-                drawCircle(
-                    Brush.radialGradient(listOf(c2.copy(alpha = 0.45f * intensity), Color.Transparent), Offset(w * (0.95f - 0.4f * b), h * (0.45f + 0.2f * a)), r * 0.7f),
-                    radius = r * 0.7f, center = Offset(w * (0.95f - 0.4f * b), h * (0.45f + 0.2f * a)),
-                )
-                drawCircle(
-                    Brush.radialGradient(listOf(c3.copy(alpha = 0.35f * intensity), Color.Transparent), Offset(w * (0.2f + 0.3f * b), h * 1.02f), r * 0.8f),
-                    radius = r * 0.8f, center = Offset(w * (0.2f + 0.3f * b), h * 1.02f),
-                )
+                // the orb: three overlapping lights, high on the screen, slightly off-centre
+                val center = Offset(w * (0.62f - 0.18f * a), h * (0.16f + 0.05f * b))
+                val k = intensity.coerceIn(0f, 1f)
+                drawCircle(Brush.radialGradient(listOf(c1.copy(alpha = 0.42f * k), c1.copy(alpha = 0.10f * k), Color.Transparent), center, r * 0.62f), r * 0.62f, center)
+                val c2c = center + Offset(w * (0.10f - 0.20f * b), h * 0.07f)
+                drawCircle(Brush.radialGradient(listOf(c2.copy(alpha = 0.34f * k), Color.Transparent), c2c, r * 0.42f), r * 0.42f, c2c)
+                val c3c = center + Offset(-w * 0.16f * a, -h * 0.04f)
+                drawCircle(Brush.radialGradient(listOf(c3.copy(alpha = 0.26f * k), Color.Transparent), c3c, r * 0.30f), r * 0.30f, c3c)
+                // the dark falls back in at the bottom, so content reads on calm ink
+                drawRect(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Juicy.Ink.copy(alpha = 0.85f)))
+                drawGrain(grain)
             },
         content = content,
     )
+}
+
+/**
+ * A soft sphere of light (the «шар» of O-24): a body of [colors] blurred at the edge, lit from the
+ * upper left. [glow] 0..1 adds a halo around it — used to show the tonic, a right answer, a sound.
+ */
+@Composable
+fun GlowOrb(colors: List<Color>, modifier: Modifier = Modifier, glow: Float = 0.5f, dim: Float = 1f) {
+    val c1 = colors.getOrElse(0) { Juicy.Gold }
+    val c2 = colors.getOrElse(1) { c1 }
+    Canvas(modifier) {
+        val r = size.minDimension / 2
+        val c = Offset(size.width / 2, size.height / 2)
+        if (glow > 0f) {
+            drawCircle(Brush.radialGradient(listOf(c1.copy(alpha = 0.45f * glow * dim), Color.Transparent), c, r * 1.9f), r * 1.9f, c)
+        }
+        drawCircle(Brush.radialGradient(listOf(c1.copy(alpha = dim), c2.copy(alpha = 0.85f * dim), c2.copy(alpha = 0f)), c + Offset(-r * 0.25f, -r * 0.25f), r * 1.35f), r, c)
+        // the lit side: a pale highlight, and the far side sinking into the dark
+        drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.55f * dim), Color.Transparent), c + Offset(-r * 0.35f, -r * 0.4f), r * 0.7f), r, c)
+        drawCircle(Brush.radialGradient(0.55f to Color.Transparent, 1f to Juicy.Ink.copy(alpha = 0.55f), center = c + Offset(-r * 0.3f, -r * 0.3f), radius = r * 1.5f), r, c)
+    }
+}
+
+/** Film grain tile: fixed noise, so it never crawls. null where bitmaps cannot be made (JVM tests). */
+@Composable
+fun rememberGrain(): ImageBitmap? = remember { runCatching { grainTile() }.getOrNull() }
+
+private fun grainTile(size: Int = 160): ImageBitmap {
+    val bmp = ImageBitmap(size, size)
+    val canvas = androidx.compose.ui.graphics.Canvas(bmp)
+    val paint = Paint()
+    val rnd = Random(7)
+    for (y in 0 until size) {
+        for (x in 0 until size) {
+            val v = rnd.nextFloat()
+            if (v > 0.5f) {
+                paint.color = if (rnd.nextBoolean()) Color.White.copy(alpha = 0.05f + 0.06f * (v - 0.5f)) else Color.Black.copy(alpha = 0.10f)
+                canvas.drawRect(x.toFloat(), y.toFloat(), x + 1f, y + 1f, paint)
+            }
+        }
+    }
+    return bmp
+}
+
+/** Tiles [grain] over the whole draw area. */
+fun DrawScope.drawGrain(grain: ImageBitmap?) {
+    if (grain == null) return
+    drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)))
 }
 
 /** Paints the content (text, icons) with a gradient. */

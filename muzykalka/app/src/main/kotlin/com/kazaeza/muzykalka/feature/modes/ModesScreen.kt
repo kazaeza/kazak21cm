@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.data.settings.GameProgress
+import com.kazaeza.muzykalka.feature.common.ModeOrb
 import com.kazaeza.muzykalka.feature.common.ModeVisuals
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.isAvailable
@@ -95,28 +96,9 @@ object ModesCatalog {
         ModeEntry.Listen -> "Угадай про себя"
     }
 
-    fun emoji(e: ModeEntry): String = when (e) {
-        is ModeEntry.Drill -> when (e.variant) {
-            Variant.TIR_CLASSIC -> "🎯"
-            Variant.TIR_OVER_CHORDS -> "🎹"
-            Variant.TIR_UNDER_NOTE -> "🙃"
-            Variant.KAMERTON_SEARCH -> "🧘"
-            Variant.KAMERTON_SING -> "🎤"
-            Variant.TAPER_STEPS -> "🪜"
-            Variant.HUNT_FIND -> "🏹"
-            Variant.HUNT_ALL_OCTAVES -> "🎼"
-            Variant.HUNT_REVERSE -> "🔁"
-            else -> ModeVisuals.emoji(e.variant.mode)
-        }
-        ModeEntry.Songs -> "🎸"
-        ModeEntry.Blind -> "🎭"
-        ModeEntry.Feel -> "🎧"
-        ModeEntry.Listen -> "🤫"
-    }
-
     fun about(e: ModeEntry): String = when (e) {
         is ModeEntry.Drill -> when (e.variant) {
-            Variant.TIR_CLASSIC -> "Гудит тоника, звучит нота — жми её ступень. Не уверен — «🤷 не знаю», ответ всё равно услышишь."
+            Variant.TIR_CLASSIC -> "Гудит тоника, звучит нота — жми её ступень. Не уверен — «не знаю», ответ всё равно услышишь."
             Variant.TIR_OVER_CHORDS -> "Та же нота, но под ней меняются аккорды лада."
             Variant.TIR_UNDER_NOTE -> "Наоборот: нота на экране, под ней гудит аккорд — какой? Как подобрать аккорд под мелодию."
             Variant.KAMERTON_SEARCH -> "Спокойно: «спой квинту» — и ищешь голосом, пока не попадёшь. Промахнулся — скажу, что спел и куда тянуть. Без жизней."
@@ -204,13 +186,7 @@ fun ModesScreen(
 private fun SectionHead(mode: ModeId) {
     val accent = ModeVisuals.accent(mode)
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Brush.linearGradient(accent.map { it.copy(alpha = 0.4f) })),
-            contentAlignment = Alignment.Center,
-        ) { Text(ModeVisuals.emoji(mode), style = MaterialTheme.typography.headlineSmall) }
+        ModeOrb(mode, size = 40.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(mode.ru, style = MaterialTheme.typography.headlineSmall, color = Juicy.Text)
@@ -236,7 +212,7 @@ private fun EntryCard(
     GlassCard(Modifier.fillMaxWidth(), accent = accent, contentPadding = 16.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("${ModesCatalog.emoji(entry)} $title", style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
+                Text(title, style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
                 Spacer(Modifier.height(4.dp))
                 Text(ModesCatalog.about(entry), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
             }
@@ -246,7 +222,7 @@ private fun EntryCard(
         if (closed) {
             Spacer(Modifier.height(6.dp))
             Text(
-                "🔒 Откроется, когда в «Пропевке» с первой попытки выходит половина нот (последние ${SingUnlock.WINDOW}, не меньше ${SingUnlock.MIN_TRIES}). Сейчас: ${singing.correct} из ${singing.tries}.",
+                "Откроется, когда в «Пропевке» с первой попытки выходит половина нот (последние ${SingUnlock.WINDOW}, не меньше ${SingUnlock.MIN_TRIES}). Сейчас: ${singing.correct} из ${singing.tries}.",
                 style = MaterialTheme.typography.bodyMedium, color = Juicy.Gold,
             )
         }
@@ -256,21 +232,21 @@ private fun EntryCard(
             val v = (entry as? ModeEntry.Drill)?.variant
             val record = v?.let { progress.record(it) } ?: 0
             if (v != null && record > 0 && !Drills.guitarPaced(v)) {
-                Text("🏆 $record", style = MaterialTheme.typography.labelLarge, color = Juicy.Gold)
+                Text("$record", style = MaterialTheme.typography.labelLarge, color = Juicy.Gold)
             }
         }
         if (entry is ModeEntry.Drill) Levels(entry.variant, accent, progress, onSelectLevel)
         if (entry == ModeEntry.Songs) {
             Spacer(Modifier.height(10.dp))
-            GhostButton("Взять песню из сборника", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "📚")
+            GhostButton("Взять песню из сборника", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "")
         }
     }
 }
 
 private fun guitarText(g: GuitarNeed): String = when (g) {
-    GuitarNeed.REQUIRED -> "🎸 нужна гитара"
-    GuitarNeed.OPTIONAL -> "🎸 можно без гитары"
-    GuitarNeed.NONE -> "🎧 гитара не нужна"
+    GuitarNeed.REQUIRED -> "нужна гитара"
+    GuitarNeed.OPTIONAL -> "можно без гитары"
+    GuitarNeed.NONE -> "гитара не нужна"
 }
 
 /** Round «play» button on the right of a card. */
@@ -285,7 +261,7 @@ private fun PlayDisc(accent: List<Color>, label: String, enabled: Boolean = true
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
-    ) { Text("▶", style = MaterialTheme.typography.headlineSmall, color = Color.White, textAlign = TextAlign.Center) }
+    ) { Text("►", style = MaterialTheme.typography.headlineSmall, color = Color.White, textAlign = TextAlign.Center) }
 }
 
 /** Chips for the open levels, one line for the locked rest, and the name of the chosen level. */
@@ -319,7 +295,7 @@ private fun Levels(v: Variant, accent: List<Color>, progress: GameProgress, onSe
             }
         }
         if (unlocked < max) {
-            Text("🔒 ещё ${max - unlocked}", style = MaterialTheme.typography.labelLarge, color = Juicy.TextFaint)
+            Text("ещё ${max - unlocked}", style = MaterialTheme.typography.labelLarge, color = Juicy.TextFaint)
         }
     }
     Spacer(Modifier.height(6.dp))

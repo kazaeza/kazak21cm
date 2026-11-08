@@ -1,5 +1,7 @@
 package com.kazaeza.muzykalka.feature.exam
 
+import androidx.compose.foundation.layout.size
+import com.kazaeza.muzykalka.ui.effect.GlowOrb
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +22,7 @@ import com.kazaeza.muzykalka.AppGraph
 import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.data.repo.ExamResult
 import com.kazaeza.muzykalka.data.repo.SessionKind
+import com.kazaeza.muzykalka.feature.common.ModeOrb
 import com.kazaeza.muzykalka.feature.common.ModeVisuals
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.game.Drills
@@ -135,7 +138,7 @@ fun ExamScreen(onExit: () -> Unit) {
             vm.stages.forEachIndexed { i, s ->
                 item(key = "st-$i") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(ModeVisuals.emoji(s.variant.mode), style = MaterialTheme.typography.headlineSmall)
+                        ModeOrb(s.variant.mode, size = 22.dp)
                         Spacer(Modifier.height(1.dp).fillMaxWidth(0.04f))
                         Column(Modifier.weight(1f)) {
                             Text(s.skill.ru, style = MaterialTheme.typography.titleMedium)
@@ -146,7 +149,7 @@ fun ExamScreen(onExit: () -> Unit) {
             }
             item(key = "memory") {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("🎹", style = MaterialTheme.typography.headlineSmall)
+                    GlowOrb(Accents.Calm, Modifier.size(22.dp))
                     Spacer(Modifier.height(1.dp).fillMaxWidth(0.04f))
                     Column(Modifier.weight(1f)) {
                         Text(Skill.MEMORY.ru, style = MaterialTheme.typography.titleMedium)
@@ -154,7 +157,7 @@ fun ExamScreen(onExit: () -> Unit) {
                     }
                 }
             }
-            item(key = "go") { JuicyButton("Начать", onClick = { vm.start() }, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leading = "📋") }
+            item(key = "go") { JuicyButton("Начать", onClick = { vm.start() }, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leading = "") }
         }
         ExamPhase.STAGE -> {
             val st = vm.stages[ui.stage]
@@ -179,7 +182,7 @@ fun ExamScreen(onExit: () -> Unit) {
                     val t = Graduation.THRESHOLDS.first { it.skill == r.skill }
                     GlassCard(Modifier.fillMaxWidth(), accent = if (r.passed) Accents.Good else null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(if (r.passed) "✅" else "⬜", style = MaterialTheme.typography.headlineSmall)
+                            Text(if (r.passed) "✓" else "○", style = MaterialTheme.typography.headlineSmall)
                             Spacer(Modifier.height(1.dp).fillMaxWidth(0.04f))
                             Column(Modifier.weight(1f)) {
                                 Text(r.skill.ru, style = MaterialTheme.typography.titleMedium)

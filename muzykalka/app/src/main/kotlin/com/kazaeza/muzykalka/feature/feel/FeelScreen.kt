@@ -281,7 +281,7 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
                     color = Juicy.TextDim,
                 )
                 Spacer(Modifier.height(6.dp))
-                Text("🎤 Подпевай ступень и путь домой — голос запоминает лучше ушей.", style = MaterialTheme.typography.bodyMedium, color = Juicy.Gold)
+                Text("Подпевай ступень и путь домой — голос запоминает лучше ушей.", style = MaterialTheme.typography.bodyMedium, color = Juicy.Gold)
             }
         }
         item(key = "controls") {
@@ -296,9 +296,9 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
                     colors = Accents.Tir,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (key != null) DegreeChip("🔑 " + RuNames.key(key), Juicy.Gold, large = true)
+                    if (key != null) DegreeChip(RuNames.key(key), Juicy.Gold, large = true)
                     Spacer(Modifier.weight(1f))
-                    GhostButton("другая", onClick = vm::newKey, colors = Accents.Tir, leading = "🔀")
+                    GhostButton("другая", onClick = vm::newKey, colors = Accents.Tir, leading = "⇄")
                 }
             }
         }
@@ -321,15 +321,15 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
         item(key = "actions") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (ui.playing != null || ui.droneOn) {
-                    GhostButton("Стоп", onClick = vm::stop, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "⏹")
+                    GhostButton("Стоп", onClick = vm::stop, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "■")
                 }
                 if (ui.playing == null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        GhostButton("Все по кругу", onClick = vm::playAll, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "🔁")
-                        if (!ui.droneOn) GhostButton("Только дрон", onClick = vm::droneOnly, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "〰️")
+                        GhostButton("Все по кругу", onClick = vm::playAll, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "↻")
+                        if (!ui.droneOn) GhostButton("Только дрон", onClick = vm::droneOnly, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "~")
                     }
                 }
-                JuicyButton("Проверить себя в Тире", onClick = onTir, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "🎯")
+                JuicyButton("Проверить себя в Тире", onClick = onTir, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "")
             }
         }
     }
@@ -368,7 +368,7 @@ private fun AnchorEditor(
     val name = DegreeFormatter.degree(degree, ui.settings.degreeNotation)
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text("⚓ Якорь для $name") },
+        title = { Text("Якорь для $name") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
@@ -397,8 +397,8 @@ private fun AnchorEditor(
                 OutlinedTextField(ui.editMelody, onMelody, label = { Text("Мелодия ступенями") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 ui.editError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Juicy.Hot) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GhostButton("Послушать", onClick = onPreview, colors = Accents.Tir, leading = "▶")
-                    if (hasAnchor) GhostButton("Удалить", onClick = onDelete, colors = Accents.Calm, leading = "🗑")
+                    GhostButton("Послушать", onClick = onPreview, colors = Accents.Tir, leading = "►")
+                    if (hasAnchor) GhostButton("Удалить", onClick = onDelete, colors = Accents.Calm, leading = "✕")
                 }
             }
         },
@@ -440,7 +440,7 @@ private fun VibeCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(DegreeFormatter.degree(degree, notation), style = MaterialTheme.typography.displaySmall, color = color)
             Spacer(Modifier.width(8.dp))
-            Text(if (playing) "🔊" else "▶", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+            Text(if (playing) "♪" else "►", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
         }
         Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
         Spacer(Modifier.height(4.dp))
@@ -454,7 +454,7 @@ private fun VibeCard(
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (anchor != null) "⚓ ${anchor.title}" else "⚓ + якорь",
+                if (anchor != null) anchor.title else "+ якорь",
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (anchor != null) Juicy.Text else Juicy.TextFaint,
                 modifier = Modifier

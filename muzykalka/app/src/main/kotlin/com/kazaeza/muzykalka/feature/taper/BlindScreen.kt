@@ -108,17 +108,17 @@ fun BlindScreen(onExit: () -> Unit, vmKey: String = "blind") {
                         .background(Juicy.Ink3.copy(alpha = 0.7f))
                         .clickable(onClickLabel = "Пауза") { asking = true },
                     contentAlignment = Alignment.Center,
-                ) { Text("⏸", style = MaterialTheme.typography.titleMedium) }
+                ) { Text("❙❙", style = MaterialTheme.typography.titleMedium) }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("🎭 Вслепую", style = MaterialTheme.typography.titleLarge)
+                    Text("Вслепую", style = MaterialTheme.typography.titleLarge)
                     Text(
                         if (ui.ordersDone > 0) "песен: ${ui.ordersDone} · с ходу: ${ui.playableCount}" else "песня из твоих лайков, без имени",
                         style = MaterialTheme.typography.bodySmall,
                         color = Juicy.TextDim,
                     )
                 }
-                StatPill("⭐", "${ui.totalTips}", colors = BAR, modifier = Modifier.pop(ui.totalTips, 0.25f))
+                StatPill("★", "${ui.totalTips}", colors = BAR, modifier = Modifier.pop(ui.totalTips, 0.25f))
             }
 
             Column(
@@ -160,7 +160,7 @@ private fun BlindFlow(ui: BlindUi, vm: BlindViewModel, audition: ChordAudition) 
                 Text("Форма: ${entry.song.formString} · ${entry.song.barCount} тактов", style = MaterialTheme.typography.titleMedium)
                 SongSheet(entry.song, notation, audition, ui.key)
             }
-            JuicyButton("Сыграл", onClick = vm::played, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "✅")
+            JuicyButton("Сыграл", onClick = vm::played, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "✓")
             Text(
                 "Названия не будет: только ступени и тональность. Сыграй по листу, как они звучат — кто это, узнаешь в конце.",
                 style = MaterialTheme.typography.bodySmall,
@@ -170,9 +170,9 @@ private fun BlindFlow(ui: BlindUi, vm: BlindViewModel, audition: ChordAudition) 
         BlindPhase.SELF_GRADE -> {
             OrderTicket(BLIND_TITLE, "песня из твоих лайков", ui.keyText, fresh = false, caption = "✦ ВСЛЕПУЮ ✦")
             SectionLabel("Как прошло?")
-            JuicyButton("С ходу", onClick = { vm.grade(SelfGrade.CLEAN) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Good, leading = "😎")
-            JuicyButton("С запинками", onClick = { vm.grade(SelfGrade.STUMBLED) }, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "😅")
-            JuicyButton("Не получилось", onClick = { vm.grade(SelfGrade.FAILED) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Bad, leading = "🙈")
+            JuicyButton("С ходу", onClick = { vm.grade(SelfGrade.CLEAN) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Good, leading = "")
+            JuicyButton("С запинками", onClick = { vm.grade(SelfGrade.STUMBLED) }, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "")
+            JuicyButton("Не получилось", onClick = { vm.grade(SelfGrade.FAILED) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Bad, leading = "")
         }
         BlindPhase.RESULT -> ResultCard(ui, vm)
         BlindPhase.FINISHED -> Unit
@@ -188,7 +188,7 @@ private fun ResultCard(ui: BlindUi, vm: BlindViewModel) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 when {
-                    r.playableNow -> "С ходу! 🔥"
+                    r.playableNow -> "С ходу!"
                     r.self == SelfGrade.FAILED -> "Не вышло"
                     else -> "Почти"
                 },
@@ -196,7 +196,7 @@ private fun ResultCard(ui: BlindUi, vm: BlindViewModel) {
                 color = if (r.playableNow) Juicy.Good else if (r.self == SelfGrade.FAILED) Juicy.Hot else Juicy.Gold,
             )
             Spacer(Modifier.height(6.dp))
-            CountUpText(r.tips, MaterialTheme.typography.displayMedium, colors = BAR, prefix = "+", suffix = " ⭐")
+            CountUpText(r.tips, MaterialTheme.typography.displayMedium, colors = BAR, prefix = "+", suffix = "★")
             Spacer(Modifier.height(6.dp))
             Text(entry.teaches, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
         }
@@ -206,9 +206,9 @@ private fun ResultCard(ui: BlindUi, vm: BlindViewModel) {
         onClick = vm::listen,
         modifier = Modifier.fillMaxWidth(),
         colors = BAR,
-        leading = if (ui.listening) "⏹" else "🔊",
+        leading = if (ui.listening) "■" else "♪",
     )
-    JuicyButton(if (ui.queueLeft > 0) "Следующая песня" else "Закончить", onClick = vm::nextOrder, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "🎭")
+    JuicyButton(if (ui.queueLeft > 0) "Следующая песня" else "Закончить", onClick = vm::nextOrder, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "")
 }
 
 @Composable
@@ -217,7 +217,7 @@ private fun ClosingTime(ui: BlindUi, onDone: () -> Unit) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("На сегодня всё", style = MaterialTheme.typography.headlineLarge)
             Spacer(Modifier.height(8.dp))
-            CountUpText(ui.totalTips, MaterialTheme.typography.displayMedium, colors = BAR, suffix = " ⭐")
+            CountUpText(ui.totalTips, MaterialTheme.typography.displayMedium, colors = BAR, suffix = "★")
             Text(
                 "${ui.ordersDone} ${plural(ui.ordersDone, "песня", "песни", "песен")} · с ходу: ${ui.playableCount}",
                 style = MaterialTheme.typography.titleMedium,

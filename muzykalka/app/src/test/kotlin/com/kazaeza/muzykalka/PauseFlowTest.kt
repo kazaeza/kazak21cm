@@ -75,7 +75,7 @@ class PauseFlowTest {
         assertFalse(exited)
 
         // ⏸ in the top bar opens the same question; only «Следующее упражнение» moves on.
-        rule.onAllNodesWithText("⏸").onFirst().performClick()
+        rule.onAllNodesWithText("❙❙").onFirst().performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithText("Следующее упражнение").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Следующее упражнение").performClick()
         rule.waitForIdle()

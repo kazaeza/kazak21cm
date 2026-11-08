@@ -1,5 +1,7 @@
 package com.kazaeza.muzykalka.feature.listen
 
+import androidx.compose.foundation.layout.size
+import com.kazaeza.muzykalka.ui.effect.GlowOrb
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -185,9 +187,9 @@ fun ListenContent(
         item(key = "action") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (ui.running) {
-                    GhostButton("Стоп", onClick = onToggle, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "⏹")
+                    GhostButton("Стоп", onClick = onToggle, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "■")
                 } else {
-                    JuicyButton("Слушать", onClick = onToggle, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "▶")
+                    JuicyButton("Слушать", onClick = onToggle, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "►")
                 }
                 if (ui.heard > 0) {
                     Text("услышано: ${ui.heard}", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
@@ -201,7 +203,7 @@ fun ListenContent(
                 SectionLabel("пауза перед ответом")
                 ChoiceRow(ListenDeck.DELAYS_MS, ui.delayMs, { "${it / 1000} с" }, onDelay, colors = Accents.Tir)
                 SectionLabel("ответ")
-                ChoiceRow(listOf(true, false), ui.voice, { if (it) "🗣 вслух" else "🤫 только на экране" }, onVoice, colors = Accents.Tir)
+                ChoiceRow(listOf(true, false), ui.voice, { if (it) "вслух" else "только на экране" }, onVoice, colors = Accents.Tir)
                 if (ui.voice && ui.voiceAvailable == false) {
                     Text(
                         "На телефоне нет русского голоса для озвучки — ответ будет только на экране. Голос ставится в настройках Android: «Синтез речи».",
@@ -233,7 +235,7 @@ private fun Stage(ui: ListenUi) {
         Column(Modifier.fillMaxWidth().heightIn(min = 300.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             if (item != null && ui.phase != ListenPhase.IDLE) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    DegreeChip("🔑 " + RuNames.key(item.key), Juicy.Gold)
+                    DegreeChip(RuNames.key(item.key), Juicy.Gold)
                     item.over?.let { chord ->
                         Spacer(Modifier.width(8.dp))
                         DegreeChip("над " + DegreeFormatter.chord(chord, ui.notation), DegreeColors.of(chord.root))
@@ -244,7 +246,7 @@ private fun Stage(ui: ListenUi) {
             when {
                 item == null || ui.phase == ListenPhase.IDLE -> Idle()
                 ui.phase == ListenPhase.HEARING -> {
-                    Text("🎧", style = MaterialTheme.typography.displayMedium, modifier = Modifier.breathe(amount = 0.12f, periodMs = 900))
+                    GlowOrb(Accents.Tir, Modifier.size(56.dp).breathe(amount = 0.12f, periodMs = 900))
                     Text(if (item.newKey) "Новая тональность…" else "Слушай…", style = MaterialTheme.typography.headlineSmall, color = Juicy.TextDim)
                 }
                 ui.phase == ListenPhase.GUESSING -> {
@@ -261,8 +263,8 @@ private fun Stage(ui: ListenUi) {
 
 @Composable
 private fun Idle() {
-    Text("🤫", style = MaterialTheme.typography.displayMedium)
-    Spacer(Modifier.height(8.dp))
+    GlowOrb(Accents.Tir, Modifier.size(64.dp).breathe(amount = 0.06f, periodMs = 2400))
+    Spacer(Modifier.height(16.dp))
     Text(
         "Нажми «Слушать» — дальше всё само",
         style = MaterialTheme.typography.titleMedium,

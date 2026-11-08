@@ -50,14 +50,14 @@ fun PauseOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("⏸", style = MaterialTheme.typography.displayMedium)
+            Text("❙❙", style = MaterialTheme.typography.displayMedium)
             Text("Пауза", style = MaterialTheme.typography.headlineLarge, color = Juicy.Text)
             if (hint != null) {
                 Text(hint, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim, textAlign = TextAlign.Center)
             }
-            JuicyButton("Продолжить", onClick = onResume, modifier = Modifier.fillMaxWidth(), height = 72.dp, leading = "▶️")
+            JuicyButton("Продолжить", onClick = onResume, modifier = Modifier.fillMaxWidth(), height = 72.dp, leading = "►")
             if (onNext != null) {
-                GhostButton("Следующее упражнение", onClick = onNext, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "⏭", height = 60.dp)
+                GhostButton("Следующее упражнение", onClick = onNext, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "»", height = 60.dp)
             }
             GhostButton(exitLabel, onClick = onExit, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leading = "✕", height = 60.dp)
         }

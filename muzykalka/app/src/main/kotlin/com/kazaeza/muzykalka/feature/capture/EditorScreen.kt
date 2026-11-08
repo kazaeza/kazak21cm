@@ -112,7 +112,7 @@ fun EditorScreen(editId: String?, kind: LibraryKind, onDone: () -> Unit) {
                                             .padding(4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
-                                        if (bar.isEmpty()) Text("  ·  ", color = Juicy.TextFaint, style = MaterialTheme.typography.titleMedium)
+                                        if (bar.isEmpty()) Text("·", color = Juicy.TextFaint, style = MaterialTheme.typography.titleMedium)
                                         bar.forEachIndexed { ci, c -> DegreeChip(DegreeFormatter.chord(c, notation), DegreeColors.of(c.root), modifier = Modifier.pop(bi * 4 + ci + 1, 0.2f)) }
                                     }
                                 }
@@ -163,7 +163,7 @@ fun EditorScreen(editId: String?, kind: LibraryKind, onDone: () -> Unit) {
         }
         ui.error?.let { err -> item(key = "error") { Text(err, color = Juicy.Hot, style = MaterialTheme.typography.titleMedium, modifier = Modifier.clickable { }) } }
         item(key = "save") {
-            JuicyButton("Сохранить", onClick = vm::save, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "💾")
+            JuicyButton("Сохранить", onClick = vm::save, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "✓")
         }
     }
 }

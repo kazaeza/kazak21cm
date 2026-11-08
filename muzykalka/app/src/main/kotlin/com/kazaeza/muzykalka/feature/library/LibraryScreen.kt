@@ -75,7 +75,7 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
     ScreenFrame(title = "Библиотека", subtitle = "мои песни · ${list.size}", accent = Accents.Taper) {
         item(key = "capture") {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                JuicyButton("Записать свою", onClick = { onCapture(LibraryKind.SONG) }, modifier = Modifier.weight(1f), colors = Accents.Taper, leading = "🎣")
+                JuicyButton("Записать свою", onClick = { onCapture(LibraryKind.SONG) }, modifier = Modifier.weight(1f), colors = Accents.Taper, leading = "")
                 GhostButton("Рифф", onClick = { onCapture(LibraryKind.RIFF) }, modifier = Modifier.weight(0.5f), colors = Accents.Taper, height = 64.dp)
             }
         }
@@ -101,7 +101,7 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
         item(key = "book-label") {
             Column {
                 Spacer(Modifier.height(10.dp))
-                Text("📖 Сборник", style = MaterialTheme.typography.headlineSmall)
+                Text("Сборник", style = MaterialTheme.typography.headlineSmall)
                 Text(
                     "Гармония известных песен — обучающих, хитов 1958–1990 годов и джазовых стандартов — ступенями. Упрощено до основных аккордов: после добавления можно поправить под свою версию.",
                     style = MaterialTheme.typography.bodySmall,
@@ -154,10 +154,10 @@ private fun EntryCard(e: LibraryEntry, today: Int, notation: DegreeNotation, onC
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 when (e.kind) {
-                    LibraryKind.SONG -> "🎵"
-                    LibraryKind.RIFF -> "🎸"
-                    LibraryKind.TUNE -> "🎶"
-                    LibraryKind.PHRASE -> "💬"
+                    LibraryKind.SONG -> ""
+                    LibraryKind.RIFF -> ""
+                    LibraryKind.TUNE -> ""
+                    LibraryKind.PHRASE -> ""
                 },
                 style = MaterialTheme.typography.headlineSmall,
             )
@@ -183,7 +183,7 @@ private fun EntryCard(e: LibraryEntry, today: Int, notation: DegreeNotation, onC
         }
         if (e.orderable) {
             Spacer(Modifier.height(8.dp))
-            Text("🔁 повтор: " + ruDue(e.card?.dueDay, today), style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+            Text("повтор:" + ruDue(e.card?.dueDay, today), style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
         }
     }
 }

@@ -54,23 +54,15 @@ import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
 import com.kazaeza.muzykalka.ui.component.JuicyButton
 import com.kazaeza.muzykalka.ui.effect.AuroraBackground
+import com.kazaeza.muzykalka.ui.effect.GlowOrb
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
-/** Look of each mode: emoji + gradient. */
+/** Look of each mode: its light (O-24: a mode is a coloured orb, no emoji). */
 object ModeVisuals {
-    fun emoji(mode: ModeId): String = when (mode) {
-        ModeId.HUNT -> "🏹"
-        ModeId.TIR -> "🎯"
-        ModeId.KAMERTON -> "🎤"
-        ModeId.PARROT -> "🦜"
-        ModeId.TAPER -> "🎸"
-        ModeId.RECORDER -> "📼"
-    }
-
     fun accent(mode: ModeId): List<Color> = when (mode) {
         ModeId.HUNT -> Accents.Hunt
         ModeId.TIR -> Accents.Tir
@@ -81,6 +73,12 @@ object ModeVisuals {
     }
 
     fun accent(variant: Variant): List<Color> = accent(variant.mode)
+}
+
+/** The mode's mark: a small glowing orb of its colour. */
+@Composable
+fun ModeOrb(mode: ModeId, modifier: Modifier = Modifier, size: Dp = 28.dp) {
+    GlowOrb(ModeVisuals.accent(mode), modifier.size(size))
 }
 
 /** Versions shipped in this build; variants from later versions are shown as «скоро». */
@@ -172,7 +170,7 @@ fun ScreenFrame(
     }
 }
 
-/** Round icon button used in headers ("⚙️", "✕"). */
+/** Round icon button used in headers ("⋯", "✕"). */
 @Composable
 fun IconBubble(icon: String, onClick: () -> Unit, modifier: Modifier = Modifier, description: String? = null) {
     var m = modifier
@@ -225,8 +223,8 @@ fun MicPermissionGate(onCancel: () -> Unit, content: @Composable () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("🎙️", style = MaterialTheme.typography.displayMedium)
-            Spacer(Modifier.height(16.dp))
+            GlowOrb(Accents.Hunt, Modifier.size(72.dp))
+            Spacer(Modifier.height(24.dp))
             GlassCard(accent = Accents.Hunt) {
                 Text("Мне нужно тебя слышать", style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(8.dp))
@@ -237,7 +235,7 @@ fun MicPermissionGate(onCancel: () -> Unit, content: @Composable () -> Unit) {
                 )
             }
             Spacer(Modifier.height(20.dp))
-            JuicyButton("Разрешить микрофон", onClick = { launcher.launch(Manifest.permission.RECORD_AUDIO) }, Modifier.fillMaxWidth(), colors = Accents.Hunt, leading = "🎸")
+            JuicyButton("Разрешить микрофон", onClick = { launcher.launch(Manifest.permission.RECORD_AUDIO) }, Modifier.fillMaxWidth(), colors = Accents.Hunt, leading = "")
             if (askedOnce) {
                 Spacer(Modifier.height(12.dp))
                 GhostButton("Открыть настройки приложения", onClick = {

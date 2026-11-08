@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.kazaeza.muzykalka.ui.effect.pop
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
+import com.kazaeza.muzykalka.ui.theme.Numbers
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
@@ -65,13 +67,27 @@ fun TimerRing(
             val scale = if (urgent) p else 1f
             val d = (size.minDimension - s) * scale
             val tl = Offset((size.width - d) / 2, (size.height - d) / 2)
-            drawArc(Juicy.Ink4, 0f, 360f, false, tl, Size(d, d), style = Stroke(s))
+            // the dial: 60 ticks, every fifth longer, the ones still left lit
+            val c = Offset(size.width / 2, size.height / 2)
+            val outer = d / 2 + s / 2
+            for (i in 0 until 60) {
+                val a = Math.toRadians((i * 6 - 90).toDouble())
+                val len = if (i % 5 == 0) s * 1.0f else s * 0.55f
+                val lit = i / 60f < f
+                val col = if (lit) Juicy.Text.copy(alpha = 0.55f) else Juicy.TextFaint.copy(alpha = 0.35f)
+                drawLine(
+                    col,
+                    Offset(c.x + ((outer) * cos(a)).toFloat(), c.y + ((outer) * sin(a)).toFloat()),
+                    Offset(c.x + ((outer - len) * cos(a)).toFloat(), c.y + ((outer - len) * sin(a)).toFloat()),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
             drawArc(
                 Brush.sweepGradient(ringColors + ringColors.first()),
-                -90f, 360f * f, false, tl, Size(d, d), style = Stroke(s, cap = StrokeCap.Round),
+                -90f, 360f * f, false, tl, Size(d, d), style = Stroke(s * 0.35f, cap = StrokeCap.Round),
             )
         }
-        Text(label, style = MaterialTheme.typography.titleMedium, color = if (urgent) Juicy.Hot else Juicy.Text)
+        Text(label, style = Numbers.Small.copy(fontSize = Numbers.Small.fontSize * 0.8f), color = if (urgent) Juicy.Hot else Juicy.Text)
     }
 }
 
@@ -82,21 +98,21 @@ fun DeadlineBar(fraction: Float, modifier: Modifier = Modifier, colors: List<Col
     Box(
         modifier
             .fillMaxWidth()
-            .height(8.dp)
+            .height(3.dp)
             .clip(RoundedCornerShape(50))
             .background(Juicy.Ink4),
     ) {
         Box(
             Modifier
                 .fillMaxWidth(f)
-                .height(8.dp)
+                .height(3.dp)
                 .clip(RoundedCornerShape(50))
                 .background(Brush.horizontalGradient(if (f < 0.25f) Accents.Bad else colors)),
         )
     }
 }
 
-/** 🔥 streak with the ×N multiplier that pops when it grows. */
+/** Streak with the ×N multiplier that pops when it grows: dot-matrix numbers in a hairline. */
 @Composable
 fun ComboBadge(streak: Int, multiplier: Int, modifier: Modifier = Modifier) {
     if (streak < 2) return
@@ -104,18 +120,19 @@ fun ComboBadge(streak: Int, multiplier: Int, modifier: Modifier = Modifier) {
         modifier
             .pop(multiplier, 0.35f)
             .clip(RoundedCornerShape(50))
-            .background(Brush.horizontalGradient(if (multiplier >= 3) Accents.Hero else Accents.Tir))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .border(1.dp, Color(0x24FFFFFF), RoundedCornerShape(50))
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("🔥", style = MaterialTheme.typography.labelLarge)
-        Text("$streak", style = MaterialTheme.typography.titleMedium, color = Color.White)
-        if (multiplier > 1) Text("×$multiplier", style = MaterialTheme.typography.titleMedium, color = Juicy.Gold)
+        val glow = if (multiplier >= 3) Accents.Hero else Accents.Tir
+        Box(Modifier.size(6.dp).clip(RoundedCornerShape(50)).background(glow.first()))
+        Text("$streak", style = Numbers.Small, color = Juicy.Text)
+        if (multiplier > 1) Text("×$multiplier", style = Numbers.Small, color = Juicy.Gold)
     }
 }
 
-/** Hearts; the lost ones shrink to grey. */
+/** Lives as dots of light; the lost ones go hollow. */
 @Composable
 fun LivesRow(lives: Int?, max: Int = 3, modifier: Modifier = Modifier) {
     if (lives == null) return
@@ -124,8 +141,9 @@ fun LivesRow(lives: Int?, max: Int = 3, modifier: Modifier = Modifier) {
             val alive = i < lives
             val s by animateFloatAsState(if (alive) 1f else 0.7f, label = "heart")
             Text(
-                if (alive) "❤️" else "🖤",
+                if (alive) "●" else "○",
                 style = MaterialTheme.typography.titleMedium,
+                color = if (alive) Juicy.Hot else Juicy.TextFaint,
                 modifier = Modifier.size((22 * s).dp),
             )
         }
@@ -151,7 +169,7 @@ fun MicPulse(levelDb: Double, label: String?, modifier: Modifier = Modifier, col
             }
             drawCircle(Brush.radialGradient(listOf(color.copy(alpha = 0.9f), color.copy(alpha = 0.2f))), radius = maxR * (0.28f + 0.18f * l))
         }
-        Text(label ?: "🎸", style = MaterialTheme.typography.titleMedium, color = Color.White, textAlign = TextAlign.Center)
+        Text(label ?: "", style = MaterialTheme.typography.titleMedium, color = Color.White, textAlign = TextAlign.Center)
     }
 }
 
@@ -188,7 +206,7 @@ fun StarRow(stars: Int, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         repeat(3) { i ->
             Text(
-                if (i < stars) "⭐" else "☆",
+                if (i < stars) "★" else "☆",
                 style = MaterialTheme.typography.displaySmall,
                 color = if (i < stars) Juicy.Gold else Juicy.TextFaint,
                 modifier = Modifier.pop(if (i < stars) stars * 10 + i else 0, 0.4f),
@@ -201,7 +219,7 @@ fun StarRow(stars: Int, modifier: Modifier = Modifier) {
 @Composable
 fun BigStat(value: String, label: String, modifier: Modifier = Modifier, colors: List<Color> = Accents.Hero) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        GradientText(value, MaterialTheme.typography.headlineLarge, colors)
+        GradientText(value, Numbers.Medium, colors)
         Text(label, style = MaterialTheme.typography.labelMedium, color = Juicy.TextDim, textAlign = TextAlign.Center)
     }
 }

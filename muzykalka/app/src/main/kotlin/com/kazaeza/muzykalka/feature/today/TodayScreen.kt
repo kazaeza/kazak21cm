@@ -56,7 +56,7 @@ fun TodayScreen(
         title = "Сегодня",
         subtitle = ruDate(ui.date),
         accent = Accents.Hero,
-        actions = { IconBubble("⚙️", onSettings, description = "Настройки") },
+        actions = { IconBubble("⋯", onSettings, description = "Настройки") },
     ) {
         item(key = "hero") {
             GlassCard(Modifier.fillMaxWidth(), accent = Accents.Hero, contentPadding = 22.dp) {
@@ -80,8 +80,8 @@ fun TodayScreen(
         }
         item(key = "pills") {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatPill("🔥", "${ui.streak} ${plural(ui.streak, "день", "дня", "дней")} подряд", colors = Accents.Tir)
-                if (ui.libraryCount > 0) StatPill("🎸", "повторить: ${ui.dueCount}", colors = Accents.Taper)
+                StatPill("", "${ui.streak} ${plural(ui.streak, "день", "дня", "дней")} подряд", colors = Accents.Tir)
+                if (ui.libraryCount > 0) StatPill("", "повторить: ${ui.dueCount}", colors = Accents.Taper)
             }
         }
         item(key = "start") {
@@ -92,7 +92,7 @@ fun TodayScreen(
                     modifier = Modifier.fillMaxWidth().breathe(!ui.practicedToday, 0.025f, 1800),
                     height = 76.dp,
                     textStyle = MaterialTheme.typography.headlineSmall,
-                    leading = "▶️",
+                    leading = "►",
                 )
                 Text(
                     ui.set.joinToString(" → ") { it.variant.ru.lowercase() } + ". Любую часть можно пропустить.",
@@ -103,12 +103,12 @@ fun TodayScreen(
             }
         }
         item(key = "short") {
-            GhostButton("Нет времени? 5 минут", onClick = onShortSet, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "⚡")
+            GhostButton("Нет времени? 5 минут", onClick = onShortSet, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
         }
         if (ui.libraryCount == 0) {
             item(key = "empty") {
                 GlassCard(Modifier.fillMaxWidth(), accent = Accents.Taper, onClick = onLibrary) {
-                    Text("📚 Возьми песню из сборника", style = MaterialTheme.typography.titleLarge)
+                    Text("Возьми песню из сборника", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "В библиотеке есть готовые аккорды обучающих песен: Stand by Me, блюз, Autumn Leaves и ещё два десятка. " +
@@ -123,8 +123,8 @@ fun TodayScreen(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel("Без гитары — в дороге")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GhostButton("Тир", onClick = { onPlay(Variant.TIR_CLASSIC) }, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "🎯")
-                    GhostButton("Вайб ступеней", onClick = onFeel, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "🎧")
+                    GhostButton("Тир", onClick = { onPlay(Variant.TIR_CLASSIC) }, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "")
+                    GhostButton("Вайб ступеней", onClick = onFeel, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "")
                 }
             }
         }

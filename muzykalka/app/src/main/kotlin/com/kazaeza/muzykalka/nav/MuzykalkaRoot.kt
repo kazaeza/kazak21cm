@@ -3,6 +3,9 @@ package com.kazaeza.muzykalka.nav
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -50,16 +53,17 @@ import com.kazaeza.muzykalka.ui.component.FloatingTabBarMargin
 import com.kazaeza.muzykalka.ui.component.FloatingTabBarReserve
 import com.kazaeza.muzykalka.ui.component.TabSpec
 import com.kazaeza.muzykalka.ui.theme.Juicy
+import com.kazaeza.muzykalka.ui.theme.Motion
 import kotlin.reflect.KClass
 
 private data class Tab(val route: Any, val routeClass: KClass<*>, val spec: TabSpec)
 
 /** Four tabs, no more: the app is a practice tool, not a super-app. */
 private val TABS = listOf(
-    Tab(TodayRoute, TodayRoute::class, TabSpec("Сегодня", "🏠")),
-    Tab(ModesRoute, ModesRoute::class, TabSpec("Режимы", "🎮")),
-    Tab(LibraryRoute, LibraryRoute::class, TabSpec("Библиотека", "📚")),
-    Tab(ProgressRoute, ProgressRoute::class, TabSpec("Прогресс", "📈")),
+    Tab(TodayRoute, TodayRoute::class, TabSpec("Сегодня")),
+    Tab(ModesRoute, ModesRoute::class, TabSpec("Режимы")),
+    Tab(LibraryRoute, LibraryRoute::class, TabSpec("Библиотека")),
+    Tab(ProgressRoute, ProgressRoute::class, TabSpec("Прогресс")),
 )
 
 @Composable
@@ -82,8 +86,11 @@ fun MuzykalkaRoot(graph: AppGraph) {
                 NavHost(
                     nav,
                     startDestination = TodayRoute,
-                    enterTransition = { fadeIn() },
-                    exitTransition = { fadeOut() },
+                    // «Обертон»: screens surface out of the dark — a slow fade with a slight rise
+                    enterTransition = { fadeIn(tween(Motion.MEDIUM)) + scaleIn(tween(Motion.MEDIUM), initialScale = 0.985f) },
+                    exitTransition = { fadeOut(tween(Motion.SHORT)) },
+                    popEnterTransition = { fadeIn(tween(Motion.MEDIUM)) },
+                    popExitTransition = { fadeOut(tween(Motion.SHORT)) + scaleOut(tween(Motion.SHORT), targetScale = 0.985f) },
                 ) {
                     composable<TodayRoute> {
                         TodayScreen(

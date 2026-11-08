@@ -200,7 +200,7 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}) {
                     )
                     if ((echo ?: 0.0) > GUESSING_ALARM) {
                         Spacer(Modifier.height(8.dp))
-                        GhostButton("Вайб ступеней", onClick = onFeel, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "🎧")
+                        GhostButton("Вайб ступеней", onClick = onFeel, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "")
                     }
                 }
             }
@@ -328,7 +328,7 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}) {
                         Comparison.AT_MOST -> "≤"
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (r == null) "·" else if (r.passed) "✅" else "⬜", style = MaterialTheme.typography.titleMedium)
+                        Text(if (r == null) "·" else if (r.passed) "✓" else "○", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(1.dp).fillMaxWidth(0.03f))
                         Text(t.skill.ru, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                         Text(
@@ -339,7 +339,7 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}) {
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                JuicyButton(if (ui.exams.isEmpty()) "Сделать замер" else "Замерить снова", onClick = onExam, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leading = "📋")
+                JuicyButton(if (ui.exams.isEmpty()) "Сделать замер" else "Замерить снова", onClick = onExam, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leading = "")
             }
         }
     }

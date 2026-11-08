@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.feature.common.KeepScreenOn
 import com.kazaeza.muzykalka.feature.common.MicPermissionGate
+import com.kazaeza.muzykalka.feature.common.ModeOrb
 import com.kazaeza.muzykalka.feature.common.ModeVisuals
 import com.kazaeza.muzykalka.feature.common.PauseOverlay
 import com.kazaeza.muzykalka.game.HuntTask
@@ -183,7 +184,7 @@ private fun GameHost(
                     is HuntTask -> HuntContent(task, ui, accent, onAnswer = vm::answer)
                     is StepsTask -> StepsContent(task, ui, accent, onAnswer = vm::answer)
                     else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(ModeVisuals.emoji(spec.variant.mode), style = MaterialTheme.typography.displayMedium)
+                        ModeOrb(spec.variant.mode, size = 96.dp)
                     }
                 }
             }
@@ -241,11 +242,11 @@ private fun GameTopBar(ui: GameUi, accent: List<Color>, onPause: () -> Unit) {
                 .background(Juicy.Ink3.copy(alpha = 0.7f))
                 .clickable(onClickLabel = "Пауза", onClick = onPause),
             contentAlignment = Alignment.Center,
-        ) { Text("⏸", style = MaterialTheme.typography.titleMedium, color = Juicy.Text) }
+        ) { Text("❙❙", style = MaterialTheme.typography.titleMedium, color = Juicy.Text) }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                "${ModeVisuals.emoji(ui.variant.mode)} ${ui.variant.ru}",
+                ui.variant.ru,
                 style = MaterialTheme.typography.titleMedium,
                 color = Juicy.Text,
             )
@@ -322,7 +323,7 @@ private fun SummaryOverlay(
             Text(
                 when {
                     summary.answered == 0 -> "Раунд прерван"
-                    summary.stars == 3 -> "Огонь! 🔥"
+                    summary.stars == 3 -> "Огонь!"
                     summary.stars == 2 -> "Отлично!"
                     summary.stars == 1 -> "Неплохо"
                     else -> "Разминка засчитана"
@@ -333,11 +334,11 @@ private fun SummaryOverlay(
             StarRow(summary.stars)
             CountUpText(summary.score, MaterialTheme.typography.displayMedium, colors = accent)
             if (summary.newRecord) {
-                GradientText("🏆 Новый рекорд!", MaterialTheme.typography.titleLarge, listOf(Juicy.Gold, Juicy.Orange))
+                GradientText("Новый рекорд!", MaterialTheme.typography.titleLarge, listOf(Juicy.Gold, Juicy.Orange))
             }
             summary.unlockedLevel?.let {
                 GlassCard(accent = Accents.Good) {
-                    Text("🔓 Открыт уровень $it", style = MaterialTheme.typography.titleLarge, color = Juicy.Good)
+                    Text("Открыт уровень $it", style = MaterialTheme.typography.titleLarge, color = Juicy.Good)
                     Text(Drills.levelName(summary.variant, it), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
                 }
             }
@@ -357,7 +358,7 @@ private fun SummaryOverlay(
                 }
             }
             if (anchors.isNotEmpty()) AnchorsCard(anchors.take(MAX_SUMMARY_ANCHORS), playing, notation, onAnchor)
-            JuicyButton(if (inSequence) "Дальше" else "Ещё раунд", onClick = if (inSequence) onClose else onAgain, Modifier.fillMaxWidth(), colors = accent, leading = if (inSequence) "➡️" else "🔁")
+            JuicyButton(if (inSequence) "Дальше" else "Ещё раунд", onClick = if (inSequence) onClose else onAgain, Modifier.fillMaxWidth(), colors = accent, leading = if (inSequence) "→" else "↻")
             if (!inSequence) GhostButton("Готово", onClick = onClose, Modifier.fillMaxWidth())
             Text(
                 "Каждый ответ сохранён в статистику",
@@ -375,7 +376,7 @@ private const val MAX_SUMMARY_ANCHORS = 3
 @Composable
 private fun AnchorsCard(anchors: List<DegreeAnchor>, playing: DegreeAnchor?, notation: DegreeNotation, onAnchor: (DegreeAnchor) -> Unit) {
     GlassCard(Modifier.fillMaxWidth()) {
-        SectionLabel("⚓ якоря к ошибкам")
+        SectionLabel("якоря к ошибкам")
         anchors.forEach { anchor ->
             val color = DegreeColors.of(anchor.degree)
             Row(
@@ -393,7 +394,7 @@ private fun AnchorsCard(anchors: List<DegreeAnchor>, playing: DegreeAnchor?, not
                     Text(anchor.title, style = MaterialTheme.typography.titleMedium, color = Juicy.Text, maxLines = 1)
                     Text(anchor.melodyText, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim, maxLines = 1)
                 }
-                Text(if (anchor == playing) "⏹" else "▶", style = MaterialTheme.typography.headlineSmall, color = color)
+                Text(if (anchor == playing) "■" else "►", style = MaterialTheme.typography.headlineSmall, color = color)
             }
         }
     }
