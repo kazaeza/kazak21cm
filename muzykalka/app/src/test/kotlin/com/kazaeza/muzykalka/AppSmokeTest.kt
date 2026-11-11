@@ -2,7 +2,16 @@ package com.kazaeza.muzykalka
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -31,9 +40,18 @@ class AppSmokeTest {
     @get:Rule
     val rule = createAndroidComposeRule<MainActivity>()
 
+    /**
+     * The list of the tab on screen. The tabs are pages of a pager (O-29): the pager scrolls too, and a
+     * neighbouring page may still be composed, so «the scrollable» is no longer one node.
+     */
+    private fun list(): SemanticsNodeInteraction {
+        val lists = rule.onAllNodes(hasScrollToIndexAction() and SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+        return lists.fetchSemanticsNodes().indices.map { lists[it] }.first { it.isDisplayed() }
+    }
+
     /** Screens are lazy lists: items below the fold exist only after scrolling to them. */
     private fun scrollTo(text: String) {
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
+        list().performScrollToNode(hasText(text))
         rule.waitForIdle()
     }
 
@@ -55,6 +73,20 @@ class AppSmokeTest {
         rule.onAllNodesWithText("Лексикон").assertCountEquals(0)
     }
 
+    /** O-29: the tabs are pages — a swipe across the screen turns them, and the bar follows. */
+    @Test
+    fun swipeTurnsTheTabs() {
+        rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
+        rule.onRoot().performTouchInput { swipeLeft() }
+        rule.waitForIdle()
+        rule.onNodeWithText("всё в одном месте: выбирай и играй").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Режимы").assertIsSelected()
+        rule.onRoot().performTouchInput { swipeRight() }
+        rule.waitForIdle()
+        rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
+        rule.onNodeWithContentDescription("Сегодня").assertIsSelected()
+    }
+
     @Test
     fun settingsOpenAndAcceptAChoice() {
         rule.onNodeWithContentDescription("Настройки").performClick()
@@ -73,7 +105,7 @@ class AppSmokeTest {
         scrollTo("Covet")
         click("В мои")
         // The piece lands in «my songs» at the top of the list.
-        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        list().performScrollToIndex(0)
         rule.waitUntil(5_000) { rule.onAllNodesWithText("повтор:", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
         click("Covet")
         rule.waitForIdle()
@@ -108,11 +140,11 @@ class AppSmokeTest {
         rule.waitForIdle()
         rule.onAllNodesWithText("Тир").onFirst().assertIsDisplayed()
         for (t in listOf("Над аккордами", "Вайб ступеней", "Спой ступень", "Ходы", "Песни", "Вслепую", "Обратная охота")) {
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(t, substring = true))
+            list().performScrollToNode(hasText(t, substring = true))
             rule.waitForIdle()
         }
         rule.onAllNodesWithText("КАК ИГРАТЬ").assertCountEquals(0)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Вайб ступеней", substring = true))
+        list().performScrollToNode(hasText("Вайб ступеней", substring = true))
         rule.onNodeWithContentDescription("Играть: Вайб ступеней").performSemanticsAction(SemanticsActions.OnClick)
         rule.waitForIdle()
         rule.onNodeWithText("Ступень — это не высота, а ощущение").assertIsDisplayed()

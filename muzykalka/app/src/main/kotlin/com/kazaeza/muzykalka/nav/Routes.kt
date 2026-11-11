@@ -3,10 +3,8 @@ package com.kazaeza.muzykalka.nav
 import kotlinx.serialization.Serializable
 
 /** Type-safe routes (Navigation Compose). */
-@Serializable data object TodayRoute
-@Serializable data object ModesRoute
-@Serializable data object LibraryRoute
-@Serializable data object ProgressRoute
+/** The four tabs — «Сегодня», «Режимы», «Библиотека», «Прогресс» — as pages of one pager (O-29). */
+@Serializable data object TabsRoute
 @Serializable data object SettingsRoute
 @Serializable data object SoundCheckRoute
 @Serializable data object ExamRoute
