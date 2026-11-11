@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -44,6 +47,7 @@ import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.ui.effect.LensOrb
+import com.kazaeza.muzykalka.ui.effect.PulseBoard
 import com.kazaeza.muzykalka.ui.effect.breathe
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Doto
@@ -86,7 +90,19 @@ fun DegreeRing(
     breathing: Boolean = true,
     key: Dp = GameTouchTarget,
     energy: Float = 0.5f,
+    pulses: PulseBoard? = null,
+    lobes: Int = 0,
+    tension: Float = 0f,
+    onPress: (hour: Int) -> Unit = {},
 ) {
+    // O-35: the sphere leans towards the key under the finger; after the answer it leans to the right one
+    var pressedHour by remember { mutableStateOf<Int?>(null) }
+    val leanHour = pressedHour ?: centre?.let { Math.floorMod(it.semitones, 12) }
+    val touch = leanHour?.let { h ->
+        val a = Math.toRadians((h * 30 - 90).toDouble())
+        val reach = if (pressedHour != null) 1f else 0.6f
+        Offset(cos(a).toFloat() * reach, sin(a).toFloat() * reach)
+    } ?: Offset.Zero
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val side = min(maxWidth, maxHeight)
         val half = side / 2
@@ -105,6 +121,10 @@ fun DegreeRing(
                 Modifier.size(side).breathe(enabled = breathing, amount = 0.03f, periodMs = 3200),
                 energy = energy,
                 sphere = rOrb / half,
+                pulses = pulses,
+                touch = touch,
+                lobes = lobes,
+                tension = tension,
             )
         }
         Canvas(Modifier.size(side)) {
@@ -144,6 +164,14 @@ fun DegreeRing(
                 handFrom = rOrb + 4.dp,
                 handTo = r - 24.dp,
                 arc = slot == 0,
+                onPressed = { down ->
+                    if (down) {
+                        pressedHour = hour
+                        onPress(hour)
+                    } else if (pressedHour == hour) {
+                        pressedHour = null
+                    }
+                },
                 modifier = Modifier.offset(at.first, at.second).size(key),
             )
         }
@@ -167,10 +195,12 @@ private fun RingKey(
     handFrom: Dp,
     handTo: Dp,
     arc: Boolean,
+    onPressed: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
+    LaunchedEffect(pressed) { onPressed(pressed) }
     val press by animateFloatAsState(
         if (pressed) 1f else 0f,
         spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),

@@ -9,6 +9,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import com.kazaeza.muzykalka.music.Overtones
+import com.kazaeza.muzykalka.music.PulseKind
+import com.kazaeza.muzykalka.music.SoundPulse
+import com.kazaeza.muzykalka.ui.effect.HarmonicWaves
+import com.kazaeza.muzykalka.ui.effect.LensOrb
+import com.kazaeza.muzykalka.ui.effect.PulseBoard
+import com.kazaeza.muzykalka.ui.effect.WaveReveal
+import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.component.FloatingTabBar
 import com.kazaeza.muzykalka.ui.component.PitchRuler
 import com.kazaeza.muzykalka.ui.component.ReplayKey
@@ -166,6 +180,65 @@ class ScreenshotsTest {
     fun tirAnswered() = shot("04a-tir-answer", { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 2), onExit = {}) }, "Какая ступень?") {
         rule.onAllNodesWithText("5").onFirst().performClick()
     }
+
+    /** O-35: the sphere with a ring on its way out — a pluck 0.1, 0.3 and 0.55 s ago, side by side. */
+    @Test
+    fun orbRing() = shot("11-orb-ring", {
+        val colors = listOf(Juicy.Blue, Juicy.Violet, Juicy.Magenta, Juicy.Cyan)
+        Column(Modifier.fillMaxSize().background(Juicy.Ink).padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row {
+                listOf(0f, 0.1f, 0.3f, 0.55f).forEach { age ->
+                    val board = PulseBoard.frozen(age to SoundPulse(PulseKind.HOME, 0L, 1f, 0, 0.5f))
+                    LensOrb(colors, Modifier.size(96.dp), pulses = board, moving = false, sphere = 0.7f)
+                }
+            }
+            // the same, big, to judge the swell
+            LensOrb(colors, Modifier.size(300.dp), pulses = PulseBoard.frozen(0.28f to SoundPulse(PulseKind.HOME, 0L, 1f, 0, 0.5f)), moving = false, sphere = 0.7f)
+            // leaning towards a pressed degree (top right), and two plucks at once
+            LensOrb(
+                colors, Modifier.size(200.dp), moving = false, sphere = 0.7f, touch = Offset(0.7f, -0.7f),
+                pulses = PulseBoard.frozen(0.1f to SoundPulse(PulseKind.TOUCH, 0L, 0.8f, null, 0.2f), 0.35f to SoundPulse(PulseKind.REVEAL, 0L, 1f, 7, 0.31f)),
+            )
+        }
+    })
+
+    /** O-35: the pattern a degree leaves in the sphere after the answer: a fifth (3 lobes), a third (5), a minor second (16). */
+    @Test
+    fun orbLobes() = shot("12-orb-lobes", {
+        Column(Modifier.fillMaxSize().background(Juicy.Ink).padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            listOf(listOf(0, 7, 4), listOf(1, 3, 2)).forEach { row ->
+                Row {
+                    row.forEach { semitones ->
+                        val d = com.kazaeza.muzykalka.music.Degree.canonical(semitones)
+                        val tint = DegreeColors.of(d)
+                        val (p, _) = Overtones.ratio(semitones)
+                        LensOrb(
+                            listOf(tint, lerp(tint, Color.White, 0.4f), Juicy.Magenta, tint), Modifier.size(130.dp), moving = false, sphere = 0.7f,
+                            lobes = p, tension = Overtones.tension(semitones),
+                        )
+                    }
+                }
+            }
+            LensOrb(listOf(Juicy.Blue, Juicy.Violet, Juicy.Magenta, Juicy.Cyan), Modifier.size(130.dp), moving = false, sphere = 0.7f)
+        }
+    })
+
+    /** O-35: the string — a pluck 0.05, 0.4 and 1.5 s ago at 0.31 and at the middle; a fifth and a minor second after the answer. */
+    @Test
+    fun strings() = shot("13-strings", {
+        fun at(age: Float, x: Float, kind: PulseKind = PulseKind.REVEAL) = PulseBoard.frozen(age to SoundPulse(kind, 0L, 1f, null.takeIf { kind == PulseKind.QUESTION } ?: 0, x))
+        val accent = listOf(Juicy.Cyan, Juicy.Violet)
+        Column(Modifier.fillMaxSize().background(Juicy.Ink).padding(horizontal = 16.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(0.31f, 0.5f).forEach { x ->
+                listOf(0.05f, 0.4f, 1.5f).forEach { age ->
+                    HarmonicWaves(accent, Modifier.fillMaxWidth().height(44.dp), energy = 0.3f, pulses = at(age, x))
+                }
+            }
+            HarmonicWaves(accent, Modifier.fillMaxWidth().height(44.dp), energy = 0.3f, pulses = PulseBoard.frozen(), reveal = WaveReveal.of(7, DegreeColors.of(com.kazaeza.muzykalka.music.Degree.FIVE)))
+            HarmonicWaves(accent, Modifier.fillMaxWidth().height(44.dp), energy = 0.3f, pulses = PulseBoard.frozen(), reveal = WaveReveal.of(4, DegreeColors.of(com.kazaeza.muzykalka.music.Degree.THREE)))
+            HarmonicWaves(accent, Modifier.fillMaxWidth().height(44.dp), energy = 0.3f, pulses = PulseBoard.frozen(), reveal = WaveReveal.of(1, Juicy.Bad))
+        }
+    })
 
     @Test
     fun reverseHunt() = shot("05-reverse-hunt", { GameScreen(RoundSpec(Variant.HUNT_REVERSE, level = 1), onExit = {}) }, "лад")

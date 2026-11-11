@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,7 +55,17 @@ import com.kazaeza.muzykalka.music.Fretboard
 import com.kazaeza.muzykalka.music.NoteName
 import com.kazaeza.muzykalka.music.NoteNaming
 import com.kazaeza.muzykalka.music.RuNames
+import com.kazaeza.muzykalka.music.Overtones
+import com.kazaeza.muzykalka.music.PulseKind
+import com.kazaeza.muzykalka.music.SoundPulse
+import com.kazaeza.muzykalka.ui.Haptics
+import com.kazaeza.muzykalka.ui.effect.PulseBoard
+import com.kazaeza.muzykalka.ui.effect.WaveReveal
+import com.kazaeza.muzykalka.ui.effect.strum
 import com.kazaeza.muzykalka.ui.component.DegreeChip
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.sin
 import com.kazaeza.muzykalka.ui.component.GameTouchTarget
 import com.kazaeza.muzykalka.ui.component.DeadlineBar
 import com.kazaeza.muzykalka.ui.component.DegreeKeypad
@@ -103,8 +114,22 @@ private fun AnchorHint(ui: GameUi, degree: Degree) {
     DegreeChip("${DegreeFormatter.degree(degree, ui.notation)} — как «${anchor.title}»", DegreeColors.of(degree))
 }
 
+/** O-35: how long a wrong choice creeps against the tonic before it flows into the right one. */
+private const val WRONG_HOLD_MS = 700L
+
+/** O-35: a finger's pluck on the string comes this long after the key is pressed. */
+private const val PRESS_PLUCK_MS = 80L
+
 @Composable
-internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer: (Answer) -> Unit, onReplay: () -> Unit) {
+internal fun TirContent(
+    task: TirTask,
+    ui: GameUi,
+    accent: List<Color>,
+    onAnswer: (Answer) -> Unit,
+    onReplay: () -> Unit,
+    pulses: PulseBoard,
+    haptics: Haptics,
+) {
     val enteredNotes = remember(task.itemKey, ui.taskSerial) { mutableStateListOf<Degree>() }
     val enteredChords = remember(task.itemKey, ui.taskSerial) { mutableStateListOf<ChordDegree>() }
     var lastTapDegree by remember(ui.taskSerial) { mutableStateOf<Degree?>(null) }
@@ -112,6 +137,28 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
     val listening = ui.phase == RoundPhase.LISTENING
     val feedback = ui.phase == RoundPhase.FEEDBACK
     val correct = feedback && ui.feedback?.correct == true
+
+    val scope = rememberCoroutineScope()
+
+    // O-35: after the answer the strings and the sphere show how the degree stands against the tonic. A wrong
+    // choice first creeps in red against the tonic, then — as the correction sounds — flows into the right one.
+    val single = if (task.kind == TirKind.NOTE && !task.underNote) task.notes.single().degree else null
+    var resolved by remember(ui.taskSerial) { mutableStateOf(false) }
+    LaunchedEffect(ui.taskSerial, feedback, correct) {
+        if (feedback && !correct && lastTapDegree != null) {
+            delay(WRONG_HOLD_MS)
+            resolved = true
+        }
+    }
+    val chosen = lastTapDegree
+    val wrongPhase = feedback && !correct && chosen != null && !resolved
+    val reveal = when {
+        single == null || !feedback -> null
+        wrongPhase -> WaveReveal.of(chosen!!.semitones, Juicy.Bad)
+        else -> WaveReveal.of(single.semitones, DegreeColors.of(single))
+    }
+    val lobes = if (feedback && single != null && !wrongPhase) Overtones.ratio(single.semitones).first else 0
+    val tension = single?.let { Overtones.tension(it.semitones) } ?: 0f
 
     // O-25: the dial has a fixed size and the question takes the rest, so an answer never moves it
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -125,7 +172,9 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
             RoundPhase.LISTENING -> 0.45f
             else -> 0.2f
         }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        // O-35: the string at the lower edge can be strummed by a finger that starts anywhere on the question and
+        // crosses it; the strum only watches (it takes no touch), so the replay key under it still gets its taps
+        Box(Modifier.weight(1f).fillMaxWidth().strum(onPluck = { pulses.add(it) }, onTick = haptics::tick)) {
         PromptCard(ui, accent, Modifier.fillMaxSize(), fill = true) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -205,7 +254,13 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                 }
             }
         }
-        HarmonicWaves(accent, Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(32.dp).offset(y = 16.dp), energy = loud)
+        HarmonicWaves(
+            accent,
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(44.dp).offset(y = 22.dp),
+            energy = loud,
+            pulses = pulses,
+            reveal = reveal,
+        )
         }
 
         if (task.answerLength > 1) {
@@ -254,6 +309,17 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                             centre = if (feedback && task.kind == TirKind.NOTE) expected else null,
                             breathing = listening || ui.phase == RoundPhase.PROMPTING,
                             energy = loud,
+                            pulses = pulses,
+                            lobes = lobes,
+                            tension = tension,
+                            onPress = { hour ->
+                                // the finger plucks the string at the key's place across the width
+                                val x = 0.5f + 0.45f * sin(Math.toRadians(hour * 30.0)).toFloat()
+                                scope.launch {
+                                    delay(PRESS_PLUCK_MS)
+                                    pulses.add(SoundPulse(PulseKind.TOUCH, 0L, 0.8f, null, x))
+                                }
+                            },
                         )
                     } else {
                         Column(Modifier.fillMaxWidth()) {

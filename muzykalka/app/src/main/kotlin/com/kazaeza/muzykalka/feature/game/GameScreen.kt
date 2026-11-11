@@ -78,6 +78,7 @@ import com.kazaeza.muzykalka.ui.effect.FlashOverlay
 import com.kazaeza.muzykalka.ui.effect.ParticleLayer
 import com.kazaeza.muzykalka.ui.effect.rememberParticleState
 import com.kazaeza.muzykalka.ui.effect.pop
+import com.kazaeza.muzykalka.ui.effect.rememberPulses
 import com.kazaeza.muzykalka.ui.rememberHaptics
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
@@ -126,6 +127,7 @@ private fun GameHost(
     val accent = ModeVisuals.accent(spec.variant)
     val particles = rememberParticleState()
     val haptics = rememberHaptics(ui.settings.haptics)
+    val pulses = rememberPulses(vm.pulses)
     var flashTrigger by remember { mutableIntStateOf(0) }
     var flashColor by remember { mutableStateOf(Juicy.Good) }
     var burstAt by remember { mutableStateOf(Offset(540f, 700f)) }
@@ -179,7 +181,7 @@ private fun GameHost(
                     },
             ) {
                 when (val task = ui.task) {
-                    is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
+                    is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay, pulses = pulses, haptics = haptics)
                     is SingTask -> if (ui.variant == Variant.KAMERTON_SEARCH) {
                         SearchContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
                     } else {

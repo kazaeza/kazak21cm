@@ -35,8 +35,16 @@ import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.Fretboard
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.MidiNote
+import com.kazaeza.muzykalka.music.Overtones
+import com.kazaeza.muzykalka.music.PulseKind
+import com.kazaeza.muzykalka.music.Score
+import com.kazaeza.muzykalka.music.SoundPulse
 import com.kazaeza.muzykalka.music.NoteNaming
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -171,6 +179,15 @@ private fun sungWindowMs(v: Variant): Long = if (v == Variant.KAMERTON_SEARCH) 7
 /** After the drone starts or changes key, before the first sound over it. */
 private const val DRONE_SETTLE_MS = 1_500L
 
+/**
+ * O-35: the picture of a note lags the sound by about this much (the speaker's and the screen's delay). A guess:
+ * set by eye on a phone.
+ */
+private const val PULSE_LATENCY_MS = 60L
+
+/** Pitch classes only: any octave of the tonic will do. */
+private val PULSE_TONIC_FLOOR = MidiNote(48)
+
 /** The drone holds a moment after an anchor's last note, so it lands home. */
 private const val ANCHOR_TAIL_MS = 600L
 
@@ -270,6 +287,35 @@ object Drills {
 class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : ViewModel() {
     private val state = MutableStateFlow(GameUi(variant = spec.variant, exam = spec.exam))
     val ui: StateFlow<GameUi> = state.asStateFlow()
+
+    private val pulseFlow = MutableSharedFlow<SoundPulse>(extraBufferCapacity = 32)
+
+    /**
+     * O-35: the plucks of whatever sounds, as they sound, for the strings and the sphere. A question's pluck carries
+     * no pitch (ADR-015), so the picture of it says nothing about the note.
+     */
+    val pulses: SharedFlow<SoundPulse> = pulseFlow.asSharedFlow()
+
+    /** Plays [score] and, in step with it, sends its plucks to [pulses]. They stop with the sound. */
+    private suspend fun playPulsing(score: Score, kind: PulseKind, tonic: MidiNote?) = coroutineScope {
+        val emitter = launch {
+            var elapsed = 0L
+            for (p in Overtones.pulses(score, kind, tonic)) {
+                val due = p.atMs + PULSE_LATENCY_MS
+                if (due > elapsed) delay(due - elapsed)
+                elapsed = maxOf(elapsed, due)
+                pulseFlow.tryEmit(p)
+            }
+        }
+        try {
+            graph.audioOutput.play(score)
+        } finally {
+            emitter.cancel()
+        }
+    }
+
+    /** The tonic a task is in (any octave: a pluck only needs the pitch class); null where there is no key. */
+    private fun tonicOf(task: Task?): MidiNote? = (task as? TirTask)?.key?.tonicAtOrAbove(PULSE_TONIC_FLOOR)
 
     private var engine: RoundEngine<*>? = null
     private var history: List<AttemptRecord> = emptyList()
@@ -390,7 +436,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         val correction = ev.correction
         if (ev.centsError == null && correction != null) {
             hintJob?.cancel()
-            hintJob = viewModelScope.launch { graph.audioOutput.play(correction) }
+            hintJob = viewModelScope.launch { playPulsing(correction, PulseKind.REVEAL, tonicOf(s.task)) }
         }
     }
 
@@ -422,7 +468,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                         ensureDrone(droneTask.introDrone ?: drone)
                         awaitUnpaused()
                         promptPlaying = true
-                        graph.audioOutput.play(intro)
+                        playPulsing(intro, PulseKind.HOME, tonicOf(s.task))
                         promptPlaying = false
                         awaitUnpaused()
                     }
@@ -431,7 +477,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                     ensureDrone(drone)
                     if (audio != null) {
                         promptPlaying = true
-                        graph.audioOutput.play(audio)
+                        playPulsing(audio, PulseKind.QUESTION, tonicOf(s.task))
                         promptPlaying = false
                     }
                     e.promptFinished(now())
@@ -444,7 +490,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 val sound = if (ev.correct) ev.confirmation else ev.correction
                 if (sound != null) {
                     feedbackAudio = viewModelScope.launch {
-                        graph.audioOutput.play(sound)
+                        playPulsing(sound, PulseKind.REVEAL, tonicOf(s.task))
                         delay(120)
                     }
                 }
@@ -480,7 +526,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         val e = engine ?: return
         val sound = (e.state.task as? DroneTask)?.replay ?: return
         if (paused || e.state.phase != RoundPhase.LISTENING || replayJob?.isActive == true) return
-        replayJob = viewModelScope.launch { graph.audioOutput.play(sound) }
+        replayJob = viewModelScope.launch { playPulsing(sound, PulseKind.QUESTION, tonicOf(e.state.task)) }
     }
 
     /** ⏸ or the back gesture: stop the clock and the sound (drone included). */
@@ -509,7 +555,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         replayJob = viewModelScope.launch {
             ensureDrone(drone)
             while (e.state.phase == RoundPhase.PROMPTING && e.state.task === task) delay(30)
-            if (sound != null && e.state.phase == RoundPhase.LISTENING && e.state.task === task) graph.audioOutput.play(sound)
+            if (sound != null && e.state.phase == RoundPhase.LISTENING && e.state.task === task) playPulsing(sound, PulseKind.QUESTION, tonicOf(task))
         }
     }
 
@@ -635,7 +681,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
             try {
                 graph.audioOutput.drone(arranger.drone(key))
                 delay(DRONE_SETTLE_MS)
-                graph.audioOutput.play(anchor.score(key, arranger))
+                playPulsing(anchor.score(key, arranger), PulseKind.REVEAL, key.tonicAtOrAbove(PULSE_TONIC_FLOOR))
                 delay(ANCHOR_TAIL_MS)
                 graph.audioOutput.drone(null)
             } finally {
