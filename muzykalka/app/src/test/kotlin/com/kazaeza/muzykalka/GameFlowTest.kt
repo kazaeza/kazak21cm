@@ -1,5 +1,10 @@
 package com.kazaeza.muzykalka
 
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -64,6 +69,26 @@ class GameFlowTest {
         assertTrue("the tonic drone is on", audio.drones.lastOrNull()?.isNotEmpty() == true)
         rule.onAllNodesWithText("1").onFirst().performClick()
         rule.waitUntil(5_000) { audio.played.size >= 2 } // confirmation or correction (rule 5)
+    }
+
+    /** O-32: «once more» is a full game target (72 dp), not a small glyph, and plays the question again. */
+    @Test
+    fun tirReplayKeyIsBigAndPlaysTheQuestionAgain() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 1), onExit = {}) }
+            }
+        }
+        val replay = hasContentDescription("Повторить вопрос")
+        rule.waitUntil(10_000) { rule.onAllNodes(replay and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNode(replay).assertWidthIsAtLeast(72.dp).assertHeightIsAtLeast(72.dp)
+        val before = audio.played.size
+        rule.onNode(replay).performClick()
+        rule.waitUntil(5_000) { audio.played.size > before }
     }
 
     /** O-15 (ADR-029): the key is set over the tonic, then the chord drones under the shown note. */

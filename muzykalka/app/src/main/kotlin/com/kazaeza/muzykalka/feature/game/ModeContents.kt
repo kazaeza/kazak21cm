@@ -61,6 +61,7 @@ import com.kazaeza.muzykalka.ui.component.DegreeKeypad
 import com.kazaeza.muzykalka.ui.component.ExtraKey
 import com.kazaeza.muzykalka.ui.component.ExtraKeyView
 import com.kazaeza.muzykalka.ui.component.DegreeRing
+import com.kazaeza.muzykalka.ui.component.ReplayKey
 import com.kazaeza.muzykalka.ui.component.degreeRingMinSide
 import com.kazaeza.muzykalka.ui.effect.HarmonicWaves
 import androidx.compose.foundation.layout.offset
@@ -129,15 +130,7 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                         Spacer(Modifier.width(8.dp))
                         DegreeChip("над " + DegreeFormatter.chord(chord, ui.notation), DegreeColors.of(chord.root))
                     }
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        "↻",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable(enabled = listening, onClick = onReplay)
-                            .padding(6.dp),
-                    )
+                    ReplayKey("Повторить вопрос", onReplay, enabled = listening)
                 }
                 Spacer(Modifier.height(12.dp))
                 // O-15 «Под нотой»: the note on top is given, the chord under it is the question.
@@ -484,15 +477,7 @@ internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnsw
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DegreeChip(RuNames.key(task.key), Juicy.Gold)
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        "↻",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable(enabled = listening, onClickLabel = "Тоника ещё раз", onClick = onReplay)
-                            .padding(6.dp),
-                    )
+                    ReplayKey("Тоника ещё раз", onReplay, enabled = listening)
                 }
                 Spacer(Modifier.height(10.dp))
                 val f = ui.feedback
@@ -555,15 +540,7 @@ internal fun SearchContent(task: SingTask, ui: GameUi, accent: List<Color>, onAn
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DegreeChip(RuNames.key(task.key), Juicy.Gold)
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        "↻",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable(enabled = listening, onClickLabel = "Тоника ещё раз", onClick = onReplay)
-                            .padding(6.dp),
-                    )
+                    ReplayKey("Тоника ещё раз", onReplay, enabled = listening)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(task.prompt.subtitle.orEmpty().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.headlineSmall, color = color)
