@@ -34,6 +34,35 @@ class SingDriverTest {
         assertTrue(first.key.mode.degrees.contains(first.degree))
     }
 
+    private fun steadyAnswers(n: Int, ok: Boolean) = List(n) {
+        AttemptRecord(Variant.KAMERTON_SING, 1, SingDriver.PREFIX + listOf("1", "3", "5", "b3")[it % 4], "", "", ok, 2_000, 0.0, 0, null, it.toLong())
+    }
+
+    /** O-28: it is hard to sing a degree cold — «Спой ступень» starts from the steady ones. */
+    @Test
+    fun `only 1 3 5 are asked until they come out, then the whole mode`() {
+        val driver = SingDriver(KeyPicker(Random(4)))
+        val random = Random(5)
+        val early = List(120) { driver.nextTask(DriverContext(random, 1, steadyAnswers(19, ok = true))).degree.number }.toSet()
+        assertEquals(setOf(1, 3, 5), early)
+        assertTrue(!SingDriver.steadyLearnt(steadyAnswers(20, ok = false)))
+        assertTrue(SingDriver.steadyLearnt(steadyAnswers(20, ok = true)))
+        val later = List(200) { driver.nextTask(DriverContext(random, 1, steadyAnswers(20, ok = true))).degree.number }.toSet()
+        assertEquals(setOf(1, 2, 3, 4, 5, 6, 7), later)
+    }
+
+    /** O-28: a miss is not the end of it — the same degree is asked again one question later. */
+    @Test
+    fun `a missed degree comes back after one other question`() {
+        val driver = SingDriver(KeyPicker(Random(6)))
+        val random = Random(7)
+        val history = steadyAnswers(20, ok = true)
+        val missed = driver.nextTask(DriverContext(random, 1, history))
+        driver.evaluate(missed, sung(missed, semitonesOff = 1))
+        driver.nextTask(DriverContext(random, 1, history))
+        assertEquals(missed.degree.number, driver.nextTask(DriverContext(random, 1, history)).degree.number)
+    }
+
     @Test
     fun `without headphones there is no drone and every question opens with the tonic`() {
         val driver = SingDriver(KeyPicker(Random(1)), withDrone = false)

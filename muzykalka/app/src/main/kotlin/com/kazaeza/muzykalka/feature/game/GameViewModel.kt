@@ -101,7 +101,15 @@ data class RoundSummary(
     }
 }
 
-data class FeedbackEvent(val serial: Int, val correct: Boolean, val points: Int, val expected: String, val given: String)
+data class FeedbackEvent(
+    val serial: Int,
+    val correct: Boolean,
+    val points: Int,
+    val expected: String,
+    val given: String,
+    /** Sung answers: signed distance to the nearest octave of the asked note (+ = too high); the ruler shows it (O-33). */
+    val centsError: Double? = null,
+)
 
 /**
  * O-14 «Пропевка»: one miss of the search. [sung] — what the voice held (null after «подскажи»);
@@ -194,7 +202,7 @@ object Drills {
     fun guitarPaced(v: Variant): Boolean = v == Variant.TAPER_STEPS
 
     /** No lives and the longest round: guitar-paced drills and the calm search of «Пропевка» (O-14). */
-    fun relaxed(v: Variant): Boolean = guitarPaced(v) || v == Variant.KAMERTON_SEARCH
+    fun relaxed(v: Variant): Boolean = guitarPaced(v) || v.isSung()
 
     fun levelName(v: Variant, level: Int): String = when (v.mode) {
         ModeId.HUNT -> if (v == Variant.HUNT_ALL_OCTAVES) "весь гриф" else Levels.HUNT.getOrElse(level - 1) { "" }
@@ -432,7 +440,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
             }
             RoundPhase.FEEDBACK -> {
                 val ev = s.lastEvaluation ?: return
-                lastFeedback = FeedbackEvent(++feedbackSerial, ev.correct, s.lastPoints, ev.expectedText, ev.givenText)
+                lastFeedback = FeedbackEvent(++feedbackSerial, ev.correct, s.lastPoints, ev.expectedText, ev.givenText, ev.centsError)
                 val sound = if (ev.correct) ev.confirmation else ev.correction
                 if (sound != null) {
                     feedbackAudio = viewModelScope.launch {

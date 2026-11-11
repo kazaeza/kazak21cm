@@ -25,14 +25,17 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 
 /**
- * O-33: where the voice is — a ruler of ticks with a cursor, after the reference. A tick is 10 cents, the long
- * ones are semitones, the tall one in the middle is the note asked for (in [tint]). The ticks within [hitCents]
+ * O-33: where the voice is — a ruler of ticks with a cursor, after the reference. There are 30 ticks to each
+ * side ([rangeCents] / 30 apiece: 10 cents by default, 20 when the ruler spans half an octave), the long ones are
+ * semitones, the tall one in the middle is the note asked for (in [tint]). The ticks within [hitCents]
  * of it are the zone that counts as a hit: they stand taller and take the colour, and grow when the cursor is
  * among them — the same gesture as a right answer on the Tir's dial. No letters and no numbers.
  *
  * [offsetCents] is how far the voice is from the note asked for (+ is sharp); null is silence — the cursor fades
  * where it stood. Beyond [rangeCents] the cursor waits at the edge.
  */
+private const val TICKS_EACH_SIDE = 30
+
 @Composable
 fun PitchRuler(
     offsetCents: Float?,
@@ -50,7 +53,8 @@ fun PitchRuler(
     val marker = remember { Path() }
     Canvas(modifier.fillMaxWidth().height(64.dp)) {
         val mid = size.height / 2 + 5.dp.toPx()
-        val each = (rangeCents / 10f).roundToInt()
+        val each = TICKS_EACH_SIDE
+        val step = rangeCents / each
         val span = size.width / 2 - 6.dp.toPx()
         fun x(cents: Float) = size.width / 2 + cents / rangeCents * span
         if (hit > 0f) {
@@ -61,7 +65,7 @@ fun PitchRuler(
             )
         }
         for (i in -each..each) {
-            val cents = i * 10f
+            val cents = i * step
             val fade = ((1f - abs(i) / each.toFloat()) * 3f).coerceIn(0f, 1f)
             val zone = abs(cents) <= hitCents
             val len: Float
@@ -75,7 +79,7 @@ fun PitchRuler(
                     val taper = cos(PI / 2 * abs(cents) / (hitCents + 10f)).toFloat()
                     len = (10.dp + (8.dp + 6.dp * hit) * taper).toPx(); color = tint.copy(alpha = 0.6f + 0.4f * hit); width = 1.25.dp.toPx()
                 }
-                i % 10 == 0 -> {
+                cents.roundToInt() % 100 == 0 -> {
                     len = 14.dp.toPx(); color = Color.White.copy(alpha = 0.34f * fade); width = 1.dp.toPx()
                 }
                 else -> {

@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazaeza.muzykalka.audio.AudioOutput
+import com.kazaeza.muzykalka.feature.game.Drills
 import com.kazaeza.muzykalka.feature.game.GameScreen
 import com.kazaeza.muzykalka.feature.game.RoundSpec
 import com.kazaeza.muzykalka.game.Variant
@@ -69,6 +70,14 @@ class GameFlowTest {
         assertTrue("the tonic drone is on", audio.drones.lastOrNull()?.isNotEmpty() == true)
         rule.onAllNodesWithText("1").onFirst().performClick()
         rule.waitUntil(5_000) { audio.played.size >= 2 } // confirmation or correction (rule 5)
+    }
+
+    /** O-28: three misses used to end «Спой ступень»; the sung modes have no lives and the longest round. */
+    @Test
+    fun sungRoundsHaveNoLives() {
+        assertTrue(Drills.relaxed(Variant.KAMERTON_SING))
+        assertTrue(Drills.relaxed(Variant.KAMERTON_SEARCH))
+        assertTrue(!Drills.relaxed(Variant.TIR_CLASSIC))
     }
 
     /** O-32: «once more» is a full game target (72 dp), not a small glyph, and plays the question again. */

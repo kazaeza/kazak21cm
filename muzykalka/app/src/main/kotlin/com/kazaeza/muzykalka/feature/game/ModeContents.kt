@@ -61,6 +61,7 @@ import com.kazaeza.muzykalka.ui.component.DegreeKeypad
 import com.kazaeza.muzykalka.ui.component.ExtraKey
 import com.kazaeza.muzykalka.ui.component.ExtraKeyView
 import com.kazaeza.muzykalka.ui.component.DegreeRing
+import com.kazaeza.muzykalka.ui.component.PitchRuler
 import com.kazaeza.muzykalka.ui.component.ReplayKey
 import com.kazaeza.muzykalka.ui.component.degreeRingMinSide
 import com.kazaeza.muzykalka.ui.effect.HarmonicWaves
@@ -77,6 +78,9 @@ import com.kazaeza.muzykalka.ui.effect.pop
 import com.kazaeza.muzykalka.ui.neck.FretMarker
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
+
+/** The singing ruler spans half an octave each way: any octave counts, so a miss is never further than that. */
+private const val SUNG_RULER_CENTS = 600f
 
 // ---------------------------------------------------------------- Tir
 
@@ -493,7 +497,7 @@ internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnsw
                     }
                     else -> {
                         GradientText(task.prompt.title, MaterialTheme.typography.displayLarge, DegreeColors.gradient(color), if (listening) Modifier.breathe() else Modifier)
-                        Text(if (ui.phase == RoundPhase.PROMPTING) "Слушай дом…" else "Спой ступень", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+                        Text(if (ui.phase == RoundPhase.PROMPTING) "Слушай дом…" else "Найди её от тоники и спой", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
                     }
                 }
                 Spacer(Modifier.height(4.dp))
@@ -501,6 +505,9 @@ internal fun SingContent(task: SingTask, ui: GameUi, accent: List<Color>, onAnsw
                 Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = color)
                 if (feedback) Text(DegreeVibes.pathHome(task.degree, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
                 if (feedback && !correct) AnchorHint(ui, task.degree)
+                Spacer(Modifier.height(8.dp))
+                // O-33: after the answer — how far the voice was and which way; before it the ruler is silent (no hint)
+                PitchRuler(if (feedback) ui.feedback?.centsError?.toFloat() else null, color, rangeCents = SUNG_RULER_CENTS)
             }
         }
 
@@ -552,6 +559,9 @@ internal fun SearchContent(task: SingTask, ui: GameUi, accent: List<Color>, onAn
                 Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = color)
                 Spacer(Modifier.height(6.dp))
                 SearchStatus(task, ui, found)
+                Spacer(Modifier.height(8.dp))
+                // O-33: the last try on the ruler — the search is the task here, so it shows every miss
+                PitchRuler((if (found) ui.feedback?.centsError else ui.lastTry?.centsError)?.toFloat(), color, rangeCents = SUNG_RULER_CENTS)
             }
         }
 

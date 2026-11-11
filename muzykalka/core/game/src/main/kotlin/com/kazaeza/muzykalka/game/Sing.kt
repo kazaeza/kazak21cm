@@ -85,6 +85,10 @@ class SingDriver(
     private var blockKey: Key? = null
     private var blockLeft = 0
 
+    /** O-28: a missed degree waits here and is asked again after [COMEBACK_AFTER] other questions. */
+    private var comeback: Degree? = null
+    private var comebackIn = 0
+
     override fun nextTask(context: DriverContext): SingTask {
         val r = context.random
         val kept = blockKey?.takeIf { blockLeft > 0 }
@@ -96,8 +100,12 @@ class SingDriver(
         blockLeft--
         val tonic = key.tonicAtOrAbove(VOICE_FLOOR)
         val prefix = prefix(context.level)
-        val pool = if (searches && context.level <= 1) key.mode.degrees.filter { it.number in STEADY } else key.mode.degrees
-        val degree = ItemWeights.pick(r, pool) { ItemWeights.weight(prefix + it, context.history) }
+        // «Пропевка» level 1 and «Спой ступень» until the steady ones come out (O-28): only 1 · 3 · 5
+        val steadyOnly = if (searches) context.level <= 1 else !steadyLearnt(context.history)
+        val pool = if (steadyOnly) key.mode.degrees.filter { it.number in STEADY } else key.mode.degrees
+        val again = comeback?.takeIf { comebackIn == 0 }?.let { missed -> key.mode.degrees.firstOrNull { it.number == missed.number } }
+        if (comeback != null && comebackIn == 0) comeback = null else if (comebackIn > 0) comebackIn--
+        val degree = again ?: ItemWeights.pick(r, pool) { ItemWeights.weight(prefix + it, context.history) }
         val reference = arranger.line(listOf(DegreeNote(Degree.ONE)), key, Voice.TONE, beatsEach = 1.5, tempoBpm = TirDriver.TEMPO, tonicFloor = tonic)
         val scale = if (kept == null) {
             val up = key.mode.degrees.map { DegreeNote(it) } + DegreeNote(Degree.ONE, 1)
@@ -135,6 +143,10 @@ class SingDriver(
         val off = Math.floorMod(note.value - task.tonic.value - task.degree.semitones + 6, 12) - 6
         val error = off * 100 + cents
         val correct = off == 0
+        if (!correct && !searches) {
+            comeback = task.degree
+            comebackIn = COMEBACK_AFTER
+        }
         val sung = sungDegree(task, note)
         // Home in the octave that was sung: the answer is heard where the voice is.
         val home = MidiNote(note.value - off - task.degree.semitones)
@@ -173,6 +185,21 @@ class SingDriver(
 
         /** Level 1 of «Пропевка»: the steady degrees. */
         private val STEADY = setOf(1, 3, 5)
+
+        /** O-28: a miss in «Спой ступень» comes back after this many other questions — a second go while it is fresh. */
+        const val COMEBACK_AFTER = 1
+
+        /** O-28: «Спой ступень» asks only 1 · 3 · 5 until the last [STEADY_WINDOW] of them are [STEADY_ACCURACY] right. */
+        const val STEADY_WINDOW = 20
+        const val STEADY_ACCURACY = 0.8
+
+        fun steadyLearnt(history: List<AttemptRecord>): Boolean {
+            val steady = history.filter { a ->
+                a.variant == Variant.KAMERTON_SING && a.itemKey.startsWith(PREFIX) &&
+                    a.itemKey.removePrefix(PREFIX).filter { it.isDigit() }.toIntOrNull() in STEADY
+            }.takeLast(STEADY_WINDOW)
+            return steady.size >= STEADY_WINDOW && steady.count { it.correct } >= STEADY_ACCURACY * STEADY_WINDOW
+        }
 
         /** Search mode: first-try median latency target, a little slower than «Спой ступень». */
         const val SEARCH_PROMOTION_TARGET_MS = 4_000L

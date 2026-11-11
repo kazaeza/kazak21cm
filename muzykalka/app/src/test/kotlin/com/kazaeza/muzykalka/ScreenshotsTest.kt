@@ -129,6 +129,17 @@ class ScreenshotsTest {
     @Test
     fun tir() = shot("04-tir", { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 2), onExit = {}) }, "Какая ступень?")
 
+    /** O-28, O-33: «Спой ступень» — the ruler waits under the question. */
+    @Test
+    fun sing() {
+        org.robolectric.Shadows.shadowOf(ApplicationProvider.getApplicationContext<android.app.Application>())
+            .grantPermissions(android.Manifest.permission.RECORD_AUDIO)
+        shot("04g-sing", { GameScreen(RoundSpec(Variant.KAMERTON_SING, level = 1), onExit = {}) }, "Найди её") {
+            mic.sing(com.kazaeza.muzykalka.music.MidiNote(50))
+            rule.waitUntil(5_000) { rule.onAllNodesWithText("спел", substring = true).fetchSemanticsNodes().isNotEmpty() || rule.onAllNodesWithText("+", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        }
+    }
+
     /** «Обертон» kit (O-31…O-33): the tab bar's marks, the replay key, the singing ruler — to look at, side by side. */
     @Test
     fun kit() = shot("10-kit", {
