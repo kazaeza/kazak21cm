@@ -2,6 +2,7 @@ package com.kazaeza.muzykalka.feature.listen
 
 import androidx.compose.foundation.layout.size
 import com.kazaeza.muzykalka.ui.effect.GlowOrb
+import com.kazaeza.muzykalka.ui.effect.HarmonicWaves
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -246,7 +247,8 @@ private fun Stage(ui: ListenUi) {
             when {
                 item == null || ui.phase == ListenPhase.IDLE -> Idle()
                 ui.phase == ListenPhase.HEARING -> {
-                    GlowOrb(Accents.Tir, Modifier.size(56.dp).breathe(amount = 0.12f, periodMs = 900))
+                    // O-34: while it sounds — the tone and its overtones, as on the Tir's prompt
+                    HarmonicWaves(Accents.Tir, Modifier.fillMaxWidth().height(56.dp), energy = 1f)
                     Text(if (item.newKey) "Новая тональность…" else "Слушай…", style = MaterialTheme.typography.headlineSmall, color = Juicy.TextDim)
                 }
                 ui.phase == ListenPhase.GUESSING -> {
