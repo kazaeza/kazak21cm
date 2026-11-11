@@ -1,0 +1,370 @@
+<title>Лаборатория Музыкалки</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600;800&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: one narrow column, like the phone it will be tested on — the sphere first, then the two rows of sound. */
+  :root {
+    color-scheme: dark;
+    --ink: #0a0909; --ink2: #121110; --ink3: #1a1817; --ink4: #24211f;
+    --line: rgba(255, 255, 255, 0.10); --text: #f2eee9; --dim: #9c958e;
+    --gold: #ffc21f; --cyan: #22e4ff; --violet: #a050ff;
+    --text-font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --dot-font: "Doto", "Manrope", ui-monospace, monospace;
+  }
+  [hidden] { display: none !important; }
+  html { background: var(--ink); }
+  body {
+    background: var(--ink); color: var(--text); font-family: var(--text-font); font-size: 15px; line-height: 1.5;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 56px;
+  }
+  main { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
+  header { display: flex; flex-direction: column; gap: 6px; }
+  .tag { font-family: var(--dot-font); font-weight: 800; letter-spacing: 0.12em; font-size: 12px; color: var(--gold); }
+  h1 { font-size: 26px; line-height: 1.15; font-weight: 700; margin: 0; text-wrap: balance; }
+  h2 { font-size: 19px; font-weight: 700; margin: 0; }
+  p { margin: 0; color: var(--dim); }
+  p b { color: var(--text); font-weight: 600; }
+  section { display: flex; flex-direction: column; gap: 14px; border-top: 1px solid var(--line); padding-top: 22px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .label { font-size: 13px; color: var(--dim); min-width: 0; }
+
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .chip {
+    min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim);
+    font-size: 14px; font-weight: 600; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .chip[aria-pressed="true"] { background: var(--text); color: var(--ink); border-color: var(--text); }
+  .chip.ghost[aria-pressed="true"] { background: var(--ink4); color: var(--text); border-color: rgba(255, 255, 255, 0.28); }
+
+  .stage { position: relative; width: 100%; max-width: 420px; aspect-ratio: 1; margin: 0 auto; touch-action: manipulation; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .stage .fail { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--dim); padding: 24px; }
+
+  .keys { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+  .key {
+    aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center;
+    font-family: var(--dot-font); font-weight: 800; font-size: 20px; color: var(--k, var(--text)); position: relative;
+    transition: transform 0.08s, background 0.2s;
+  }
+  .key:active, .key.on { transform: scale(0.92); background: color-mix(in srgb, var(--k, #fff) 18%, transparent); }
+  .key sup { position: absolute; top: 5px; right: 7px; font-size: 11px; color: var(--dim); font-family: var(--text-font); }
+
+  .pads { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+  .pad {
+    min-height: 72px; border-radius: 18px; border: 1px solid var(--line); font-weight: 600; color: var(--text);
+    transition: transform 0.06s, background 0.15s;
+  }
+  .pad:active { transform: scale(0.97); background: var(--ink3); }
+  .pad small { display: block; font-weight: 400; color: var(--dim); font-size: 12px; }
+
+  input[type="range"] { flex: 1; min-width: 120px; accent-color: var(--gold); height: 32px; }
+  .switch { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; color: var(--text); font-weight: 500; }
+  .switch input { width: 20px; height: 20px; accent-color: var(--gold); }
+  ol { margin: 0; padding-left: 22px; color: var(--text); display: flex; flex-direction: column; gap: 6px; }
+  ol span { color: var(--dim); }
+  @media (prefers-reduced-motion: reduce) { .key, .pad, .chip { transition: none; } }
+</style>
+
+<main>
+  <header>
+    <div class="tag">ЛАБОРАТОРИЯ · O-36 · O-37</div>
+    <h1>Шар и звук на пробу</h1>
+    <p>Это не приложение, а стенд: то, что предлагается собрать в следующей версии. Потрогай, послушай на телефоне и скажи, что оставить.</p>
+  </header>
+
+  <section aria-labelledby="h-orb">
+    <h2 id="h-orb">Шар</h2>
+    <div class="row" role="group" aria-label="Какой шар показывать">
+      <button class="chip" id="orb-old" aria-pressed="false">Как в 0.0.53</button>
+      <button class="chip" id="orb-drop" aria-pressed="true">Капля</button>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="cv-old" hidden></canvas>
+      <canvas id="cv-drop"></canvas>
+      <div class="fail" id="orb-fail" hidden>Этот браузер не умеет WebGL — шар здесь не показать. Звук ниже работает.</div>
+    </div>
+    <p><b>Тапни по шару</b> — это щипок. У края он ещё и подаётся к пальцу. Ноты ниже щиплют его сами.</p>
+    <div class="row">
+      <span class="label">Сила щипка</span>
+      <input type="range" id="pluck-strength" min="0.4" max="1.6" step="0.05" value="1" aria-label="Сила щипка">
+    </div>
+    <div class="row" role="group" aria-label="Шар после ответа">
+      <span class="label">После ответа:</span>
+      <button class="chip ghost" data-answer="-1" aria-pressed="true">нет</button>
+      <button class="chip ghost" data-answer="0" aria-pressed="false">1</button>
+      <button class="chip ghost" data-answer="7" aria-pressed="false">5</button>
+      <button class="chip ghost" data-answer="4" aria-pressed="false">3</button>
+      <button class="chip ghost" data-answer="5" aria-pressed="false">4</button>
+      <button class="chip ghost" data-answer="2" aria-pressed="false">2</button>
+      <button class="chip ghost" data-answer="1" aria-pressed="false">♭2</button>
+    </div>
+    <p>В «Капле» ступень после ответа стоит лучами в свечении: у квинты их три и они неподвижны, у малой секунды шестнадцать и они ползут.</p>
+  </section>
+
+  <section aria-labelledby="h-notes">
+    <h2 id="h-notes">Ноты над дроном</h2>
+    <div class="row">
+      <label class="switch"><input type="checkbox" id="drone"> Дрон</label>
+      <label class="switch"><input type="checkbox" id="room"> Воздух (маленькая комната)</label>
+    </div>
+    <div class="row" role="group" aria-label="Тональность">
+      <span class="label">Тоника:</span>
+      <button class="chip ghost" data-tonic="220" aria-pressed="true">ля</button>
+      <button class="chip ghost" data-tonic="261.626" aria-pressed="false">до</button>
+      <button class="chip ghost" data-tonic="329.628" aria-pressed="false">ми</button>
+    </div>
+    <div class="row" role="group" aria-label="Тембр ноты" id="timbres"></div>
+    <p id="timbre-note"></p>
+    <div class="keys" id="keys-hi" aria-label="Верхняя октава"></div>
+    <div class="keys" id="keys-lo" aria-label="Нижняя октава"></div>
+    <div class="row">
+      <button class="chip ghost" id="play-scale" aria-pressed="false">Гамма, как в начале тональности</button>
+      <button class="chip ghost" id="play-question" aria-pressed="false">Случайная нота</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-taps">
+    <h2 id="h-taps">Тапы</h2>
+    <div class="row" role="group" aria-label="Звук касания" id="taps"></div>
+    <div class="pads">
+      <button class="pad" id="pad-tap" data-notap>Тап<small>кнопки, клавиши</small></button>
+      <button class="pad" id="pad-back" data-notap>Назад<small>ниже и тише</small></button>
+    </div>
+    <div class="row">
+      <span class="label">Громкость тапов</span>
+      <input type="range" id="tap-volume" min="0" max="2" step="0.05" value="1" aria-label="Громкость тапов">
+    </div>
+    <label class="switch"><input type="checkbox" id="tap-everywhere" checked> Звучать на всех кнопках этой страницы</label>
+  </section>
+
+  <section aria-labelledby="h-ask">
+    <h2 id="h-ask">Что сказать после</h2>
+    <ol>
+      <li>Шар: «Капля» или как было. <span>Если капля — сила щипка, на которой остановился.</span></li>
+      <li>Тембр нот: один любимый или два-три на выбор в настройках.</li>
+      <li>Тап: какой из трёх и на какой громкости. <span>Или тапы не нужны.</span></li>
+      <li>Воздух: включать или оставить сухо.</li>
+    </ol>
+  </section>
+</main>
+
+<script>/*ORB_JS*/</script>
+<script>/*SYNTH_JS*/</script>
+<script>
+(function () {
+  const AGSL = /*AGSL_JSON*/;
+  const $ = id => document.getElementById(id);
+  const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+  const mix = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+  const DEGREE = ['#E8B11A', '#FD95BF', '#FDA166', '#D6A0FD', '#1FD1E9', '#1FE044', '#63C7FD', '#88BFFD', '#FD9B98', '#FD87F5', '#1FD7BE', '#B1C91B'];
+  const RATIO = [[1, 1], [16, 15], [9, 8], [6, 5], [5, 4], [4, 3], [7, 5], [3, 2], [8, 5], [5, 3], [9, 5], [15, 8]];
+  const tensionOf = s => Math.min(1, (RATIO[s][0] + RATIO[s][1] - 2) / 29);
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ------------------------------------------------------------------------------------------ the sphere
+  const IDLE = ['#5468FF', '#A050FF', '#FF3BE0', '#22E4FF'].map(hex);
+  const orb = { variant: 'drop', plucks: [], flowOld: 12, flowNew: 12, lean: [0, 0], vel: [0, 0], leanTo: [0, 0],
+    lobes: 0, kept: 0, lock: 0, tension: 0, spin: 0, colors: IDLE.map(c => c.slice()), target: IDLE, last: 0, hosts: {} };
+  function sizeCanvas(c) {
+    const s = Math.round(c.clientWidth * Math.min(window.devicePixelRatio || 1, 2));
+    if (s > 0 && c.width !== s) { c.width = s; c.height = s; }
+  }
+  try {
+    orb.hosts.old = OrbLab.makeOrb($('cv-old'), AGSL.old);
+    orb.hosts.drop = OrbLab.makeOrb($('cv-drop'), AGSL.drop);
+  } catch (e) { $('orb-fail').hidden = false; $('cv-old').hidden = true; $('cv-drop').hidden = true; orb.hosts = null; }
+
+  function pluck(strength) {
+    orb.plucks.push({ t0: performance.now(), strength: strength * (+$('pluck-strength').value) });
+    if (orb.plucks.length > 6) orb.plucks.shift();
+  }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (!orb.hosts) return;
+    const dt = Math.min(0.05, orb.last ? (now - orb.last) / 1000 : 0); orb.last = now;
+    orb.plucks = orb.plucks.filter(p => (now - p.t0) / 1000 < OrbLab.LIFE);
+    const live = orb.plucks.map(p => ({ age: Math.max(0.0001, (now - p.t0) / 1000), strength: p.strength }));
+    const d = OrbLab.drive(live);
+    const idle = still && !live.length ? 0 : 1;
+    orb.flowOld += dt * idle * (0.55 + 1.1 * 0.45);
+    orb.flowNew += dt * idle * (0.55 + 1.1 * 0.45 + OrbLab.SURGE * d.kick);
+    // the lean: a spring with one soft overshoot (damping 0.6)
+    for (let i = 0; i < 2; i++) {
+      orb.vel[i] += dt * (-400 * (orb.lean[i] - orb.leanTo[i]) - 24 * orb.vel[i]);
+      orb.lean[i] += dt * orb.vel[i];
+    }
+    orb.lock += (orb.lobes > 0 ? 1 - orb.lock : -orb.lock) * (1 - Math.exp(-dt / 0.3));
+    orb.spin += dt * 0.9 * orb.tension;
+    orb.colors = orb.colors.map((c, i) => mix(c, orb.target[i], 1 - Math.exp(-dt / 0.3)));
+    const c = $(orb.variant === 'old' ? 'cv-old' : 'cv-drop'); sizeCanvas(c);
+    const u = { uRadius: 0.62 * c.width / 2, uEnergy: 0.45, uDim: 1, uSeed: 0, uC0: orb.colors[0], uC1: orb.colors[1], uC2: orb.colors[2], uC3: orb.colors[3],
+      uTouch: orb.lean, uLobes: orb.kept, uLock: orb.lock };
+    if (orb.variant === 'old') {
+      const age = [99, 99, 99, 99], amp = [0, 0, 0, 0];
+      live.slice(-4).forEach((p, i) => { age[i] = p.age; amp[i] = p.strength; });
+      orb.hosts.old.draw(Object.assign(u, { iTime: orb.flowOld, uPulseAge: age, uPulseAmp: amp, uTension: orb.tension }));
+    } else {
+      orb.hosts.drop.draw(Object.assign(u, { iTime: orb.flowNew, uPulseAge: d.age, uPulseAmp: d.amp, uMode: d.modes, uKick: d.kick, uSpin: orb.spin }));
+    }
+  }
+  requestAnimationFrame(frame);
+
+  function setVariant(v) {
+    orb.variant = v;
+    $('orb-old').setAttribute('aria-pressed', v === 'old'); $('orb-drop').setAttribute('aria-pressed', v === 'drop');
+    if (orb.hosts) { $('cv-old').hidden = v !== 'old'; $('cv-drop').hidden = v !== 'drop'; }
+  }
+  $('orb-old').onclick = () => setVariant('old');
+  $('orb-drop').onclick = () => setVariant('drop');
+
+  const stage = $('stage');
+  stage.addEventListener('pointerdown', e => {
+    const r = stage.getBoundingClientRect();
+    const x = (e.clientX - r.left - r.width / 2) / (0.62 * r.width / 2), y = (e.clientY - r.top - r.height / 2) / (0.62 * r.height / 2);
+    const len = Math.hypot(x, y);
+    pluck(0.8);
+    if (len > 0.45) orb.leanTo = [x / len, y / len];
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(n => stage.addEventListener(n, () => { orb.leanTo = [0, 0]; }));
+
+  document.querySelectorAll('[data-answer]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-answer]').forEach(o => o.setAttribute('aria-pressed', o === b));
+    const s = +b.dataset.answer;
+    if (s < 0) { orb.lobes = 0; orb.target = IDLE; return; }
+    const tint = hex(DEGREE[s]);
+    orb.lobes = RATIO[s][0]; orb.kept = orb.lobes; orb.tension = tensionOf(s);
+    orb.target = [tint, mix(tint, [1, 1, 1], 0.4), IDLE[2], tint];
+    const a = (s * 30 - 90) * Math.PI / 180;
+    orb.leanTo = [0.6 * Math.cos(a), 0.6 * Math.sin(a)];
+    setTimeout(() => { orb.leanTo = [0, 0]; }, 900);
+    pluck(0.9);
+  });
+
+  // ------------------------------------------------------------------------------------------ the sound
+  const SR = SoundLab.SR;
+  const snd = { ctx: null, timbre: 'marimba', tonic: 220, tap: 'sticks', seed: 1, cache: new Map(), drone: [] };
+  function audio() {
+    if (snd.ctx) { if (snd.ctx.state === 'suspended') snd.ctx.resume(); return snd.ctx; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let ctx; try { ctx = new AC({ sampleRate: SR, latencyHint: 'interactive' }); } catch (e) { ctx = new AC(); }
+    snd.ctx = ctx;
+    // the app's master: tanh(sum * 0.42). The shaper sees +-1, so the sum goes in at a third and the curve is tanh(3x).
+    const shaper = ctx.createWaveShaper(); const curve = new Float32Array(4097);
+    for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(3 * (i / 2048 - 1));
+    shaper.curve = curve; shaper.connect(ctx.destination);
+    snd.sum = ctx.createGain(); snd.sum.gain.value = 0.42 / 3; snd.sum.connect(shaper);
+    snd.dry = ctx.createGain(); snd.dry.connect(snd.sum);                 // notes and taps
+    snd.taps = ctx.createGain(); snd.taps.gain.value = +$('tap-volume').value; snd.taps.connect(snd.dry);
+    const ir = SoundLab.roomImpulse(); const buf = ctx.createBuffer(1, ir.length, SR); buf.copyToChannel(ir, 0);
+    const conv = ctx.createConvolver(); conv.normalize = false; conv.buffer = buf;
+    snd.wet = ctx.createGain(); snd.wet.gain.value = $('room').checked ? SoundLab.ROOM.wet : 0;
+    snd.dry.connect(conv); conv.connect(snd.wet); snd.wet.connect(snd.sum);
+    const n = SoundLab.DRONE_HARMONICS.length, re = new Float32Array(n + 1), im = new Float32Array(n + 1);
+    SoundLab.DRONE_HARMONICS.forEach((a, i) => { im[i + 1] = a; });
+    snd.wave = ctx.createPeriodicWave(re, im);
+    return ctx;
+  }
+  function play(data, into, when) {
+    const ctx = audio(); const b = ctx.createBuffer(1, data.length, SR); b.copyToChannel(data, 0);
+    const s = ctx.createBufferSource(); s.buffer = b; s.connect(into || snd.dry); s.start(when || 0);
+  }
+  function note(hz, held) {
+    const key = snd.timbre + ':' + hz.toFixed(2) + ':' + held;
+    const make = () => SoundLab.NOTES[snd.timbre].render(hz, held, 0.8, (snd.seed = (snd.seed * 1103515245 + 12345) | 0));
+    const data = snd.cache.get(key) || make();
+    setTimeout(() => snd.cache.set(key, make()), 30);   // the next strike of this key differs a hair
+    return data;
+  }
+  function strike(hz, held, when, kick) {
+    play(note(hz, held), snd.dry, when);
+    const wait = when ? Math.max(0, (when - snd.ctx.currentTime) * 1000) : 0;
+    setTimeout(() => pluck(kick === undefined ? 0.75 : kick), wait + 60);
+  }
+  function setDrone(on) {
+    const ctx = audio(); const t = ctx.currentTime;
+    snd.drone.forEach(d => { d.g.gain.setTargetAtTime(0, t, 0.16); d.o.forEach(o => o.stop(t + 1.2)); });
+    snd.drone = [];
+    if (!on) return;
+    let low = snd.tonic; while (low / 2 >= 110) low /= 2;      // the tonic at or above A2, and its octave
+    [low, low * 2].forEach(f => {
+      const g = ctx.createGain(); g.gain.value = 0; g.gain.setTargetAtTime(0.55 / 2, t, 0.16); g.connect(snd.sum);
+      const o = [1.0012, 1 - 0.0012].map(k => { const osc = ctx.createOscillator(); osc.setPeriodicWave(snd.wave); osc.frequency.value = f * k;
+        const h = ctx.createGain(); h.gain.value = 0.5; osc.connect(h); h.connect(g); osc.start(); return osc; });
+      snd.drone.push({ g, o });
+    });
+  }
+  // render the keys of the chosen timbre ahead, a few at a time, so the first strike is not late
+  let warm = 0;
+  function prewarm() {
+    clearTimeout(warm);
+    const list = MAJOR.concat(MAJOR.map(s => s + 12), [24]), timbre = snd.timbre, tonic = snd.tonic;
+    (function step() {
+      if (timbre !== snd.timbre || tonic !== snd.tonic || !list.length) return;
+      const hz = tonic * Math.pow(2, list.shift() / 12), key = timbre + ':' + hz.toFixed(2) + ':1';
+      if (!snd.cache.has(key)) snd.cache.set(key, SoundLab.NOTES[timbre].render(hz, 1, 0.8, (snd.seed = (snd.seed * 1103515245 + 12345) | 0)));
+      warm = setTimeout(step, 8);
+    })();
+  }
+  function tap(low) { play(SoundLab.tap(snd.tap, (snd.seed = (snd.seed * 1103515245 + 12345) | 0), low), snd.taps); }
+
+  // controls
+  const NOTE_HINT = {
+    tone: 'То, что звучит сейчас: три неподвижные гармоники и одинаковое вибрато.',
+    marimba: 'Деревянный брусок: короткий стук дерева, потом чистая нота, которая сама затихает.',
+    kalimba: 'Стальной язычок на коробочке: «тинь» и долгий тёплый тон.',
+    felt: 'Пианино через фетр: глухой удар молоточка и струна, которая медленно дышит.',
+    hum: 'Тянущийся голос с закрытым ртом: подъезжает к ноте, чуть плавает, дышит.',
+    epiano: 'Электропиано, которым приложение уже играет аккорды.',
+  };
+  const timbres = $('timbres');
+  Object.keys(SoundLab.NOTES).forEach(k => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = SoundLab.NOTES[k].name; b.dataset.timbre = k;
+    b.setAttribute('aria-pressed', k === snd.timbre); b.id = 'timbre-' + k;
+    b.onclick = () => { snd.timbre = k; timbres.querySelectorAll('button').forEach(o => o.setAttribute('aria-pressed', o === b)); $('timbre-note').textContent = NOTE_HINT[k]; strike(snd.tonic * 1.5, 1.0); prewarm(); };
+    timbres.appendChild(b);
+  });
+  $('timbre-note').textContent = NOTE_HINT[snd.timbre];
+  const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+  function makeKeys(host, octave, withTop) {
+    const list = MAJOR.map((s, i) => ({ s: s + 12 * octave, label: String(i + 1), color: DEGREE[s] }));
+    if (withTop) list.push({ s: 12 * (octave + 1), label: '1', color: DEGREE[0], up: true });
+    list.forEach(k => {
+      const b = document.createElement('button'); b.className = 'key'; b.dataset.notap = ''; b.style.setProperty('--k', k.color);
+      b.id = 'key-' + k.s; b.setAttribute('aria-label', 'Ступень ' + k.label + (octave || k.up ? ', октавой выше' : ''));
+      b.innerHTML = k.label + (octave ? '<sup>' + (k.up ? '″' : '′') + '</sup>' : '');
+      b.addEventListener('pointerdown', () => strike(snd.tonic * Math.pow(2, k.s / 12), 1.0));
+      host.appendChild(b);
+    });
+  }
+  makeKeys($('keys-hi'), 1, true); makeKeys($('keys-lo'), 0, false);
+  prewarm();
+  document.querySelectorAll('[data-tonic]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-tonic]').forEach(o => o.setAttribute('aria-pressed', o === b));
+    snd.tonic = +b.dataset.tonic; if ($('drone').checked) setDrone(true); prewarm();
+  });
+  $('drone').onchange = e => setDrone(e.target.checked);
+  $('room').onchange = e => { audio(); snd.wet.gain.setTargetAtTime(e.target.checked ? SoundLab.ROOM.wet : 0, snd.ctx.currentTime, 0.05); };
+  $('play-scale').onclick = () => {
+    const ctx = audio(); const t = ctx.currentTime + 0.05;
+    MAJOR.concat([12, 0]).forEach((s, i) => strike(snd.tonic * Math.pow(2, s / 12), 0.19, t + i * 0.2, 0.5));
+  };
+  $('play-question').onclick = () => strike(snd.tonic * Math.pow(2, MAJOR[Math.floor(Math.random() * 7)] / 12 + (Math.random() < 0.4 ? 1 : 0)), 1.0);
+
+  const taps = $('taps');
+  Object.keys(SoundLab.TAPS).forEach(k => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = SoundLab.TAPS[k].name; b.dataset.notap = ''; b.id = 'tap-' + k;
+    b.setAttribute('aria-pressed', k === snd.tap);
+    b.onclick = () => { snd.tap = k; taps.querySelectorAll('button').forEach(o => o.setAttribute('aria-pressed', o === b)); tap(false); };
+    taps.appendChild(b);
+  });
+  $('pad-tap').addEventListener('pointerdown', () => tap(false));
+  $('pad-back').addEventListener('pointerdown', () => tap(true));
+  $('tap-volume').oninput = e => { audio(); snd.taps.gain.value = +e.target.value; };
+  document.addEventListener('pointerdown', e => {
+    const b = e.target.closest('button, .switch');
+    if (b && !b.hasAttribute('data-notap') && $('tap-everywhere').checked) tap(false);
+  }, true);
+})();
+</script>
