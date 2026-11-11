@@ -1,5 +1,20 @@
 package com.kazaeza.muzykalka
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.kazaeza.muzykalka.ui.component.FloatingTabBar
+import com.kazaeza.muzykalka.ui.component.PitchRuler
+import com.kazaeza.muzykalka.ui.component.ReplayKey
+import com.kazaeza.muzykalka.ui.component.TabIcon
+import com.kazaeza.muzykalka.ui.component.TabSpec
+import com.kazaeza.muzykalka.ui.theme.Juicy
 import android.graphics.Bitmap
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -113,6 +128,27 @@ class ScreenshotsTest {
 
     @Test
     fun tir() = shot("04-tir", { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 2), onExit = {}) }, "Какая ступень?")
+
+    /** «Обертон» kit (O-31…O-33): the tab bar's marks, the replay key, the singing ruler — to look at, side by side. */
+    @Test
+    fun kit() = shot("10-kit", {
+        val tabs = listOf(
+            TabSpec("Сегодня", TabIcon.TODAY), TabSpec("Режимы", TabIcon.MODES),
+            TabSpec("Библиотека", TabIcon.LIBRARY), TabSpec("Прогресс", TabIcon.PROGRESS),
+        )
+        Column(
+            Modifier.fillMaxSize().background(Juicy.Ink).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            FloatingTabBar(tabs, 0, {})
+            FloatingTabBar(tabs, 2, {})
+            Row { ReplayKey("Повторить вопрос", {}); ReplayKey("Повторить вопрос", {}, enabled = false) }
+            PitchRuler(null, Juicy.Cyan)
+            PitchRuler(-180f, Juicy.Cyan)
+            PitchRuler(20f, Juicy.Cyan)
+            PitchRuler(420f, Juicy.Lime)
+        }
+    })
 
     /** O-26: the dial after an answer — the right degree lit, the sphere flooded with its colour. */
     @Test
