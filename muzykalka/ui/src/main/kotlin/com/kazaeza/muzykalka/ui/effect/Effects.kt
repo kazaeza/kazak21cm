@@ -28,6 +28,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -163,10 +164,18 @@ fun OvertoneOrb(
     }
 }
 
-/** A small, still overtone sphere (marks of modes, empty states). */
+/**
+ * A small, still sphere (marks of modes, empty states): the same lens as the Tir's ([LensOrb], O-26), frozen.
+ * Its colours pick the moment it is frozen at, so two modes never show the same picture.
+ */
 @Composable
-fun GlowOrb(colors: List<Color>, modifier: Modifier = Modifier, glow: Float = 0.5f, dim: Float = 1f) =
-    OvertoneOrb(colors, modifier, moving = false, glow = glow, dim = dim)
+fun GlowOrb(colors: List<Color>, modifier: Modifier = Modifier, glow: Float = 0.5f, dim: Float = 1f) {
+    val a = colors.firstOrNull() ?: Juicy.Cyan
+    val b = colors.getOrNull(1) ?: a
+    val own = remember(a, b) { listOf(a, b, lerp(a, Color.White, 0.35f), lerp(a, b, 0.5f)) }
+    val seed = (a.red * 3f + a.green * 5f + a.blue * 7f) % 1f
+    LensOrb(own, modifier, energy = glow, dim = dim, seed = seed, sphere = 0.8f, moving = false)
+}
 
 /** Film grain tile: fixed noise, so it never crawls. null where bitmaps cannot be made (JVM tests). */
 @Composable

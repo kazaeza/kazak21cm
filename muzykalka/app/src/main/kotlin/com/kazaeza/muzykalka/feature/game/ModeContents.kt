@@ -62,9 +62,9 @@ import com.kazaeza.muzykalka.ui.component.ExtraKey
 import com.kazaeza.muzykalka.ui.component.ExtraKeyView
 import com.kazaeza.muzykalka.ui.component.DegreeRing
 import com.kazaeza.muzykalka.ui.component.degreeRingMinSide
-import com.kazaeza.muzykalka.ui.effect.GlowOrb
+import com.kazaeza.muzykalka.ui.effect.HarmonicWaves
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.min
 import com.kazaeza.muzykalka.ui.component.GradientText
 import com.kazaeza.muzykalka.ui.component.JuicyKey
@@ -113,7 +113,15 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
     val ringSide = min(maxWidth, maxHeight * 0.56f)
     val ring = ringSide >= degreeRingMinSide()
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PromptCard(ui, accent, Modifier.weight(1f), fill = true) {
+        // O-26: the sound itself runs along the lower edge of the question — loud while it plays, calm while you think
+        val loud = when (ui.phase) {
+            RoundPhase.PROMPTING -> 1f
+            RoundPhase.FEEDBACK -> 0.8f
+            RoundPhase.LISTENING -> 0.45f
+            else -> 0.2f
+        }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+        PromptCard(ui, accent, Modifier.fillMaxSize(), fill = true) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DegreeChip(RuNames.key(task.key), Juicy.Gold)
@@ -136,7 +144,6 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                 val shown = if (task.underNote) task.notes.single().degree else null
                 when {
                     ui.phase == RoundPhase.PROMPTING && shown == null -> {
-                        GlowOrb(accent, Modifier.size(56.dp).breathe(amount = 0.12f, periodMs = 900))
                         Text("Слушай…", style = MaterialTheme.typography.headlineSmall, color = Juicy.TextDim)
                     }
                     shown != null && !feedback -> {
@@ -201,6 +208,8 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                 }
             }
         }
+        HarmonicWaves(accent, Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(32.dp).offset(y = 16.dp), energy = loud)
+        }
 
         if (task.answerLength > 1) {
             AnswerSlots(
@@ -247,6 +256,7 @@ internal fun TirContent(task: TirTask, ui: GameUi, accent: List<Color>, onAnswer
                             highlight = highlight,
                             centre = if (feedback && task.kind == TirKind.NOTE) expected else null,
                             breathing = listening || ui.phase == RoundPhase.PROMPTING,
+                            energy = loud,
                         )
                     } else {
                         Column(Modifier.fillMaxWidth()) {

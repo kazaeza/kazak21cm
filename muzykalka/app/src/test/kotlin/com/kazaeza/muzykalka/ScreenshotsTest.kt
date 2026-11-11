@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -112,6 +113,12 @@ class ScreenshotsTest {
 
     @Test
     fun tir() = shot("04-tir", { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 2), onExit = {}) }, "Какая ступень?")
+
+    /** O-26: the dial after an answer — the right degree lit, the sphere flooded with its colour. */
+    @Test
+    fun tirAnswered() = shot("04a-tir-answer", { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 2), onExit = {}) }, "Какая ступень?") {
+        rule.onAllNodesWithText("5").onFirst().performClick()
+    }
 
     @Test
     fun reverseHunt() = shot("05-reverse-hunt", { GameScreen(RoundSpec(Variant.HUNT_REVERSE, level = 1), onExit = {}) }, "лад")
