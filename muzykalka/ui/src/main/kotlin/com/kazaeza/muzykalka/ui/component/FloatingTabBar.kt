@@ -12,13 +12,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -30,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -40,16 +38,16 @@ import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import com.kazaeza.muzykalka.ui.theme.Motion
 
-/** One tab of [FloatingTabBar]: a short label ([icon] is kept for old call sites and unused). */
-data class TabSpec(val label: String, val icon: String = "")
+/** One tab of [FloatingTabBar]: its mark; [label] is only spoken (TalkBack) and looked for by tests (O-31). */
+data class TabSpec(val label: String, val icon: TabIcon)
 
 /** Height of the bar itself; screens reserve this plus [FloatingTabBarMargin] at the bottom. */
 val FloatingTabBarHeight = 64.dp
 val FloatingTabBarMargin = 14.dp
 
 /**
- * «Обертон» (O-24): the bottom navigation is a dark floating pill of words. The selected word is
- * bright, with a dot of light under it that glides from tab to tab; the rest are dim.
+ * «Обертон» (O-24, O-31): the bottom navigation is a dark floating pill of marks. The selected mark is
+ * bright, with a dot of light under it; the rest are dim.
  */
 @Composable
 fun FloatingTabBar(
@@ -88,13 +86,8 @@ fun FloatingTabBar(
                     .padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    tab.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = lerp(Juicy.TextFaint, Juicy.Text, on),
-                    maxLines = 1,
-                    modifier = Modifier.clearAndSetSemantics { },
-                )
+                // the mark sits a little above the middle, constant, so the dot of light has room under it
+                TabGlyph(tab.icon, lerp(Juicy.TextDim.copy(alpha = 0.75f), Juicy.Text, on), Modifier.offset(y = (-4).dp))
                 Box(
                     Modifier
                         .align(Alignment.BottomCenter)

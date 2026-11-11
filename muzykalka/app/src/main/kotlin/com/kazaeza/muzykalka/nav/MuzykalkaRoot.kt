@@ -51,6 +51,7 @@ import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.ui.component.FloatingTabBar
 import com.kazaeza.muzykalka.ui.component.FloatingTabBarMargin
 import com.kazaeza.muzykalka.ui.component.FloatingTabBarReserve
+import com.kazaeza.muzykalka.ui.component.TabIcon
 import com.kazaeza.muzykalka.ui.component.TabSpec
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import com.kazaeza.muzykalka.ui.theme.Motion
@@ -60,10 +61,10 @@ private data class Tab(val route: Any, val routeClass: KClass<*>, val spec: TabS
 
 /** Four tabs, no more: the app is a practice tool, not a super-app. */
 private val TABS = listOf(
-    Tab(TodayRoute, TodayRoute::class, TabSpec("Сегодня")),
-    Tab(ModesRoute, ModesRoute::class, TabSpec("Режимы")),
-    Tab(LibraryRoute, LibraryRoute::class, TabSpec("Библиотека")),
-    Tab(ProgressRoute, ProgressRoute::class, TabSpec("Прогресс")),
+    Tab(TodayRoute, TodayRoute::class, TabSpec("Сегодня", TabIcon.TODAY)),
+    Tab(ModesRoute, ModesRoute::class, TabSpec("Режимы", TabIcon.MODES)),
+    Tab(LibraryRoute, LibraryRoute::class, TabSpec("Библиотека", TabIcon.LIBRARY)),
+    Tab(ProgressRoute, ProgressRoute::class, TabSpec("Прогресс", TabIcon.PROGRESS)),
 )
 
 @Composable
