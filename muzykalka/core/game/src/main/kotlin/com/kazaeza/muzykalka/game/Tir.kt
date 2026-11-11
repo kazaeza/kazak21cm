@@ -105,10 +105,18 @@ class TirDriver(
     private var blockLevel = 0
     private var blockLeft = 0
 
-    private fun pickMode(level: Int, r: Random): Mode = when (level) {
+    private fun pickMode(level: Int, r: Random, history: List<AttemptRecord>): Mode = when (level) {
         1 -> Mode.MAJOR
+        // O-27: level 2 is learnt in two halves — major alone first, then mostly minor, then the usual mix
+        2 -> halves(history).let { h ->
+            when {
+                !h.major -> Mode.MAJOR
+                !h.minor -> if (r.nextDouble() < MINOR_SHARE_LEARNING) Mode.MINOR else Mode.MAJOR
+                else -> if (r.nextDouble() < MINOR_SHARE) Mode.MINOR else Mode.MAJOR
+            }
+        }
         7 -> MODAL_LEVEL_MODES[r.nextInt(MODAL_LEVEL_MODES.size)]
-        else -> if (r.nextDouble() < 0.3) Mode.MINOR else Mode.MAJOR
+        else -> if (r.nextDouble() < MINOR_SHARE) Mode.MINOR else Mode.MAJOR
     }
 
     override fun nextTask(context: DriverContext): TirTask {
@@ -118,12 +126,12 @@ class TirDriver(
         val level = context.level.coerceIn(1, Levels.TIR.size)
         val r = context.random
         if (!usesDrone(level)) {
-            val key = keyPicker.next(pickMode(level, r))
+            val key = keyPicker.next(pickMode(level, r, context.history))
             val cadence = arranger.chords(Harmony.cadence(key.mode), key, beatsEach = 1.0, tempoBpm = TEMPO)
             return if (level == 5) chordTask(key, cadence, context) else progressionTask(key, cadence, r)
         }
         val kept = blockKey?.takeIf { blockLeft > 0 && blockLevel == level }
-        val key = kept ?: keyPicker.next(pickMode(level, r))
+        val key = kept ?: keyPicker.next(pickMode(level, r, context.history))
         val newKey = kept == null
         if (newKey) {
             blockKey = key
@@ -217,7 +225,7 @@ class TirDriver(
         val r = context.random
         val blockId = OVER_CHORDS_BLOCK + level
         val kept = blockKey?.takeIf { blockLeft > 0 && blockLevel == blockId }
-        val key = kept ?: keyPicker.next(pickMode(2, r))
+        val key = kept ?: keyPicker.next(if (r.nextDouble() < MINOR_SHARE) Mode.MINOR else Mode.MAJOR)
         val newKey = kept == null
         if (newKey) {
             blockKey = key
@@ -254,7 +262,7 @@ class TirDriver(
         val r = context.random
         val blockId = UNDER_NOTE_BLOCK + level
         val kept = blockKey?.takeIf { blockLeft > 0 && blockLevel == blockId }
-        val key = kept ?: keyPicker.next(pickMode(2, r))
+        val key = kept ?: keyPicker.next(if (r.nextDouble() < MINOR_SHARE) Mode.MINOR else Mode.MAJOR)
         val newKey = kept == null
         if (newKey) {
             blockKey = key
@@ -520,6 +528,33 @@ class TirDriver(
         const val UNDER_NOTE_TARGET_MS = 3_500L
 
         /** Median-latency targets for promotion, per level (ROADMAP G-02). */
+        const val MINOR_SHARE = 0.3
+        const val MINOR_SHARE_LEARNING = 0.7
+
+        /** Answers per mode that make a half of level 2 learnt (two halves — one [LevelRules.SLOW] window). */
+        const val HALF_WINDOW = 30
+
+        /**
+         * O-27: where level 2 («все 7 ступеней») stands, mode by mode. [minorRight] and [majorRight] count right
+         * answers among the last [HALF_WINDOW] of that mode — what the level's caption shows.
+         */
+        data class Halves(val major: Boolean, val minor: Boolean, val majorRight: Int, val minorRight: Int)
+
+        fun halves(history: List<AttemptRecord>): Halves {
+            val level2 = history.filter { it.variant == Variant.TIR_CLASSIC && it.level == 2 }
+            fun of(mode: Mode) = level2.filter { Key.modeOfLabel(it.keyLabel) == mode }
+            fun right(mode: Mode) = of(mode).takeLast(HALF_WINDOW).count { it.correct }
+            val target = promotionTargetMs(2)
+            return Halves(
+                major = LevelRules.steady(of(Mode.MAJOR), target, HALF_WINDOW),
+                minor = LevelRules.steady(of(Mode.MINOR), target, HALF_WINDOW),
+                majorRight = right(Mode.MAJOR), minorRight = right(Mode.MINOR),
+            )
+        }
+
+        /** Level 2 opens level 3 only with both halves learnt; the other levels have no halves. */
+        fun halvesAllow(level: Int, history: List<AttemptRecord>): Boolean = level != 2 || halves(history).let { it.major && it.minor }
+
         fun promotionTargetMs(level: Int): Long = when (level) {
             4 -> 5_000
             6 -> 8_000

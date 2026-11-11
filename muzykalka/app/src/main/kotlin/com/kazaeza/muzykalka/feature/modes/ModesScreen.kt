@@ -44,6 +44,7 @@ import com.kazaeza.muzykalka.feature.game.Drills
 import com.kazaeza.muzykalka.game.SingUnlock
 import com.kazaeza.muzykalka.game.GuitarNeed
 import com.kazaeza.muzykalka.game.ModeId
+import com.kazaeza.muzykalka.game.TirDriver
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
@@ -139,6 +140,7 @@ fun ModesScreen(
     val progress by graph.progress.progress.collectAsState(initial = GameProgress())
     val scope = rememberCoroutineScope()
     val singing by remember { graph.practice.observeAttempts().map { SingUnlock.status(it) } }.collectAsState(initial = SingUnlock.Status(false, 0, 0))
+    val tirHalves by remember { graph.practice.observeAttempts().map { TirDriver.halves(it) } }.collectAsState<TirDriver.Companion.Halves?, TirDriver.Companion.Halves?>(initial = null)
     ScreenFrame(title = "Режимы", subtitle = "всё в одном месте: выбирай и играй", accent = Accents.Recorder) {
         ModesCatalog.SECTIONS.forEach { mode ->
             val entries = ModesCatalog.entries(mode)
@@ -151,6 +153,7 @@ fun ModesScreen(
                         mode = mode,
                         progress = progress,
                         singing = singing,
+                        tirHalves = tirHalves,
                         onSelectLevel = { v, level, allOpen ->
                             scope.launch {
                                 if (allOpen) graph.progress.unlock(v, level)
@@ -202,6 +205,7 @@ private fun EntryCard(
     mode: ModeId,
     progress: GameProgress,
     singing: SingUnlock.Status,
+    tirHalves: TirDriver.Companion.Halves?,
     onSelectLevel: (Variant, Int, Boolean) -> Unit,
     onStart: () -> Unit,
     onLibrary: () -> Unit,
@@ -235,7 +239,7 @@ private fun EntryCard(
                 Text("$record", style = MaterialTheme.typography.labelLarge, color = Juicy.Gold)
             }
         }
-        if (entry is ModeEntry.Drill) Levels(entry.variant, accent, progress, onSelectLevel)
+        if (entry is ModeEntry.Drill) Levels(entry.variant, accent, progress, onSelectLevel, tirHalves.takeIf { entry.variant == Variant.TIR_CLASSIC })
         if (entry == ModeEntry.Songs) {
             Spacer(Modifier.height(10.dp))
             GhostButton("Взять песню из сборника", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "")
@@ -267,7 +271,13 @@ private fun PlayDisc(accent: List<Color>, label: String, enabled: Boolean = true
 /** Chips for the open levels, one line for the locked rest, and the name of the chosen level. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Levels(v: Variant, accent: List<Color>, progress: GameProgress, onSelect: (Variant, Int, Boolean) -> Unit) {
+private fun Levels(
+    v: Variant,
+    accent: List<Color>,
+    progress: GameProgress,
+    onSelect: (Variant, Int, Boolean) -> Unit,
+    tirHalves: TirDriver.Companion.Halves? = null,
+) {
     val max = Drills.maxLevel(v)
     if (max <= 1) return
     val allOpen = Drills.allLevelsOpen(v)
@@ -300,4 +310,14 @@ private fun Levels(v: Variant, accent: List<Color>, progress: GameProgress, onSe
     }
     Spacer(Modifier.height(6.dp))
     Text(Drills.levelName(v, selected), style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+    // O-27: level 2 of the Tir is two halves — major first, then minor; both open level 3
+    if (tirHalves != null && selected == 2) {
+        fun half(name: String, done: Boolean, right: Int) = if (done) "$name ✓" else "$name $right из ${TirDriver.HALF_WINDOW}"
+        Text(
+            half("мажор", tirHalves.major, tirHalves.majorRight) + " · " +
+                if (tirHalves.major) half("минор", tirHalves.minor, tirHalves.minorRight) else "минор — после мажора",
+            style = MaterialTheme.typography.bodySmall,
+            color = Juicy.TextDim,
+        )
+    }
 }

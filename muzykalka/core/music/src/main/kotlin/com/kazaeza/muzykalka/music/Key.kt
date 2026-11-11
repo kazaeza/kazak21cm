@@ -78,6 +78,11 @@ data class Key(val tonic: NoteName, val mode: Mode) {
         get() = mode.degrees.any { spell(it).accidental.semitones !in -1..1 }
 
     override fun toString(): String = "$tonic ${mode.name}"
+
+    companion object {
+        /** The mode of a key written by [toString] (attempt logs keep keys that way); null if it is not one. */
+        fun modeOfLabel(label: String?): Mode? = label?.substringAfterLast(' ')?.let { name -> Mode.entries.firstOrNull { it.name == name } }
+    }
 }
 
 /** Practical keys: one spelling per pitch class, chosen to minimise accidentals. */

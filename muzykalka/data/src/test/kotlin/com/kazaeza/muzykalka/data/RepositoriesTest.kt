@@ -100,6 +100,18 @@ class RepositoriesTest {
         assertEquals(12 * 60_000L + PracticeRepository.MAX_SESSION_MS, timed.observePracticeMs().first())
     }
 
+    /** O-27: a new level is an offer — opening it does not move the level that is played. */
+    @Test
+    fun unlockKeepsTheSelectedLevel() = runBlocking {
+        val store = ProgressStore(context)
+        val before = store.current().selectedLevel(Variant.TIR_OVER_CHORDS)
+        assertEquals(true, store.unlock(Variant.TIR_OVER_CHORDS, before + 1))
+        assertEquals(before + 1, store.current().unlockedLevel(Variant.TIR_OVER_CHORDS))
+        assertEquals(before, store.current().selectedLevel(Variant.TIR_OVER_CHORDS))
+        store.select(Variant.TIR_OVER_CHORDS, before + 1)
+        assertEquals(before + 1, store.current().selectedLevel(Variant.TIR_OVER_CHORDS))
+    }
+
     @Test
     fun riffsAndAttemptsPersist() = runBlocking {
         val riff = Melody(LibraryRepository.newId(), "Рифф", Mode.PHRYGIAN, MelodyKind.RIFF, DegreeNote.parseLine("1 b2 b3 1 5, b7,"))

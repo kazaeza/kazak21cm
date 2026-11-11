@@ -119,7 +119,9 @@ private fun GameHost(
 ) {
     val graph = LocalAppGraph.current
     var round by remember { mutableIntStateOf(0) }
-    val vm: GameViewModel = viewModel(key = "$vmKey-$round") { GameViewModel(graph, spec) }
+    // O-27: a newly opened level taken on the summary — «Ещё раунд» plays it even when the level came with the spec
+    var takenLevel by remember { mutableStateOf<Int?>(null) }
+    val vm: GameViewModel = viewModel(key = "$vmKey-$round") { GameViewModel(graph, takenLevel?.let { spec.copy(level = it) } ?: spec) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val accent = ModeVisuals.accent(spec.variant)
     val particles = rememberParticleState()
@@ -229,6 +231,10 @@ private fun GameHost(
                 playing = ui.playingAnchor,
                 notation = ui.notation,
                 onAnchor = vm::playAnchor,
+                onTakeLevel = { level ->
+                    vm.takeLevel(level)
+                    takenLevel = level
+                },
             )
         }
     }
@@ -315,6 +321,7 @@ private fun SummaryOverlay(
     accent: List<Color>,
     inSequence: Boolean,
     onAgain: () -> Unit,
+    onTakeLevel: (Int) -> Unit = {},
     onClose: () -> Unit,
     anchors: List<DegreeAnchor> = emptyList(),
     playing: DegreeAnchor? = null,
@@ -352,9 +359,21 @@ private fun SummaryOverlay(
                 GradientText("Новый рекорд!", MaterialTheme.typography.titleLarge, listOf(Juicy.Gold, Juicy.Orange))
             }
             summary.unlockedLevel?.let {
-                GlassCard(accent = Accents.Good) {
+                GlassCard(Modifier.fillMaxWidth(), accent = Accents.Good) {
                     Text("Открыт уровень $it", style = MaterialTheme.typography.titleLarge, color = Juicy.Good)
                     Text(Drills.levelName(summary.variant, it), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                    Spacer(Modifier.height(10.dp))
+                    // O-27: an offer, not a switch — the level changes only when asked to
+                    if (summary.levelTaken) {
+                        Text("Дальше играем на уровне $it.", style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+                    } else {
+                        GhostButton("Перейти на уровень $it", onClick = { onTakeLevel(it) }, Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "Пока остаёшься на уровне ${summary.level}. Перейти можно и потом — в «Режимах».",
+                            style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint,
+                        )
+                    }
                 }
             }
             GlassCard(Modifier.fillMaxWidth()) {

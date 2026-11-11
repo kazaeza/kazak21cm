@@ -118,19 +118,41 @@ object Levels {
 }
 
 /**
- * Promotion: over the last [window] attempts at the current level, accuracy ≥ [minAccuracy] and
- * median latency ≤ the variant's target. Demotion never happens automatically (no punishment
+ * Promotion: over the last [Pace.window] attempts at the current level, accuracy ≥ [MIN_ACCURACY] and
+ * median latency ≤ the variant's target, on at least [Pace.minDays] different days. Demotion never happens automatically (no punishment
  * loops); the user can pick any unlocked level.
  */
 object LevelRules {
     const val WINDOW = 30
     const val MIN_ACCURACY = 0.9
+    const val DAY_MS = 86_400_000L
 
-    fun shouldPromote(recent: List<AttemptRecord>, targetMedianLatencyMs: Long): Boolean {
-        if (recent.size < WINDOW) return false
-        val last = recent.takeLast(WINDOW)
+    /** How much evidence a promotion needs: the last [window] answers, spread over at least [minDays] days. */
+    data class Pace(val window: Int = WINDOW, val minDays: Int = 1)
+
+    val QUICK = Pace()
+
+    /**
+     * O-27 (ADR-037): two clean rounds in one evening are luck or a good day, not a skill. The Tir climbs on
+     * 60 answers from at least three different days.
+     */
+    val SLOW = Pace(window = 60, minDays = 3)
+
+    /** Accurate and fast enough over the last [window] answers — on whatever days they were given. */
+    fun steady(recent: List<AttemptRecord>, targetMedianLatencyMs: Long, window: Int = WINDOW): Boolean {
+        if (recent.size < window) return false
+        val last = recent.takeLast(window)
         val acc = last.count { it.correct }.toDouble() / last.size
         val median = last.map { it.latencyMs }.sorted()[last.size / 2]
         return acc >= MIN_ACCURACY && median <= targetMedianLatencyMs
     }
+
+    /** [dayOf] turns an attempt's epoch ms into a day number (the caller knows the user's zone and day start). */
+    fun shouldPromote(
+        recent: List<AttemptRecord>,
+        targetMedianLatencyMs: Long,
+        pace: Pace = QUICK,
+        dayOf: (Long) -> Long = { it.floorDiv(DAY_MS) },
+    ): Boolean = steady(recent, targetMedianLatencyMs, pace.window) &&
+        recent.takeLast(pace.window).map { dayOf(it.atEpochMs) }.distinct().size >= pace.minDays
 }

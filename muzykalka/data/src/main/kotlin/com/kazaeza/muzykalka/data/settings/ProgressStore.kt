@@ -47,11 +47,14 @@ class ProgressStore(context: Context) {
 
     suspend fun select(v: Variant, level: Int) = edit { it.copy(selected = it.selected + (v.name to level)) }
 
-    /** Returns true when [level] was newly unlocked. */
+    /**
+     * Returns true when [level] was newly unlocked. The level played stays where it was (O-27): a new level is
+     * offered, and taken with [select] — it used to switch by itself, and the next round was suddenly harder.
+     */
     suspend fun unlock(v: Variant, level: Int): Boolean {
-        val before = current().unlockedLevel(v)
-        if (level <= before) return false
-        edit { it.copy(unlocked = it.unlocked + (v.name to level), selected = it.selected + (v.name to level)) }
+        val before = current()
+        if (level <= before.unlockedLevel(v)) return false
+        edit { it.copy(unlocked = it.unlocked + (v.name to level), selected = it.selected + (v.name to before.selectedLevel(v))) }
         return true
     }
 

@@ -74,6 +74,8 @@ data class RoundSummary(
     val newRecord: Boolean,
     val unlockedLevel: Int?,
     val attempts: List<AttemptRecord>,
+    /** O-27: the newly opened level was taken — the next round is played on it. */
+    val levelTaken: Boolean = false,
     /** «Пропевка» (O-14): on which try each found note was found (1 = first). */
     val foundOn: List<Int> = emptyList(),
 ) {
@@ -205,6 +207,9 @@ object Drills {
         ModeId.KAMERTON -> (if (v == Variant.KAMERTON_SEARCH) Levels.KAMERTON_SEARCH else Levels.KAMERTON).getOrElse(level - 1) { "" }
         else -> ""
     }
+
+    /** O-27 (ADR-037): the Tir's ladders climb slowly — 60 answers over three days; the rest as before. */
+    fun pace(v: Variant): LevelRules.Pace = if (v.mode == ModeId.TIR) LevelRules.SLOW else LevelRules.QUICK
 
     fun promotionTargetMs(v: Variant, level: Int): Long = when (v.mode) {
         ModeId.TIR -> when (v) {
@@ -581,8 +586,12 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
             if (ownSession && s.attempts.isNotEmpty()) sessionId?.let { graph.practice.finishSession(it) }
             val newRecord = !spec.exam && s.score > 0 && graph.progress.submitScore(spec.variant, s.score)
             val levelAttempts = (history + s.attempts).filter { it.level == level }
+            val studyDay = graph.studyDay(settings)
             val unlocked = if (!spec.exam && level < Drills.maxLevel(spec.variant) &&
-                LevelRules.shouldPromote(levelAttempts, Drills.promotionTargetMs(spec.variant, level)) &&
+                LevelRules.shouldPromote(levelAttempts, Drills.promotionTargetMs(spec.variant, level), Drills.pace(spec.variant)) { ms ->
+                    studyDay.of(Instant.ofEpochMilli(ms)).toLong()
+                } &&
+                (spec.variant != Variant.TIR_CLASSIC || TirDriver.halvesAllow(level, levelAttempts)) &&
                 graph.progress.unlock(spec.variant, level + 1)
             ) level + 1 else null
             RoundSummary(
@@ -628,6 +637,12 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     }
 
     /** New round or leaving the summary: the anchor stops. */
+    /** O-27: a new level is an offer; this is the «yes». */
+    fun takeLevel(level: Int) {
+        viewModelScope.launch { graph.progress.select(spec.variant, level) }
+        state.update { it.copy(summary = it.summary?.copy(levelTaken = true)) }
+    }
+
     fun stopAnchor() {
         if (anchorJob?.isActive != true) return
         anchorJob?.cancel()
