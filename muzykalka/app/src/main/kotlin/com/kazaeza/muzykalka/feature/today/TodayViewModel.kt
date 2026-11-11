@@ -12,9 +12,8 @@ import com.kazaeza.muzykalka.game.SetSegment
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import java.time.Instant
 import java.time.LocalDate
 
 data class TodayUi(
@@ -23,6 +22,9 @@ data class TodayUi(
     val libraryCount: Int = 0,
     val dueCount: Int = 0,
     val streak: Int = 0,
+    /** O-30: what the screen leads with — it moves from the first round on, unlike «songs played unaided». */
+    val weekMinutes: Int = 0,
+    val answersToday: Int = 0,
     val practicedToday: Boolean = false,
     /** What «Начать сет» will run today, as the set screen will build it. */
     val set: List<SetSegment> = DailySet.available(DailySet.DEFAULT, APP_STAGE),
@@ -39,11 +41,14 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
     val ui: StateFlow<TodayUi> = combine(
         graph.settings.settings,
         graph.practice.observePlayableNow(),
-        graph.practice.observePracticeDays(),
+        graph.practice.observePracticeSpans(),
         graph.library.observeEntries(),
-        graph.practice.observeAttempts().map { SingUnlock.status(it) }.distinctUntilChanged(),
-    ) { settings, playable, days, entries, singing ->
+        graph.practice.observeAttempts(),
+    ) { settings, playable, spans, entries, attempts ->
         val today = graph.today(settings)
+        val days = spans.map { it.studyDay }.toSet()
+        val singing = SingUnlock.status(attempts)
+        val studyDay = graph.studyDay(settings)
         val orderable = entries.filter { it.orderable }
         val due = orderable.count { it.card?.isDue(today) ?: true }
         val plan = SingUnlock.plan(DailySet.available(DailySet.DEFAULT, APP_STAGE), singing)
@@ -53,6 +58,8 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
             libraryCount = orderable.size,
             dueCount = due,
             streak = Metrics.streak(days, today),
+            weekMinutes = Metrics.weekMinutes(spans, today),
+            answersToday = attempts.count { studyDay.of(Instant.ofEpochMilli(it.atEpochMs)) == today },
             practicedToday = today in days,
             set = if (due == 0) DailySet.withoutSongs(plan) else plan,
             date = LocalDate.ofEpochDay(today.toLong()),

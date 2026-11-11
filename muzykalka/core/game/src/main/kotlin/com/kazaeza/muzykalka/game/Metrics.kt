@@ -27,6 +27,18 @@ object Metrics {
         return n
     }
 
+    /** Time of one finished session, by the study day it belongs to. */
+    data class PracticeSpan(val studyDay: Int, val ms: Long)
+
+    /**
+     * O-30: minutes practised over the seven study days ending [today] — the number «Сегодня» leads with.
+     * Any practice at all shows as at least one minute, so a first short round is not a zero.
+     */
+    fun weekMinutes(spans: Collection<PracticeSpan>, today: Int): Int {
+        val ms = spans.filter { it.studyDay in today - 6..today }.sumOf { it.ms.coerceAtLeast(0) }
+        return if (ms == 0L) 0 else ((ms + 30_000) / 60_000).toInt().coerceAtLeast(1)
+    }
+
     /** Neck heat cell for one (string, pitch class), from Hunt FIND attempts. */
     data class HeatCell(val string: Int, val pitchClass: Int, val medianMs: Long, val accuracy: Double, val count: Int)
 

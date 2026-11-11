@@ -69,7 +69,7 @@ class AppSmokeTest {
             rule.onNodeWithContentDescription(tab).performClick()
             rule.waitForIdle()
         }
-        rule.onNodeWithText("ИГРАЮ С ХОДУ").assertIsDisplayed()
+        rule.onNodeWithText("ЗА НЕДЕЛЮ").assertIsDisplayed()
         rule.onAllNodesWithText("Лексикон").assertCountEquals(0)
     }
 

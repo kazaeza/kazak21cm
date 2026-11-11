@@ -408,6 +408,15 @@ class MetricsAndExamTest {
         assertEquals(0, Metrics.streak(emptyList(), today = 10))
     }
 
+    /** O-30. */
+    @Test
+    fun `week minutes cover the seven study days ending today`() {
+        fun span(day: Int, minutes: Double) = Metrics.PracticeSpan(day, (minutes * 60_000).toLong())
+        assertEquals(0, Metrics.weekMinutes(emptyList(), today = 10))
+        assertEquals(25, Metrics.weekMinutes(listOf(span(10, 10.0), span(4, 15.0), span(3, 40.0), span(11, 40.0)), today = 10))
+        assertEquals(1, Metrics.weekMinutes(listOf(span(10, 0.2)), today = 10), "a short first round is not a zero")
+    }
+
     @Test
     fun `exam measures`() {
         val hunt = listOf(a(Variant.HUNT_FIND, "x", true, 800), a(Variant.HUNT_FIND, "x", false, 6000))

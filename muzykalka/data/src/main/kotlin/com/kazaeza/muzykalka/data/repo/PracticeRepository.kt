@@ -8,6 +8,7 @@ import com.kazaeza.muzykalka.data.db.OrderLogEntity
 import com.kazaeza.muzykalka.data.db.SessionEntity
 import com.kazaeza.muzykalka.game.AttemptRecord
 import com.kazaeza.muzykalka.game.HintStep
+import com.kazaeza.muzykalka.game.Metrics
 import com.kazaeza.muzykalka.game.OrderFact
 import com.kazaeza.muzykalka.game.OrderResult
 import com.kazaeza.muzykalka.game.SelfGrade
@@ -46,6 +47,11 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
     suspend fun finishSession(id: Long) = db.sessions().finish(id, clock())
 
     fun observePracticeDays(): Flow<List<Int>> = db.sessions().observePracticeDays()
+
+    /** Finished sessions as (study day, time), capped like [observePracticeMs] (O-30). */
+    fun observePracticeSpans(): Flow<List<Metrics.PracticeSpan>> = db.sessions().observeFinished().map { rows ->
+        rows.map { r -> Metrics.PracticeSpan(r.studyDay, ((r.endedAtEpochMs ?: r.startedAtEpochMs) - r.startedAtEpochMs).coerceIn(0, MAX_SESSION_MS)) }
+    }
 
     /** Total time in finished sessions; a session left open overnight counts at most [MAX_SESSION_MS]. */
     fun observePracticeMs(): Flow<Long> = db.sessions().observeFinished().map { rows ->

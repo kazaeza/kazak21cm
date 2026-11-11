@@ -1,6 +1,6 @@
 package com.kazaeza.muzykalka.feature.today
 
-import androidx.compose.foundation.horizontalScroll
+import com.kazaeza.muzykalka.ui.theme.Numbers
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,29 +59,28 @@ fun TodayScreen(
     ) {
         item(key = "hero") {
             GlassCard(Modifier.fillMaxWidth(), accent = Accents.Hero, contentPadding = 22.dp) {
-                SectionLabel("Играю с ходу", color = Juicy.TextDim)
+                SectionLabel("За неделю", color = Juicy.TextDim)
                 Row(verticalAlignment = Alignment.Bottom) {
-                    CountUpText(ui.playableNow, MaterialTheme.typography.displayLarge, colors = Accents.Hero)
+                    CountUpText(ui.weekMinutes, MaterialTheme.typography.displayLarge, colors = Accents.Hero)
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        if (ui.libraryCount == 0) "песен пока нет" else "из ${ui.libraryCount} ${plural(ui.libraryCount, "песни", "песен", "песен")}",
+                        "${plural(ui.weekMinutes, "минута", "минуты", "минут")} практики",
                         style = MaterialTheme.typography.titleMedium,
                         color = Juicy.TextDim,
                         modifier = Modifier.weight(1f),
                     )
                 }
-                Text(
-                    "Столько песен из твоей библиотеки ты в последний раз сыграл сам — без подсказок и в незнакомой тональности.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Juicy.TextFaint,
-                )
+                Spacer(Modifier.height(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                    MiniStat(ui.answersToday, plural(ui.answersToday, "ответ", "ответа", "ответов") + " сегодня")
+                    MiniStat(ui.streak, plural(ui.streak, "день", "дня", "дней") + " подряд")
+                    // «играю с ходу» is the goal of the whole app, but it stays at zero for months — shown once it is not
+                    if (ui.playableNow > 0) MiniStat(ui.playableNow, plural(ui.playableNow, "песня", "песни", "песен") + " с ходу")
+                }
             }
         }
-        item(key = "pills") {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatPill("", "${ui.streak} ${plural(ui.streak, "день", "дня", "дней")} подряд", colors = Accents.Tir)
-                if (ui.libraryCount > 0) StatPill("", "повторить: ${ui.dueCount}", colors = Accents.Taper)
-            }
+        if (ui.libraryCount > 0) {
+            item(key = "pills") { StatPill("", "повторить: ${ui.dueCount}", colors = Accents.Taper) }
         }
         item(key = "start") {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -128,5 +126,14 @@ fun TodayScreen(
                 }
             }
         }
+    }
+}
+
+/** A small dot-matrix number with what it counts under it (O-30). */
+@Composable
+private fun MiniStat(value: Int, label: String) {
+    Column {
+        Text(value.toString(), style = Numbers.Small, color = Juicy.Text)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Juicy.TextDim)
     }
 }
