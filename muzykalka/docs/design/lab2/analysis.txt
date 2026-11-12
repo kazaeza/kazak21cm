@@ -1,0 +1,34 @@
+DRONES (tonic 130.8 Hz + octave), loop is exact by construction
+patch     seconds  rms dB  peak dB  centroid Hz (min..max over the loop)  L/R corr  seam step  render ms
+tanpura    10.80   -20.6    -6.9     419..2129                          0.81    0.0029 (max inside 0.2049)  955
+analog     12.00   -20.2    -9.0     194..568                           0.26    0.0082 (max inside 0.0346)  781
+glass      10.92   -20.8    -8.8     191..421                           0.36    0.0015 (max inside 0.0193)  452
+old        12.00   -20.9   -11.6     246..471                           1.00    0.0305 (max inside 0.0305)  615
+
+NOTES (1 s held)
+patch     f Hz    cents  peak dB  rms0.4 dB  loudA dB  centroid  >9k %  to -6dB ms  rings s  L/R corr
+tanpura    220.0    0.1    -7.4    -17.0     -31.8      262    0.00       30      2.08    0.95
+tanpura    440.0    0.2    -5.8    -16.4     -26.8      505    0.00       30      2.29    0.83
+tanpura    880.0   -0.1    -7.7    -18.4     -28.0     1130    0.01      264      2.13    0.72
+tanpura   1318.5    0.2   -10.0    -20.3     -26.6     1603    0.02       38      1.69    0.81
+tanpura   loudness spread A3..E6: 5.2 dB
+analog     220.0   -0.7    -7.0    -19.5     -31.0      602    0.01        8      2.64    0.85
+analog     440.0   -1.1    -7.7    -15.9     -25.8      640    0.03      104      2.53    0.83
+analog     880.0   -0.9   -10.3    -18.7     -24.9     1105    0.06       60      2.39    0.67
+analog    1318.5    0.0   -11.9    -20.9     -27.2     1743    0.17       40      1.80    0.77
+analog    loudness spread A3..E6: 6.0 dB
+glass      220.0   -1.2    -9.3    -15.2     -31.8      228    0.00        2      2.98    0.93
+glass      440.0    1.2    -9.9    -16.4     -28.6      469    0.00        2      3.73    0.76
+glass      880.0   -1.2    -9.1    -16.3     -27.7      919    0.00       12      3.33    0.57
+glass     1318.5   -0.4   -13.3    -20.7     -25.1     1335    0.00        2      2.63    0.56
+glass     loudness spread A3..E6: 6.7 dB
+old        220.0    0.1   -12.4    -15.9     -32.2      233    0.00       16      0.08    1.00
+old        440.0    0.1   -12.4    -15.9     -26.8      465    0.00       16      0.08    1.00
+old        880.0   -0.1   -15.4    -18.9     -26.3      930    0.00       16      0.08    1.00
+old       1318.5   -0.0   -17.2    -20.7     -27.0     1394    0.00       16      0.08    1.00
+old       loudness spread A3..E6: 5.9 dB
+
+SPACE: impulse response of the reverb (t60 asked 3.2 s)
+energy L 0.677 R 0.653  peak 0.044  measured t60 ~ 2.95 s (-60 dB from the level at 0.1-0.3 s)  L/R corr 0.03
+
+total 4845 ms

@@ -1,0 +1,244 @@
+<title>Лаборатория Музыкалки 2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600;800&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: one narrow column, like the phone it will be tested on — the body first, its keys under it, then the sound. */
+  :root {
+    color-scheme: dark;
+    --ink: #0a0909; --ink2: #121110; --ink3: #1a1817; --ink4: #24211f;
+    --line: rgba(255, 255, 255, 0.10); --text: #f2eee9; --dim: #9c958e;
+    --gold: #ffc21f; --cyan: #22e4ff;
+    --text-font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --dot-font: "Doto", "Manrope", ui-monospace, monospace;
+  }
+  [hidden] { display: none !important; }
+  html { background: var(--ink); }
+  body {
+    background: var(--ink); color: var(--text); font-family: var(--text-font); font-size: 15px; line-height: 1.5;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 56px;
+  }
+  main { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 34px; }
+  header { display: flex; flex-direction: column; gap: 6px; }
+  .tag { font-family: var(--dot-font); font-weight: 800; letter-spacing: 0.12em; font-size: 12px; color: var(--gold); }
+  h1 { font-size: 26px; line-height: 1.15; font-weight: 700; margin: 0; text-wrap: balance; }
+  h2 { font-size: 19px; font-weight: 700; margin: 0; text-wrap: balance; }
+  p { margin: 0; color: var(--dim); }
+  p b, li b { color: var(--text); font-weight: 600; }
+  section { display: flex; flex-direction: column; gap: 14px; border-top: 1px solid var(--line); padding-top: 22px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .label { font-size: 13px; color: var(--dim); }
+  ul { margin: 0; padding-left: 18px; color: var(--dim); display: flex; flex-direction: column; gap: 8px; }
+
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .chip {
+    min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim);
+    font-size: 14px; font-weight: 600; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .chip[aria-pressed="true"] { background: var(--text); color: var(--ink); border-color: var(--text); }
+  .chip.soft[aria-pressed="true"] { background: var(--ink4); color: var(--text); border-color: rgba(255, 255, 255, 0.28); }
+  .go { min-height: 52px; border-radius: 16px; background: var(--gold); color: var(--ink); font-weight: 700; font-size: 16px; padding: 0 20px; }
+  .go[aria-pressed="true"] { background: var(--ink4); color: var(--text); }
+
+  .stage { position: relative; aspect-ratio: 1; max-width: 100%; border-radius: 28px; overflow: hidden; background: var(--ink); }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  .stage .none { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--dim); }
+  .keys { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+  .key {
+    min-height: 50px; border-radius: 14px; border: 1px solid var(--line); background: var(--ink2);
+    font-family: var(--dot-font); font-weight: 800; font-size: 20px; color: var(--deg); transition: background 0.12s, transform 0.12s;
+  }
+  .key .acc { font-family: var(--text-font); font-weight: 600; font-size: 14px; margin-right: 1px; }
+  .key:active { transform: scale(0.94); }
+  .key[aria-pressed="true"] { background: color-mix(in srgb, var(--deg) 22%, var(--ink2)); border-color: var(--deg); }
+
+  .slider { display: grid; grid-template-columns: 112px minmax(0, 1fr) 44px; gap: 10px; align-items: center; }
+  .slider output { font-weight: 700; font-size: 14px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; accent-color: var(--gold); min-width: 0; }
+  .status { font-size: 13px; color: var(--dim); min-height: 20px; }
+  .status.busy { color: var(--gold); }
+  .about { min-height: 68px; }
+  @media (prefers-reduced-motion: reduce) { .key, .chip { transition: none; } }
+</style>
+
+<main>
+  <header>
+    <div class="tag">ЛАБОРАТОРИЯ 2</div>
+    <h1>Шар и звук, с нуля</h1>
+    <p>Три разных тела для шара и три инструмента для дрона с нотой. Ничего из этого ещё нет в приложении: сначала потрогай и послушай здесь.</p>
+  </header>
+
+  <section aria-labelledby="h-orb">
+    <h2 id="h-orb">Шар: три вещества</h2>
+    <div class="row" role="group" aria-label="Вещество шара">
+      <button class="chip" id="kind-ink" data-kind="ink" aria-pressed="true">Чернила</button>
+      <button class="chip" id="kind-thread" data-kind="thread" aria-pressed="false">Нить</button>
+      <button class="chip" id="kind-sand" data-kind="sand" aria-pressed="false">Песок</button>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="orb-ink"></canvas><canvas id="orb-thread" hidden></canvas><canvas id="orb-sand" hidden></canvas>
+      <div class="none" id="nogl" hidden>Этому браузеру не хватает WebGL 2 — шар здесь не показать. Открой страницу в Chrome на телефоне.</div>
+    </div>
+    <p class="about" id="kind-about"></p>
+    <div class="keys" id="keys" role="group" aria-label="Ступени"></div>
+    <div class="row">
+      <button class="chip soft" id="pluck">Щипок</button>
+      <button class="chip soft" id="rest">В покой</button>
+      <span class="label">Ступень: сначала щипок вопроса, через секунду ответ. По шару можно водить пальцем.</span>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-sound">
+    <h2 id="h-sound">Звук: дрон и нота как один инструмент</h2>
+    <p>Сейчас приложение играет в <b>моно</b>, почти без пространства, а дрон — одна неподвижная волна. Отсюда «дёшево». Здесь всё стерео, с настоящим залом и с движением внутри самого тона. Лучше слушать в наушниках, потом на динамике.</p>
+    <button class="go" id="sound" aria-pressed="false">Включить звук</button>
+    <div class="row" role="group" aria-label="Инструмент" id="patches"></div>
+    <p class="about" id="patch-about"></p>
+    <div class="row" role="group" aria-label="Тональность" id="tonics"><span class="label">Тоника</span></div>
+    <div class="row">
+      <button class="chip soft" id="high" aria-pressed="false">Ноты октавой выше</button>
+      <button class="chip soft" id="fifth" aria-pressed="false">Квинта в танпуре</button>
+      <button class="chip soft" id="scale">Гамма</button>
+    </div>
+    <div class="slider"><label class="label" for="warm">Тепло — яркость</label><input type="range" id="warm" min="-1" max="1" step="0.25" value="0"><output id="warm-out" for="warm">0</output></div>
+    <div class="slider"><label class="label" for="space">Пространство</label><input type="range" id="space" min="0" max="1" step="0.125" value="0.5"><output id="space-out" for="space">0.5</output></div>
+    <div class="slider"><label class="label" for="balance">Нота к дрону</label><input type="range" id="balance" min="0.3" max="2" step="0.1" value="1"><output id="balance-out" for="balance">1.0</output></div>
+    <div class="status" id="status" role="status">Звук выключен. Ступени выше играют ноту, когда он включён.</div>
+  </section>
+
+  <section aria-labelledby="h-refs">
+    <h2 id="h-refs">Что взято у ассистентов</h2>
+    <ul>
+      <li><b>Siri до iOS 18</b> — несколько цветных пятен света, которые складываются и раздуваются от громкости голоса. С iOS 18 — свечение по краю экрана.</li>
+      <li><b>Google</b> — четыре точки, которые превращаются в полосы громкости; в Gemini — простая форма и переливающийся градиент.</li>
+      <li><b>ChatGPT, ElevenLabs, Perplexity</b> — шум внутри круга на шейдере либо сфера из нескольких тысяч точек.</li>
+      <li><b>Общее у всех</b>: картинку ведёт сам звук, свет складывается, а движение пружинит. Никто не рисует эффект поверх готовой картинки — отсюда и было ощущение «рябь наклеена».</li>
+      <li><b>Наше правило</b>: шар сделан из одного вещества, а щипок и ответ — это силы, приложенные к нему. Чернила — настоящая жидкость; нить — одна струна, намотанная в сферу; песок — крупинки на звучащей пластине.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="h-ask">
+    <h2 id="h-ask">Что мне нужно от тебя</h2>
+    <ul>
+      <li>Какое вещество оставить: чернила, нить или песок. Или что из двух скрестить.</li>
+      <li>Какой инструмент: танпура, аналог или стекло. С какими «тепло» и «пространство».</li>
+      <li>Сливается ли гамма в выбранном инструменте и не режут ли ноты октавой выше.</li>
+      <li>Если всё ещё дёшево — каким словом: тонко, резко, плоско, пусто, слишком «синтезатор».</li>
+    </ul>
+  </section>
+</main>
+
+<script>/*ORBS_JS*/</script>
+<script>/*SYNTH_JS*/</script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id), Lab = window.OrbLab2, S = window.Synth2;
+  const NAMES = [['', '1'], ['♭', '2'], ['', '2'], ['♭', '3'], ['', '3'], ['', '4'], ['♯', '4'], ['', '5'], ['♭', '6'], ['', '6'], ['♭', '7'], ['', '7']];
+  const ABOUT = {
+    ink: 'Настоящая жидкость в стеклянном шаре. Щипок — толчок из середины, чернила расходятся грибами и закручиваются у стенки. Ответ — шар окрашивается в цвет ступени: простая ступень течёт ровной звездой, резкая закручивается вихрем.',
+    thread: 'Одна струна. В покое лежит кольцом по краю шара, от щипка по ней бегут две волны. Ответ — кольцо разматывается в обмотку по сфере: чем проще отношение частот, тем меньше витков; малая секунда — плотный клубок, который ползёт.',
+    sand: 'Крупинки на звучащей пластине, как в опытах Хладни. Щипок подбрасывает песок, и он снова ложится в линии покоя. Ответ — песок перетекает в фигуру ступени: спицы и кольца по числам её отношения.',
+  };
+  const hexOf = c => '#' + c.map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+
+  // ------------------------------------------------------------ the body
+  const orbs = {}; let kind = 'ink', last = 0, visible = true, pending = 0, held = -1;
+  function canvasOf(k) { return $('orb-' + k); }
+  function fitCanvas(c) { const r = c.getBoundingClientRect(), s = Math.max(240, Math.round(r.width * Math.min(window.devicePixelRatio || 1, 2))); if (c.width !== s) c.width = c.height = s; }
+  function orb() {
+    if (!(kind in orbs)) { const c = canvasOf(kind); fitCanvas(c); try { orbs[kind] = Lab.makers[kind](c); } catch (e) { console.error(e); orbs[kind] = null; } }
+    return orbs[kind];
+  }
+  function setKind(k) {
+    kind = k; for (const b of document.querySelectorAll('[data-kind]')) b.setAttribute('aria-pressed', String(b.dataset.kind === k));
+    for (const n of ['ink', 'thread', 'sand']) canvasOf(n).hidden = n !== k;
+    $('kind-about').textContent = ABOUT[k]; const o = orb(); $('nogl').hidden = !!o;
+    if (o && held >= 0) o.answer(held);
+  }
+  function frame(t) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (t - last) / 1000); last = t;
+    if (!visible || document.hidden) return;
+    const o = orb(); if (!o) return;
+    fitCanvas(canvasOf(kind)); o.step(dt);
+  }
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe($('stage'));
+  function markKey(s) { held = s; for (const b of $('keys').children) b.setAttribute('aria-pressed', String(+b.dataset.semi === s)); }
+  function ask(s) {
+    const o = orb(); clearTimeout(pending); if (o) { o.clear(); o.pluck(1); } markKey(-1);
+    playNote(s); pending = setTimeout(() => { const now = orb(); if (now) now.answer(s); markKey(s); }, 900);
+  }
+  NAMES.forEach(([acc, n], s) => {
+    const b = document.createElement('button'); b.className = 'key'; b.id = 'key-' + s; b.dataset.semi = s; b.style.setProperty('--deg', hexOf(Lab.COLORS[s]));
+    b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'Ступень ' + acc + n);
+    b.innerHTML = (acc ? '<span class="acc">' + acc + '</span>' : '') + n; b.addEventListener('click', () => ask(s)); $('keys').append(b);
+  });
+  for (const b of document.querySelectorAll('[data-kind]')) b.addEventListener('click', () => setKind(b.dataset.kind));
+  $('pluck').addEventListener('click', () => { const o = orb(); if (o) o.pluck(1); });
+  $('rest').addEventListener('click', () => { clearTimeout(pending); const o = orb(); if (o) o.clear(); markKey(-1); });
+  for (const k of ['ink', 'thread', 'sand']) {
+    const c = canvasOf(k); let px = 0, py = 0, down = false;
+    const at = e => { const r = c.getBoundingClientRect(); return [((e.clientX - r.left) / r.width - 0.5) / Lab.ORB, -((e.clientY - r.top) / r.height - 0.5) / Lab.ORB]; };
+    c.addEventListener('pointerdown', e => { const o = orbs[k]; if (!o) return; down = true; [px, py] = at(e); c.setPointerCapture(e.pointerId); o.pluck(0.7, px, py); o.pointer(px, py, 0, 0, true); });
+    c.addEventListener('pointermove', e => { const o = orbs[k]; if (!o || !down) return; const [x, y] = at(e); o.pointer(x, y, x - px, y - py, true); px = x; py = y; });
+    const up = () => { down = false; const o = orbs[k]; if (o) o.pointer(0, 0, 0, 0, false); };
+    c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+  }
+
+  // ------------------------------------------------------------ the sound
+  const TONICS = [['До', 130.81], ['Ре', 146.83], ['Фа', 174.61], ['Ля', 110.0]];
+  let ctx = null, droneGain = null, noteGain = null, droneSrc = null, patch = 'tanpura', f0 = TONICS[0][1], high = false, fifth = false, job = 0;
+  const cache = new Map();
+  const opts = () => ({ warm: +$('warm').value, space: +$('space').value, fifth });
+  const status = (t, busy) => { $('status').textContent = t; $('status').classList.toggle('busy', !!busy); };
+  const toBuffer = x => { const b = ctx.createBuffer(2, x.L.length, S.SR); b.copyToChannel(x.L, 0); b.copyToChannel(x.R, 1); return b; };
+  const freq = s => f0 * (high ? 4 : 2) * Math.pow(2, s / 12);
+  function noteBuffer(s, dur) {
+    const key = [patch, f0, high, s, dur, $('warm').value, $('space').value].join('|');
+    if (!cache.has(key)) cache.set(key, toBuffer(S.note(patch, freq(s), dur, opts(), 1 + cache.size)));
+    return cache.get(key);
+  }
+  function playBuffer(b, when) { const src = ctx.createBufferSource(); src.buffer = b; src.connect(noteGain); src.start(when || 0); }
+  function playNote(s) { if (!ctx) return; playBuffer(noteBuffer(s, 1.0)); }
+  function prepare() {
+    if (!ctx) return; const mine = ++job; status('Готовлю звук…', true);
+    setTimeout(() => {
+      if (mine !== job) return;
+      const d = toBuffer(S.drone(patch, f0, opts())), now = ctx.currentTime;
+      if (droneSrc) { const old = droneSrc; old.g.gain.setTargetAtTime(0, now, 0.25); old.stop(now + 1.5); }
+      const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = d; src.loop = true; g.gain.value = 0; g.gain.setTargetAtTime(1, now, 0.35);
+      src.connect(g); g.connect(droneGain); src.start(); src.g = g; droneSrc = src;
+      // the twelve notes of this key, one per idle moment, so that a key is never late
+      let s = 0; const more = () => { if (mine !== job) return; if (s > 11) { status('Дрон звучит. Жми ступени, «Гамма», меняй инструмент.'); return; } noteBuffer(s++, 1.0); setTimeout(more, 20); }; more();
+    }, 40);
+  }
+  $('sound').addEventListener('click', () => {
+    if (ctx) { const on = ctx.state === 'running'; (on ? ctx.suspend() : ctx.resume()); $('sound').setAttribute('aria-pressed', String(!on)); $('sound').textContent = on ? 'Включить звук' : 'Выключить звук'; status(on ? 'Звук на паузе.' : 'Дрон звучит.'); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) { status('Этот браузер не умеет Web Audio.'); return; }
+    ctx = new AC({ latencyHint: 'interactive' }); const master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+    droneGain = ctx.createGain(); noteGain = ctx.createGain(); droneGain.connect(master); noteGain.connect(master); noteGain.gain.value = +$('balance').value;
+    $('sound').setAttribute('aria-pressed', 'true'); $('sound').textContent = 'Выключить звук'; prepare();
+  });
+  function setPatch(id) {
+    patch = id; for (const b of $('patches').children) b.setAttribute('aria-pressed', String(b.dataset.id === id));
+    $('patch-about').textContent = S.PATCHES.find(p => p.id === id).about; $('fifth').hidden = id !== 'tanpura'; prepare();
+  }
+  for (const p of S.PATCHES) { const b = document.createElement('button'); b.className = 'chip'; b.id = 'patch-' + p.id; b.dataset.id = p.id; b.textContent = p.name; b.addEventListener('click', () => setPatch(p.id)); $('patches').append(b); }
+  TONICS.forEach(([name, f], i) => { const b = document.createElement('button'); b.className = 'chip soft'; b.id = 'tonic-' + i; b.textContent = name; b.setAttribute('aria-pressed', String(i === 0)); b.addEventListener('click', () => { f0 = f; for (const o of $('tonics').querySelectorAll('button')) o.setAttribute('aria-pressed', String(o === b)); prepare(); }); $('tonics').append(b); });
+  const toggle = (id, set) => $(id).addEventListener('click', () => { const on = $(id).getAttribute('aria-pressed') !== 'true'; $(id).setAttribute('aria-pressed', String(on)); set(on); });
+  toggle('high', on => { high = on; prepare(); }); toggle('fifth', on => { fifth = on; prepare(); });
+  $('scale').addEventListener('click', () => {
+    if (!ctx) { status('Сначала включи звук.'); return; }
+    const t = ctx.currentTime + 0.08; [0, 2, 4, 5, 7, 9, 11, 12].forEach((s, i) => playBuffer(noteBuffer(s, 0.19), t + i * 0.2));
+    const o = orb(); if (o) for (let i = 0; i < 8; i++) setTimeout(() => o.pluck(0.45), 80 + i * 200);
+  });
+  for (const id of ['warm', 'space', 'balance']) {
+    const show = () => { $(id + '-out').textContent = (+$(id).value).toFixed(id === 'balance' ? 1 : 2).replace(/\.?0+$/, '') || '0'; };
+    $(id).addEventListener('input', () => { show(); if (id === 'balance' && noteGain) noteGain.gain.value = +$(id).value; });
+    if (id !== 'balance') $(id).addEventListener('change', prepare); show();
+  }
+  setKind('ink'); setPatch('tanpura'); requestAnimationFrame(frame);
+})();
+</script>
