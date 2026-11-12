@@ -181,15 +181,18 @@ class ScreenshotsTest {
         rule.onAllNodesWithText("5").onFirst().performClick()
     }
 
-    /** O-35: the sphere with a ring on its way out — a pluck 0.1, 0.3 and 0.55 s ago, side by side. */
+    /** O-35 / O-37: the sphere with a wave on its way out — a pluck 0.03 … 0.55 s ago, side by side. */
     @Test
     fun orbRing() = shot("11-orb-ring", {
         val colors = listOf(Juicy.Blue, Juicy.Violet, Juicy.Magenta, Juicy.Cyan)
         Column(Modifier.fillMaxSize().background(Juicy.Ink).padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row {
-                listOf(0f, 0.1f, 0.3f, 0.55f).forEach { age ->
-                    val board = PulseBoard.frozen(age to SoundPulse(PulseKind.HOME, 0L, 1f, 0, 0.5f))
-                    LensOrb(colors, Modifier.size(96.dp), pulses = board, moving = false, sphere = 0.7f)
+            // O-37: the wave as it runs over the drop (compare docs/design/lab/drop-pluck.jpg)
+            listOf(listOf(0f, 0.1f, 0.3f, 0.55f), listOf(0.03f, 0.14f, 0.28f, 0.46f)).forEach { ages ->
+                Row {
+                    ages.forEach { age ->
+                        val board = PulseBoard.frozen(age to SoundPulse(PulseKind.HOME, 0L, 1f, 0, 0.5f))
+                        LensOrb(colors, Modifier.size(96.dp), pulses = board, moving = false, sphere = 0.7f)
+                    }
                 }
             }
             // the same, big, to judge the swell

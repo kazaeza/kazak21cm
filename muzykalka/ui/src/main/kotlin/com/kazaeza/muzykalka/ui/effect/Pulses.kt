@@ -88,5 +88,5 @@ fun rememberPulses(flow: Flow<SoundPulse>?): PulseBoard {
     return board
 }
 
-/** How hard the plucks that still ring push now, 0…1: the sum of their strengths as they die away. */
-internal fun List<LivePulse>.kick(): Float = sumOf { (it.strength * kotlin.math.exp(-it.age * 2.0f)).toDouble() }.toFloat().coerceAtMost(1f)
+/** How hard the plucks that still ring push now, 0…[KICK_MAX]: the sum of what each is worth to the sphere as it dies away. */
+internal fun List<LivePulse>.kick(): Float = sumOf { (it.orbStrength * Overtones.kick(it.age)).toDouble() }.toFloat().coerceAtMost(KICK_MAX)

@@ -1,8 +1,10 @@
 package com.kazaeza.muzykalka.music
 
 import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /** What a pluck stands for on screen (O-35). Only [QUESTION] is forbidden to carry a pitch. */
 enum class PulseKind {
@@ -72,13 +74,54 @@ object Overtones {
         if (tSec <= 0f) return 0f
         val rise = 1f - exp(-tSec / 0.012f)
         val fall = exp(-tSec * k / 1.4f)
-        val s = ((tSec - TAIL_FROM) / (LIFE - TAIL_FROM)).coerceIn(0f, 1f)
-        return rise * fall * (1f - s * s * (3f - 2f * s))
+        return rise * fall * tail(tSec)
     }
 
     /** A pluck is dead after this many seconds. */
     const val LIFE = 2.5f
     private const val TAIL_FROM = 1.2f
+
+    /** The window that closes a pluck's tail: 1 until 1.2 s, then a smooth fall to 0 at [LIFE]. */
+    fun tail(tSec: Float): Float {
+        val s = ((tSec - TAIL_FROM) / (LIFE - TAIL_FROM)).coerceIn(0f, 1f)
+        return 1f - s * s * (3f - 2f * s)
+    }
+
+    /** O-37: how much of a pluck goes into each slow mode of the drop, l = 2..5. They add up to 1. */
+    val DROP_WEIGHTS: List<Float> = listOf(0.50f, 0.28f, 0.15f, 0.07f)
+
+    /** Hz of the slowest mode (l = 2); the others follow a drop: sqrt(l(l−1)(l+2)/8) times this. */
+    const val DROP_F2 = 0.9f
+
+    /** Extra seconds of inner flow per second while a pluck pushes (times [kick]). */
+    const val DROP_SURGE = 3.0f
+
+    /** The l of mode [i]: 2..5. */
+    private fun dropL(i: Int): Int = i + 2
+
+    /** Frequency of mode [i] (l = i + 2) in Hz. */
+    fun dropFrequency(i: Int): Float {
+        val l = dropL(i)
+        return DROP_F2 * sqrt(l * (l - 1) * (l + 2) / 8f)
+    }
+
+    /**
+     * O-37: amplitude of mode [i] (l = i + 2) [tSec] after a pluck of strength 1. The higher the mode the faster
+     * it dies, as on a string. 0 before the pluck and from [LIFE] on, so a pluck can be dropped there.
+     */
+    fun dropMode(i: Int, tSec: Float): Float {
+        if (tSec <= 0f || tSec >= LIFE) return 0f
+        val l = dropL(i)
+        val rise = 1f - exp(-tSec / 0.012f)
+        val fall = exp(-tSec * (0.9f + 0.5f * (l - 2)))
+        return DROP_WEIGHTS[i] * rise * fall * tail(tSec) * cos(2.0 * PI * dropFrequency(i) * tSec).toFloat()
+    }
+
+    /** O-37: how hard a pluck of strength 1 pushes the drop [tSec] after it: a soft rise (50 ms), a slow fall. */
+    fun kick(tSec: Float): Float {
+        if (tSec <= 0f || tSec >= LIFE) return 0f
+        return (1f - exp(-tSec / 0.05f)) * exp(-tSec * 2f) * tail(tSec)
+    }
 
     /**
      * The notes of [score] as plucks: drums are skipped, notes that start together (a chord) are one pluck,

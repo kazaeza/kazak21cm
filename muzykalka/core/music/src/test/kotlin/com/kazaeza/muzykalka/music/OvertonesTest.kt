@@ -93,4 +93,59 @@ class OvertonesTest {
         val p = Overtones.pulses(score, PulseKind.HOME, MidiNote(48))
         assertEquals(listOf(7, 7), p.map { it.pitch })
     }
+
+    /** The size of mode [i] near [t]: the largest swing in a 100 ms window (the mode itself oscillates). */
+    private fun swing(i: Int, t: Float): Float = (0..100).maxOf { kotlin.math.abs(Overtones.dropMode(i, t + it / 1000f)) }
+
+    @Test
+    fun `the drop takes the whole pluck, so its weights add up to one`() {
+        assertEquals(4, Overtones.DROP_WEIGHTS.size)
+        assertEquals(1f, Overtones.DROP_WEIGHTS.sum(), 1e-6f)
+        assertTrue(Overtones.DROP_WEIGHTS.zipWithNext().all { (a, b) -> a > b }, "the slowest mode gets the most")
+    }
+
+    @Test
+    fun `modes of the drop are silent outside a pluck's life and quiet at once`() {
+        for (i in 0..3) {
+            assertEquals(0f, Overtones.dropMode(i, 0f))
+            assertEquals(0f, Overtones.dropMode(i, -1f))
+            assertEquals(0f, Overtones.dropMode(i, Overtones.LIFE))
+            assertEquals(0f, Overtones.dropMode(i, 9f))
+            assertTrue(Overtones.dropMode(i, 0.001f) < 0.05f, "no jump at the pluck")
+            assertTrue(swing(i, 2.4f) < 0.01f, "mode $i is almost gone when the pluck is dropped")
+        }
+    }
+
+    @Test
+    fun `slow modes live longer than fast ones and frequencies follow a drop`() {
+        // compare how much of each mode is left after a second, against what it started with
+        val left = (0..3).map { swing(it, 0.9f) / Overtones.DROP_WEIGHTS[it] }
+        assertTrue(left.zipWithNext().all { (a, b) -> a > b }, "the higher the mode the faster it dies: $left")
+        val f = (0..3).map { Overtones.dropFrequency(it) }
+        assertEquals(Overtones.DROP_F2, f[0], 1e-6f)
+        assertTrue(f.zipWithNext().all { (a, b) -> b > a })
+        // l = 3: sqrt(3·2·5/8) = 1.936 times the slowest
+        assertEquals(Overtones.DROP_F2 * 1.9365f, f[1], 1e-3f)
+    }
+
+    @Test
+    fun `a kick rises softly, peaks early, stays in 0 to 1 and ends with the pluck`() {
+        val ks = (0..2500).map { Overtones.kick(it / 1000f) }
+        assertTrue(ks.all { it in 0f..1f })
+        val peak = ks.indices.maxByOrNull { ks[it] }!!
+        assertTrue(peak in 20..300, "peak at $peak ms")
+        assertTrue(Overtones.kick(0.005f) < 0.2f, "a soft rise, not a jump")
+        assertEquals(0f, Overtones.kick(0f))
+        assertEquals(0f, Overtones.kick(Overtones.LIFE))
+        assertTrue(Overtones.kick(1f) < 0.3f * ks[peak])
+    }
+
+    @Test
+    fun `the tail window is shared by the envelope and the drop`() {
+        assertEquals(1f, Overtones.tail(0f))
+        assertEquals(1f, Overtones.tail(1.2f))
+        assertEquals(0f, Overtones.tail(Overtones.LIFE), 1e-6f)
+        assertEquals(0f, Overtones.tail(9f))
+        assertEquals(Overtones.envelope(1, 2f), (1f - kotlin.math.exp(-2f / 0.012f)) * kotlin.math.exp(-2f / 1.4f) * Overtones.tail(2f), 1e-6f)
+    }
 }
