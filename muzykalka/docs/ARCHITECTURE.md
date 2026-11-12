@@ -140,8 +140,9 @@ RoundViewModel (app)     — играет prompt.audio → promptFinished; mic/�
 
 ## 7. Звуковой конвейер
 
-**Выход.** Один `AudioTrack` (48 кГц, float, mono, `PERFORMANCE_MODE_LOW_LATENCY`, буфер 2× burst).
-Поток рендера с приоритетом `URGENT_AUDIO` тянет `Synth.render()`. Синтез без семплов:
+**Выход.** Один `AudioTrack` (48 кГц, float, **стерео** с O-39, `PERFORMANCE_MODE_LOW_LATENCY`, буфер 4× burst).
+Поток рендера с приоритетом `URGENT_AUDIO` тянет `Synth.renderStereo()`; всё, кроме «Стекла», стоит посередине.
+Синтез без семплов (у «Стекла» — таблицы PADsynth, которые строятся вне звукового потока, ADR-039):
 гитара и бас — Karplus–Strong, пиано — FM e-piano, барабаны — модели на шуме/синусе, клик.
 `play(score)` приостанавливает корутину до конца звучания. Без звука 10 с — трек останавливается (батарея).
 

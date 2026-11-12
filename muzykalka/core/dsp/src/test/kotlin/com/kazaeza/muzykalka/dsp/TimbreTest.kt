@@ -180,9 +180,12 @@ class TimbreTest {
             val out = s.renderOffline(score, tailSeconds = 1.5)
             val end = out.size - 1
             val tail = db(rms(FloatArray(out.size) { (out[it] * scale).toFloat() }, end - 4800, end))
-            assertTrue(tail < -60.0, "$timbre: still $tail dB 1.4 s after the end")
+            // O-39: the glass rings in its own hall on purpose (the user chose its room); the others die with the note
+            val limit = if (timbre == ToneTimbre.GLASS) -45.0 else -60.0
+            assertTrue(tail < limit, "$timbre: still $tail dB 1.4 s after the end")
             // the voice is given back: a synth with nothing else going on becomes idle
-            s.render(FloatArray(4800), 4800)
+            val rest = if (timbre == ToneTimbre.GLASS) 8 * SAMPLE_RATE else 4800
+            s.render(FloatArray(rest), rest)
             assertTrue(s.isIdle, "$timbre: not idle after the note")
         }
     }

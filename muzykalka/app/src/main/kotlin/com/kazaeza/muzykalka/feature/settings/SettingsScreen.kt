@@ -168,10 +168,10 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
         }
         item(key = "sound-note") {
             Column {
-                SectionLabel("звук ноты над дроном")
+                SectionLabel("звук дрона и ноты")
                 Spacer(Modifier.height(6.dp))
                 ChoiceRow(
-                    ToneTimbre.entries,
+                    TIMBRE_CHOICES,
                     settings.toneTimbre,
                     { timbreName(it) },
                     { t ->
@@ -228,7 +228,7 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
         }
         item(key = "sound-room") {
             GlassCard(Modifier.fillMaxWidth()) {
-                SwitchRow("Воздух", "маленькая комната вокруг нот и тапов; дрон остаётся сухим", settings.room) { v ->
+                SwitchRow("Воздух", "маленькая комната вокруг нот и тапов, кроме «Стекла»: у него свой зал", settings.room) { v ->
                     update { it.copy(room = v) }
                     graph.applySound(settings.copy(room = v))
                 }
@@ -276,7 +276,11 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
     }
 }
 
+/** O-39: the glass first — it is the sound of the app; the others stay as they were, for whoever wants them. */
+private val TIMBRE_CHOICES = listOf(ToneTimbre.GLASS, ToneTimbre.HUM, ToneTimbre.MARIMBA, ToneTimbre.KALIMBA, ToneTimbre.FELT, ToneTimbre.CLASSIC)
+
 private fun timbreName(t: ToneTimbre): String = when (t) {
+    ToneTimbre.GLASS -> "Стекло"
     ToneTimbre.HUM -> "Голос"
     ToneTimbre.MARIMBA -> "Маримба"
     ToneTimbre.KALIMBA -> "Калимба"
@@ -285,6 +289,7 @@ private fun timbreName(t: ToneTimbre): String = when (t) {
 }
 
 private fun timbreHint(t: ToneTimbre): String = when (t) {
+    ToneTimbre.GLASS -> "Хор из стекла вместо дрона и колокольчик с дыханием того же хора: оба в одном зале, дрон звучит в стерео."
     ToneTimbre.HUM -> "Закрытый рот: подъезжает к ноте, чуть плавает, дышит."
     ToneTimbre.MARIMBA -> "Деревянный брусок: короткий стук, потом чистая нота, которая сама затихает."
     ToneTimbre.KALIMBA -> "Стальной язычок на коробочке: «тинь» и долгий тёплый тон."

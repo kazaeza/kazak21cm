@@ -39,8 +39,11 @@ data class Settings(
     val leftHanded: Boolean = false,
     /** Haptic feedback in games. */
     val haptics: Boolean = true,
-    /** O-36: how the note over the drone sounds. The hum was the user's pick on the lab page. */
-    val toneTimbre: ToneTimbre = ToneTimbre.HUM,
+    /**
+     * O-36/O-39: how the drone and the note over it sound. The glass was the user's pick on the second lab page
+     * (before it: the hum, and the others stay as choices).
+     */
+    val toneTimbre: ToneTimbre = ToneTimbre.GLASS,
     /** O-36: the wooden tap on buttons; null = no taps. */
     val tapSound: TapSound? = TapSound.TICK,
     /** O-36: volume of the taps, 0…2 (the lab page's slider; the user asked for the quietest, so it starts low). */
@@ -69,7 +72,11 @@ class SettingsRepository(context: Context) {
         val DAY_START = intPreferencesKey("day_start_hour")
         val LEFTY = booleanPreferencesKey("left_handed")
         val HAPTICS = booleanPreferencesKey("haptics")
-        val TONE_TIMBRE = stringPreferencesKey("tone_timbre")
+        /**
+         * O-39: a new key on purpose. [SettingsRepository.update] writes every key, so a phone that ever saved a
+         * setting holds «tone_timbre = HUM» — the old default, not a choice — and reading it would hide the new default.
+         */
+        val SOUND = stringPreferencesKey("sound_kit")
         val TAP_SOUND = stringPreferencesKey("tap_sound")
         val TAP_VOLUME = floatPreferencesKey("tap_volume")
         val ROOM = booleanPreferencesKey("room")
@@ -98,7 +105,7 @@ class SettingsRepository(context: Context) {
             p[K.DAY_START] = next.dayStartHour
             p[K.LEFTY] = next.leftHanded
             p[K.HAPTICS] = next.haptics
-            p[K.TONE_TIMBRE] = next.toneTimbre.name
+            p[K.SOUND] = next.toneTimbre.name
             p[K.TAP_SOUND] = next.tapSound?.name ?: TAPS_OFF
             p[K.TAP_VOLUME] = next.tapVolume
             p[K.ROOM] = next.room
@@ -120,7 +127,7 @@ class SettingsRepository(context: Context) {
             dayStartHour = p[K.DAY_START] ?: d.dayStartHour,
             leftHanded = p[K.LEFTY] ?: d.leftHanded,
             haptics = p[K.HAPTICS] ?: d.haptics,
-            toneTimbre = p[K.TONE_TIMBRE]?.let { runCatching { ToneTimbre.valueOf(it) }.getOrNull() } ?: d.toneTimbre,
+            toneTimbre = p[K.SOUND]?.let { runCatching { ToneTimbre.valueOf(it) }.getOrNull() } ?: d.toneTimbre,
             tapSound = when (val t = p[K.TAP_SOUND]) {
                 null -> d.tapSound
                 TAPS_OFF -> null

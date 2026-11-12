@@ -23,6 +23,10 @@ import com.kazaeza.muzykalka.srs.StudyDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.KeyCatalog
+import com.kazaeza.muzykalka.music.MidiNote
+import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.TapSound
 import java.time.Instant
 import java.time.ZoneId
@@ -72,6 +76,26 @@ open class AppGraph(context: Context) {
         tapSound = s.tapSound
         tapVolume = s.tapVolume
         audioOutput.keepOpen(onScreen && s.tapSound != null)
+        prewarmGlass(s)
+    }
+
+    /** What the glass was last made ready for: (it is the chosen sound, the A4 of the notes). */
+    private var warmedFor: Pair<Boolean, Double>? = null
+
+    /**
+     * O-39: the choir of the glass is made of tables, tens of milliseconds a table. The twelve drones and the notes
+     * the games play are made once, in the background, as soon as the settings say the glass is the sound.
+     */
+    private fun prewarmGlass(s: Settings) {
+        val wanted = s.toneTimbre.ownsDrone to s.a4Hz
+        if (!wanted.first || wanted == warmedFor) return
+        warmedFor = wanted
+        audioOutput.a4Hz = s.a4Hz
+        val arranger = Arranger()
+        audioOutput.prewarm(
+            drones = KeyCatalog.practical(Mode.MAJOR).map { arranger.drone(it) },
+            notes = (WARM_FROM..WARM_TO).map { MidiNote(it) },
+        )
     }
 
     /** The app is on screen (Activity started) or not: while it is, and taps are on, the output stays open so the first tap is not late. */
@@ -96,3 +120,7 @@ open class AppGraph(context: Context) {
 }
 
 val LocalAppGraph = staticCompositionLocalOf<AppGraph> { error("AppGraph not provided") }
+
+/** O-39: the notes of the games lie between these (the tonic from G3 up, the degrees within two octaves); their tables are made ahead. */
+private const val WARM_FROM = 52
+private const val WARM_TO = 84

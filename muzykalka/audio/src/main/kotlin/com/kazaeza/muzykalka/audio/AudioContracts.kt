@@ -54,6 +54,13 @@ interface AudioOutput {
     fun tap(sound: TapSound, low: Boolean = false, gain: Float = 1f)
 
     /**
+     * O-39: makes ready, behind everything else and off the caller's thread, what the glass instrument will ask for:
+     * the drones of the given note sets and the tables of the given notes. A no-op for the other instruments. Call it
+     * once the settings are known, so that the first drone and the first notes do not wait for it.
+     */
+    fun prewarm(drones: List<List<MidiNote>>, notes: List<MidiNote>) {}
+
+    /**
      * O-36: while [on], the output stays open however long it is silent, so the first tap after a pause is not
      * late (an AudioTrack takes tens of milliseconds to start). Set it while taps are on and the app is on screen.
      */

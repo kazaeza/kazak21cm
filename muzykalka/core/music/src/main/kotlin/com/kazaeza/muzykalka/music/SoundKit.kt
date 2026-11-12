@@ -6,6 +6,12 @@ package com.kazaeza.muzykalka.music
  * nothing about it.
  */
 enum class ToneTimbre {
+    /**
+     * O-39: «Стекло» — a choir of glass for the drone and a small bell with the breath of the same choir for the note,
+     * both in one stereo hall. Unlike the others this is an instrument, not only a timbre: it also takes the drone.
+     */
+    GLASS,
+
     /** The 0.0.53 sound: three static harmonics and a clockwork vibrato. Kept so it can be had back. */
     CLASSIC,
 
@@ -23,10 +29,21 @@ enum class ToneTimbre {
     ;
 
     /**
-     * True when the note keeps ringing after it ends (a damped bar or string): the microphone must wait longer
-     * before it listens again, or the tail is taken for a sung note.
+     * How long, in milliseconds, the microphone waits after the note ends before it listens again, or the tail is
+     * taken for a sung note: the ring of a damped bar or string, or of the glass in its hall (which is the longest —
+     * 0.8 s later it is 25–35 dB under the note, and the gate of the microphone does not hear that). 0 = it dies with the note.
      */
-    val rings: Boolean get() = this == MARIMBA || this == KALIMBA || this == FELT
+    val ringMs: Int get() = when (this) {
+        GLASS -> 800
+        MARIMBA, KALIMBA, FELT -> 400
+        CLASSIC, HUM -> 0
+    }
+
+    /** True when the note keeps ringing after it ends ([ringMs] > 0). */
+    val rings: Boolean get() = ringMs > 0
+
+    /** True for the timbre that brings its own drone and hall ([GLASS]); the others sit over the classic drone. */
+    val ownsDrone: Boolean get() = this == GLASS
 }
 
 /** O-36: a wooden tap on a button — wood on wood, minimal. Each is also played a little lower and softer for «back». */

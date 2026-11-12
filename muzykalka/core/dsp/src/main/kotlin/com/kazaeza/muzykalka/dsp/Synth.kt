@@ -32,15 +32,35 @@ interface Synth {
     /** Schedules [score] to start at absolute output frame [startFrame]; returns its end frame. */
     fun schedule(score: Score, startFrame: Long, a4Hz: Double = DEFAULT_A4_HZ): Long
 
-    /** Renders the next [frames] mono samples into [out] starting at index 0. */
+    /** Renders the next [frames] samples into [out] starting at index 0, as one channel: the two ears of [renderStereo] averaged. */
     fun render(out: FloatArray, frames: Int)
+
+    /**
+     * O-39: renders the next [frames] stereo frames into [out], interleaved (left, right), 2·[frames] samples from
+     * index 0. This is what the output plays; everything but the glass instrument sits in the middle.
+     */
+    fun renderStereo(out: FloatArray, frames: Int)
+
+    /** O-39: the three numbers of the glass instrument. Read when a note starts or a drone is set; the hall follows at once. */
+    var glass: GlassTuning
+
+    /**
+     * O-39: makes ready what [score] will need — the glass voice reads a table of its own for each note, and making
+     * one takes tens of milliseconds the first time. [schedule] does this itself when it has to; call this ahead,
+     * off the audio and the UI threads, so that it does not.
+     */
+    fun prepare(score: Score, a4Hz: Double = DEFAULT_A4_HZ)
+
+    /** O-39: the same for a drone on [frequencies] (the tonic first), which [setDrone] would otherwise make on the spot. */
+    fun prepareDrone(frequencies: List<Double>)
 
     /** Fades everything scheduled out within ~10 ms and drops it. The drone keeps sounding. */
     fun stopAll()
 
     /**
      * Sustained drone on [frequencies] (Hz). A new set crossfades from the old one (~0.4 s);
-     * an empty list fades the drone out. Callable from any thread.
+     * an empty list fades the drone out. Callable from any thread. With [ToneTimbre.GLASS] it is the choir of
+     * glass, and its tables are made here if [prepareDrone] has not made them: tens of milliseconds, so not on the UI thread.
      */
     fun setDrone(frequencies: List<Double>)
 
@@ -89,15 +109,31 @@ class DefaultSynth(
     private val masterGain: Float = 0.42f,
 ) : Synth {
 
-    private class Event(val startFrame: Long, val endFrame: Long, val voice: Voice, val hz: Double, val velocity: Float)
+    private class Event(val startFrame: Long, val endFrame: Long, val voice: Voice, val hz: Double, val velocity: Float, val pad: FloatArray?)
 
     private object StopAll
 
-    private class DroneCommand(val frequencies: List<Double>)
+    private class DroneCommand(val frequencies: List<Double>, val glass: Boolean, val pads: List<FloatArray>)
 
     private class TapCommand(val sound: TapSound, val low: Boolean, val gain: Float)
 
     private val drone = DroneBank(sampleRate)
+
+    // --- O-39: the glass instrument — its own drone, and one hall for the drone and one for the notes (they differ
+    // only in what stopAll may cut: the notes' tail, never the drone's)
+    private val glassDrone = GlassDrone(sampleRate)
+    private val droneSpace = GlassSpace(sampleRate)
+    private val noteSpace = GlassSpace(sampleRate)
+    private var spaceTuning = GlassTuning()
+    private var droneSpaceLeft = 0
+    private var noteSpaceLeft = 0
+    private var noteWet = 1.0
+    private var noteFading = false
+    private val wetFade = 1.0 / (0.015 * sampleRate)
+    private var stereoScratch = FloatArray(0)
+
+    @Volatile
+    override var glass: GlassTuning = GlassTuning()
 
     private val commands = ConcurrentLinkedQueue<Any>()
     private val pending = ArrayList<Event>(2048)
@@ -124,16 +160,35 @@ class DefaultSynth(
     override val framePosition: Long get() = position
     override val isIdle: Boolean get() = idleFlag && commands.isEmpty()
 
+    override fun prepare(score: Score, a4Hz: Double) {
+        if (toneTimbre != ToneTimbre.GLASS) return
+        val warm = glass.warm
+        for (n in score.notes) {
+            val note = n.note ?: continue
+            if (n.voice == Voice.TONE) GlassTables.note(sampleRate, note.frequency(a4Hz), warm)
+        }
+    }
+
+    override fun prepareDrone(frequencies: List<Double>) {
+        if (toneTimbre != ToneTimbre.GLASS) return
+        val warm = glass.warm
+        frequencies.take(GlassDrone.SLOTS / 2).forEachIndexed { i, f -> GlassTables.drone(sampleRate, f, warm, i) }
+    }
+
     override fun schedule(score: Score, startFrame: Long, a4Hz: Double): Long {
         val framesPerBeat = sampleRate * 60.0 / score.tempoBpm
+        val glassNotes = toneTimbre == ToneTimbre.GLASS
+        val warm = glass.warm
         val events = score.notes
             .map { n ->
+                val hz = n.note?.frequency(a4Hz) ?: 0.0
                 Event(
                     startFrame = startFrame + (n.startBeat * framesPerBeat).toLong(),
                     endFrame = startFrame + (n.endBeat * framesPerBeat).toLong(),
                     voice = n.voice,
-                    hz = n.note?.frequency(a4Hz) ?: 0.0,
+                    hz = hz,
                     velocity = n.velocity,
+                    pad = if (glassNotes && n.voice == Voice.TONE && hz > 0.0) GlassTables.note(sampleRate, hz, warm) else null,
                 )
             }
             .sortedBy { it.startFrame }
@@ -155,10 +210,24 @@ class DefaultSynth(
 
     override fun setDrone(frequencies: List<Double>) {
         if (frequencies.isNotEmpty()) idleFlag = false
-        commands.add(DroneCommand(frequencies))
+        val glassDrone = toneTimbre.ownsDrone && frequencies.isNotEmpty()
+        val warm = glass.warm
+        val pads = if (glassDrone) {
+            frequencies.take(GlassDrone.SLOTS / 2).mapIndexed { i, f -> GlassTables.drone(sampleRate, f, warm, i) }
+        } else {
+            emptyList()
+        }
+        // an empty list fades out whichever drone is sounding, so it does not matter which instrument is chosen now
+        commands.add(DroneCommand(frequencies, glassDrone, pads))
     }
 
     override fun render(out: FloatArray, frames: Int) {
+        if (stereoScratch.size < frames * 2) stereoScratch = FloatArray(frames * 2)
+        renderStereo(stereoScratch, frames)
+        for (i in 0 until frames) out[i] = 0.5f * (stereoScratch[2 * i] + stereoScratch[2 * i + 1])
+    }
+
+    override fun renderStereo(out: FloatArray, frames: Int) {
         drainCommands()
         val base = position
         val roomOn = room
@@ -167,6 +236,15 @@ class DefaultSynth(
             roomLeft = 0
         }
         roomWasOn = roomOn
+        val tuning = glass
+        if (tuning !== spaceTuning) {
+            droneSpace.setT60(tuning.t60)
+            noteSpace.setT60(tuning.t60)
+            spaceTuning = tuning
+        }
+        val sendDrone = tuning.droneSend
+        val sendNote = tuning.noteSend
+        val hallTail = (tuning.t60 * 1.25 * sampleRate).toInt()
         for (i in 0 until frames) {
             val now = base + i
             while (pendingIndex < pending.size && pending[pendingIndex].startFrame <= now) {
@@ -175,22 +253,63 @@ class DefaultSynth(
             }
             var played = 0.0
             var anyPlaying = false
+            var noteL = 0.0
+            var noteR = 0.0
+            var anyGlass = false
             for (v in voices) {
                 if (v.active) {
-                    played += v.next(now)
-                    anyPlaying = true
+                    val y = v.next(now)
+                    if (v.glass) {
+                        noteL += y
+                        noteR += v.right
+                        anyGlass = true
+                    } else {
+                        played += y
+                        anyPlaying = true
+                    }
                 }
             }
-            var sum = drone.next() + played
+            var left = drone.next() + played
+            var right = left
             if (roomOn) {
                 // the room hears the notes and taps, not the drone, and rings on after the last of them
                 if (anyPlaying) roomLeft = roomTailFrames
                 if (roomLeft > 0) {
-                    sum += SmallRoom.WET * smallRoom.process(played)
+                    val wet = SmallRoom.WET * smallRoom.process(played)
+                    left += wet
+                    right += wet
                     if (!anyPlaying && --roomLeft == 0) smallRoom.reset()
                 }
             }
-            out[i] = tanh(sum * masterGain).toFloat()
+            // the glass choir under everything, in its hall
+            if (!glassDrone.silent) droneSpaceLeft = hallTail
+            if (droneSpaceLeft > 0) {
+                glassDrone.next()
+                droneSpace.process(glassDrone.left * sendDrone, glassDrone.right * sendDrone)
+                left += glassDrone.left + droneSpace.wetL
+                right += glassDrone.right + droneSpace.wetR
+                if (glassDrone.silent && --droneSpaceLeft == 0) droneSpace.reset()
+            }
+            // the glass bells, in theirs; stopAll lets its tail go in 15 ms
+            if (anyGlass) noteSpaceLeft = hallTail
+            if (noteSpaceLeft > 0) {
+                noteSpace.process(noteL * sendNote, noteR * sendNote)
+                left += noteL + noteSpace.wetL * noteWet
+                right += noteR + noteSpace.wetR * noteWet
+                if (noteFading) {
+                    noteWet -= wetFade
+                    if (noteWet <= 0.0) {
+                        noteSpace.reset()
+                        noteSpaceLeft = 0
+                        noteWet = 1.0
+                        noteFading = false
+                    }
+                } else if (!anyGlass && --noteSpaceLeft == 0) {
+                    noteSpace.reset()
+                }
+            }
+            out[2 * i] = tanh(left * masterGain).toFloat()
+            out[2 * i + 1] = tanh(right * masterGain).toFloat()
         }
         if (pendingIndex > 256) {
             pending.subList(0, pendingIndex).clear()
@@ -199,7 +318,8 @@ class DefaultSynth(
         position = base + frames
         var anyActive = false
         for (v in voices) if (v.active) anyActive = true
-        idleFlag = !anyActive && pendingIndex >= pending.size && drone.silent && roomLeft == 0
+        idleFlag = !anyActive && pendingIndex >= pending.size && drone.silent && roomLeft == 0 &&
+            glassDrone.silent && droneSpaceLeft == 0 && noteSpaceLeft == 0
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -210,8 +330,16 @@ class DefaultSynth(
                 pending.clear()
                 pendingIndex = 0
                 for (v in voices) if (v.active) v.fastRelease(position)
+                // the hall of the bells lets its tail go; the hall of the drone is the drone's own and stays
+                noteFading = noteSpaceLeft > 0
             } else if (cmd is DroneCommand) {
-                drone.set(cmd.frequencies)
+                if (cmd.glass) {
+                    glassDrone.set(cmd.frequencies, cmd.pads)
+                    drone.set(emptyList())
+                } else {
+                    drone.set(cmd.frequencies)
+                    glassDrone.set(emptyList(), emptyList())
+                }
             } else if (cmd is TapCommand) {
                 startTap(cmd, position)
             } else {
@@ -237,7 +365,7 @@ class DefaultSynth(
             // Steal the oldest voice.
             chosen = voices.minBy { it.startedAt }
         }
-        chosen.start(e.voice, e.hz, e.velocity, now, e.endFrame, toneTimbre)
+        chosen.start(e.voice, e.hz, e.velocity, now, e.endFrame, toneTimbre, e.pad, glass)
     }
 
     private fun startTap(c: TapCommand, now: Long) {
@@ -290,7 +418,26 @@ private class SynthVoice(private val sr: Int) {
     private var timbre = ToneTimbre.CLASSIC
     private var isTap = false
 
-    fun start(voice: Voice, frequency: Double, vel: Float, now: Long, end: Long, toneTimbre: ToneTimbre = ToneTimbre.CLASSIC) {
+    // --- O-39: the glass bell is the one voice with two ears
+    private val glassVoice = GlassVoice(sr)
+
+    /** The right ear of the sample [next] has just returned, which is the left; the same as it for every voice but the glass one. */
+    var right = 0.0
+        private set
+
+    /** True for a note of the glass instrument: its two ears go to the hall, not to the middle. */
+    val glass: Boolean get() = !isTap && kind == Voice.TONE && timbre == ToneTimbre.GLASS
+
+    fun start(
+        voice: Voice,
+        frequency: Double,
+        vel: Float,
+        now: Long,
+        end: Long,
+        toneTimbre: ToneTimbre = ToneTimbre.CLASSIC,
+        pad: FloatArray? = null,
+        tuning: GlassTuning = GlassTuning(),
+    ) {
         active = true
         isTap = false
         timbre = if (voice == Voice.TONE) toneTimbre else ToneTimbre.CLASSIC
@@ -308,15 +455,16 @@ private class SynthVoice(private val sr: Int) {
         when (voice) {
             Voice.GUITAR -> startString(t60 = (4.5 - 3.0 * min(1.0, hz / 700.0)), brightness = 0.85, outputLp = 1.0)
             Voice.BASS -> startString(t60 = 3.5, brightness = 0.35, outputLp = 0.12)
-            Voice.TONE -> startTone(frequency, vel)
+            Voice.TONE -> startTone(frequency, vel, pad, tuning)
             else -> Unit
         }
     }
 
-    private fun startTone(frequency: Double, vel: Float) {
+    private fun startTone(frequency: Double, vel: Float, pad: FloatArray?, tuning: GlassTuning) {
         rng.seed(noiseState)
         when (timbre) {
             ToneTimbre.CLASSIC -> Unit
+            ToneTimbre.GLASS -> glassVoice.start(frequency, vel, pad, tuning)
             ToneTimbre.MARIMBA -> Timbres.marimba(bank, rng, frequency, vel)
             ToneTimbre.KALIMBA -> Timbres.kalimba(bank, rng, frequency, vel)
             ToneTimbre.FELT -> Timbres.felt(bank, rng, frequency, vel)
@@ -348,6 +496,7 @@ private class SynthVoice(private val sr: Int) {
         releaseGain = 0.995
         bank.release(fast = true)
         hum.fastRelease()
+        glassVoice.fastRelease()
     }
 
     private fun startString(t60: Double, brightness: Double, outputLp: Double) {
@@ -411,6 +560,7 @@ private class SynthVoice(private val sr: Int) {
                 Voice.TONE -> when (timbre) {
                     ToneTimbre.CLASSIC -> tone(t, now)
                     ToneTimbre.HUM -> hum.next(t, released, (now - releaseStart).toDouble() / sr)
+                    ToneTimbre.GLASS -> glassVoice.next(released)
                     else -> bank.next()
                 }
                 Voice.KICK -> kick(t)
@@ -419,9 +569,16 @@ private class SynthVoice(private val sr: Int) {
                 Voice.CLICK -> click(t)
             }
         }
+        right = if (glass) glassVoice.right else y
         val over = if (isTap) t > Timbres.TAP_SECONDS else kind.isDrum() && t > 0.7
-        // a hummed note closes more slowly (110 ms), so its voice is kept a little longer: no click at the cut
-        val keep = if (kind == Voice.TONE && timbre == ToneTimbre.HUM) 0.9 else 0.6
+        // a hummed note closes more slowly (110 ms), so its voice is kept a little longer: no click at the cut;
+        // the breath of a glass note lets go in 280 ms, and 1.6 s leaves it 0.3 % of itself
+        val keep = when {
+            kind != Voice.TONE -> 0.6
+            timbre == ToneTimbre.HUM -> 0.9
+            timbre == ToneTimbre.GLASS -> 1.6
+            else -> 0.6
+        }
         if (t > 8.0 || (released && (now - releaseStart) > sr * keep) || over) active = false
         return y
     }
