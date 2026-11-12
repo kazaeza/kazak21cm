@@ -199,6 +199,7 @@ private fun RingKey(
     modifier: Modifier = Modifier,
 ) {
     val source = remember { MutableInteractionSource() }
+    TapOnPress(source)
     val pressed by source.collectIsPressedAsState()
     LaunchedEffect(pressed) { onPressed(pressed) }
     val press by animateFloatAsState(

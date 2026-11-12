@@ -72,6 +72,7 @@ fun FloatingTabBar(
         tabs.forEachIndexed { i, tab ->
             val isSel = i == selected
             val source = remember { MutableInteractionSource() }
+            TapOnPress(source)
             val on by animateFloatAsState(if (isSel) 1f else 0f, tween(Motion.MEDIUM), label = "tab")
             Box(
                 Modifier

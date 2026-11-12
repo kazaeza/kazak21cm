@@ -46,6 +46,16 @@ class FakeAudioOutput : AudioOutput {
     override val isSounding: StateFlow<Boolean> = MutableStateFlow(false)
     override val lastSoundEndNanos: Long = 0
     override var a4Hz: Double = 440.0
+    override var toneTimbre: com.kazaeza.muzykalka.music.ToneTimbre = com.kazaeza.muzykalka.music.ToneTimbre.CLASSIC
+    override var room: Boolean = false
+    val taps = mutableListOf<Pair<com.kazaeza.muzykalka.music.TapSound, Boolean>>()
+    override fun tap(sound: com.kazaeza.muzykalka.music.TapSound, low: Boolean, gain: Float) {
+        taps += sound to low
+    }
+    var kept = false
+    override fun keepOpen(on: Boolean) {
+        kept = on
+    }
 }
 
 @RunWith(AndroidJUnit4::class)

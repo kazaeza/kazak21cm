@@ -34,6 +34,7 @@ import com.kazaeza.muzykalka.ui.theme.Motion
 @Composable
 fun ReplayKey(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, tint: Color = Juicy.Text) {
     val source = remember { MutableInteractionSource() }
+    TapOnPress(source)
     val pressed by source.collectIsPressedAsState()
     val press by animateFloatAsState(if (pressed) 1f else 0f, spring(stiffness = Spring.StiffnessMediumLow), label = "press")
     val presence by animateFloatAsState(if (enabled) 1f else 0.35f, tween(Motion.SHORT), label = "presence")

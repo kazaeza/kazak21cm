@@ -1,5 +1,11 @@
 package com.kazaeza.muzykalka.feature.game
 
+import com.kazaeza.muzykalka.ui.component.LocalTapSound
+import com.kazaeza.muzykalka.ui.component.TapOnPress
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import com.kazaeza.muzykalka.ui.theme.Motion
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.verticalScroll
@@ -128,6 +134,10 @@ private fun GameHost(
     val particles = rememberParticleState()
     val haptics = rememberHaptics(ui.settings.haptics)
     val pulses = rememberPulses(vm.pulses)
+    // O-36: no tap while the question sounds (it would land on the question), nor while a sung note is awaited
+    val appTap = LocalTapSound.current
+    val tapAllowed by rememberUpdatedState(ui.phase != RoundPhase.PROMPTING && !(ui.needsMic && ui.phase == RoundPhase.LISTENING))
+    val gameTap = remember(appTap) { { low: Boolean -> if (tapAllowed) appTap(low) } }
     var flashTrigger by remember { mutableIntStateOf(0) }
     var flashColor by remember { mutableStateOf(Juicy.Good) }
     var burstAt by remember { mutableStateOf(Offset(540f, 700f)) }
@@ -161,83 +171,85 @@ private fun GameHost(
         }
     }
 
-    AuroraBackground(accent, Modifier.fillMaxSize(), intensity = 0.7f) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp),
-        ) {
-            GameTopBar(ui, accent, onPause = vm::pause)
-            Spacer(Modifier.height(8.dp))
-            Box(
+    CompositionLocalProvider(LocalTapSound provides gameTap) {
+        AuroraBackground(accent, Modifier.fillMaxSize(), intensity = 0.7f) {
+            Column(
                 Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .onGloballyPositioned { c ->
-                        val b = c.boundsInRoot()
-                        burstAt = Offset(b.center.x, b.top + b.height * 0.28f)
-                    },
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp),
             ) {
-                when (val task = ui.task) {
-                    is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay, pulses = pulses, haptics = haptics)
-                    is SingTask -> if (ui.variant == Variant.KAMERTON_SEARCH) {
-                        SearchContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
-                    } else {
-                        SingContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
-                    }
-                    is HuntTask -> HuntContent(task, ui, accent, onAnswer = vm::answer)
-                    is StepsTask -> StepsContent(task, ui, accent, onAnswer = vm::answer)
-                    else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        ModeOrb(spec.variant.mode, size = 96.dp)
+                GameTopBar(ui, accent, onPause = vm::pause)
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .onGloballyPositioned { c ->
+                            val b = c.boundsInRoot()
+                            burstAt = Offset(b.center.x, b.top + b.height * 0.28f)
+                        },
+                ) {
+                    when (val task = ui.task) {
+                        is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay, pulses = pulses, haptics = haptics)
+                        is SingTask -> if (ui.variant == Variant.KAMERTON_SEARCH) {
+                            SearchContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
+                        } else {
+                            SingContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
+                        }
+                        is HuntTask -> HuntContent(task, ui, accent, onAnswer = vm::answer)
+                        is StepsTask -> StepsContent(task, ui, accent, onAnswer = vm::answer)
+                        else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            ModeOrb(spec.variant.mode, size = 96.dp)
+                        }
                     }
                 }
             }
-        }
-        FlashOverlay(flashTrigger, flashColor)
-        ParticleLayer(particles)
-        if (ui.paused && ui.summary == null) {
-            PauseOverlay(
-                onResume = vm::resume,
-                onExit = {
-                    val answered = ui.answered
-                    vm.quit()
-                    onLeave(answered)
-                },
-                exitLabel = exitLabel,
-                onNext = onNext?.let { next ->
-                    {
+            FlashOverlay(flashTrigger, flashColor)
+            ParticleLayer(particles)
+            if (ui.paused && ui.summary == null) {
+                PauseOverlay(
+                    onResume = vm::resume,
+                    onExit = {
                         val answered = ui.answered
                         vm.quit()
-                        next(answered)
-                    }
-                },
-                hint = if (ui.exam) "Замер стоит — время ответа не идёт." else "Таймер стоит. Вопрос прозвучит ещё раз.",
-            )
-        }
-        ui.summary?.let { s ->
-            SummaryOverlay(
-                summary = s,
-                accent = accent,
-                inSequence = onFinished != null,
-                onAgain = {
-                    vm.stopAnchor()
-                    round++
-                },
-                onClose = {
-                    vm.stopAnchor()
-                    if (onFinished != null) onFinished(s) else onExit()
-                },
-                anchors = ui.summaryAnchors,
-                playing = ui.playingAnchor,
-                notation = ui.notation,
-                onAnchor = vm::playAnchor,
-                onTakeLevel = { level ->
-                    vm.takeLevel(level)
-                    takenLevel = level
-                },
-            )
+                        onLeave(answered)
+                    },
+                    exitLabel = exitLabel,
+                    onNext = onNext?.let { next ->
+                        {
+                            val answered = ui.answered
+                            vm.quit()
+                            next(answered)
+                        }
+                    },
+                    hint = if (ui.exam) "Замер стоит — время ответа не идёт." else "Таймер стоит. Вопрос прозвучит ещё раз.",
+                )
+            }
+            ui.summary?.let { s ->
+                SummaryOverlay(
+                    summary = s,
+                    accent = accent,
+                    inSequence = onFinished != null,
+                    onAgain = {
+                        vm.stopAnchor()
+                        round++
+                    },
+                    onClose = {
+                        vm.stopAnchor()
+                        if (onFinished != null) onFinished(s) else onExit()
+                    },
+                    anchors = ui.summaryAnchors,
+                    playing = ui.playingAnchor,
+                    notation = ui.notation,
+                    onAnchor = vm::playAnchor,
+                    onTakeLevel = { level ->
+                        vm.takeLevel(level)
+                        takenLevel = level
+                    },
+                )
+            }
         }
     }
 }
@@ -245,12 +257,14 @@ private fun GameHost(
 @Composable
 private fun GameTopBar(ui: GameUi, accent: List<Color>, onPause: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        val pauseSource = remember { MutableInteractionSource() }
+        TapOnPress(pauseSource, low = true)
         Box(
             Modifier
                 .size(44.dp)
                 .clip(CircleShape)
                 .background(Juicy.Ink3.copy(alpha = 0.7f))
-                .clickable(onClickLabel = "Пауза", onClick = onPause),
+                .clickable(interactionSource = pauseSource, indication = LocalIndication.current, onClickLabel = "Пауза", onClick = onPause),
             contentAlignment = Alignment.Center,
         ) { Text("❙❙", style = MaterialTheme.typography.titleMedium, color = Juicy.Text) }
         Spacer(Modifier.width(10.dp))

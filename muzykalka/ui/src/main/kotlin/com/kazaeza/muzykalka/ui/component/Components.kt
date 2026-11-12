@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -65,7 +66,8 @@ val GameTouchTarget = 72.dp
 
 /** Press feedback shared by every juicy control: squash on press, spring back. */
 @Composable
-private fun rememberPressScale(source: MutableInteractionSource, amount: Float = 0.94f): Float {
+private fun rememberPressScale(source: MutableInteractionSource, amount: Float = 0.94f, tapLow: Boolean = false): Float {
+    TapOnPress(source, tapLow) // O-36: every juicy control also taps, once, as the finger lands
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(
         if (pressed) amount else 1f,
@@ -481,12 +483,14 @@ fun <T> ChoiceRow(
         options.forEach { o ->
             val isSel = o == selected
             val shape = RoundedCornerShape(50)
+            val source = remember { MutableInteractionSource() }
+            TapOnPress(source)
             Box(
                 Modifier
                     .clip(shape)
                     .background(if (isSel) Juicy.Paper else Color.Transparent)
                     .border(BorderStroke(1.dp, if (isSel) Color.Transparent else Hairline), shape)
-                    .clickable { onSelect(o) }
+                    .clickable(interactionSource = source, indication = LocalIndication.current) { onSelect(o) }
                     .padding(horizontal = 14.dp, vertical = 9.dp),
             ) {
                 Text(label(o), style = MaterialTheme.typography.labelLarge, color = if (isSel) Juicy.PaperInk else Juicy.TextDim)

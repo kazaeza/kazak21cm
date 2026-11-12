@@ -17,6 +17,17 @@ import com.kazaeza.muzykalka.nav.MuzykalkaRoot
 import com.kazaeza.muzykalka.ui.theme.MuzykalkaTheme
 
 class MainActivity : ComponentActivity() {
+    // O-36: while the app is on screen the sound output stays open for the taps
+    override fun onStart() {
+        super.onStart()
+        (application as MuzykalkaApp).graph.setOnScreen(true)
+    }
+
+    override fun onStop() {
+        (application as MuzykalkaApp).graph.setOnScreen(false)
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

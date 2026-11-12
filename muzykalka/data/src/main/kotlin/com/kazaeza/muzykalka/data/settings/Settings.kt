@@ -6,12 +6,15 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.kazaeza.muzykalka.music.DEFAULT_A4_HZ
 import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.NoteNaming
+import com.kazaeza.muzykalka.music.TapSound
+import com.kazaeza.muzykalka.music.ToneTimbre
 import com.kazaeza.muzykalka.music.Tuning
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -36,6 +39,14 @@ data class Settings(
     val leftHanded: Boolean = false,
     /** Haptic feedback in games. */
     val haptics: Boolean = true,
+    /** O-36: how the note over the drone sounds. The hum was the user's pick on the lab page. */
+    val toneTimbre: ToneTimbre = ToneTimbre.HUM,
+    /** O-36: the wooden tap on buttons; null = no taps. */
+    val tapSound: TapSound? = TapSound.TICK,
+    /** O-36: volume of the taps, 0…2 (the lab page's slider; the user asked for the quietest, so it starts low). */
+    val tapVolume: Float = 0.35f,
+    /** O-36: a small room around notes and taps. */
+    val room: Boolean = true,
 ) {
     val tuning: Tuning get() = Tuning.byId(tuningId) ?: Tuning.STANDARD
 }
@@ -58,6 +69,15 @@ class SettingsRepository(context: Context) {
         val DAY_START = intPreferencesKey("day_start_hour")
         val LEFTY = booleanPreferencesKey("left_handed")
         val HAPTICS = booleanPreferencesKey("haptics")
+        val TONE_TIMBRE = stringPreferencesKey("tone_timbre")
+        val TAP_SOUND = stringPreferencesKey("tap_sound")
+        val TAP_VOLUME = floatPreferencesKey("tap_volume")
+        val ROOM = booleanPreferencesKey("room")
+    }
+
+    private companion object {
+        /** DataStore has no null: «no taps» is stored as this word. */
+        const val TAPS_OFF = "OFF"
     }
 
     val settings: Flow<Settings> = store.data.map(::read)
@@ -78,6 +98,10 @@ class SettingsRepository(context: Context) {
             p[K.DAY_START] = next.dayStartHour
             p[K.LEFTY] = next.leftHanded
             p[K.HAPTICS] = next.haptics
+            p[K.TONE_TIMBRE] = next.toneTimbre.name
+            p[K.TAP_SOUND] = next.tapSound?.name ?: TAPS_OFF
+            p[K.TAP_VOLUME] = next.tapVolume
+            p[K.ROOM] = next.room
         }
     }
 
@@ -96,6 +120,14 @@ class SettingsRepository(context: Context) {
             dayStartHour = p[K.DAY_START] ?: d.dayStartHour,
             leftHanded = p[K.LEFTY] ?: d.leftHanded,
             haptics = p[K.HAPTICS] ?: d.haptics,
+            toneTimbre = p[K.TONE_TIMBRE]?.let { runCatching { ToneTimbre.valueOf(it) }.getOrNull() } ?: d.toneTimbre,
+            tapSound = when (val t = p[K.TAP_SOUND]) {
+                null -> d.tapSound
+                TAPS_OFF -> null
+                else -> runCatching { TapSound.valueOf(t) }.getOrNull() ?: d.tapSound
+            },
+            tapVolume = (p[K.TAP_VOLUME] ?: d.tapVolume).coerceIn(0f, 2f),
+            room = p[K.ROOM] ?: d.room,
         )
     }
 

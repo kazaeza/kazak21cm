@@ -13,6 +13,9 @@ import com.kazaeza.muzykalka.dsp.Synth
 import com.kazaeza.muzykalka.music.DEFAULT_A4_HZ
 import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Score
+import com.kazaeza.muzykalka.music.TapSound
+import com.kazaeza.muzykalka.music.ToneTimbre
+import com.kazaeza.muzykalka.music.Voice
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,6 +58,21 @@ class AndroidAudioOutput(
 
     @Volatile
     override var a4Hz: Double = DEFAULT_A4_HZ
+
+    override var toneTimbre: ToneTimbre
+        get() = synth.toneTimbre
+        set(value) {
+            synth.toneTimbre = value
+        }
+
+    override var room: Boolean
+        get() = synth.room
+        set(value) {
+            synth.room = value
+        }
+
+    @Volatile
+    private var keepOpen = false
 
     private fun ensureRunning(): Boolean = synchronized(lock) {
         if (running) return true
@@ -109,7 +127,7 @@ class AndroidAudioOutput(
                 synth.render(buffer, block)
                 val written = t.write(buffer, 0, block, AudioTrack.WRITE_BLOCKING)
                 if (written < 0) break
-                if (synth.isIdle && System.nanoTime() - lastActivityNanos > IDLE_STOP_NS) break
+                if (synth.isIdle && !keepOpen && System.nanoTime() - lastActivityNanos > IDLE_STOP_NS) break
             }
         } catch (e: Exception) {
             Log.w(TAG, "render loop ended", e)
@@ -135,7 +153,9 @@ class AndroidAudioOutput(
         if (!ensureRunning()) return
         lastActivityNanos = System.nanoTime()
         val start = synth.framePosition + LEAD_FRAMES
-        val end = synth.schedule(score, start, a4Hz) + TAIL_FRAMES
+        // a marimba, a kalimba or a felt piano rings on after its note: the microphone waits for the ring too
+        val tail = if (synth.toneTimbre.rings && score.notes.any { it.voice == Voice.TONE }) RING_TAIL_FRAMES else TAIL_FRAMES
+        val end = synth.schedule(score, start, a4Hz) + tail
         soundingUntilFrame = max(soundingUntilFrame, end)
         sounding.value = true
         try {
@@ -163,6 +183,18 @@ class AndroidAudioOutput(
         if (sounding.value) markSilent()
     }
 
+    override fun tap(sound: TapSound, low: Boolean, gain: Float) {
+        if (gain <= 0f || !ensureRunning()) return
+        lastActivityNanos = System.nanoTime()
+        synth.tap(sound, low, gain)
+    }
+
+    override fun keepOpen(on: Boolean) {
+        keepOpen = on
+        if (on) ensureRunning()
+        lastActivityNanos = System.nanoTime()
+    }
+
     override fun drone(notes: List<MidiNote>?) {
         val hz = notes.orEmpty().map { it.frequency(a4Hz) }
         if (hz.isNotEmpty() && !ensureRunning()) return
@@ -174,6 +206,7 @@ class AndroidAudioOutput(
         const val TAG = "AudioOutput"
         const val LEAD_FRAMES = 960L // 20 ms of scheduling headroom
         const val TAIL_FRAMES = 4_800L // 100 ms release tail
+        const val RING_TAIL_FRAMES = 19_200L // 400 ms: the ring of a struck bar or string (O-36)
         const val IDLE_STOP_NS = 10_000_000_000L
     }
 }

@@ -13,10 +13,14 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,15 +31,27 @@ import com.kazaeza.muzykalka.audio.InputDevices
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.data.settings.SettingsRepository
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
+import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.DegreeNote
 import com.kazaeza.muzykalka.music.DegreeNotation
+import com.kazaeza.muzykalka.music.Key
+import com.kazaeza.muzykalka.music.Mode
+import com.kazaeza.muzykalka.music.NoteName
 import com.kazaeza.muzykalka.music.NoteNaming
+import com.kazaeza.muzykalka.music.TapSound
+import com.kazaeza.muzykalka.music.ToneTimbre
+import com.kazaeza.muzykalka.music.Voice
 import com.kazaeza.muzykalka.music.Tuning
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
+import com.kazaeza.muzykalka.ui.component.LocalTapSound
 import com.kazaeza.muzykalka.ui.component.SectionLabel
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.math.roundToInt
@@ -51,6 +67,26 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
         scope.launch { repo.update(f) }
     }
     val inputs = remember { InputDevices.list(context) }
+
+    // O-36: choosing a timbre plays a fifth over the tonic drone, as it will sound in the game
+    var auditionJob by remember { mutableStateOf<Job?>(null) }
+    var auditionDrone by remember { mutableStateOf(false) }
+    fun audition(timbre: ToneTimbre) {
+        val key = Key(NoteName.parse("A"), Mode.MAJOR)
+        val previous = auditionJob
+        graph.audioOutput.toneTimbre = timbre
+        graph.audioOutput.a4Hz = settings.a4Hz
+        auditionJob = scope.launch {
+            previous?.cancelAndJoin() // its stopAll must not land on the new notes
+            auditionDrone = true
+            graph.audioOutput.drone(Arranger().drone(key))
+            graph.audioOutput.play(Arranger().line(DegreeNote.parseLine("1 5 1"), key, Voice.TONE, beatsEach = 1.0, tempoBpm = 84.0))
+            delay(400)
+            graph.audioOutput.drone(null)
+            auditionDrone = false
+        }
+    }
+    DisposableEffect(Unit) { onDispose { if (auditionDrone) graph.audioOutput.drone(null) } }
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
@@ -130,6 +166,74 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
                 )
             }
         }
+        item(key = "sound-note") {
+            Column {
+                SectionLabel("звук ноты над дроном")
+                Spacer(Modifier.height(6.dp))
+                ChoiceRow(
+                    ToneTimbre.entries,
+                    settings.toneTimbre,
+                    { timbreName(it) },
+                    { t ->
+                        update { it.copy(toneTimbre = t) }
+                        audition(t)
+                    },
+                    colors = Accents.Kamerton,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(timbreHint(settings.toneTimbre), style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+            }
+        }
+        item(key = "sound-tap") {
+            Column {
+                SectionLabel("тап на кнопках")
+                Spacer(Modifier.height(6.dp))
+                // the chips of this row stay silent on the press: only the tap that was chosen is heard
+                CompositionLocalProvider(LocalTapSound provides {}) {
+                    ChoiceRow(
+                        listOf<TapSound?>(null, TapSound.STICKS, TapSound.BLOCK, TapSound.TICK),
+                        settings.tapSound,
+                        { tapName(it) },
+                        { t ->
+                            update { it.copy(tapSound = t) }
+                            graph.applySound(settings.copy(tapSound = t))
+                            if (t != null) graph.audioOutput.tap(t, false, settings.tapVolume)
+                        },
+                        colors = Accents.Kamerton,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Дерево о дерево, еле слышно. Не звучит, пока задаётся вопрос и пока открыт микрофон.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Juicy.TextDim,
+                )
+            }
+        }
+        if (settings.tapSound != null) {
+            item(key = "sound-tap-volume") {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Text("Громкость тапа: ${(settings.tapVolume * 100).roundToInt()} %", style = MaterialTheme.typography.titleMedium)
+                    Slider(
+                        value = settings.tapVolume,
+                        onValueChange = { v ->
+                            update { it.copy(tapVolume = v) }
+                            graph.applySound(settings.copy(tapVolume = v))
+                        },
+                        onValueChangeFinished = { settings.tapSound?.let { graph.audioOutput.tap(it, false, settings.tapVolume) } },
+                        valueRange = 0f..2f,
+                    )
+                }
+            }
+        }
+        item(key = "sound-room") {
+            GlassCard(Modifier.fillMaxWidth()) {
+                SwitchRow("Воздух", "маленькая комната вокруг нот и тапов; дрон остаётся сухим", settings.room) { v ->
+                    update { it.copy(room = v) }
+                    graph.applySound(settings.copy(room = v))
+                }
+            }
+        }
         item(key = "switches") {
             GlassCard(Modifier.fillMaxWidth()) {
                 SwitchRow("Играю в наушниках", "микрофон не выключается, пока звучит приложение", settings.headphones) { v -> update { it.copy(headphones = v) } }
@@ -170,6 +274,29 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
             Text("Музыкалка ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
         }
     }
+}
+
+private fun timbreName(t: ToneTimbre): String = when (t) {
+    ToneTimbre.HUM -> "Голос"
+    ToneTimbre.MARIMBA -> "Маримба"
+    ToneTimbre.KALIMBA -> "Калимба"
+    ToneTimbre.FELT -> "Фетр"
+    ToneTimbre.CLASSIC -> "Как раньше"
+}
+
+private fun timbreHint(t: ToneTimbre): String = when (t) {
+    ToneTimbre.HUM -> "Закрытый рот: подъезжает к ноте, чуть плавает, дышит."
+    ToneTimbre.MARIMBA -> "Деревянный брусок: короткий стук, потом чистая нота, которая сама затихает."
+    ToneTimbre.KALIMBA -> "Стальной язычок на коробочке: «тинь» и долгий тёплый тон."
+    ToneTimbre.FELT -> "Пианино через фетр: глухой удар молоточка и струна, которая медленно дышит."
+    ToneTimbre.CLASSIC -> "Звук версий до 0.0.54: три неподвижные гармоники и ровное вибрато."
+}
+
+private fun tapName(t: TapSound?): String = when (t) {
+    null -> "выкл"
+    TapSound.STICKS -> "Палочки"
+    TapSound.BLOCK -> "Брусок"
+    TapSound.TICK -> "Тик"
 }
 
 @Composable

@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import com.kazaeza.muzykalka.ui.component.LocalTapSound
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -71,7 +74,10 @@ private const val LIBRARY_TAB = 2
 
 @Composable
 fun MuzykalkaRoot(graph: AppGraph) {
-    CompositionLocalProvider(LocalAppGraph provides graph) {
+    // O-36: the sound settings reach the output from here, and every button taps through the same door
+    LaunchedEffect(graph) { graph.settings.settings.collect { graph.applySound(it) } }
+    val tap = remember(graph) { { low: Boolean -> graph.tap(low) } }
+    CompositionLocalProvider(LocalAppGraph provides graph, LocalTapSound provides tap) {
         val nav = rememberNavController()
         val entry by nav.currentBackStackEntryAsState()
         val destination = entry?.destination

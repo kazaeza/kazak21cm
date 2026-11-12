@@ -5,6 +5,8 @@ import com.kazaeza.muzykalka.dsp.NoteEvent
 import com.kazaeza.muzykalka.dsp.PitchFrame
 import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Score
+import com.kazaeza.muzykalka.music.TapSound
+import com.kazaeza.muzykalka.music.ToneTimbre
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +39,25 @@ interface AudioOutput {
 
     /** A4 reference used to render notes (Settings). */
     var a4Hz: Double
+
+    /** O-36: how the note over the drone sounds (Settings). Takes effect from the next note. */
+    var toneTimbre: ToneTimbre
+
+    /** O-36: a small room around notes and taps (Settings). The drone stays dry. */
+    var room: Boolean
+
+    /**
+     * O-36: one wooden tap on a button, [gain] 0…2 (Settings); [low] is the second voice (back, cancel). Returns at
+     * once. A tap is NOT «sounding»: it never closes the microphone ([isSounding] ignores it) — taps are only
+     * made when no sung note is being waited for.
+     */
+    fun tap(sound: TapSound, low: Boolean = false, gain: Float = 1f)
+
+    /**
+     * O-36: while [on], the output stays open however long it is silent, so the first tap after a pause is not
+     * late (an AudioTrack takes tens of milliseconds to start). Set it while taps are on and the app is on screen.
+     */
+    fun keepOpen(on: Boolean)
 }
 
 /**

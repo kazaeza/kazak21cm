@@ -1,5 +1,8 @@
 package com.kazaeza.muzykalka.feature.common
 
+import com.kazaeza.muzykalka.ui.component.TapOnPress
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
@@ -149,11 +152,13 @@ fun ScreenFrame(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (onBack != null) {
+                        val backSource = remember { MutableInteractionSource() }
+                        TapOnPress(backSource, low = true)
                         Box(
                             Modifier
                                 .size(44.dp)
                                 .clip(CircleShape)
-                                .clickable(onClick = onBack),
+                                .clickable(interactionSource = backSource, indication = LocalIndication.current, onClick = onBack),
                             contentAlignment = Alignment.Center,
                         ) { Text("←", style = MaterialTheme.typography.headlineMedium, color = Juicy.Text) }
                         Spacer(Modifier.size(6.dp))

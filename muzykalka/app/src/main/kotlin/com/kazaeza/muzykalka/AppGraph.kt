@@ -23,6 +23,7 @@ import com.kazaeza.muzykalka.srs.StudyDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.kazaeza.muzykalka.music.TapSound
 import java.time.Instant
 import java.time.ZoneId
 
@@ -53,6 +54,41 @@ open class AppGraph(context: Context) {
     val gate = DuplexGate()
 
     val fsrs: Fsrs by lazy { Fsrs() }
+
+    // --- O-36: the sound settings as the output and the buttons need them, without waiting for DataStore on every tap
+    @Volatile
+    private var tapSound: TapSound? = null
+
+    @Volatile
+    private var tapVolume = 1f
+
+    @Volatile
+    private var onScreen = false
+
+    /** Gives [s] to the output: the timbre of the note over the drone, the room, and the taps' settings. */
+    fun applySound(s: Settings) {
+        audioOutput.toneTimbre = s.toneTimbre
+        audioOutput.room = s.room
+        tapSound = s.tapSound
+        tapVolume = s.tapVolume
+        audioOutput.keepOpen(onScreen && s.tapSound != null)
+    }
+
+    /** The app is on screen (Activity started) or not: while it is, and taps are on, the output stays open so the first tap is not late. */
+    fun setOnScreen(on: Boolean) {
+        onScreen = on
+        audioOutput.keepOpen(on && tapSound != null)
+    }
+
+    /**
+     * The tap of a pressed button ([low]: back, cancel, pause). Silent when taps are off, and whenever the microphone
+     * is open — the app must not hear itself (the tap is not pitched, but a quiet room is a quiet room).
+     */
+    fun tap(low: Boolean) {
+        val sound = tapSound ?: return
+        if (pitchInput.isRunning.value) return
+        audioOutput.tap(sound, low, tapVolume)
+    }
 
     fun studyDay(settings: Settings): StudyDay = StudyDay(ZoneId.systemDefault(), settings.dayStartHour)
 

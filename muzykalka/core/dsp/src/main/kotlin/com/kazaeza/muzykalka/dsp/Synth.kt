@@ -2,6 +2,8 @@ package com.kazaeza.muzykalka.dsp
 
 import com.kazaeza.muzykalka.music.DEFAULT_A4_HZ
 import com.kazaeza.muzykalka.music.Score
+import com.kazaeza.muzykalka.music.TapSound
+import com.kazaeza.muzykalka.music.ToneTimbre
 import com.kazaeza.muzykalka.music.Voice
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.PI
@@ -16,9 +18,10 @@ import kotlin.math.tanh
 
 /**
  * Real-time synthesiser driven by the output thread. All voices are synthesised (no samples):
- * GUITAR/BASS = extended Karplus–Strong, PIANO = 2-operator FM e-piano, TONE = soft additive
- * voice with a late vibrato, drums = noise/sine models, CLICK = short sine burst. Beside the
- * scored voices runs a [setDrone] bank: a sustained wavetable drone that outlives [stopAll].
+ * GUITAR/BASS = extended Karplus–Strong, PIANO = 2-operator FM e-piano, TONE = the note over the drone
+ * (its timbre is [toneTimbre]: the soft additive CLASSIC voice, or marimba / kalimba / felt piano / hum, O-36),
+ * drums = noise/sine models, CLICK = short sine burst. Beside the scored voices runs a [setDrone] bank: a
+ * sustained wavetable drone that outlives [stopAll]; and [tap], a tiny wooden sound for buttons.
  *
  * Threading contract: [schedule] and [stopAll] may be called from any thread; [render] only from
  * the audio thread; [render] does not lock and allocates nothing in steady state.
@@ -40,6 +43,22 @@ interface Synth {
      * an empty list fades the drone out. Callable from any thread.
      */
     fun setDrone(frequencies: List<Double>)
+
+    /** O-36: how a [Voice.TONE] note sounds. Read when the note starts, so a change touches the next note. */
+    var toneTimbre: ToneTimbre
+
+    /**
+     * O-36: a small room around notes and taps (the drone stays dry). Turning it on adds a tail of ~0.7 s to
+     * everything that sounds; off, it costs nothing.
+     */
+    var room: Boolean
+
+    /**
+     * O-36: one wooden tap, from the first frame [render] produces next. [low] is the second voice (back, cancel);
+     * [gain] 0…2 is the volume setting. Callable from any thread; not a note — the caller must not count it as
+     * the app «sounding» (a tap must not shut the microphone).
+     */
+    fun tap(sound: TapSound, low: Boolean = false, gain: Float = 1f)
 
     /** Absolute index of the next frame [render] will produce. */
     val framePosition: Long
@@ -76,6 +95,8 @@ class DefaultSynth(
 
     private class DroneCommand(val frequencies: List<Double>)
 
+    private class TapCommand(val sound: TapSound, val low: Boolean, val gain: Float)
+
     private val drone = DroneBank(sampleRate)
 
     private val commands = ConcurrentLinkedQueue<Any>()
@@ -88,6 +109,17 @@ class DefaultSynth(
 
     @Volatile
     private var idleFlag = true
+
+    @Volatile
+    override var toneTimbre: ToneTimbre = ToneTimbre.CLASSIC
+
+    @Volatile
+    override var room: Boolean = false
+
+    private val smallRoom = SmallRoom(sampleRate)
+    private val roomTailFrames = (SmallRoom.TAIL_SECONDS * sampleRate).toInt()
+    private var roomLeft = 0
+    private var roomWasOn = false
 
     override val framePosition: Long get() = position
     override val isIdle: Boolean get() = idleFlag && commands.isEmpty()
@@ -116,6 +148,11 @@ class DefaultSynth(
         commands.add(StopAll)
     }
 
+    override fun tap(sound: TapSound, low: Boolean, gain: Float) {
+        idleFlag = false
+        commands.add(TapCommand(sound, low, gain.coerceIn(0f, 2f)))
+    }
+
     override fun setDrone(frequencies: List<Double>) {
         if (frequencies.isNotEmpty()) idleFlag = false
         commands.add(DroneCommand(frequencies))
@@ -124,14 +161,35 @@ class DefaultSynth(
     override fun render(out: FloatArray, frames: Int) {
         drainCommands()
         val base = position
+        val roomOn = room
+        if (roomOn && !roomWasOn) {
+            smallRoom.reset()
+            roomLeft = 0
+        }
+        roomWasOn = roomOn
         for (i in 0 until frames) {
             val now = base + i
             while (pendingIndex < pending.size && pending[pendingIndex].startFrame <= now) {
                 startVoice(pending[pendingIndex], now)
                 pendingIndex++
             }
-            var sum = drone.next()
-            for (v in voices) if (v.active) sum += v.next(now)
+            var played = 0.0
+            var anyPlaying = false
+            for (v in voices) {
+                if (v.active) {
+                    played += v.next(now)
+                    anyPlaying = true
+                }
+            }
+            var sum = drone.next() + played
+            if (roomOn) {
+                // the room hears the notes and taps, not the drone, and rings on after the last of them
+                if (anyPlaying) roomLeft = roomTailFrames
+                if (roomLeft > 0) {
+                    sum += SmallRoom.WET * smallRoom.process(played)
+                    if (!anyPlaying && --roomLeft == 0) smallRoom.reset()
+                }
+            }
             out[i] = tanh(sum * masterGain).toFloat()
         }
         if (pendingIndex > 256) {
@@ -141,7 +199,7 @@ class DefaultSynth(
         position = base + frames
         var anyActive = false
         for (v in voices) if (v.active) anyActive = true
-        idleFlag = !anyActive && pendingIndex >= pending.size && drone.silent
+        idleFlag = !anyActive && pendingIndex >= pending.size && drone.silent && roomLeft == 0
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -154,6 +212,8 @@ class DefaultSynth(
                 for (v in voices) if (v.active) v.fastRelease(position)
             } else if (cmd is DroneCommand) {
                 drone.set(cmd.frequencies)
+            } else if (cmd is TapCommand) {
+                startTap(cmd, position)
             } else {
                 for (e in cmd as List<Event>) insertSorted(e)
             }
@@ -177,7 +237,14 @@ class DefaultSynth(
             // Steal the oldest voice.
             chosen = voices.minBy { it.startedAt }
         }
-        chosen.start(e.voice, e.hz, e.velocity, now, e.endFrame)
+        chosen.start(e.voice, e.hz, e.velocity, now, e.endFrame, toneTimbre)
+    }
+
+    private fun startTap(c: TapCommand, now: Long) {
+        var chosen: SynthVoice? = null
+        for (v in voices) if (!v.active) { chosen = v; break }
+        if (chosen == null) chosen = voices.minBy { it.startedAt }
+        chosen.startTap(c.sound, c.low, c.gain, now)
     }
 }
 
@@ -216,8 +283,17 @@ private class SynthVoice(private val sr: Int) {
     // --- noise
     private var noiseState = 0x2545F491
 
-    fun start(voice: Voice, frequency: Double, vel: Float, now: Long, end: Long) {
+    // --- O-36: timbres of the note over the drone, and the wooden taps
+    private val rng = Noise()
+    private val bank = ResonatorBank(sr, rng)
+    private val hum = HumVoice(sr, rng)
+    private var timbre = ToneTimbre.CLASSIC
+    private var isTap = false
+
+    fun start(voice: Voice, frequency: Double, vel: Float, now: Long, end: Long, toneTimbre: ToneTimbre = ToneTimbre.CLASSIC) {
         active = true
+        isTap = false
+        timbre = if (voice == Voice.TONE) toneTimbre else ToneTimbre.CLASSIC
         kind = voice
         hz = frequency
         velocity = vel
@@ -232,8 +308,35 @@ private class SynthVoice(private val sr: Int) {
         when (voice) {
             Voice.GUITAR -> startString(t60 = (4.5 - 3.0 * min(1.0, hz / 700.0)), brightness = 0.85, outputLp = 1.0)
             Voice.BASS -> startString(t60 = 3.5, brightness = 0.35, outputLp = 0.12)
+            Voice.TONE -> startTone(frequency, vel)
             else -> Unit
         }
+    }
+
+    private fun startTone(frequency: Double, vel: Float) {
+        rng.seed(noiseState)
+        when (timbre) {
+            ToneTimbre.CLASSIC -> Unit
+            ToneTimbre.MARIMBA -> Timbres.marimba(bank, rng, frequency, vel)
+            ToneTimbre.KALIMBA -> Timbres.kalimba(bank, rng, frequency, vel)
+            ToneTimbre.FELT -> Timbres.felt(bank, rng, frequency, vel)
+            ToneTimbre.HUM -> hum.start(frequency, vel)
+        }
+    }
+
+    /** O-36: a wooden tap; it lives in a voice of the same pool, and is never released by time, only by dying away. */
+    fun startTap(sound: TapSound, low: Boolean, gain: Float, now: Long) {
+        active = true
+        isTap = true
+        timbre = ToneTimbre.CLASSIC
+        kind = Voice.CLICK
+        velocity = 1f
+        startedAt = now
+        releaseAt = Long.MAX_VALUE
+        released = false
+        noiseState = (now.toInt() * 1103515245 + 12345) or 1
+        rng.seed(noiseState)
+        Timbres.tap(bank, rng, sound, low, gain.toDouble())
     }
 
     fun fastRelease(now: Long) {
@@ -243,6 +346,8 @@ private class SynthVoice(private val sr: Int) {
         }
         releaseAt = min(releaseAt, now)
         releaseGain = 0.995
+        bank.release(fast = true)
+        hum.fastRelease()
     }
 
     private fun startString(t60: Double, brightness: Double, outputLp: Double) {
@@ -294,18 +399,30 @@ private class SynthVoice(private val sr: Int) {
         if (!released && now >= releaseAt) {
             released = true
             releaseStart = now
+            bank.release(fast = false)
         }
         val t = (now - startedAt).toDouble() / sr
-        val y = when (kind) {
-            Voice.GUITAR, Voice.BASS -> string()
-            Voice.PIANO -> ePiano(t, now)
-            Voice.TONE -> tone(t, now)
-            Voice.KICK -> kick(t)
-            Voice.SNARE -> snare(t)
-            Voice.HAT -> hat(t)
-            Voice.CLICK -> click(t)
+        val y = if (isTap) {
+            bank.next()
+        } else {
+            when (kind) {
+                Voice.GUITAR, Voice.BASS -> string()
+                Voice.PIANO -> ePiano(t, now)
+                Voice.TONE -> when (timbre) {
+                    ToneTimbre.CLASSIC -> tone(t, now)
+                    ToneTimbre.HUM -> hum.next(t, released, (now - releaseStart).toDouble() / sr)
+                    else -> bank.next()
+                }
+                Voice.KICK -> kick(t)
+                Voice.SNARE -> snare(t)
+                Voice.HAT -> hat(t)
+                Voice.CLICK -> click(t)
+            }
         }
-        if (t > 8.0 || (released && (now - releaseStart) > sr * 0.6) || (kind.isDrum() && t > 0.7)) active = false
+        val over = if (isTap) t > Timbres.TAP_SECONDS else kind.isDrum() && t > 0.7
+        // a hummed note closes more slowly (110 ms), so its voice is kept a little longer: no click at the cut
+        val keep = if (kind == Voice.TONE && timbre == ToneTimbre.HUM) 0.9 else 0.6
+        if (t > 8.0 || (released && (now - releaseStart) > sr * keep) || over) active = false
         return y
     }
 
