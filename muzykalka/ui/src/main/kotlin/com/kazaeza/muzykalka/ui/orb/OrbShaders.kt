@@ -43,10 +43,10 @@ void main(){ vec3 c=texture(uTex,vUv).rgb; o=vec4(c,max(c.r,max(c.g,c.b))); }"""
     const val FS_BALL = """
 in vec2 vUv; out vec4 o; uniform vec3 tint; uniform float energy, wall; uniform vec2 res;
 void main(){ vec2 p=(vUv-0.5)/wall; float r=length(p); float z=sqrt(max(0.,1.-r*r)); float d=max(r-1.,0.);
-  float e=1.5/(wall*res.x); float mask=1.0-smoothstep(1.0-e,1.0+e,r);
+  float e=1.5/(wall*res.x); float mask=1.0-smoothstep(1.0-e,1.0+e,r); float edge=1.0-smoothstep(0.8,1.0,length(vUv-0.5)*2.0);
   vec3 body=vec3(0.02,0.021,0.026)*(0.4+0.6*z)+tint*(0.05+0.10*energy)*pow(1.0-z,2.2);
   vec2 hl=p-vec2(-0.36,0.46); body+=0.05*exp(-dot(hl,hl)/0.02);
-  vec3 halo=tint*(0.16*exp(-d*6.0)+0.07*exp(-d*2.0))*(0.5+1.2*energy);
+  vec3 halo=tint*(0.16*exp(-d*6.0)+0.07*exp(-d*2.0))*(0.5+1.2*energy)*edge;
   vec3 c=mix(halo,body+vec3(0.039,0.035,0.035),mask);
   o=vec4(c,max(mask,max(c.r,max(c.g,c.b)))); }"""
 
@@ -62,10 +62,10 @@ void main(){ vec2 d=gl_PointCoord-0.5; float a=smoothstep(0.5,0.1,length(d)); ve
     const val FS_PLATE = """
 in vec2 vUv; out vec4 o; uniform vec3 tint; uniform float energy, wall; uniform vec2 res;
 void main(){ vec2 p=(vUv-0.5)/wall; float r=length(p); float d=max(r-1.,0.);
-  float e=1.5/(wall*res.x); float mask=1.0-smoothstep(1.0-e,1.0+e,r);
+  float e=1.5/(wall*res.x); float mask=1.0-smoothstep(1.0-e,1.0+e,r); float edge=1.0-smoothstep(0.8,1.0,length(vUv-0.5)*2.0);
   vec3 plate=vec3(0.028,0.027,0.03)*(1.0-0.45*r*r)+tint*0.035*energy;
   plate+=tint*0.5*exp(-pow((r-0.992)/0.006,2.0))*(0.35+0.65*energy);
-  vec3 halo=tint*(0.14*exp(-d*7.0)+0.05*exp(-d*2.0))*(0.35+1.3*energy);
+  vec3 halo=tint*(0.14*exp(-d*7.0)+0.05*exp(-d*2.0))*(0.35+1.3*energy)*edge;
   vec3 c=mix(halo,plate+vec3(0.039,0.035,0.035),mask);
   o=vec4(c,max(mask,max(c.r,max(c.g,c.b)))); }"""
 
@@ -127,8 +127,8 @@ void main(){ vec2 p=(vUv-0.5)/wall; float r=length(p); float z=sqrt(max(0.,1.-r*
   float fres=pow(1.0-z,2.4);
   col+=(vec3(0.03,0.035,0.05)+0.6*(1.0-exp(-wide*2.4)))*fres;
   vec2 hl=p-vec2(-0.36,0.46); col+=0.09*exp(-dot(hl,hl)/0.016)+0.03*exp(-dot(hl,hl)/0.2);
-  float e=1.5/(wall*res.x); float mask=1.0-smoothstep(1.0-e,1.0+e,r); float d=max(r-1.0,0.);
-  vec3 halo=(1.0-exp(-avg*1.3))*(0.5*exp(-d*7.0)+0.2*exp(-d*2.2))*(0.6+0.8*energy);
+  float e=1.5/(wall*res.x); float mask=1.0-smoothstep(1.0-e,1.0+e,r); float d=max(r-1.0,0.); float edge=1.0-smoothstep(0.8,1.0,length(vUv-0.5)*2.0);
+  vec3 halo=(1.0-exp(-avg*1.3))*(0.5*exp(-d*7.0)+0.2*exp(-d*2.2))*(0.6+0.8*energy)*edge;
   vec3 c=mix(halo,col+vec3(0.039,0.035,0.035),mask);
   o=vec4(c,max(mask,max(c.r,max(c.g,c.b)))); }"""
 }

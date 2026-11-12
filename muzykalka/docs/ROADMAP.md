@@ -481,7 +481,7 @@ O-29 → O-30 → O-27 → O-28 → O-33 → O-34 (O-31 и O-32 сделаны; 
   «Песок» — крупинки на пластине, фигуры Хладни. Раскадровки: `node frames.js <ink|thread|sand> out.png <ступень>`.
   **Ответ пользователя:** «всё оставим на выбор; чернила не очень в тему, хотя выглядят нереально круто; основной —
   нить». → Нить по умолчанию, Чернила и Песок — выбор, Капля (O-37) — запасной и тоже выбор.
-  Сделано (0.0.63, ADR-040): `core:music/OrbBodies.kt` (`ThreadBody`, `SandBody`, `InkScript`, `OrbPhysics`, Бессель) с
+  Сделано (0.0.64, ADR-040): `core:music/OrbBodies.kt` (`ThreadBody`, `SandBody`, `InkScript`, `OrbPhysics`, Бессель) с
   тестами по снимку JS стенда (`scripts/orb_golden.js` → `orb-golden.txt`); `ui/orb` — `Gles` над GLES 3.0, шейдеры стенда с
   предумноженной альфой, три рендерера, `OrbGlHost` (EGL на своём потоке, `Choreographer`), `OrbSphere` (запасной путь —
   `LensOrb`); `DegreeRing` рисует `OrbSphere`, `TirContent` передаёт ответ (неверный — красным, потом верный своим цветом),
