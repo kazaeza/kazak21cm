@@ -21,6 +21,7 @@ import com.kazaeza.muzykalka.ui.component.LocalTapSound
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -54,13 +55,17 @@ import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
 import com.kazaeza.muzykalka.feature.today.TodayScreen
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.music.OrbBody
 import com.kazaeza.muzykalka.ui.component.FloatingTabBar
 import com.kazaeza.muzykalka.ui.component.FloatingTabBarMargin
 import com.kazaeza.muzykalka.ui.component.FloatingTabBarReserve
 import com.kazaeza.muzykalka.ui.component.TabIcon
 import com.kazaeza.muzykalka.ui.component.TabSpec
+import com.kazaeza.muzykalka.ui.orb.LocalOrbBody
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import com.kazaeza.muzykalka.ui.theme.Motion
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** Four tabs, no more: the app is a practice tool, not a super-app. They are pages of one pager (O-29). */
@@ -77,7 +82,10 @@ fun MuzykalkaRoot(graph: AppGraph) {
     // O-36: the sound settings reach the output from here, and every button taps through the same door
     LaunchedEffect(graph) { graph.settings.settings.collect { graph.applySound(it) } }
     val tap = remember(graph) { { low: Boolean -> graph.tap(low) } }
-    CompositionLocalProvider(LocalAppGraph provides graph, LocalTapSound provides tap) {
+    // O-38: what the sphere is made of is a setting; the screens that draw it read it from here
+    val orbFlow = remember(graph) { graph.settings.settings.map { it.orbBody }.distinctUntilChanged() }
+    val orb by orbFlow.collectAsState(initial = OrbBody.THREAD)
+    CompositionLocalProvider(LocalAppGraph provides graph, LocalTapSound provides tap, LocalOrbBody provides orb) {
         val nav = rememberNavController()
         val entry by nav.currentBackStackEntryAsState()
         val destination = entry?.destination

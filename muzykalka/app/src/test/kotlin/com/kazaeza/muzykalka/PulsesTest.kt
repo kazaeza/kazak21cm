@@ -18,6 +18,7 @@ import com.kazaeza.muzykalka.music.Overtones
 import com.kazaeza.muzykalka.music.PulseKind
 import com.kazaeza.muzykalka.music.SoundPulse
 import com.kazaeza.muzykalka.ui.effect.PulseBoard
+import com.kazaeza.muzykalka.ui.effect.rememberPulses
 import com.kazaeza.muzykalka.ui.effect.strum
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,6 +45,21 @@ class PulsesTest {
         assertEquals(0.1f, live[1].age, 1e-4f)
         assertTrue(board.active)
         assertFalse(PulseBoard.frozen().active)
+    }
+
+    @Test
+    fun aListenerHearsEveryPluckUntilItIsTakenAway() {
+        val board = rememberedBoard()
+        val heard = mutableListOf<SoundPulse>()
+        val off = board.addListener { heard.add(it) }
+        val a = SoundPulse(PulseKind.HOME, 0L, 1f, 0, 0.5f)
+        val b = SoundPulse(PulseKind.TOUCH, 0L, 0.8f, null, 0.2f)
+        board.add(a)
+        board.add(b)
+        assertEquals(listOf(a, b), heard)
+        off()
+        board.add(a)
+        assertEquals(2, heard.size)
     }
 
     @Test
@@ -75,5 +91,12 @@ class PulsesTest {
         // a swipe that stays above the line is no pluck
         rule.onNodeWithTag("strip").performTouchInput { swipe(Offset(10f, 5f), Offset(width - 10f, height * 0.5f), 80) }
         assertEquals(1, plucks.size)
+    }
+
+    private fun rememberedBoard(): PulseBoard {
+        lateinit var board: PulseBoard
+        rule.setContent { board = rememberPulses(null) }
+        rule.waitForIdle()
+        return board
     }
 }

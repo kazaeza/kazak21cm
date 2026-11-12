@@ -61,7 +61,7 @@
 | `core:game` | JVM | Каталог режимов/уровней, `RoundEngine` (правила!), драйверы режимов, оценка Тапёра, программа, сет дня, метрики | music, srs |
 | `audio` | Android | AudioTrack-выход, AudioRecord-вход + конвейер высоты, дуплекс-гейт, TTS, выбор устройства | dsp |
 | `data` | Android | Room (схема v1), DAO, DTO-пейлоады, настройки (DataStore), бэкап | music, srs, game |
-| `ui` | Android+Compose | Тема, цвета ступеней, крупные компоненты (кейпад I–VII, гриф, таймер) | music |
+| `ui` | Android+Compose | Тема, цвета ступеней, крупные компоненты (кейпад I–VII, гриф, таймер), шар `OrbSphere` (OpenGL ES 3 на своём потоке, запасная капля; ADR-040) | music |
 | `app` | Android app | Навигация, 8 экранов, ViewModel'и, DI | всё |
 
 **Жёсткие правила границ** (нарушение = отказ в ревью):

@@ -62,6 +62,7 @@ import com.kazaeza.muzykalka.ui.Haptics
 import com.kazaeza.muzykalka.ui.effect.PulseBoard
 import com.kazaeza.muzykalka.ui.effect.WaveReveal
 import com.kazaeza.muzykalka.ui.effect.strum
+import com.kazaeza.muzykalka.ui.orb.OrbAnswer
 import com.kazaeza.muzykalka.ui.component.DegreeChip
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -156,6 +157,12 @@ internal fun TirContent(
         single == null || !feedback -> null
         wrongPhase -> WaveReveal.of(chosen!!.semitones, Juicy.Bad)
         else -> WaveReveal.of(single.semitones, DegreeColors.of(single))
+    }
+    // O-38: the bodies drawn by OpenGL show the same: the wrong choice in red first, then the right degree in its colour
+    val orbAnswer = when {
+        single == null || !feedback -> null
+        wrongPhase -> OrbAnswer(Math.floorMod(chosen!!.semitones, 12), Juicy.Bad)
+        else -> OrbAnswer(Math.floorMod(single.semitones, 12), DegreeColors.of(single))
     }
     val lobes = if (feedback && single != null && !wrongPhase) Overtones.ratio(single.semitones).first else 0
     val tension = single?.let { Overtones.tension(it.semitones) } ?: 0f
@@ -312,6 +319,7 @@ internal fun TirContent(
                             pulses = pulses,
                             lobes = lobes,
                             tension = tension,
+                            answer = orbAnswer,
                             onPress = { hour ->
                                 // the finger plucks the string at the key's place across the width
                                 val x = 0.5f + 0.45f * sin(Math.toRadians(hour * 30.0)).toFloat()

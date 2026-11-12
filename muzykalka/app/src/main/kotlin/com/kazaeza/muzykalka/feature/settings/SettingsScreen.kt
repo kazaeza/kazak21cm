@@ -3,6 +3,7 @@ package com.kazaeza.muzykalka.feature.settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,6 +40,9 @@ import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.NoteName
 import com.kazaeza.muzykalka.music.NoteNaming
+import com.kazaeza.muzykalka.music.OrbBody
+import com.kazaeza.muzykalka.music.PulseKind
+import com.kazaeza.muzykalka.music.SoundPulse
 import com.kazaeza.muzykalka.music.TapSound
 import com.kazaeza.muzykalka.music.ToneTimbre
 import com.kazaeza.muzykalka.music.Voice
@@ -47,6 +52,10 @@ import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
 import com.kazaeza.muzykalka.ui.component.LocalTapSound
 import com.kazaeza.muzykalka.ui.component.SectionLabel
+import com.kazaeza.muzykalka.ui.effect.rememberPulses
+import com.kazaeza.muzykalka.ui.orb.OrbAnswer
+import com.kazaeza.muzykalka.ui.orb.OrbSphere
+import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import kotlinx.coroutines.Job
@@ -166,6 +175,9 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
                 )
             }
         }
+        item(key = "orb") {
+            OrbPicker(settings.orbBody) { b -> update { it.copy(orbBody = b) } }
+        }
         item(key = "sound-note") {
             Column {
                 SectionLabel("звук дрона и ноты")
@@ -274,6 +286,64 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
             Text("Музыкалка ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
         }
     }
+}
+
+/**
+ * O-38: what the sphere of the Tir is made of, and a live one to try: a tap strikes it, the next taps answer with a
+ * degree (the figure of its ratio appears), the last one clears it. Without a degree it is the tonic's.
+ */
+@Composable
+private fun OrbPicker(body: OrbBody, onPick: (OrbBody) -> Unit) {
+    val board = rememberPulses(null)
+    var step by remember { mutableIntStateOf(0) }
+    val degree = ORB_DEMO.getOrNull(step - 1)
+    Column {
+        SectionLabel("шар")
+        Spacer(Modifier.height(6.dp))
+        ChoiceRow(ORB_CHOICES, body, { orbName(it) }, { b -> onPick(b) }, colors = Accents.Kamerton)
+        Spacer(Modifier.height(6.dp))
+        Text(orbHint(body), style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+        OrbSphere(
+            colors = listOf(Juicy.Blue, Juicy.Violet, Juicy.Magenta, Juicy.Cyan),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+                .clickable {
+                    board.add(SoundPulse(PulseKind.TOUCH, 0L, 0.9f, null, 0.2f + 0.6f * ((step * 37) % 10) / 10f))
+                    step = (step + 1) % (ORB_DEMO.size + 1)
+                },
+            sphere = 0.8f,
+            pulses = board,
+            lobes = degree?.let { com.kazaeza.muzykalka.music.Overtones.ratio(it).first } ?: 0,
+            tension = degree?.let { com.kazaeza.muzykalka.music.Overtones.tension(it) } ?: 0f,
+            answer = degree?.let { OrbAnswer(it, DegreeColors.ofSemitone(it)) },
+            body = body,
+        )
+        Text(
+            "Тронь шар: щипок. Дальше он отвечает ступенью — квинта, терция, большая секунда, малая секста, — и снова пусто.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Juicy.TextFaint,
+        )
+    }
+}
+
+/** What the picker's sphere answers on successive taps: a fifth, a major third, a second, a minor sixth. */
+private val ORB_DEMO = listOf(7, 4, 2, 8)
+
+private val ORB_CHOICES = listOf(OrbBody.THREAD, OrbBody.INK, OrbBody.SAND, OrbBody.DROP)
+
+private fun orbName(b: OrbBody): String = when (b) {
+    OrbBody.THREAD -> "Нить"
+    OrbBody.INK -> "Чернила"
+    OrbBody.SAND -> "Песок"
+    OrbBody.DROP -> "Капля"
+}
+
+private fun orbHint(b: OrbBody): String = when (b) {
+    OrbBody.THREAD -> "Одна струна в стеклянном шаре. Ответ наматывает её в узор отношения p:q: консонанс стоит, диссонанс ползёт."
+    OrbBody.INK -> "Настоящая жидкость: щипок стреляет струёй, ответ закручивает чернила в цвет ступени. Нужен современный телефон."
+    OrbBody.SAND -> "Песчинки на звенящей пластине собираются в узловые линии — фигуры Хладни; щипок их разбрасывает."
+    OrbBody.DROP -> "Капля на шейдере, как в версиях до 0.0.63: дёшево и спокойно."
 }
 
 /** O-39: the glass first — it is the sound of the app; the others stay as they were, for whoever wants them. */

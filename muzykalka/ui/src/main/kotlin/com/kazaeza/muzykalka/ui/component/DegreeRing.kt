@@ -46,7 +46,8 @@ import androidx.compose.ui.unit.sp
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
-import com.kazaeza.muzykalka.ui.effect.LensOrb
+import com.kazaeza.muzykalka.ui.orb.OrbAnswer
+import com.kazaeza.muzykalka.ui.orb.OrbSphere
 import com.kazaeza.muzykalka.ui.effect.PulseBoard
 import com.kazaeza.muzykalka.ui.effect.breathe
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
@@ -68,14 +69,14 @@ private const val ARC = 3
 /**
  * O-23, redrawn in O-26 after the references: Tir's answer pad as an instrument dial.
  *
- * In the centre the tonic is a sphere of light ([LensOrb]), the way the drone sits under every note. Around
+ * In the centre the tonic is a sphere of light ([OrbSphere], O-38; the drop of O-37 is one of its bodies), the way the drone sits under every note. Around
  * it runs a ring of fine ticks, and the degrees stand on it like hours on a clock — one hour per semitone,
  * clockwise from 1 at the top, so 7 is next to 1, ♭3 and 3 are neighbours, and the distance on the dial is
  * the distance in sound. A degree is a dot-matrix numeral with a short arc of longer ticks in its own colour;
  * there is no button shape, but each one answers to touch in a square of [key] (at least [GameTouchTarget]).
  *
  * After the answer the right degree lights up — longer ticks, a glow, and a thin hand from the sphere — and
- * [centre] floods the sphere with its colour. [energy] 0…1 is how loud the sphere is (the question is sounding).
+ * [centre] floods the sphere with its colour; [answer] (O-38) is the same for the bodies that are drawn by OpenGL. [energy] 0…1 is how loud the sphere is (the question is sounding).
  * Two spellings of one sound (♯4 / ♭5) share an hour: the second one stands on an inner circle.
  */
 @Composable
@@ -93,6 +94,7 @@ fun DegreeRing(
     pulses: PulseBoard? = null,
     lobes: Int = 0,
     tension: Float = 0f,
+    answer: OrbAnswer? = null,
     onPress: (hour: Int) -> Unit = {},
 ) {
     // O-35: the sphere leans towards the key under the finger; after the answer it leans to the right one
@@ -116,7 +118,7 @@ fun DegreeRing(
         val o1 by animateColorAsState(tint?.let { lerp(it, Color.White, 0.4f) } ?: Juicy.Violet, tween(Motion.LONG), label = "orb1")
         val o3 by animateColorAsState(tint ?: Juicy.Cyan, tween(Motion.LONG), label = "orb3")
         if (rOrb > 0.dp) {
-            LensOrb(
+            OrbSphere(
                 listOf(o0, o1, Juicy.Magenta, o3),
                 Modifier.size(side).breathe(enabled = breathing, amount = 0.03f, periodMs = 3200),
                 energy = energy,
@@ -125,6 +127,7 @@ fun DegreeRing(
                 touch = touch,
                 lobes = lobes,
                 tension = tension,
+                answer = answer,
             )
         }
         Canvas(Modifier.size(side)) {

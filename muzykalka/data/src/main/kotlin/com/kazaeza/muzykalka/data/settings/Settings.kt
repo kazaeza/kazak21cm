@@ -13,6 +13,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.kazaeza.muzykalka.music.DEFAULT_A4_HZ
 import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.NoteNaming
+import com.kazaeza.muzykalka.music.OrbBody
 import com.kazaeza.muzykalka.music.TapSound
 import com.kazaeza.muzykalka.music.ToneTimbre
 import com.kazaeza.muzykalka.music.Tuning
@@ -50,6 +51,8 @@ data class Settings(
     val tapVolume: Float = 0.35f,
     /** O-36: a small room around notes and taps. */
     val room: Boolean = true,
+    /** O-38: what the sphere of the Tir is made of. The thread was the user's pick on the second lab page. */
+    val orbBody: OrbBody = OrbBody.THREAD,
 ) {
     val tuning: Tuning get() = Tuning.byId(tuningId) ?: Tuning.STANDARD
 }
@@ -80,6 +83,7 @@ class SettingsRepository(context: Context) {
         val TAP_SOUND = stringPreferencesKey("tap_sound")
         val TAP_VOLUME = floatPreferencesKey("tap_volume")
         val ROOM = booleanPreferencesKey("room")
+        val ORB = stringPreferencesKey("orb_body")
     }
 
     private companion object {
@@ -109,6 +113,7 @@ class SettingsRepository(context: Context) {
             p[K.TAP_SOUND] = next.tapSound?.name ?: TAPS_OFF
             p[K.TAP_VOLUME] = next.tapVolume
             p[K.ROOM] = next.room
+            p[K.ORB] = next.orbBody.name
         }
     }
 
@@ -135,6 +140,7 @@ class SettingsRepository(context: Context) {
             },
             tapVolume = (p[K.TAP_VOLUME] ?: d.tapVolume).coerceIn(0f, 2f),
             room = p[K.ROOM] ?: d.room,
+            orbBody = p[K.ORB]?.let { runCatching { OrbBody.valueOf(it) }.getOrNull() } ?: d.orbBody,
         )
     }
 

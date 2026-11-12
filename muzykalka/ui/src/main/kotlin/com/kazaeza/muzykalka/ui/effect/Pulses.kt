@@ -36,10 +36,22 @@ class PulseBoard internal constructor() {
     /** Something still rings. */
     val active: Boolean get() = slots.isNotEmpty()
 
+    private val listeners = mutableListOf<(SoundPulse) -> Unit>()
+
+    /**
+     * O-38: [listener] hears every pluck struck from now on (the bodies of the sphere that are drawn by OpenGL take their
+     * events this way, outside the composition). Returns what takes it away again. Main thread only.
+     */
+    fun addListener(listener: (SoundPulse) -> Unit): () -> Unit {
+        listeners.add(listener)
+        return { listeners.remove(listener) }
+    }
+
     /** Strike a pluck now. Only the last [MAX] are kept. */
     fun add(pulse: SoundPulse) {
         slots.add(Slot(pulse, clock))
         while (slots.size > MAX) slots.removeAt(0)
+        listeners.toList().forEach { it(pulse) }
     }
 
     /** The plucks that still ring, oldest first, with their age in seconds. Read in a draw block. */
