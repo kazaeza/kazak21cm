@@ -28,11 +28,9 @@ import com.kazaeza.muzykalka.data.repo.MemoryStatus
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.ruDue
-import com.kazaeza.muzykalka.music.BookEntry
 import com.kazaeza.muzykalka.music.BookGenre
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
-import com.kazaeza.muzykalka.music.SongBook
 import com.kazaeza.muzykalka.ui.component.Badge
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.DegreeChip
@@ -52,19 +50,50 @@ fun MemoryStatus.colors() = when (this) {
 
 private enum class Filter(val ru: String) { ALL("все"), SONGS("песни"), RIFFS("риффы"), TUNES("мелодии") }
 
-/** «Библиотека» (ticket L-01): the user's pieces, then the built-in songbook (ADR-013). */
+/** O-42: where a piece comes from or how far it is — one row of chips over the whole library. */
+private sealed interface Shelf {
+    data object All : Shelf
+    data object Learning : Shelf
+    data object Mine : Shelf
+    data class Genre(val genre: BookGenre) : Shelf
+}
+
+private val SHELVES: List<Shelf> = listOf(Shelf.All, Shelf.Learning, Shelf.Mine) + BookGenre.entries.map { Shelf.Genre(it) }
+
+private fun Shelf.ru() = when (this) {
+    Shelf.All -> "все"
+    Shelf.Learning -> "учу"
+    Shelf.Mine -> "мои"
+    is Shelf.Genre -> genre.ru
+}
+
+private fun Shelf.holds(e: LibraryEntry): Boolean = when (this) {
+    Shelf.All -> true
+    Shelf.Learning -> e.orderable && e.card != null && !e.shelved
+    Shelf.Mine -> e.bookEntry == null
+    is Shelf.Genre -> e.bookEntry?.genre == genre
+}
+
+/** The user's own first (the newest on top), then the book by genre and difficulty; the title order of the repository breaks ties. */
+private fun libraryOrder(list: List<LibraryEntry>): List<LibraryEntry> =
+    list.sortedWith(
+        compareBy<LibraryEntry>({ it.bookEntry != null }, { it.bookEntry?.genre?.ordinal ?: -1 }, { it.bookEntry?.difficulty ?: 0 })
+            .thenByDescending { if (it.bookEntry == null) it.updatedAtMs else 0L },
+    )
+
+/** «Библиотека» (L-01, O-42): one library — the songs of the book and the user's own, each with its own card (ADR-041). */
 @Composable
 fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
     val graph = LocalAppGraph.current
     val entries by graph.library.observeEntries().collectAsState(initial = null)
-    val inLibrary by graph.library.observeBookIds().collectAsState(initial = emptySet())
     val settings by graph.settings.settings.collectAsState(initial = Settings())
     val scope = rememberCoroutineScope()
     var filter by remember { mutableStateOf(Filter.ALL) }
-    var genre by remember { mutableStateOf(BookGenre.LIKED) }
+    var shelf by remember { mutableStateOf<Shelf>(Shelf.All) }
     val today = graph.today(settings)
     val list = entries ?: emptyList()
-    val shown = list.filter {
+    val ordered = remember(list) { libraryOrder(list) }
+    val shown = ordered.filter { shelf.holds(it) }.filter {
         when (filter) {
             Filter.ALL -> true
             Filter.SONGS -> it.kind == LibraryKind.SONG
@@ -72,7 +101,8 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
             Filter.TUNES -> it.kind == LibraryKind.TUNE
         }
     }
-    ScreenFrame(title = "Библиотека", subtitle = "мои песни · ${list.size}", accent = Accents.Taper) {
+    val learning = list.count { Shelf.Learning.holds(it) }
+    ScreenFrame(title = "Библиотека", subtitle = "${list.size} · учу $learning", accent = Accents.Taper) {
         item(key = "capture") {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 JuicyButton("Записать свою", onClick = { onCapture(LibraryKind.SONG) }, modifier = Modifier.weight(1f), colors = Accents.Taper, leading = "")
@@ -85,7 +115,7 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
                     Text("Пока пусто", style = MaterialTheme.typography.headlineSmall)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Возьми песню из сборника ниже — одним касанием. Или запиши свою ступенями: I–VII и качество аккорда. " +
+                        "Запиши свою песню ступенями: I–VII и качество аккорда. " +
                             "Буквы не нужны: тональность каждый раз выбирается случайно.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Juicy.TextDim,
@@ -93,29 +123,28 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
                 }
             }
         } else if (list.isNotEmpty()) {
-            item(key = "filter") {
-                ChoiceRow(Filter.entries, filter, { it.ru }, { filter = it }, colors = Accents.Taper)
+            item(key = "shelves") {
+                ChoiceRow(SHELVES, shelf, { s -> s.ru() + " " + list.count { s.holds(it) } }, { shelf = it }, colors = Accents.Taper)
             }
-            shown.forEach { e -> item(key = e.id) { EntryCard(e, today, settings.degreeNotation) { onOpen(e.id) } } }
-        }
-        item(key = "book-label") {
-            Column {
-                Spacer(Modifier.height(10.dp))
-                Text("Сборник", style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    "Гармония известных песен — обучающих, хитов 1958–1990 годов и джазовых стандартов — ступенями. Упрощено до основных аккордов: после добавления можно поправить под свою версию.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Juicy.TextDim,
-                )
-                Spacer(Modifier.height(10.dp))
-                ChoiceRow(BookGenre.entries, genre, { it.ru }, { genre = it }, colors = Accents.Taper)
+            if (list.any { it.kind != LibraryKind.SONG }) {
+                item(key = "filter") {
+                    ChoiceRow(Filter.entries, filter, { it.ru }, { filter = it }, colors = Accents.Taper)
+                }
             }
-        }
-        SongBook.ENTRIES.filter { it.genre == genre }.sortedBy { it.difficulty }.forEach { b ->
-            item(key = "book-" + b.id) {
-                val id = SongBook.libraryId(b)
-                val added = id in inLibrary
-                BookCard(b, added, settings.degreeNotation, onAdd = { scope.launch { graph.library.addFromBook(b) } }, onOpen = { onOpen(id) })
+            if (list.any { it.bookEntry != null }) {
+                item(key = "note") {
+                    Text(
+                        "В библиотеке лежит гармония известных песен — обучающих, хитов 1958–1990 годов и джазовых стандартов — ступенями. " +
+                            "Упрощено до основных аккордов: каждую можно поправить под свою версию или удалить. «＋ учить» ставит песню в повторы.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Juicy.TextDim,
+                    )
+                }
+            }
+            shown.forEach { e ->
+                item(key = e.id) {
+                    EntryCard(e, today, settings.degreeNotation, onClick = { onOpen(e.id) }, onLearn = { scope.launch { graph.library.startLearning(e.id) } })
+                }
             }
         }
     }
@@ -123,34 +152,9 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BookCard(b: BookEntry, added: Boolean, notation: DegreeNotation, onAdd: () -> Unit, onOpen: () -> Unit) {
-    GlassCard(Modifier.fillMaxWidth(), accent = if (added) Accents.Good else null, onClick = if (added) onOpen else null) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(b.song.title, style = MaterialTheme.typography.titleLarge)
-                val sub = listOfNotNull(b.song.artist, b.song.mode.ruName, "●".repeat(b.difficulty) + "○".repeat(3 - b.difficulty)).joinToString(" · ")
-                Text(sub, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
-            }
-            Spacer(Modifier.width(8.dp))
-            if (added) {
-                Badge("✓ в моих", Accents.Good)
-            } else {
-                GhostButton("В мои", onClick = onAdd, colors = Accents.Taper, leading = "＋", height = 48.dp)
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(b.teaches, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
-        Spacer(Modifier.height(8.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            b.song.chordsInOrder.distinct().take(8).forEach { c -> DegreeChip(DegreeFormatter.chord(c, notation), DegreeColors.of(c.root)) }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun EntryCard(e: LibraryEntry, today: Int, notation: DegreeNotation, onClick: () -> Unit) {
-    GlassCard(Modifier.fillMaxWidth(), accent = e.status.colors(), onClick = onClick) {
+private fun EntryCard(e: LibraryEntry, today: Int, notation: DegreeNotation, onClick: () -> Unit, onLearn: () -> Unit) {
+    val book = e.bookEntry
+    GlassCard(Modifier.fillMaxWidth(), accent = if (e.shelved) null else e.status.colors(), onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 when (e.kind) {
@@ -164,10 +168,24 @@ private fun EntryCard(e: LibraryEntry, today: Int, notation: DegreeNotation, onC
             Spacer(Modifier.height(1.dp).fillMaxWidth(0.03f))
             Column(Modifier.weight(1f)) {
                 Text(e.title, style = MaterialTheme.typography.titleLarge)
-                val sub = listOfNotNull(e.song?.artist, e.song?.formString?.let { "форма $it" }, e.song?.mode?.ruName ?: e.melody?.mode?.ruName).joinToString(" · ")
+                val sub = listOfNotNull(
+                    e.song?.artist,
+                    e.song?.formString?.let { "форма $it" },
+                    e.song?.mode?.ruName ?: e.melody?.mode?.ruName,
+                    book?.let { "●".repeat(it.difficulty) + "○".repeat(3 - it.difficulty) },
+                ).joinToString(" · ")
                 if (sub.isNotBlank()) Text(sub, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
             }
-            if (e.orderable) Badge(e.status.ru, e.status.colors())
+            if (e.shelved) {
+                Spacer(Modifier.width(8.dp))
+                GhostButton("учить", onClick = onLearn, colors = Accents.Taper, leading = "＋", height = 48.dp)
+            } else if (e.orderable) {
+                Badge(e.status.ru, e.status.colors())
+            }
+        }
+        if (book != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(book.teaches, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
         }
         Spacer(Modifier.height(10.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -181,7 +199,7 @@ private fun EntryCard(e: LibraryEntry, today: Int, notation: DegreeNotation, onC
                 melody != null -> melody.notes.take(10).forEach { n -> DegreeChip(DegreeFormatter.degree(n.degree, notation), DegreeColors.of(n.degree)) }
             }
         }
-        if (e.orderable) {
+        if (e.orderable && !e.shelved) {
             Spacer(Modifier.height(8.dp))
             Text("повтор:" + ruDue(e.card?.dueDay, today), style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
         }

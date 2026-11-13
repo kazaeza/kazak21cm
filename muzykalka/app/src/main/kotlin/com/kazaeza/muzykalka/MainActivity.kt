@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val graph = (application as MuzykalkaApp).graph
+        graph.seedBook() // O-42: the songbook is part of the library; in the background, once per piece
         val crash = CrashReporter.pending(this)
         setContent {
             MuzykalkaTheme {

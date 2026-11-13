@@ -109,7 +109,10 @@ class ScreenshotsTest {
 
     @Test
     fun library() {
-        runBlocking { graph.library.addFromBook(SongBook.byId("autumn-leaves")!!) }
+        runBlocking {
+            graph.library.addFromBook(SongBook.byId("autumn-leaves")!!)
+            graph.bookSeeder.run() // O-42: the rest of the book lies on the shelf
+        }
         shot("03-library", { LibraryScreen(onCapture = {}, onOpen = {}) }, "Autumn Leaves")
     }
 

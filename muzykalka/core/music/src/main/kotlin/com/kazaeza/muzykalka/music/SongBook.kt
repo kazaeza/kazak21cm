@@ -547,10 +547,18 @@ object SongBook {
         ),
     ) + LikesShelf.ENTRIES + HitsShelf.ENTRIES
 
-    fun byId(id: String): BookEntry? = ENTRIES.firstOrNull { it.id == id }
+    private val byIdMap: Map<String, BookEntry> by lazy { ENTRIES.associateBy { it.id } }
 
-    /** Library ids of book pieces are stable, so a piece is never added twice. */
-    fun libraryId(entry: BookEntry): String = "book:${entry.id}"
+    fun byId(id: String): BookEntry? = byIdMap[id]
+
+    /** Library ids of book pieces are stable, so a piece is never put in twice. */
+    const val LIBRARY_PREFIX = "book:"
+
+    fun libraryId(entry: BookEntry): String = LIBRARY_PREFIX + entry.id
+
+    /** O-42: the book piece a library row came from (its genre, its teaching line), or null for the user's own. */
+    fun byLibraryId(libraryId: String): BookEntry? =
+        if (libraryId.startsWith(LIBRARY_PREFIX)) byId(libraryId.removePrefix(LIBRARY_PREFIX)) else null
 
     private fun entry(
         id: String,

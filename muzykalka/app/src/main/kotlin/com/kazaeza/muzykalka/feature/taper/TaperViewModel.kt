@@ -42,6 +42,8 @@ data class TaperUi(
     val phase: TaperPhase = TaperPhase.FINISHED,
     val emptyLibrary: Boolean = false,
     val nothingDue: Boolean = false,
+    /** O-42: the library holds only songs of the book that are not in learning — «all hold» would be untrue. */
+    val nothingLearned: Boolean = false,
     val item: TaperItem? = null,
     /** The key of this order — chords tapped on the sheet sound in it (O-17). */
     val key: Key? = null,
@@ -93,7 +95,7 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
         }
         val pool = when {
             spec.onlyItemId != null -> allItems.filter { it.id == spec.onlyItemId }
-            spec.exam -> allItems.shuffled(random).take(spec.examItems)
+            spec.exam -> inLearning().shuffled(random).take(spec.examItems)
             // O-20: not the same overdue song every time — songs ordered in the last 12 hours go to the back.
             else -> {
                 val since = System.currentTimeMillis() - RECENT_MS
@@ -101,13 +103,18 @@ class TaperViewModel(private val graph: AppGraph, private val spec: TaperSpec) :
                 TaperSession.rotation(allItems, today, recent, random)
             }
         }
-        state.update { it.copy(loading = false, emptyLibrary = allItems.isEmpty(), nothingDue = allItems.isNotEmpty() && pool.isEmpty(), today = today, settings = settings) }
+        state.update { it.copy(loading = false, emptyLibrary = allItems.isEmpty(), nothingDue = allItems.isNotEmpty() && pool.isEmpty(), nothingLearned = allItems.isNotEmpty() && allItems.all { it.card.isShelved }, today = today, settings = settings) }
         if (pool.isNotEmpty()) start(pool)
     }
 
+    /** O-42: the songs being learned; the shelf of the book is taken only when nothing else is there. */
+    private fun inLearning(): List<TaperItem> = allItems.filter { !it.card.isShelved }.ifEmpty { allItems }
+
     /** All due items are holding: order a few anyway, weakest memory first. */
     fun orderExtra() {
-        val extra = allItems.sortedBy { graph.fsrs.retrievability(it.card, today) }.take(3)
+        val learned = allItems.filter { !it.card.isShelved }
+        // nothing is in learning yet: a few songs of the book at random, rather than the same three of the alphabet
+        val extra = if (learned.isEmpty()) allItems.shuffled(random).take(3) else learned.sortedBy { graph.fsrs.retrievability(it.card, today) }.take(3)
         if (extra.isNotEmpty()) viewModelScope.launch { start(extra) }
     }
 

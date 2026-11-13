@@ -43,6 +43,19 @@ data class CardState(
     val isNew: Boolean get() = stability == null
 
     fun isDue(today: Int): Boolean = dueDay == null || dueDay <= today
+
+    /**
+     * O-42 (ADR-041): a song that is in the library but not in learning — a new card that is never due, so a
+     * hundred songs of the book do not become a hundred reviews. The first review, or a fresh `CardState()`, takes it off the shelf.
+     */
+    val isShelved: Boolean get() = isNew && dueDay == SHELVED_DAY
+
+    companion object {
+        /** The "due day" of a shelved card: no study day ever reaches it. */
+        const val SHELVED_DAY = Int.MAX_VALUE
+
+        fun shelved() = CardState(dueDay = SHELVED_DAY)
+    }
 }
 
 /**

@@ -19,6 +19,7 @@ import java.time.LocalDate
 data class TodayUi(
     val loading: Boolean = true,
     val playableNow: Int = 0,
+    /** Songs and riffs in learning (not the ones on the shelf of the book, O-42). */
     val libraryCount: Int = 0,
     val dueCount: Int = 0,
     val streak: Int = 0,
@@ -49,7 +50,8 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
         val days = spans.map { it.studyDay }.toSet()
         val singing = SingUnlock.status(attempts)
         val studyDay = graph.studyDay(settings)
-        val orderable = entries.filter { it.orderable }
+        // O-42: the book lies on the shelf of the library; «the library» of this screen is what is being learned.
+        val orderable = entries.filter { it.orderable && !it.shelved }
         val due = orderable.count { it.card?.isDue(today) ?: true }
         val plan = SingUnlock.plan(DailySet.available(DailySet.DEFAULT, APP_STAGE), singing)
         TodayUi(

@@ -70,6 +70,24 @@ class TaperFlowTest {
         rule.waitUntil(5_000) { runBlocking { graph.practice.lastOrders()[id] != null } }
         assertEquals(HintStep.DEGREES to SelfGrade.CLEAN, runBlocking { graph.practice.lastOrders()[id] })
     }
+    /** O-42: a library that holds only the shelf of the book has nothing due — and says so, instead of «всё держится». */
+    @Test
+    fun aShelfAloneIsNotAReviewAndSaysSo() {
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = FakeAudioOutput()
+        }
+        runBlocking { graph.library.seedBook(emptySet(), SongBook.ENTRIES.take(4)) }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { TaperScreen(TaperSpec(), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { has("Ни одна песня не в повторах") }
+        assertEquals(false, has("Всё держится"))
+        rule.onNodeWithText("Сыграть случайные").performScrollTo().performClick()
+        rule.waitUntil(10_000) { has("СЫГРАЙ") }
+    }
+
     /**
      * O-17 (ADR-031): a chord of the sheet sounds when tapped, gets its words, and costs nothing.
      * Native graphics + a capture: the caption is really DRAWN (a bad brush only fails at draw time).

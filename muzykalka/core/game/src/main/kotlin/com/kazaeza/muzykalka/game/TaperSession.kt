@@ -176,12 +176,13 @@ class TaperSession(
         /**
          * The set's queue (O-20): a song that was ordered lately goes to the back, so the same overdue song does not open
          * every evening. First the due songs not played lately (shuffled), then up to [filler] other songs not played
-         * lately — random pieces of the library instead of an empty bar — then the due songs that were played lately.
+         * lately — random pieces of the library instead of an empty bar, those in learning first — then the due songs that were played lately.
          */
         fun rotation(items: List<TaperItem>, today: Int, recent: Set<String>, random: Random, filler: Int = 5): List<TaperItem> {
             val fresh = items.filter { it.id !in recent }
             val due = fresh.filter { it.card.isDue(today) }.shuffled(random)
-            val extra = fresh.filter { !it.card.isDue(today) }.shuffled(random).take(filler)
+            // O-42: songs on the shelf (the book, not yet in learning) fill the bar only after the ones being learned.
+            val extra = fresh.filter { !it.card.isDue(today) }.shuffled(random).sortedBy { it.card.isShelved }.take(filler)
             val again = items.filter { it.id in recent && it.card.isDue(today) }.shuffled(random)
             if (due.isEmpty() && again.isEmpty()) return emptyList() // nothing is due: the screen says so
             return due + extra + again

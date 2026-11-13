@@ -75,13 +75,14 @@ class RepositoriesTest {
         val book = SongBook.byId("stand-by-me")!!
         val id = library.addFromBook(book)
         assertEquals("book:stand-by-me", id)
-        assertEquals(setOf(id), library.observeBookIds().first())
+        assertEquals(id, library.get(id)!!.id)
         val edited = library.get(id)!!.song!!.copy(title = "Stand by Me (моя версия)")
         library.saveSong(edited)
         assertEquals(id, library.addFromBook(book))
         assertEquals("Stand by Me (моя версия)", library.get(id)!!.title)
         library.setArchived(id, true)
-        assertEquals(emptySet<String>(), library.observeBookIds().first())
+        assertTrue(library.get(id)!!.archived)
+        assertEquals("an archived song is not asked", 0, library.allOrderable().size)
         library.addFromBook(book)
         assertEquals(1, library.allOrderable().size)
     }

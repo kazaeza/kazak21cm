@@ -9,6 +9,7 @@ import com.kazaeza.muzykalka.data.db.MuzykalkaDatabase
 import com.kazaeza.muzykalka.data.db.OrderLogEntity
 import com.kazaeza.muzykalka.data.db.SessionEntity
 import com.kazaeza.muzykalka.data.db.SrsCardEntity
+import com.kazaeza.muzykalka.data.repo.BookSeeder
 import com.kazaeza.muzykalka.data.settings.AnchorStore
 import com.kazaeza.muzykalka.data.settings.ProgressStore
 import com.kazaeza.muzykalka.data.settings.Settings
@@ -35,6 +36,8 @@ data class BackupV1(
     val progressJson: String? = null,
     /** O-09; absent in older backups. */
     val anchorsJson: String? = null,
+    /** O-42: which songbook pieces the library was given; absent in older backups. */
+    val bookSeedJson: String? = null,
 ) {
     companion object {
         const val FORMAT = "muzykalka-backup"
@@ -50,6 +53,7 @@ class BackupManager(
     private val progress: ProgressStore,
     private val appVersion: String,
     private val anchors: AnchorStore? = null,
+    private val bookSeed: BookSeeder? = null,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val json = Json {
@@ -71,6 +75,7 @@ class BackupManager(
             settings = settings.settings.first(),
             progressJson = progress.exportJson(),
             anchorsJson = anchors?.exportJson(),
+            bookSeedJson = bookSeed?.exportJson(),
         )
         return json.encodeToString(BackupV1.serializer(), backup)
     }
@@ -95,6 +100,7 @@ class BackupManager(
         backup.settings?.let { settings.replace(it) }
         backup.progressJson?.let { progress.importJson(it) }
         backup.anchorsJson?.let { anchors?.importJson(it) }
+        bookSeed?.restore(backup.bookSeedJson) // O-42: the ledger of the backup, then whatever the book still lacks
         return ImportSummary(backup.items.size, backup.orders.size, backup.attempts.size)
     }
 

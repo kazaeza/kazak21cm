@@ -46,6 +46,12 @@ data class LibraryEntry(
 
     val orderable: Boolean get() = !unsupported && (kind == LibraryKind.SONG || kind == LibraryKind.RIFF)
 
+    /** O-42: a piece of the book that is in the library but not in learning (its card is never due). */
+    val shelved: Boolean get() = card?.isShelved == true
+
+    /** The songbook piece this row came from, whatever the user has edited since; null for the user's own. */
+    val bookEntry: BookEntry? get() = SongBook.byLibraryId(id)
+
     fun toTaperItem(): TaperItem? = if (!orderable) null else TaperItem(id, title, song = song, melody = melody, card = card ?: CardState())
 }
 
@@ -102,21 +108,56 @@ class LibraryRepository(private val db: MuzykalkaDatabase, private val clock: ()
     suspend fun delete(id: String) = db.library().delete(id)
 
     /**
-     * ADR-013: adds a songbook piece under its stable id. The user's own edits are never
-     * overwritten: adding again only brings an archived copy back.
+     * ADR-013: puts a songbook piece in learning. The user's own edits are never overwritten: an existing copy is only
+     * brought back from the archive and, if it sat on the shelf (O-42), taken off it.
      */
     suspend fun addFromBook(entry: BookEntry): String {
         val id = SongBook.libraryId(entry)
         val existing = db.library().get(id)
         when {
             existing == null -> saveSong(entry.song)
-            existing.archived -> db.library().setArchived(id, false, clock())
+            else -> {
+                if (existing.archived) db.library().setArchived(id, false, clock())
+                startLearning(id)
+            }
         }
         return id
     }
 
-    /** Ids of songbook pieces already in the library (archived ones count as absent). */
-    fun observeBookIds(): Flow<Set<String>> = observeEntries().map { list -> list.filter { it.id.startsWith(BOOK_PREFIX) }.map { it.id }.toSet() }
+    /**
+     * O-42 (ADR-041): the songbook is part of the library. Every piece whose id is not in [seen] and which the library
+     * does not hold yet is put in on the shelf: its card is new and never due, so a hundred songs are not a hundred
+     * reviews. A row that exists is left exactly as it is (the user's edits, their card); a piece in [seen] is not
+     * put back, so what the user deleted stays deleted. Returns the ids that have now been dealt with.
+     */
+    suspend fun seedBook(seen: Set<String>, entries: List<BookEntry> = SongBook.ENTRIES): Set<String> {
+        val fresh = entries.filter { SongBook.libraryId(it) !in seen }
+        if (fresh.isEmpty()) return emptySet()
+        db.withTransaction {
+            val now = clock()
+            for (e in fresh) {
+                val id = SongBook.libraryId(e)
+                if (db.library().get(id) != null) continue
+                db.library().upsert(
+                    LibraryItemEntity(
+                        id = id, kind = LibraryKind.SONG.name, title = e.song.title,
+                        payloadJson = Payloads.encode(Payloads.fromSong(e.song)), payloadVersion = Payloads.CURRENT_VERSION,
+                        createdAtEpochMs = now, updatedAtEpochMs = now, archived = false,
+                    ),
+                )
+                db.srs().upsert(CardState.shelved().toEntity(id))
+            }
+        }
+        return fresh.map { SongBook.libraryId(it) }.toSet()
+    }
+
+    /** Takes a song or a riff off the shelf: its card becomes an ordinary new one, due at once. A card in progress is left alone. */
+    suspend fun startLearning(id: String) {
+        val item = db.library().get(id) ?: return
+        if (item.kind != LibraryKind.SONG.name && item.kind != LibraryKind.RIFF.name) return
+        val card = db.srs().get(id)?.toCard()
+        if (card == null || card.isShelved) db.srs().upsert(CardState().toEntity(id))
+    }
 
     private fun decode(item: LibraryItemEntity, card: CardState?): LibraryEntry {
         val kind = runCatching { LibraryKind.valueOf(item.kind) }.getOrNull()
@@ -131,8 +172,6 @@ class LibraryRepository(private val db: MuzykalkaDatabase, private val clock: ()
     }
 
     companion object {
-        private const val BOOK_PREFIX = "book:"
-
         fun newId(): String = UUID.randomUUID().toString()
     }
 }

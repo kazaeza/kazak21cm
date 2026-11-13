@@ -74,7 +74,7 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
             item(key = "status") {
                 GlassCard(Modifier.fillMaxWidth(), accent = e.status.colors()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Badge(e.status.ru, e.status.colors())
+                        Badge(if (e.shelved) "из сборника" else e.status.ru, e.status.colors())
                         Spacer(Modifier.padding(horizontal = 6.dp))
                         Text("повтор: " + ruDue(e.card?.dueDay, today), style = MaterialTheme.typography.titleMedium)
                     }
@@ -83,10 +83,18 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
                         Text("держится ~${it.toInt()} дн. · повторений ${e.card?.reps ?: 0} · вылетала ${e.card?.lapses ?: 0}", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
                     }
                     Spacer(Modifier.height(12.dp))
-                    JuicyButton("Сыграть сейчас", onClick = { onOrder(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
+                    if (e.shelved) {
+                        // O-42: the song is in the library, not in learning yet; one touch puts it into the repeats.
+                        JuicyButton("Учить: поставить в повторы", onClick = { scope.launch { graph.library.startLearning(e.id) } }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "＋")
+                        Spacer(Modifier.height(8.dp))
+                        GhostButton("Сыграть сейчас", onClick = { onOrder(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
+                    } else {
+                        JuicyButton("Сыграть сейчас", onClick = { onOrder(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
+                    }
                 }
             }
         }
+        e.bookEntry?.let { b -> item(key = "teaches") { Text(b.teaches, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim) } }
         val song = e.song
         val melody = e.melody
         if (song != null) {

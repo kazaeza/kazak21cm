@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.feature.common
 
+import com.kazaeza.muzykalka.srs.CardState
 import com.kazaeza.muzykalka.ui.component.TapOnPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.LocalIndication
@@ -98,9 +99,10 @@ fun ruDate(date: LocalDate): String {
     return "$dow, ${date.dayOfMonth} $month"
 }
 
-/** "через 3 дн.", "сегодня", "завтра", "просрочено на 2 дн." */
+/** "через 3 дн.", "сегодня", "завтра", "просрочено на 2 дн.", "пока не учу" (a song on the shelf) */
 fun ruDue(dueDay: Int?, today: Int): String = when {
     dueDay == null -> "при первой возможности"
+    dueDay == CardState.SHELVED_DAY -> "пока не учу" // O-42: on the shelf of the library
     dueDay < today -> "просрочено на ${today - dueDay} дн."
     dueDay == today -> "сегодня"
     dueDay == today + 1 -> "завтра"

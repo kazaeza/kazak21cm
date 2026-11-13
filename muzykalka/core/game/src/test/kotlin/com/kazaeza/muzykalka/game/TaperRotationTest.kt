@@ -43,4 +43,20 @@ class TaperRotationTest {
         val firsts = (0 until 30).map { TaperSession.rotation(items, 10, emptySet(), Random(it)).first().id }.toSet()
         assertTrue(firsts.size >= 4, "first songs seen: $firsts")
     }
+
+    /** O-42 (ADR-041): the book sits on the shelf; it fills the bar only after what is being learned, and is never due itself. */
+    @Test
+    fun `shelved songs fill the bar only after the songs in learning and never count as due`() {
+        val shelved = (1..40).map { TaperItem("book$it", "book$it", song = song, card = CardState.shelved()) }
+        val learning = (1..3).map { item("mine$it", 30) }
+        val items = listOf(item("due", 3)) + learning + shelved
+        repeat(10) { seed ->
+            val queue = TaperSession.rotation(items, today = 10, recent = emptySet(), random = Random(seed), filler = 5).map { it.id }
+            assertEquals("due", queue.first())
+            assertEquals(6, queue.size)
+            assertTrue(queue.containsAll(learning.map { it.id }), "seed $seed: songs in learning come before the shelf: $queue")
+            assertEquals(2, queue.count { it.startsWith("book") })
+        }
+        assertTrue(TaperSession.rotation(learning + shelved, today = 10, recent = emptySet(), random = Random(1)).isEmpty(), "a shelf alone is not a review")
+    }
 }

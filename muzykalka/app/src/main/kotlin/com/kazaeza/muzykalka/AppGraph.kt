@@ -12,9 +12,11 @@ import com.kazaeza.muzykalka.audio.PitchInput
 import com.kazaeza.muzykalka.audio.TtsAnnouncer
 import com.kazaeza.muzykalka.data.backup.BackupManager
 import com.kazaeza.muzykalka.data.db.MuzykalkaDatabase
+import com.kazaeza.muzykalka.data.repo.BookSeeder
 import com.kazaeza.muzykalka.data.repo.LibraryRepository
 import com.kazaeza.muzykalka.data.repo.PracticeRepository
 import com.kazaeza.muzykalka.data.settings.AnchorStore
+import com.kazaeza.muzykalka.data.settings.BookSeedStore
 import com.kazaeza.muzykalka.data.settings.ProgressStore
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.data.settings.SettingsRepository
@@ -23,6 +25,7 @@ import com.kazaeza.muzykalka.srs.StudyDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import com.kazaeza.muzykalka.music.Arranger
 import com.kazaeza.muzykalka.music.KeyCatalog
 import com.kazaeza.muzykalka.music.MidiNote
@@ -48,8 +51,16 @@ open class AppGraph(context: Context) {
     val anchors: AnchorStore by lazy { AnchorStore(app) }
     val database: MuzykalkaDatabase by lazy { MuzykalkaDatabase.open(app) }
     val library: LibraryRepository by lazy { LibraryRepository(database) }
+
+    /** O-42 (ADR-041): the songbook is part of the library; [seedBook] gives it, once per piece. */
+    val bookSeeder: BookSeeder by lazy { BookSeeder(library, BookSeedStore(app)) }
     val practice: PracticeRepository by lazy { PracticeRepository(database) }
-    val backup: BackupManager by lazy { BackupManager(app, database, settings, progress, BuildConfig.VERSION_NAME, anchors) }
+    val backup: BackupManager by lazy { BackupManager(app, database, settings, progress, BuildConfig.VERSION_NAME, anchors, bookSeeder) }
+
+    /** Puts the pieces of the songbook the library has not been given yet on its shelf. Cheap when there is nothing new. */
+    fun seedBook() {
+        appScope.launch(Dispatchers.Default) { runCatching { bookSeeder.run() }.onFailure { android.util.Log.w("Muzykalka", "the songbook could not be put into the library", it) } }
+    }
 
     open val audioOutput: AudioOutput by lazy { AndroidAudioOutput(app) }
     open val pitchInput: PitchInput by lazy { AndroidPitchInput(app) }

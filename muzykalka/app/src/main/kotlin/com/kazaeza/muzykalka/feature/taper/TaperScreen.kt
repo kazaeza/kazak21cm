@@ -150,7 +150,7 @@ fun TaperScreen(
                 when {
                     ui.loading -> Spacer(Modifier.height(1.dp))
                     ui.emptyLibrary -> EmptyBar(onOpenLibrary)
-                    ui.nothingDue -> NothingDue(onExtra = vm::orderExtra, onDone = { onFinished?.invoke() ?: onExit() })
+                    ui.nothingDue -> NothingDue(ui.nothingLearned, onExtra = vm::orderExtra, onLibrary = onOpenLibrary, onDone = { onFinished?.invoke() ?: onExit() })
                     ui.phase == TaperPhase.FINISHED -> ClosingTime(ui, onDone = { onFinished?.invoke() ?: onExit() })
                     else -> OrderFlow(ui, vm, audition)
                 }
@@ -371,13 +371,24 @@ private fun ClosingTime(ui: TaperUi, onDone: () -> Unit) {
 private fun EmptyBar(onOpenLibrary: () -> Unit) {
     GlassCard(Modifier.fillMaxWidth(), accent = BAR) {
         Text("Пока нечего играть", style = MaterialTheme.typography.headlineMedium)
-        Text("Возьми песню из сборника в библиотеке или запиши свою ступенями. Потом приложение будет просить сыграть её — каждый раз в новой тональности.", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)
+        Text("Запиши свою песню ступенями. Потом приложение будет просить сыграть её — каждый раз в новой тональности.", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)
     }
     JuicyButton("В библиотеку", onClick = onOpenLibrary, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "")
 }
 
 @Composable
-private fun NothingDue(onExtra: () -> Unit, onDone: () -> Unit) {
+private fun NothingDue(nothingLearned: Boolean, onExtra: () -> Unit, onLibrary: () -> Unit, onDone: () -> Unit) {
+    if (nothingLearned) {
+        // O-42: the book lies on the shelf of the library and nothing is in learning yet.
+        GlassCard(Modifier.fillMaxWidth(), accent = BAR) {
+            Text("Ни одна песня не в повторах", style = MaterialTheme.typography.headlineMedium)
+            Text("Сборник уже в библиотеке — выбери, что учить: «＋ учить» у песни. Или сыграй пару случайных сейчас.", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)
+        }
+        JuicyButton("В библиотеку", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = BAR, leading = "")
+        GhostButton("Сыграть случайные", onClick = onExtra, modifier = Modifier.fillMaxWidth(), colors = BAR)
+        GhostButton("Готово", onClick = onDone, modifier = Modifier.fillMaxWidth())
+        return
+    }
     GlassCard(Modifier.fillMaxWidth(), accent = Accents.Good) {
         Text("Всё держится", style = MaterialTheme.typography.headlineMedium)
         Text("Сегодня повторять нечего: все песни ещё помнятся. Можно сыграть сверх плана — самые шаткие первыми.", style = MaterialTheme.typography.bodyLarge, color = Juicy.TextDim)

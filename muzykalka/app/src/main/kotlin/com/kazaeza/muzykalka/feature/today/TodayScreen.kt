@@ -106,11 +106,11 @@ fun TodayScreen(
         if (ui.libraryCount == 0) {
             item(key = "empty") {
                 GlassCard(Modifier.fillMaxWidth(), accent = Accents.Taper, onClick = onLibrary) {
-                    Text("Возьми песню из сборника", style = MaterialTheme.typography.titleLarge)
+                    Text("Выбери, что учить", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "В библиотеке есть готовые аккорды обучающих песен: Stand by Me, блюз, Autumn Leaves и ещё два десятка. " +
-                            "Одно касание — и песня твоя: приложение будет просить сыграть её в разных тональностях.",
+                        "В библиотеке уже лежат аккорды известных песен: Stand by Me, блюз, Autumn Leaves и ещё больше сотни. " +
+                            "Нажми «＋ учить» у песни — и приложение будет просить сыграть её в разных тональностях.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Juicy.TextDim,
                     )

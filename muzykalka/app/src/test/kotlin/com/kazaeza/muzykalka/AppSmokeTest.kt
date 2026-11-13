@@ -25,7 +25,13 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.core.app.ApplicationProvider
+import com.kazaeza.muzykalka.data.settings.BookSeedStore
+import kotlinx.coroutines.runBlocking
 import org.junit.Rule
+import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
+import org.junit.runners.model.Statement
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -37,8 +43,25 @@ import org.robolectric.annotation.Config
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [36])
 class AppSmokeTest {
+    private val rule = createAndroidComposeRule<MainActivity>()
+
+    /**
+     * O-42: the app puts the songbook into the library at start, once per piece; the ledger of what was put in lives in a
+     * DataStore that the test JVM keeps from one test to the next while every test has a new database — so it starts blank.
+     */
     @get:Rule
-    val rule = createAndroidComposeRule<MainActivity>()
+    val chain: RuleChain = RuleChain
+        .outerRule(
+            TestRule { base, _ ->
+                object : Statement() {
+                    override fun evaluate() {
+                        runBlocking { BookSeedStore(ApplicationProvider.getApplicationContext()).importJson(null) }
+                        base.evaluate()
+                    }
+                }
+            },
+        )
+        .around(rule)
 
     /**
      * The list of the tab on screen. The tabs are pages of a pager (O-29): the pager scrolls too, and a
@@ -98,26 +121,36 @@ class AppSmokeTest {
         rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
     }
 
-    @Test
-    fun songbookPieceCanBeAddedAndOpened() {
-        rule.onNodeWithContentDescription("Библиотека").performClick()
-        rule.waitForIdle()
-        scrollTo("Covet")
-        click("В мои")
-        // The piece lands in «my songs» at the top of the list.
-        list().performScrollToIndex(0)
-        rule.waitUntil(5_000) { rule.onAllNodesWithText("повтор:", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-        click("Covet")
-        rule.waitForIdle()
-        rule.onNodeWithText("Сыграть сейчас").assertIsDisplayed()
+    /** O-42: the songbook is put into the library at start (in the background); the shelf chips show up with the first piece. */
+    private fun waitForTheBook() {
+        rule.waitUntil(30_000) { rule.onAllNodes(hasText("учу 0")).fetchSemanticsNodes().isNotEmpty() }
     }
 
-    /** O-18: the «хиты 60–80-х» shelf is one chip away, and a piece can be read before it is added. */
+    /** O-42 (ADR-041): a piece of the book is in the library by itself; open it, put it in the repeats, play it. */
+    @Test
+    fun songbookPieceIsInTheLibraryAndCanBeStartedAndOpened() {
+        rule.onNodeWithContentDescription("Библиотека").performClick()
+        rule.waitForIdle()
+        waitForTheBook()
+        scrollTo("Covet")
+        click("Covet")
+        rule.waitForIdle()
+        rule.onNodeWithText("повтор: пока не учу", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText("Учить: поставить в повторы").assertIsDisplayed()
+        click("Учить: поставить в повторы")
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("повтор: при первой возможности", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Сыграть сейчас").assertIsDisplayed()
+        rule.onAllNodesWithText("Учить: поставить в повторы").assertCountEquals(0)
+    }
+
+    /** O-18, O-42: the «хиты 60–80-х» shelf is one chip away, and a piece can be read before it is learned. */
     @Test
     fun hitsShelfIsOneChipAway() {
         rule.onNodeWithContentDescription("Библиотека").performClick()
         rule.waitForIdle()
-        scrollTo("хиты 60–80-х")
+        waitForTheBook()
+        list().performScrollToNode(hasText("хиты 60–80-х", substring = true))
+        rule.waitForIdle()
         click("хиты 60–80-х")
         rule.onAllNodesWithText("Covet").assertCountEquals(0)
         scrollTo("With or Without You")
