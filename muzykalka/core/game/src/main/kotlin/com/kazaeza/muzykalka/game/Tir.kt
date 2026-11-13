@@ -45,8 +45,8 @@ data class TirTask(
     /** O-08: the chord held under the note instead of the tonic; the answer is still the degree in the key. */
     val over: ChordDegree? = null,
     /**
-     * O-15 «Под нотой» (ADR-029): the reverse — [notes] holds the note on top, which is SHOWN, and
-     * [chords] the chord droning under it, which is asked ([kind] = CHORD).
+     * O-15 «Под нотой» (ADR-029, turned round in O-40): the reverse — [notes] holds the note, which is SHOWN and
+     * hums as the [drone]; [chords] the chord that is played over it, which is asked ([kind] = CHORD).
      */
     val underNote: Boolean = false,
     override val intro: Score? = null,
@@ -254,8 +254,8 @@ class TirDriver(
      * note's degree is on the screen and the chord is asked — «мелодия на 1: под ней I, IV или vi?».
      * The note is always a tone of the chord that at least one other chord of the pad shares, so
      * the pad cannot be narrowed to one answer by theory alone — only by ear. A new key is set by
-     * its scale over the tonic drone ([TirTask.intro]); then the drone moves to the asked chord, so
-     * the first chord of a block is not always I.
+     * its scale over the tonic drone ([TirTask.intro]); then the drone moves to the note, which hums
+     * all through the question, and the chord is played over it (O-40; before it was the other way round).
      */
     private fun underNoteTask(context: DriverContext): TirTask {
         val level = context.level.coerceIn(1, Levels.TIR_UNDER.size)
@@ -276,26 +276,18 @@ class TirDriver(
         val shared = chordTones(chord, key.mode).filter { d -> pad.count { holds(it, d) } >= 2 }
         val degree = shared[r.nextInt(shared.size)]
         val tonic = key.tonicAtOrAbove(MidiNote(55))
-        val octaves = listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in 55..79 }
-        val note = DegreeNote(degree, octaves[r.nextInt(octaves.size)])
-        val question = arranger.line(listOf(note), key, Voice.TONE, beatsEach = 2.0, tempoBpm = TEMPO, tonicFloor = tonic)
+        // O-40: the note hums (its register does not matter, it is a pitch class held low) and the chord is played over it
+        val note = DegreeNote(degree)
+        val question = arranger.chords(listOf(chord), key, beatsEach = UNDER_NOTE_CHORD_BEATS, tempoBpm = TEMPO)
         return TirTask(
             itemKey = prefix + ChordParser.formatRoman(chord), prompt = Prompt(title = "?", audio = question, key = key),
             kind = TirKind.CHORD, level = level, key = key, tonic = tonic, notes = listOf(note), chords = listOf(chord),
-            noteChoices = emptyList(), chordChoices = pad, question = question, drone = arranger.chordDrone(chord, key),
+            noteChoices = emptyList(), chordChoices = pad, question = question, drone = arranger.noteDrone(key, degree),
             underNote = true,
             intro = if (newKey) orientation(key) else null,
             introDrone = if (newKey) arranger.drone(key) else null,
         )
     }
-
-    /** Chords in the soft drone timbre, low root + triad, [beatsEach] each (rewards over a drone). */
-    private fun toneChords(chords: List<ChordDegree>, key: Key, beatsEach: Double): Score = Score(
-        TEMPO,
-        chords.flatMapIndexed { i, c ->
-            arranger.chordDrone(c, key).map { ScoreNote(i * beatsEach, beatsEach * 0.95, Voice.TONE, it, 0.6f) }
-        },
-    )
 
     private fun melodyTask(c: Context, r: Random): TirTask {
         val key = c.key
@@ -418,8 +410,8 @@ class TirDriver(
 
     /** Correct answer: the musical reward — the last note walks home to the tonic. */
     private fun confirmation(task: TirTask): Score = when {
-        // «Под нотой»: the chord that was under the note goes home.
-        task.underNote -> toneChords(listOf(task.chords[0], Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 0.9)
+        // «Под нотой»: the chord that was played over the humming note goes home.
+        task.underNote -> arranger.chords(listOf(task.chords[0], Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.0, tempoBpm = TEMPO)
         else -> plainConfirmation(task)
     }
 
@@ -434,9 +426,9 @@ class TirDriver(
 
     /** Wrong answer (rule 5): hear the question again, then where it resolves. */
     private fun correction(task: TirTask): Score = when {
-        // «Под нотой»: the note again over its chord, then that chord going home.
+        // «Под нотой»: the chord again over its note, then it goes home.
         task.underNote -> task.question.then(
-            toneChords(listOf(task.chords[0], Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.0),
+            arranger.chords(listOf(Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.5, tempoBpm = TEMPO),
             gapBeats = 0.25,
         )
         else -> plainCorrection(task)
@@ -471,6 +463,9 @@ class TirDriver(
         val CHORD_STEPS_L2 = listOf(0, 1, 2, 3, 4, 5)
         private const val OVER_CHORDS_BLOCK = 100
         private const val UNDER_NOTE_BLOCK = 200
+
+        /** O-40: how long the asked chord is held (beats at [TEMPO]). */
+        const val UNDER_NOTE_CHORD_BEATS = 2.0
 
         /** «Под нотой»: the chords that can be under the note on [level] (vii° never). */
         fun underNotePad(mode: Mode, level: Int): List<ChordDegree> =

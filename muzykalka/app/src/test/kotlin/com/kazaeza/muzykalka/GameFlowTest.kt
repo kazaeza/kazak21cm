@@ -110,7 +110,7 @@ class GameFlowTest {
         rule.waitUntil(5_000) { audio.played.size > before }
     }
 
-    /** O-15 (ADR-029): the key is set over the tonic, then the chord drones under the shown note. */
+    /** O-15 (ADR-029) turned round in O-40: the key is set over the tonic, then the shown note hums and the chord is played over it. */
     @Test
     fun underNoteSetsTheKeyOverTheTonicThenAsksTheChord() {
         val audio = FakeAudioOutput()
@@ -122,14 +122,14 @@ class GameFlowTest {
                 MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_UNDER_NOTE, level = 1), onExit = {}) }
             }
         }
-        rule.waitUntil(10_000) { rule.onAllNodesWithText("Какой аккорд под ней?").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Какой аккорд сыграли?").fetchSemanticsNodes().isNotEmpty() }
         val drones = audio.drones.filterNotNull()
         assertTrue("the tonic drone under the scale first", drones.first().size == 2)
-        assertTrue("then the chord", drones.last().size == 4)
-        assertTrue("scale, then the note", audio.played.size >= 2)
+        assertTrue("then the note, held low with its octave", drones.last().size == 2)
+        assertTrue("scale, then the chord", audio.played.size >= 2)
         val before = audio.played.size
         rule.onAllNodesWithText("iv", ignoreCase = true).onFirst().performClick() // IV in major, iv in minor
-        rule.waitUntil(5_000) { audio.played.size > before } // the chord goes home, or the note over it again (rule 5)
+        rule.waitUntil(5_000) { audio.played.size > before } // the chord goes home, or the chord over the note again (rule 5)
     }
 
     /** O-17 (ADR-031): in «Ходы» a chord of the pattern sounds when tapped — while the engine is silent. */

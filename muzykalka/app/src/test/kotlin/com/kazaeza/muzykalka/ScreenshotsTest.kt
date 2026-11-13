@@ -127,7 +127,7 @@ class ScreenshotsTest {
     }
 
     @Test
-    fun underNote() = shot("04e-under-note", { GameScreen(RoundSpec(Variant.TIR_UNDER_NOTE, level = 2), onExit = {}) }, "Какой аккорд под ней?")
+    fun underNote() = shot("04e-under-note", { GameScreen(RoundSpec(Variant.TIR_UNDER_NOTE, level = 2), onExit = {}) }, "Какой аккорд сыграли?")
 
     /** «Пропевка» after one sung note: a miss shows what it was, a hit shows the try. */
     @Test

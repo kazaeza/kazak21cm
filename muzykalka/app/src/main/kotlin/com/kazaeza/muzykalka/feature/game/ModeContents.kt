@@ -193,7 +193,7 @@ internal fun TirContent(
                     ReplayKey("Повторить вопрос", onReplay, enabled = listening)
                 }
                 Spacer(Modifier.height(12.dp))
-                // O-15 «Под нотой»: the note on top is given, the chord under it is the question.
+                // O-15 «Под нотой» (turned round in O-40): the note is given and hums, the chord played over it is the question.
                 val shown = if (task.underNote) task.notes.single().degree else null
                 when {
                     ui.phase == RoundPhase.PROMPTING && shown == null -> {
@@ -201,11 +201,11 @@ internal fun TirContent(
                     }
                     shown != null && !feedback -> {
                         val c = DegreeColors.of(shown)
-                        Text("сверху нота", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+                        Text("гудит нота", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
                         GradientText(DegreeFormatter.degree(shown, ui.notation), MaterialTheme.typography.displayLarge, DegreeColors.gradient(c), if (listening) Modifier.breathe() else Modifier)
                         Text(DegreeVibes.of(shown).word, style = MaterialTheme.typography.titleLarge, color = c)
                         Text(
-                            if (ui.phase == RoundPhase.PROMPTING) "Слушай…" else "Какой аккорд под ней?",
+                            if (ui.phase == RoundPhase.PROMPTING) "Слушай…" else "Какой аккорд сыграли?",
                             style = MaterialTheme.typography.titleMedium,
                             color = Juicy.TextDim,
                         )

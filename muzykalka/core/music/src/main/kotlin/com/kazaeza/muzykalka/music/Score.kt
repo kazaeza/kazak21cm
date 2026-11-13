@@ -135,6 +135,15 @@ class Arranger(
         return listOf(low) + chord.quality.intervals.take(3).map { low + 12 + it }
     }
 
+    /**
+     * O-40: one note of [key] held as the drone — [degree]'s pitch class low (from [DRONE_FLOOR]) and its octave
+     * above, the way the tonic drone is made, so the tables of the tonic drones are the same ones.
+     */
+    fun noteDrone(key: Key, degree: Degree): List<MidiNote> {
+        val low = DRONE_FLOOR + (key.pitchClassOf(degree) - DRONE_FLOOR.pitchClass)
+        return listOf(low, low + 12)
+    }
+
     /** A melodic line; the tonic of octave 0 is placed at or above [tonicFloor]. */
     fun line(
         notes: List<DegreeNote>,

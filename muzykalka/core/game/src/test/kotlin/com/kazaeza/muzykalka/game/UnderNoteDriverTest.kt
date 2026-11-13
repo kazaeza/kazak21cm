@@ -4,6 +4,7 @@ import com.kazaeza.muzykalka.music.Arranger
 import com.kazaeza.muzykalka.music.ChordParser
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.Mode
+import com.kazaeza.muzykalka.music.Voice
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -12,12 +13,12 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
 
-/** O-15 «Под нотой» (ADR-029): the note is shown, the chord droning under it is asked. */
+/** O-15 «Под нотой» (ADR-029), turned round in O-40: the note is shown and hums, the chord played over it is asked. */
 class UnderNoteDriverTest {
     private fun driver(seed: Int = 1) = TirDriver(KeyPicker(Random(seed)), variant = Variant.TIR_UNDER_NOTE)
 
     @Test
-    fun `the chord under a shown note is asked, over its own drone`() {
+    fun `the chord played over a shown, humming note is asked`() {
         val d = driver()
         repeat(3) { block ->
             val tasks = List(TirDriver.KEY_BLOCK) { d.nextTask(DriverContext(Random(block * 100 + it), 1, emptyList())) }
@@ -32,7 +33,12 @@ class UnderNoteDriverTest {
                 assertEquals(TirKind.CHORD, t.kind)
                 assertEquals(pad, t.chordChoices)
                 assertTrue(chord in pad)
-                assertEquals(Arranger().chordDrone(chord, t.key), t.drone)
+                assertEquals(Arranger().noteDrone(t.key, t.notes.single().degree), t.drone, "the note hums, not the chord")
+                assertEquals(setOf(t.key.pitchClassOf(note).value), t.drone!!.map { it.pitchClass.value }.toSet(), "one pitch class, held low")
+                assertTrue(t.drone.all { it.value >= Arranger.DRONE_FLOOR.value }, "audible on a phone")
+                val played = t.question.notes.filter { it.voice == Voice.PIANO }.map { it.note!!.pitchClass.value }.toSet()
+                assertEquals(chord.quality.intervals.map { (t.key.pitchClassOf(chord.root) + it).value }.toSet(), played, "the question is the chord")
+                assertTrue(t.question.notes.none { it.voice == Voice.TONE }, "the soft voice is the drone's, not the question's")
                 assertTrue(TirDriver.holds(chord, note), "$note is a tone of $chord")
                 assertTrue(pad.count { TirDriver.holds(it, note) } >= 2, "$note does not give $chord away")
                 assertEquals("tir:under:L1:" + ChordParser.formatRoman(chord), t.itemKey)
@@ -42,13 +48,14 @@ class UnderNoteDriverTest {
     }
 
     @Test
-    fun `a new key is set over the tonic, then the drone moves to the chord`() {
+    fun `a new key is set over the tonic, then the drone moves to the note`() {
         val d = driver(5)
         val tasks = List(TirDriver.KEY_BLOCK + 1) { d.nextTask(DriverContext(Random(it), 2, emptyList())) }
         val first = tasks.first()
         assertNotNull(first.intro, "the scale opens the block")
         assertEquals(Arranger().drone(first.key), first.introDrone)
-        assertEquals(first.question, first.prompt.audio, "the prompt is the note alone")
+        assertEquals(first.question, first.prompt.audio, "the prompt is the chord alone")
+        assertEquals(Arranger().noteDrone(first.key, first.notes.single().degree), first.drone, "then the drone moves from the tonic to the shown note")
         tasks.drop(1).take(TirDriver.KEY_BLOCK - 1).forEach { assertNull(it.intro) }
         assertNotNull(tasks.last().intro, "the next block opens with its scale again")
         // Over many blocks the first chord is not always I.
@@ -68,17 +75,21 @@ class UnderNoteDriverTest {
     }
 
     @Test
-    fun `the right chord goes home, a wrong one hears the note over its chord again`() {
+    fun `the right chord goes home, a wrong one hears the chord over its note again`() {
         val d = driver(3)
         repeat(20) {
             val t = d.nextTask(DriverContext(Random(it), 2, emptyList()))
             val right = d.evaluate(t, Answer.ChordChoice(t.chords.single()))
             assertTrue(right.correct)
             assertNotNull(right.confirmation)
+            assertTrue(right.confirmation!!.notes.none { it.voice == Voice.TONE }, "chords, not the drone's voice")
             val other = t.chordChoices.first { c -> c != t.chords.single() }
             val wrong = d.evaluate(t, Answer.ChordChoice(other))
             assertFalse(wrong.correct)
             assertNotNull(wrong.correction, "rule 5")
+            val heard = wrong.correction!!
+            assertTrue(t.question.notes.all { q -> heard.notes.any { it.startBeat == q.startBeat && it.note == q.note } }, "the question first, again")
+            assertTrue(heard.lengthBeats > t.question.lengthBeats, "then it goes home")
             assertNotNull(d.evaluate(t, Answer.Pass).correction)
             assertFalse(d.evaluate(t, Answer.DegreeChoice(t.notes.single().degree)).correct, "naming the note is not the answer")
         }
