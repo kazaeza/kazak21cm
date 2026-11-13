@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.AlertDialog
@@ -39,6 +41,7 @@ import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.music.Arranger
 import com.kazaeza.muzykalka.music.ChordDegree
+import com.kazaeza.muzykalka.music.ChordQuality
 import com.kazaeza.muzykalka.music.DegreeAnchor
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
@@ -51,6 +54,9 @@ import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.RuNames
 import com.kazaeza.muzykalka.music.Score
+import com.kazaeza.muzykalka.music.Song
+import com.kazaeza.muzykalka.music.SongBook
+import com.kazaeza.muzykalka.music.SongOpenings
 import com.kazaeza.muzykalka.music.Voice
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.DegreeChip
@@ -101,8 +107,18 @@ data class FeelUi(
     val editError: String? = null,
     /** Titles from the library, offered as quick picks for an anchor. */
     val libraryTitles: List<String> = emptyList(),
+    /** O-41: the songs of the library that open on the chord of a degree, shown behind its anchor slot. */
+    val picking: SongPick? = null,
 ) {
     val chord: ChordDegree? get() = if (context == FEEL_DRONE) null else Harmony.diatonicChord(scope.mode, context)
+}
+
+/** O-41: a song of the library offered behind an anchor slot. */
+data class PickedSong(val id: String, val song: Song)
+
+/** O-41: the songs that open on the chord of [degree], best fit first, and which of them is on screen. */
+data class SongPick(val degree: Degree, val songs: List<PickedSong>, val index: Int = 0) {
+    val current: PickedSong? get() = songs.getOrNull(index)
 }
 
 /**
@@ -187,6 +203,48 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
         }
     }
 
+    // ------------------------------------------------------------ O-41 songs behind the anchor
+
+    /** The songs of the library whose first chord stands on [degree] (the chord of the card), in the mode on screen. */
+    fun pickSong(degree: Degree) {
+        viewModelScope.launch {
+            val items = graph.library.allOrderable().mapNotNull { e -> e.song?.let { PickedSong(e.id, it) } }
+            val songs = SongOpenings.candidates(items, { it.song }, degree, state.value.scope.mode, random)
+            state.update { it.copy(picking = SongPick(degree, songs)) }
+        }
+    }
+
+    /** Another song of the same chord; the list goes round. */
+    fun nextSong() = state.update { s ->
+        val p = s.picking ?: return@update s
+        if (p.songs.size < 2) s else s.copy(picking = p.copy(index = (p.index + 1) % p.songs.size))
+    }
+
+    fun closePick() {
+        stop()
+        state.update { it.copy(picking = null) }
+    }
+
+    /** The opening chords of the song on screen, in the key on screen — chords only, no drone under them. */
+    fun playPick() {
+        val s = state.value
+        val song = s.picking?.current?.song ?: return
+        val key = s.key ?: return
+        stop()
+        job = viewModelScope.launch {
+            state.update { it.copy(playing = s.picking.degree) }
+            graph.audioOutput.play(arranger.sketch(song, key, beatsEach = 2.0, tempoBpm = 84.0, maxChords = OPENING_CHORDS))
+            state.update { it.copy(playing = null) }
+        }
+    }
+
+    /** From the song's card to «Свой якорь»: the dialog closes, the editor of the degree opens. */
+    fun ownAnchorFromPick() {
+        val degree = state.value.picking?.degree ?: return
+        closePick()
+        editAnchor(degree)
+    }
+
     fun newKey() {
         stop()
         state.update { it.copy(key = keys.next(it.scope.mode)) }
@@ -258,11 +316,14 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
 
     companion object {
         const val TEMPO = 96.0
+
+        /** O-41: how much of a song's beginning is played behind its card. */
+        const val OPENING_CHORDS = 4
     }
 }
 
 @Composable
-fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
+fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit, onOpenSong: (String) -> Unit = {}) {
     val graph = LocalAppGraph.current
     val vm: FeelViewModel = viewModel { FeelViewModel(graph) }
     val ui by vm.ui.collectAsStateWithLifecycle()
@@ -309,8 +370,9 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
                         VibeCard(
                             d, playing = ui.playing == d, notation = notation, mode = ui.scope.mode, over = ui.chord,
                             anchor = ui.anchors[d.semitones],
-                            onAnchor = { a -> if (a != null) vm.playAnchor(a) else vm.editAnchor(d) },
+                            onAnchor = { a -> if (a != null) vm.playAnchor(a) else vm.pickSong(d) },
                             onEditAnchor = { vm.editAnchor(d) },
+                            onSongs = { vm.pickSong(d) },
                             modifier = Modifier.weight(1f),
                         ) { vm.play(d) }
                     }
@@ -333,6 +395,22 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
             }
         }
     }
+    ui.picking?.let { pick ->
+        SongPickDialog(
+            pick = pick,
+            key = key,
+            mode = ui.scope.mode,
+            notation = notation,
+            onPlay = vm::playPick,
+            onNext = vm::nextSong,
+            onOpen = { id ->
+                vm.closePick()
+                onOpenSong(id)
+            },
+            onOwn = vm::ownAnchorFromPick,
+            onClose = vm::closePick,
+        )
+    }
     ui.editing?.let { d ->
         AnchorEditor(
             degree = d,
@@ -346,6 +424,72 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit) {
             onCancel = vm::cancelEdit,
         )
     }
+}
+
+/** The chord that stands on the card's degree: its own chord of the scale, or a plain major one outside it. */
+private fun cardChord(degree: Degree, mode: Mode): ChordDegree {
+    val step = mode.degrees.indexOfFirst { it.semitones == degree.semitones }
+    return if (step >= 0) Harmony.diatonicChord(mode, step) else ChordDegree(degree, ChordQuality.MAJOR)
+}
+
+/**
+ * O-41: behind the anchor slot of a degree — a song of the library that starts on its chord. The opening chords are
+ * shown as degrees (rule 1: no letters) and play in the key on screen; «другая» is the next song, «Открыть» the song itself.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun SongPickDialog(
+    pick: SongPick,
+    key: Key?,
+    mode: Mode,
+    notation: com.kazaeza.muzykalka.music.DegreeNotation,
+    onPlay: () -> Unit,
+    onNext: () -> Unit,
+    onOpen: (String) -> Unit,
+    onOwn: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val chordName = DegreeFormatter.chord(cardChord(pick.degree, mode), notation)
+    val song = pick.current
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Песня, что начинается с $chordName") },
+        text = {
+            // the card is tall (title, line, chords, buttons): on a small screen it scrolls instead of being cut off
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (song == null) {
+                    Text(
+                        "В библиотеке нет песен, которые начинаются с $chordName. Запиши такую ступенями — или заведи свой якорь.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Juicy.TextDim,
+                    )
+                } else {
+                    val book = SongBook.byLibraryId(song.id)
+                    Text(song.song.title, style = MaterialTheme.typography.titleLarge)
+                    val sub = listOfNotNull(
+                        song.song.artist,
+                        song.song.mode.ruName,
+                        book?.let { "●".repeat(it.difficulty) + "○".repeat(3 - it.difficulty) },
+                    ).joinToString(" · ")
+                    if (sub.isNotBlank()) Text(sub, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+                    book?.let { Text(it.teaches, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text) }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        song.song.chordsInOrder.take(FeelViewModel.OPENING_CHORDS * 2).forEachIndexed { i, c ->
+                            DegreeChip(DegreeFormatter.chord(c, notation), DegreeColors.of(c.root), large = i == 0)
+                        }
+                    }
+                    key?.let { Text("Играет в тональности ${RuNames.key(it)}: первые аккорды песни.", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        GhostButton("Послушать", onClick = onPlay, colors = Accents.Tir, leading = "►")
+                        if (pick.songs.size > 1) GhostButton("другая · ${pick.index + 1} из ${pick.songs.size}", onClick = onNext, colors = Accents.Tir, leading = "⇄")
+                    }
+                    GhostButton("Открыть в библиотеке", onClick = { onOpen(song.id) }, colors = Accents.Taper, leading = "")
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text("Закрыть") } },
+        dismissButton = { TextButton(onClick = onOwn) { Text("Свой якорь") } },
+    )
 }
 
 /**
@@ -417,6 +561,7 @@ private fun VibeCard(
     anchor: DegreeAnchor?,
     onAnchor: (DegreeAnchor?) -> Unit,
     onEditAnchor: () -> Unit,
+    onSongs: () -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -454,16 +599,26 @@ private fun VibeCard(
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (anchor != null) anchor.title else "+ якорь",
+                // O-41: no anchor of one's own — the slot offers the songs of the library that start on this chord
+                if (anchor != null) anchor.title else "♫ песни на " + DegreeFormatter.chord(cardChord(degree, mode), notation),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (anchor != null) Juicy.Text else Juicy.TextFaint,
+                color = if (anchor != null) Juicy.Text else Juicy.TextDim,
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(10.dp))
-                    .clickable(onClickLabel = if (anchor != null) "Послушать якорь" else "Добавить якорь") { onAnchor(anchor) }
+                    .clickable(onClickLabel = if (anchor != null) "Послушать якорь" else "Песни из библиотеки, которые начинаются с этого аккорда") { onAnchor(anchor) }
                     .padding(vertical = 6.dp),
             )
             if (anchor != null) {
+                Text(
+                    "♫",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Juicy.TextDim,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable(onClickLabel = "Песни из библиотеки, которые начинаются с этого аккорда", onClick = onSongs)
+                        .padding(6.dp),
+                )
                 Text(
                     "✎",
                     style = MaterialTheme.typography.titleMedium,

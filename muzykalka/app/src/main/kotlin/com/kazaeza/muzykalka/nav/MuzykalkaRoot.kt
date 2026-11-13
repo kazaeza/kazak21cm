@@ -180,7 +180,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                     composable<ExamRoute> { ExamScreen(onExit = { nav.popBackStack() }) }
                     composable<ListenRoute> { ListenScreen(onBack = { nav.popBackStack() }) }
                     composable<FeelRoute> {
-                        FeelScreen(onBack = { nav.popBackStack() }, onTir = { nav.navigate(GameRoute(Variant.TIR_CLASSIC.name)) })
+                        FeelScreen(onBack = { nav.popBackStack() }, onTir = { nav.navigate(GameRoute(Variant.TIR_CLASSIC.name)) }, onOpenSong = { id -> nav.navigate(ItemRoute(id)) })
                     }
                 }
             }
