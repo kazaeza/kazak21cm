@@ -70,4 +70,37 @@ class SongOpeningsTest {
         val items = listOf(null, song("| V | I |"), null)
         assertEquals(1, SongOpenings.candidates(items, { it }, Degree.FIVE, Mode.MAJOR, Random(1)).size)
     }
+
+    /** O-43: an opening is its changes — held chords are one, and the text of it does not depend on spelling or bass. */
+    @Test
+    fun `the changes of a song skip held chords, and their signature ignores the bass and the spelling`() {
+        val blues = song("| I | I | I | I | IV | IV | I | I | V | IV | I | V |")
+        assertEquals("I-IV-I-V", SongOpenings.signature(SongOpenings.changes(blues, 4)))
+        assertEquals(2, SongOpenings.changes(song("| I | V | I | V |"), 2).size)
+        assertEquals(1, SongOpenings.changes(song("| i | i | i |", Mode.MINOR), 4).size, "a one-chord song has one change")
+        val slash = SongOpenings.changes(song("| I/3 | V/7 | vi |"), 4)
+        assertEquals("I-V-vi", SongOpenings.signature(slash))
+        assertEquals(
+            SongOpenings.signature(SongOpenings.changes(song("| I | #IV | V |"), 3)),
+            SongOpenings.signature(SongOpenings.changes(song("| I | bV | V |"), 3)),
+        )
+        assertEquals(2, SongOpenings.commonPrefix(SongOpenings.changes(song("| I | V | vi | IV |"), 4), SongOpenings.changes(song("| I | V | IV | I |"), 4)))
+        assertEquals(0, SongOpenings.commonPrefix(SongOpenings.changes(song("| vi | IV |"), 4), SongOpenings.changes(song("| I | V |"), 4)))
+    }
+
+    @Test
+    fun `the shape of an opening is the same loop in a major and in its relative minor`() {
+        val major = SongOpenings.changes(song("| vi | IV | I | V |"), 4)
+        val minor = SongOpenings.changes(song("| i | bVI | bIII | bVII |", Mode.MINOR), 4)
+        assertNotEquals(SongOpenings.signature(major), SongOpenings.signature(minor), "written differently")
+        assertEquals(SongOpenings.shape(major), SongOpenings.shape(minor), "heard the same")
+        assertNotEquals(SongOpenings.shape(major), SongOpenings.shape(SongOpenings.changes(song("| I | V | vi | IV |"), 4)))
+        assertNotEquals(SongOpenings.shape(SongOpenings.changes(song("| I | IV |"), 2)), SongOpenings.shape(SongOpenings.changes(song("| i | iv |", Mode.MINOR), 2)), "the quality is heard")
+    }
+
+    @Test
+    fun `the book has plenty of different openings`() {
+        val shapes = book.map { SongOpenings.shape(SongOpenings.changes(it.song, 4)) }.toSet()
+        assertTrue(shapes.size >= 30, "different openings in the book: ${shapes.size}")
+    }
 }

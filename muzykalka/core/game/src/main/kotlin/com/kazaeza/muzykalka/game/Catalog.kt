@@ -45,6 +45,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     /** O-15: the reverse — the note is shown, the chord droning under it is asked (ADR-029). */
     TIR_UNDER_NOTE(ModeId.TIR, "Под нотой", GuitarNeed.NONE, "0.1"),
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.2"),
+    /** O-43: the opening chords of a library song are played — whose are they (ADR-042). */
+    TIR_SONG(ModeId.TIR, "Чья гармония?", GuitarNeed.NONE, "0.1"),
     TIR_RADIO(ModeId.TIR, "Радио", GuitarNeed.NONE, "0.3"),
     /** O-14: «спой квинту» — search with the voice until it is found (ADR-028). */
     KAMERTON_SEARCH(ModeId.KAMERTON, "Пропевка", GuitarNeed.NONE, "0.1"),
@@ -91,6 +93,13 @@ object Levels {
     val TIR_UNDER = listOf(
         "I · IV · V · vi",
         "все аккорды лада",
+    )
+
+    /** «Чья гармония?» (O-43): the written openings first, then the titles alone. */
+    val TIR_SONG = listOf(
+        "разные начала",
+        "похожие начала",
+        "только названия",
     )
 
     /** Taper «Ходы»: progressions from the most banal up (see [StepsLadder]). */

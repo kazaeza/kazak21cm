@@ -132,6 +132,47 @@ class GameFlowTest {
         rule.waitUntil(5_000) { audio.played.size > before } // the chord goes home, or the chord over the note again (rule 5)
     }
 
+    /** O-43 (ADR-042): the cadence and a song's opening are played, four songs are offered, a pick is judged. */
+    @Test
+    fun songQuizPlaysAnOpeningOffersFourSongsAndJudgesAPick() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        kotlinx.coroutines.runBlocking { graph.library.seedBook(emptySet()) }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_SONG, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Чья это гармония?").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the cadence and the opening were played", audio.played.isNotEmpty())
+        assertTrue("chords, not the soft voice of the drone", audio.played.last().notes.all { it.voice == Voice.PIANO || it.voice == Voice.BASS })
+        assertTrue("no drone under chords", audio.drones.filterNotNull().isEmpty())
+        val options = rule.onAllNodes(hasClickLabel("Выбрать песню"))
+        assertTrue("four songs", options.fetchSemanticsNodes().size == 4)
+        options.onFirst().assertHeightIsAtLeast(72.dp)
+        val before = audio.played.size
+        options.onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > before } // the song goes on, or the opening again and home (rule 5)
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("Чья это гармония?").fetchSemanticsNodes().isEmpty() }
+    }
+
+    /** O-43: an empty library is topped up with the songbook, so the quiz always has its four songs. */
+    @Test
+    fun songQuizWorksOnAnEmptyLibraryAndByTitlesAlone() {
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = FakeAudioOutput()
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_SONG, level = 3), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Чья это гармония?").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue(rule.onAllNodes(hasClickLabel("Выбрать песню")).fetchSemanticsNodes().size == 4)
+    }
+
     /** O-17 (ADR-031): in «Ходы» a chord of the pattern sounds when tapped — while the engine is silent. */
     @Test
     @GraphicsMode(GraphicsMode.Mode.NATIVE)

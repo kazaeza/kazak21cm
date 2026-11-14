@@ -37,6 +37,9 @@ sealed interface Answer {
     data class ChordFormula(val chords: List<ChordDegree>) : Answer
     data class SelfReport(val grade: SelfGrade) : Answer
 
+    /** O-43 «Чья гармония?»: one of the offered songs, by its library id. */
+    data class SongChoice(val id: String) : Answer
+
     /** «Не знаю»: an honest wrong answer instead of a guess — the right one is played at once. */
     data object Pass : Answer
     data object TimedOut : Answer

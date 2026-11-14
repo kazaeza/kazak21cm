@@ -146,6 +146,21 @@ class ScreenshotsTest {
     @Test
     fun tir() = shot("04-tir", { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 2), onExit = {}) }, "Какая ступень?")
 
+    /** O-43: «Чья гармония?» — the question with four songs, and the answer with the opening in degrees. */
+    @Test
+    fun songQuiz() {
+        runBlocking { graph.library.seedBook(emptySet()) }
+        shot("04h-song-quiz", { GameScreen(RoundSpec(Variant.TIR_SONG, level = 1), onExit = {}) }, "Чья это гармония?")
+    }
+
+    @Test
+    fun songQuizAnswered() {
+        runBlocking { graph.library.seedBook(emptySet()) }
+        shot("04i-song-quiz-answer", { GameScreen(RoundSpec(Variant.TIR_SONG, level = 3), onExit = {}) }, "Чья это гармония?") {
+            rule.onAllNodes(hasClickLabel("Выбрать песню")).onFirst().performClick()
+        }
+    }
+
     /** O-28, O-33: «Спой ступень» — the ruler waits under the question. */
     @Test
     fun sing() {
