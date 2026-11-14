@@ -38,3 +38,20 @@ object ItemWeights {
         return pool.last()
     }
 }
+
+/**
+ * O-44 «Песня дня»: one item of [ids] for a study [day] — the same all day, another tomorrow, and over the days
+ * every item gets its turn before one comes round again. Pure: the day comes as a parameter.
+ */
+object PickOfDay {
+    fun pick(ids: Collection<String>, day: Int): String? {
+        if (ids.isEmpty()) return null
+        val sorted = ids.sorted()
+        // a walk through the list with a step coprime to its size: every item once per round, in a mixed-up order
+        val n = sorted.size
+        val step = generateSequence(n / 2 + 1) { it + 1 }.first { gcd(it, n) == 1 }
+        return sorted[Math.floorMod(day.toLong() * step, n.toLong()).toInt()]
+    }
+
+    private tailrec fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
+}

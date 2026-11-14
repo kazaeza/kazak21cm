@@ -1,5 +1,11 @@
 package com.kazaeza.muzykalka.feature.today
 
+import com.kazaeza.muzykalka.ui.theme.DegreeColors
+import com.kazaeza.muzykalka.ui.component.DegreeChip
+import com.kazaeza.muzykalka.music.DegreeNotation
+import com.kazaeza.muzykalka.music.DegreeFormatter
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import com.kazaeza.muzykalka.ui.theme.Numbers
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,6 +52,7 @@ fun TodayScreen(
     onPlay: (Variant) -> Unit,
     onFeel: () -> Unit,
     onLibrary: () -> Unit,
+    onOpenSong: (String) -> Unit = {},
 ) {
     val graph = LocalAppGraph.current
     val vm: TodayViewModel = viewModel { TodayViewModel(graph) }
@@ -103,6 +110,10 @@ fun TodayScreen(
         item(key = "short") {
             GhostButton("Нет времени? 5 минут", onClick = onShortSet, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
         }
+        // O-44: one song of the library a day — a reason to look into it, and a progression to take along
+        ui.songOfDay?.let { song ->
+            item(key = "song-of-day") { SongOfDayCard(song, ui.notation, onClick = { onOpenSong(song.id) }) }
+        }
         if (ui.libraryCount == 0) {
             item(key = "empty") {
                 GlassCard(Modifier.fillMaxWidth(), accent = Accents.Taper, onClick = onLibrary) {
@@ -135,5 +146,27 @@ private fun MiniStat(value: Int, label: String) {
     Column {
         Text(value.toString(), style = Numbers.Small, color = Juicy.Text)
         Text(label, style = MaterialTheme.typography.labelMedium, color = Juicy.TextDim)
+    }
+}
+
+/** O-44 «Песня дня»: the title, how it opens (in degrees), and a way in — the song's own screen plays it. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SongOfDayCard(song: SongOfDay, notation: DegreeNotation, onClick: () -> Unit) {
+    GlassCard(Modifier.fillMaxWidth(), accent = Accents.Taper, onClick = onClick) {
+        SectionLabel("Песня дня", color = Juicy.TextDim)
+        Spacer(Modifier.height(4.dp))
+        Text(song.title, style = MaterialTheme.typography.titleLarge)
+        Text(
+            listOfNotNull(song.artist, song.mode.ruName, if (song.learning) "учу" else null).joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = Juicy.TextDim,
+        )
+        Spacer(Modifier.height(8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            song.opening.forEach { c -> DegreeChip(DegreeFormatter.chord(c, notation), DegreeColors.of(c.root)) }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("Открой — послушаешь, как она идёт, в любой тональности.", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
     }
 }

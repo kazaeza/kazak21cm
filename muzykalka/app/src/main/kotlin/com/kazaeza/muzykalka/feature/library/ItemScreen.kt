@@ -1,5 +1,12 @@
 package com.kazaeza.muzykalka.feature.library
 
+import kotlin.random.Random
+import kotlinx.coroutines.Job
+import com.kazaeza.muzykalka.music.RuNames
+import com.kazaeza.muzykalka.music.KeyPicker
+import com.kazaeza.muzykalka.music.Key
+import com.kazaeza.muzykalka.music.Arranger
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -60,6 +67,16 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
     val orders by graph.practice.observeOrdersFor(id).collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var confirmDelete by remember { mutableStateOf(false) }
+    // O-44 «Послушать»: the sketch of the song in a key of chance; the key is named, the chords stay degrees (rule 1)
+    var listening by remember { mutableStateOf<Job?>(null) }
+    var listenKey by remember { mutableStateOf<Key?>(null) }
+    val keys = remember { KeyPicker(Random(System.nanoTime())) }
+    DisposableEffect(id) {
+        onDispose {
+            if (listening?.isActive == true) graph.audioOutput.stop()
+            listening?.cancel()
+        }
+    }
     val today = graph.today(settings)
     val notation = settings.degreeNotation
     val loaded by produceState(false, entries) { value = entries != null }
@@ -90,6 +107,41 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
                         GhostButton("Сыграть сейчас", onClick = { onOrder(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
                     } else {
                         JuicyButton("Сыграть сейчас", onClick = { onOrder(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
+                    }
+                }
+            }
+        }
+        e.song?.let { song ->
+            item(key = "listen") {
+                val playing = listening?.isActive == true
+                Column {
+                    GhostButton(
+                        if (playing) "Стоп" else "Послушать",
+                        onClick = {
+                            if (playing) {
+                                listening?.cancel()
+                                graph.audioOutput.stop()
+                                listening = null
+                            } else {
+                                val key = keys.next(song.mode)
+                                listenKey = key
+                                listening = scope.launch {
+                                    graph.audioOutput.a4Hz = settings.a4Hz
+                                    try {
+                                        graph.audioOutput.play(Arranger().sketch(song, key))
+                                    } finally {
+                                        listening = null
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = Accents.Taper,
+                        leading = if (playing) "■" else "►",
+                    )
+                    listenKey?.takeIf { playing }?.let { key ->
+                        Spacer(Modifier.height(4.dp))
+                        Text("играет в тональности ${RuNames.key(key)} — каждый раз в новой", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
                     }
                 }
             }

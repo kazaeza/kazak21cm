@@ -125,6 +125,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                                     onPlay = { v -> nav.navigate(GameRoute(v.name)) },
                                     onFeel = { nav.navigate(FeelRoute) },
                                     onLibrary = { tab(LIBRARY_TAB) },
+                                    onOpenSong = { id -> nav.navigate(ItemRoute(id)) },
                                 )
                                 1 -> ModesScreen(
                                     onPlay = { v, level -> nav.navigate(GameRoute(v.name, level)) },

@@ -102,7 +102,10 @@ class ScreenshotsTest {
     }
 
     @Test
-    fun today() = shot("01-today", { TodayScreen({}, {}, {}, {}, {}, {}) }, "Начать сет")
+    fun today() {
+        runBlocking { graph.bookSeeder.run() } // O-44: with a library there is a song of the day
+        shot("01-today", { TodayScreen({}, {}, {}, {}, {}, {}) }, "Начать сет")
+    }
 
     @Test
     fun modes() = shot("02-modes", { ModesScreen(onPlay = { _, _ -> }) }, "Над аккордами")

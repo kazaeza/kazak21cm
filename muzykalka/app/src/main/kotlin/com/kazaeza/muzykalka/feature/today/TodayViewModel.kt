@@ -8,6 +8,11 @@ import com.kazaeza.muzykalka.game.SingUnlock
 import com.kazaeza.muzykalka.game.DailySet
 import com.kazaeza.muzykalka.game.Link
 import com.kazaeza.muzykalka.game.Metrics
+import com.kazaeza.muzykalka.game.PickOfDay
+import com.kazaeza.muzykalka.music.ChordDegree
+import com.kazaeza.muzykalka.music.DegreeNotation
+import com.kazaeza.muzykalka.music.Mode
+import com.kazaeza.muzykalka.music.SongOpenings
 import com.kazaeza.muzykalka.game.SetSegment
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,12 +35,18 @@ data class TodayUi(
     /** What «Начать сет» will run today, as the set screen will build it. */
     val set: List<SetSegment> = DailySet.available(DailySet.DEFAULT, APP_STAGE),
     val date: LocalDate = LocalDate.now(),
+    /** O-44: one song of the library for today — the same all day. */
+    val songOfDay: SongOfDay? = null,
+    val notation: DegreeNotation = DegreeNotation.ARABIC,
 ) {
     val setMinutes: Int get() = set.sumOf { it.minutes }.toInt()
 }
 
 /** Order of the triangle strands, as TriangleChart expects. */
 val TRIANGLE_ORDER = listOf(Link.SOUND_TO_NAME, Link.NAME_TO_SOUND, Link.NAME_TO_PLACE, Link.PLACE_TO_NAME, Link.PLACE_TO_SOUND, Link.SOUND_TO_PLACE)
+
+/** O-44 «Песня дня»: what the card shows — the opening in degrees, never in letters. */
+data class SongOfDay(val id: String, val title: String, val artist: String?, val mode: Mode, val opening: List<ChordDegree>, val learning: Boolean)
 
 /** Ticket T-01: «Сегодня» on live data — only what helps to start playing (ADR-016). */
 class TodayViewModel(graph: AppGraph) : ViewModel() {
@@ -65,6 +76,17 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
             practicedToday = today in days,
             set = if (due == 0) DailySet.withoutSongs(plan) else plan,
             date = LocalDate.ofEpochDay(today.toLong()),
+            notation = settings.degreeNotation,
+            songOfDay = entries.filter { it.song != null && !it.unsupported }.let { songs ->
+                val pick = PickOfDay.pick(songs.map { it.id }, today)
+                songs.firstOrNull { it.id == pick }?.let { e ->
+                    val song = e.song!!
+                    SongOfDay(e.id, e.title, song.artist, song.mode, SongOpenings.changes(song, SONG_OF_DAY_CHORDS), learning = !e.shelved)
+                }
+            },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUi())
 }
+
+/** O-44: how many chord changes of the song of the day are shown. */
+const val SONG_OF_DAY_CHORDS = 6
