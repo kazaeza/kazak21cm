@@ -46,6 +46,8 @@ import com.kazaeza.muzykalka.game.GuitarNeed
 import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.TirDriver
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.music.DegreeFormatter
+import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
 import com.kazaeza.muzykalka.ui.theme.Accents
@@ -102,6 +104,7 @@ object ModesCatalog {
             Variant.TIR_CLASSIC -> "Гудит тоника, звучит нота — жми её ступень. Не уверен — «не знаю», ответ всё равно услышишь."
             Variant.TIR_OVER_CHORDS -> "Та же нота, но под ней меняются аккорды лада."
             Variant.TIR_UNDER_NOTE -> "Наоборот: нота на экране гудит, поверх неё играет аккорд — какой? Как подобрать аккорд под мелодию."
+            Variant.TIR_DUEL -> "Две ступени, которые ты путаешь чаще всего, — вперемешку, пока не ответишь десять раз подряд. Победил пару — выходит следующая. Без жизней."
             Variant.TIR_SONG -> "Звучат первые аккорды песни из твоей библиотеки, в случайной тональности — чья это гармония? Сначала с подсказкой ступенями, потом только по названиям."
             Variant.KAMERTON_SEARCH -> "Спокойно: «спой квинту» — и ищешь голосом, пока не попадёшь. Промахнулся — скажу, что спел и куда тянуть. Без жизней."
             Variant.KAMERTON_SING -> "Видишь ступень — поёшь её. Засчитывается первая спетая нота, на скорость."
@@ -142,6 +145,14 @@ fun ModesScreen(
     val scope = rememberCoroutineScope()
     val singing by remember { graph.practice.observeAttempts().map { SingUnlock.status(it) } }.collectAsState(initial = SingUnlock.Status(false, 0, 0))
     val tirHalves by remember { graph.practice.observeAttempts().map { TirDriver.halves(it) } }.collectAsState<TirDriver.Companion.Halves?, TirDriver.Companion.Halves?>(initial = null)
+    // S-03: the pair the next duel opens with — the user's own worst confusion, or the first of the usual ones
+    val duelPair by remember {
+        graph.practice.observeAttempts().map { all ->
+            Drills.duelPairs(all.filter { it.variant == Variant.TIR_CLASSIC }.takeLast(Drills.DUEL_LOOKBACK)).firstOrNull()?.let { it to true }
+                ?: (TirDriver.DUEL_DEFAULTS.first() to false)
+        }
+    }.collectAsState(initial = null)
+    val notation by remember { graph.settings.settings.map { it.degreeNotation } }.collectAsState(initial = DegreeNotation.ARABIC)
     ScreenFrame(title = "Режимы", subtitle = "всё в одном месте: выбирай и играй", accent = Accents.Recorder) {
         ModesCatalog.SECTIONS.forEach { mode ->
             val entries = ModesCatalog.entries(mode)
@@ -155,6 +166,10 @@ fun ModesScreen(
                         progress = progress,
                         singing = singing,
                         tirHalves = tirHalves,
+                        duelLine = duelPair?.takeIf { e == ModeEntry.Drill(Variant.TIR_DUEL) }?.let { (pair, own) ->
+                            val names = listOf(pair.first, pair.second).sortedBy { it.semitones }.joinToString(" против ") { DegreeFormatter.degree(it, notation) }
+                            if (own) "твоя пара сейчас: $names" else "своей путаницы пока нет — начнём с классики: $names"
+                        },
                         onSelectLevel = { v, level, allOpen ->
                             scope.launch {
                                 if (allOpen) graph.progress.unlock(v, level)
@@ -207,6 +222,7 @@ private fun EntryCard(
     progress: GameProgress,
     singing: SingUnlock.Status,
     tirHalves: TirDriver.Companion.Halves?,
+    duelLine: String?,
     onSelectLevel: (Variant, Int, Boolean) -> Unit,
     onStart: () -> Unit,
     onLibrary: () -> Unit,
@@ -239,6 +255,10 @@ private fun EntryCard(
             if (v != null && record > 0 && !Drills.guitarPaced(v)) {
                 Text("$record", style = MaterialTheme.typography.labelLarge, color = Juicy.Gold)
             }
+        }
+        if (duelLine != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(duelLine, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
         }
         if (entry is ModeEntry.Drill) Levels(entry.variant, accent, progress, onSelectLevel, tirHalves.takeIf { entry.variant == Variant.TIR_CLASSIC })
         if (entry == ModeEntry.Songs) {

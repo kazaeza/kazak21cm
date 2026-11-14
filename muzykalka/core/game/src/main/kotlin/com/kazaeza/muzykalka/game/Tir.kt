@@ -51,6 +51,8 @@ data class TirTask(
     val underNote: Boolean = false,
     override val intro: Score? = null,
     override val introDrone: List<MidiNote>? = null,
+    /** S-03 «Дуэль»: the pair this question belongs to and how the duel stands. */
+    val duel: TirDuel? = null,
 ) : DroneTask {
     override val replay: Score get() = question
 
@@ -62,6 +64,13 @@ data class TirTask(
             TirKind.PROGRESSION -> chords.size - 1
         }
 }
+
+/**
+ * S-03 «Дуэль» (ADR-043): [pair] — the two degrees of the duel, low to high; [streak] — right answers in a row on this
+ * pair BEFORE this question; [goal] — how many in a row beat the pair; [beaten] — the pair that was beaten by the
+ * previous answer (this question opens the next duel); [wins] — pairs beaten this round.
+ */
+data class TirDuel(val pair: List<Degree>, val streak: Int, val goal: Int, val beaten: List<Degree>? = null, val wins: Int = 0)
 
 /** Why a question came back (O-06): missed [daysAgo] days ago, answered then as [confusedWith]. */
 data class TirReview(val daysAgo: Int, val confusedWith: List<String>)
@@ -85,7 +94,19 @@ class TirDriver(
     override val variant: Variant = Variant.TIR_CLASSIC,
     private val arranger: Arranger = Arranger(),
     review: List<SpacedReview.Item> = emptyList(),
+    /** S-03: the user's own confusions, the worst first; the usual suspects ([DUEL_DEFAULTS]) follow them. */
+    duelPairs: List<Pair<Degree, Degree>> = emptyList(),
 ) : ModeDriver<TirTask> {
+
+    /** S-03: the duels of this round in order — every pair once, whichever way round it was given. */
+    private val duelQueue: List<List<Degree>> = (duelPairs + DUEL_DEFAULTS)
+        .filter { !(it.first sameSoundAs it.second) }
+        .map { listOf(it.first, it.second).sortedBy { d -> d.semitones } }
+        .distinctBy { pair -> pair.map { it.semitones } }
+    private var duelIndex = 0
+    private var duelStreak = 0
+    private var duelWins = 0
+    private var duelLastKey: String? = null
 
     /** O-06: earlier days' misses (keys from [reviewKey]) still waiting for a right answer today. */
     private val pendingReview = review.filter { it.key.startsWith(NOTE_GROUP) || it.key.startsWith(CHORD_GROUP) }.toMutableList()
@@ -123,6 +144,7 @@ class TirDriver(
         settleReview(context.history)
         if (variant == Variant.TIR_OVER_CHORDS) return overChordTask(context)
         if (variant == Variant.TIR_UNDER_NOTE) return underNoteTask(context)
+        if (variant == Variant.TIR_DUEL) return duelTask(context)
         val level = context.level.coerceIn(1, Levels.TIR.size)
         val r = context.random
         if (!usesDrone(level)) {
@@ -194,10 +216,10 @@ class TirDriver(
      * [pool] is what is mostly asked, [pad] what can be answered. When the pad is wider than the
      * pool, [GUEST_SHARE] of the questions come from the rest of the pad.
      */
-    private fun noteTask(level: Int, c: Context, pool: List<Degree>, pad: List<Degree>, ctx: DriverContext): TirTask {
+    private fun noteTask(level: Int, c: Context, pool: List<Degree>, pad: List<Degree>, ctx: DriverContext, ownPrefix: String? = null): TirTask {
         val key = c.key
         val tonic = c.tonic
-        val prefix = if (level == 7) "tir:L7:${key.mode.name}:" else "tir:L$level:"
+        val prefix = ownPrefix ?: if (level == 7) "tir:L7:${key.mode.name}:" else "tir:L$level:"
         val guests = pad.filter { d -> pool.none { it sameSoundAs d } }
         val from = if (guests.isNotEmpty() && ctx.random.nextDouble() < GUEST_SHARE) guests else pool
         val review = reviewPick(NOTE_GROUP, ctx.random) { code -> pad.firstOrNull { it.toString() == code } }
@@ -211,6 +233,53 @@ class TirDriver(
             chordChoices = emptyList(), question = question, drone = c.drone,
             review = reviewOf(review?.second, prefix + degree) { code -> pad.firstOrNull { it.toString() == code }?.let { DegreeFormatter.degree(it, notation) } },
         )
+    }
+
+    /**
+     * S-03 «Дуэль» (ADR-043): only the two degrees of the current pair are asked and can be answered, over the drone,
+     * until [DUEL_GOAL] answers in a row are right — then the pair is beaten and the next one comes. A miss (or «не
+     * знаю») starts the count again. The round itself stays a round of rule 6: beating a pair does not end it.
+     * The driver learns the outcome of its last question from the history, as the review does.
+     */
+    private fun duelTask(context: DriverContext): TirTask {
+        var beaten: List<Degree>? = null
+        val last = context.history.lastOrNull()
+        if (last != null && last.itemKey == duelLastKey) {
+            duelStreak = if (last.correct) duelStreak + 1 else 0
+            if (duelStreak >= DUEL_GOAL) {
+                beaten = duelQueue[duelIndex]
+                duelIndex = (duelIndex + 1) % duelQueue.size
+                duelStreak = 0
+                duelWins++
+                blockLeft = 0 // the next pair may live in the other mode: a new key and its scale
+            }
+        }
+        val pad = duelQueue[duelIndex]
+        val r = context.random
+        val blockId = DUEL_BLOCK + duelIndex
+        val kept = blockKey?.takeIf { blockLeft > 0 && blockLevel == blockId }
+        val key = kept ?: keyPicker.next(duelMode(pad, r))
+        val newKey = kept == null
+        if (newKey) {
+            blockKey = key
+            blockLevel = blockId
+            blockLeft = KEY_BLOCK
+        }
+        blockLeft--
+        val ctx = Context(key, key.tonicAtOrAbove(MidiNote(55)), arranger.drone(key), if (newKey) orientation(key) else null)
+        val task = noteTask(1, ctx, pad, pad, context, ownPrefix = duelPrefix(pad))
+        duelLastKey = task.itemKey
+        return task.copy(duel = TirDuel(pad, duelStreak, DUEL_GOAL, beaten, duelWins))
+    }
+
+    /** The mode a pair is heard in: the one that has both degrees (minor for ♭3, ♭6, ♭7); major when neither has. */
+    private fun duelMode(pad: List<Degree>, r: Random): Mode {
+        fun has(mode: Mode) = pad.all { d -> mode.degrees.any { it sameSoundAs d } }
+        return when {
+            has(Mode.MAJOR) && has(Mode.MINOR) -> if (r.nextDouble() < MINOR_SHARE) Mode.MINOR else Mode.MAJOR
+            has(Mode.MINOR) -> Mode.MINOR
+            else -> Mode.MAJOR
+        }
     }
 
     /**
@@ -463,6 +532,20 @@ class TirDriver(
         val CHORD_STEPS_L2 = listOf(0, 1, 2, 3, 4, 5)
         private const val OVER_CHORDS_BLOCK = 100
         private const val UNDER_NOTE_BLOCK = 200
+        private const val DUEL_BLOCK = 300
+
+        /** S-03: right answers in a row that beat a pair. */
+        const val DUEL_GOAL = 10
+
+        /**
+         * S-03: the pairs most people confuse, for when the user's own statistics have none yet (or they are all
+         * beaten): the stable tones with each other, then the neighbours.
+         */
+        val DUEL_DEFAULTS: List<Pair<Degree, Degree>> =
+            listOf(3 to 5, 1 to 5, 2 to 4, 4 to 5, 6 to 7, 1 to 3, 2 to 3, 5 to 6).map { (a, b) -> Degree(a) to Degree(b) }
+
+        /** Item keys of a duel: «tir:duel:3~5:» + the asked degree. Not «tir:L…», so the duel stays out of the confusion matrix it is built from. */
+        fun duelPrefix(pair: List<Degree>): String = "tir:duel:" + pair.joinToString("~") + ":"
 
         /** O-40: how long the asked chord is held (beats at [TEMPO]). */
         const val UNDER_NOTE_CHORD_BEATS = 2.0

@@ -192,6 +192,20 @@ internal fun TirContent(
                     }
                     ReplayKey("Повторить вопрос", onReplay, enabled = listening)
                 }
+                // S-03 «Дуэль»: who fights whom and how the count stands (it moves with the answer, not with the next question)
+                task.duel?.let { duel ->
+                    val fmt = { d: Degree -> DegreeFormatter.degree(d, ui.notation) }
+                    val count = if (feedback) (if (correct) duel.streak + 1 else 0) else duel.streak
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        duel.pair.joinToString(" против ", transform = fmt) + " · $count из ${duel.goal} подряд",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (count >= duel.goal) Juicy.Good else Juicy.Gold,
+                    )
+                    duel.beaten?.takeIf { !feedback }?.let { won ->
+                        Text("пара " + won.joinToString("–", transform = fmt) + " побеждена — следующая", style = MaterialTheme.typography.bodyMedium, color = Juicy.Good)
+                    }
+                }
                 Spacer(Modifier.height(12.dp))
                 // O-15 «Под нотой» (turned round in O-40): the note is given and hums, the chord played over it is the question.
                 val shown = if (task.underNote) task.notes.single().degree else null

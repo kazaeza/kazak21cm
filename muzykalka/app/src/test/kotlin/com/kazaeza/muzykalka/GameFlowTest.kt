@@ -132,6 +132,43 @@ class GameFlowTest {
         rule.waitUntil(5_000) { audio.played.size > before } // the chord goes home, or the chord over the note again (rule 5)
     }
 
+    /** S-03 (ADR-043): the duel asks two degrees over the drone, shows who fights whom, and has no lives. */
+    @Test
+    fun duelAsksTwoDegreesAndCountsTheRow() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        assertTrue(Drills.noLives(Variant.TIR_DUEL))
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_DUEL), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Какая ступень?").fetchSemanticsNodes().isNotEmpty() }
+        // no statistics yet: the first of the usual pairs
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("3 против 5 · 0 из 10 подряд").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the tonic drone is on", audio.drones.lastOrNull()?.isNotEmpty() == true)
+        assertTrue("only the pair is on the dial", rule.onAllNodesWithText("1").fetchSemanticsNodes().isEmpty())
+        val before = audio.played.size
+        rule.onAllNodesWithText("5").onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > before } // the way home, or the note again and home (rule 5)
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithText("3 против 5 · 1 из 10 подряд").fetchSemanticsNodes().isNotEmpty() ||
+                rule.onAllNodesWithText("3 против 5 · 0 из 10 подряд").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    /** S-03: the user's own confusion in the Tir opens the duel, the worst pair first. */
+    @Test
+    fun theDuelsComeFromTheConfusionsOfTheTir() {
+        fun miss(expected: String, given: String) =
+            com.kazaeza.muzykalka.game.AttemptRecord(Variant.TIR_CLASSIC, 2, "tir:L2:$expected", expected, given, false, 1_000, null, 0, "C MAJOR", 0)
+        val attempts = List(3) { miss("2", "4") } + List(2) { miss("4", "2") } + List(2) { miss("6", "7") } + miss("1", "5")
+        val pairs = Drills.duelPairs(attempts)
+        assertTrue("worst first, a single slip left out: $pairs", pairs.map { it.first.toString() to it.second.toString() } == listOf("2" to "4", "6" to "7"))
+    }
+
     /** O-43 (ADR-042): the cadence and a song's opening are played, four songs are offered, a pick is judged. */
     @Test
     fun songQuizPlaysAnOpeningOffersFourSongsAndJudgesAPick() {

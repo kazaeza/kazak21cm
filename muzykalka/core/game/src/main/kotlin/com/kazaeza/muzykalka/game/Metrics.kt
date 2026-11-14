@@ -72,6 +72,22 @@ object Metrics {
         return Confusion(labels, counts)
     }
 
+    /** S-03: two degrees taken for each other [count] times (both ways together); canonical codes. */
+    data class ConfusedPair(val first: String, val second: String, val count: Int)
+
+    /**
+     * S-03 «Дуэль»: the pairs of degrees confused with each other, the worst first. A pair counts from [min]
+     * confusions — one slip of the finger is not a habit. Ties keep the order of the scale.
+     */
+    fun confusedPairs(c: Confusion, min: Int = 2): List<ConfusedPair> {
+        val out = ArrayList<ConfusedPair>()
+        for (i in c.labels.indices) for (j in i + 1 until c.labels.size) {
+            val n = c.counts[i][j] + c.counts[j][i]
+            if (n >= min) out += ConfusedPair(c.labels[i], c.labels[j], n)
+        }
+        return out.sortedByDescending { it.count }
+    }
+
     /** The two degrees confused with each other most often (for «Дуэль» and the Progress hint). */
     fun worstPair(c: Confusion): Pair<String, String>? {
         var best: Pair<String, String>? = null

@@ -146,6 +146,10 @@ class ScreenshotsTest {
     @Test
     fun tir() = shot("04-tir", { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 2), onExit = {}) }, "Какая ступень?")
 
+    /** S-03: «Дуэль» — two keys on the dial and the count of the row. */
+    @Test
+    fun duel() = shot("04j-duel", { GameScreen(RoundSpec(Variant.TIR_DUEL), onExit = {}) }, "Какая ступень?")
+
     /** O-43: «Чья гармония?» — the question with four songs, and the answer with the opening in degrees. */
     @Test
     fun songQuiz() {

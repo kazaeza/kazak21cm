@@ -44,7 +44,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_OVER_CHORDS(ModeId.TIR, "Над аккордами", GuitarNeed.NONE, "0.1"),
     /** O-15: the reverse — the note is shown, the chord droning under it is asked (ADR-029). */
     TIR_UNDER_NOTE(ModeId.TIR, "Под нотой", GuitarNeed.NONE, "0.1"),
-    TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.2"),
+    /** S-03: the two degrees taken for each other most often, until ten in a row are right (ADR-043). */
+    TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.1"),
     /** O-43: the opening chords of a library song are played — whose are they (ADR-042). */
     TIR_SONG(ModeId.TIR, "Чья гармония?", GuitarNeed.NONE, "0.1"),
     TIR_RADIO(ModeId.TIR, "Радио", GuitarNeed.NONE, "0.3"),

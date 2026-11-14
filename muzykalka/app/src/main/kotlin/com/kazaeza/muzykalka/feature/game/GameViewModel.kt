@@ -18,6 +18,7 @@ import com.kazaeza.muzykalka.game.AnchorHints
 import com.kazaeza.muzykalka.game.AttemptRecord
 import com.kazaeza.muzykalka.game.HuntDriver
 import com.kazaeza.muzykalka.game.LevelRules
+import com.kazaeza.muzykalka.game.Metrics
 import com.kazaeza.muzykalka.game.Levels
 import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.RoundConfig
@@ -197,7 +198,7 @@ private const val ANCHOR_TAIL_MS = 600L
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(
-        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_SONG, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
+        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_SONG, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
         Variant.TAPER_STEPS, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING,
     )
 
@@ -222,8 +223,29 @@ object Drills {
      */
     fun allLevelsOpen(v: Variant): Boolean = v == Variant.TAPER_STEPS || v == Variant.TIR_SONG
 
-    /** The longest round rule 6 allows: the relaxed drills, and the quiz whose every question is a whole progression. */
-    fun longRound(v: Variant): Boolean = relaxed(v) || v == Variant.TIR_SONG
+    /**
+     * No lives: the relaxed drills, and «Дуэль» (S-03) — two degrees one takes for each other are missed by
+     * definition, and three misses must not end the duel.
+     */
+    fun noLives(v: Variant): Boolean = relaxed(v) || v == Variant.TIR_DUEL
+
+    /** The longest round rule 6 allows: the drills without lives, and the quiz whose every question is a whole progression. */
+    fun longRound(v: Variant): Boolean = noLives(v) || v == Variant.TIR_SONG
+
+    /**
+     * S-03: the user's own duels — the degrees taken for each other in the Tir lately, the worst first
+     * ([attempts]: recent attempts of the Tir, any order of levels).
+     */
+    fun duelPairs(attempts: List<AttemptRecord>): List<Pair<Degree, Degree>> =
+        Metrics.confusedPairs(Metrics.confusion(attempts)).take(DUEL_OWN_PAIRS).mapNotNull { p ->
+            runCatching { Degree.parse(p.first) to Degree.parse(p.second) }.getOrNull()
+        }
+
+    /** How many of the user's own confusions are played before the usual pairs. */
+    const val DUEL_OWN_PAIRS = 4
+
+    /** How far back the Tir is read for the duels: old confusions, long since cured, fade out. */
+    const val DUEL_LOOKBACK = 300
 
     /** Guitar-paced drills: the longest round rule 6 allows, and no lives for honest self-grades. */
     fun guitarPaced(v: Variant): Boolean = v == Variant.TAPER_STEPS
@@ -237,6 +259,7 @@ object Drills {
             Variant.TIR_OVER_CHORDS -> Levels.TIR_CHORDS
             Variant.TIR_UNDER_NOTE -> Levels.TIR_UNDER
             Variant.TIR_SONG -> Levels.TIR_SONG
+            Variant.TIR_DUEL -> listOf("две ступени, ${TirDriver.DUEL_GOAL} подряд")
             else -> Levels.TIR
         }.getOrElse(level - 1) { "" }
         ModeId.TAPER -> Levels.STEPS.getOrElse(level - 1) { "" }
@@ -269,10 +292,12 @@ object Drills {
         headphones: Boolean = false,
         /** O-43: the songs «Чья гармония?» is asked about. */
         songs: List<GuessSong> = emptyList(),
+        /** S-03: the user's own duels, the worst first. */
+        duelPairs: List<Pair<Degree, Degree>> = emptyList(),
     ): RoundEngine<*> {
         val config = when {
             spec.exam -> RoundConfig.exam(spec.examTasks)
-            relaxed(spec.variant) -> RoundConfig(durationMs = 90_000, lives = null)
+            noLives(spec.variant) -> RoundConfig(durationMs = 90_000, lives = null)
             longRound(spec.variant) -> RoundConfig(durationMs = 90_000, lives = 3)
             else -> RoundConfig(durationMs = spec.durationMs, lives = 3)
         }
@@ -281,7 +306,7 @@ object Drills {
             Variant.TIR_SONG -> RoundEngine(SongGuessDriver(songs, KeyPicker(random)), config, random, level, history, epochOffsetMs)
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_RADIO ->
-                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review), config, random, level, history, epochOffsetMs)
+                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs), config, random, level, history, epochOffsetMs)
             // Without headphones the drone would leak into the microphone (ADR-021).
             Variant.KAMERTON_SING, Variant.KAMERTON_SEARCH ->
                 RoundEngine(SingDriver(KeyPicker(random), settings.degreeNotation, withDrone = headphones, variant = spec.variant), config, random, level, history, epochOffsetMs)
@@ -391,6 +416,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         engine = Drills.engine(
             spec, level, settings, history, System.currentTimeMillis() - now(), review = review(), headphones = wearsHeadphones,
             songs = if (spec.variant == Variant.TIR_SONG) guessSongs() else emptyList(),
+            duelPairs = if (spec.variant == Variant.TIR_DUEL) Drills.duelPairs(graph.practice.recentAttempts(Variant.TIR_CLASSIC, Drills.DUEL_LOOKBACK)) else emptyList(),
         )
         sessionId = spec.sessionId ?: graph.practice.startSession(SessionKind.FREE, graph.today(settings)).also { ownSession = true }
         val needsMic = spec.variant.needsMic()
@@ -400,7 +426,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 loading = false, level = level, needsMic = needsMic, notation = settings.degreeNotation, naming = settings.noteNaming,
                 settings = settings, anchors = anchors,
                 totalMs = if (spec.exam) 0 else if (Drills.longRound(spec.variant)) 90_000 else spec.durationMs,
-                maxLives = if (spec.exam || Drills.relaxed(spec.variant)) 0 else 3,
+                maxLives = if (spec.exam || Drills.noLives(spec.variant)) 0 else 3,
                 taskLimit = if (spec.exam) spec.examTasks else null,
             )
         }

@@ -164,6 +164,13 @@ private fun GameHost(
         }
         flashTrigger++
     }
+    // S-03: the question that opens the next duel says the last pair is beaten — that is worth a salute
+    LaunchedEffect(ui.taskSerial) {
+        if ((ui.task as? TirTask)?.duel?.beaten != null) {
+            haptics.celebrate()
+            particles.burst(burstAt, Accents.Hero + listOf(Juicy.Gold, Juicy.Good), count = 60, power = 1.2f, confetti = true)
+        }
+    }
     LaunchedEffect(ui.summary) {
         val s = ui.summary ?: return@LaunchedEffect
         if (s.newRecord || s.unlockedLevel != null || s.stars == 3) {
