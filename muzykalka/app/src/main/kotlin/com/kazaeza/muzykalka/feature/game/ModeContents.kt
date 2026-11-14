@@ -42,6 +42,7 @@ import com.kazaeza.muzykalka.game.HuntTask
 import com.kazaeza.muzykalka.game.RoundPhase
 import com.kazaeza.muzykalka.game.SingTask
 import com.kazaeza.muzykalka.game.StepsTask
+import com.kazaeza.muzykalka.game.TirDriver
 import com.kazaeza.muzykalka.game.TirKind
 import com.kazaeza.muzykalka.game.TirReview
 import com.kazaeza.muzykalka.game.TirTask
@@ -204,6 +205,18 @@ internal fun TirContent(
                     )
                     duel.beaten?.takeIf { !feedback }?.let { won ->
                         Text("пара " + won.joinToString("–", transform = fmt) + " побеждена — следующая", style = MaterialTheme.typography.bodyMedium, color = Juicy.Good)
+                    }
+                }
+                // O-46 «Саймон»: how long the chain is, and the best of the round
+                task.simon?.let { chain ->
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "цепочка ${chain.length}" + (if (chain.best > 0) " · лучшая ${chain.best}" else "") + " · до ${TirDriver.SIMON_MAX}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Juicy.Gold,
+                    )
+                    if (!feedback && (chain.broke || chain.wins > 0 && chain.length == TirDriver.SIMON_START && !chain.grew)) {
+                        Text(if (chain.broke) "оборвалась — новая" else "доиграна до конца — новая", style = MaterialTheme.typography.bodyMedium, color = if (chain.broke) Juicy.TextDim else Juicy.Good)
                     }
                 }
                 Spacer(Modifier.height(12.dp))

@@ -169,6 +169,29 @@ class GameFlowTest {
         assertTrue("worst first, a single slip left out: $pairs", pairs.map { it.first.toString() to it.second.toString() } == listOf("2" to "4", "6" to "7"))
     }
 
+    /** O-46 (ADR-045): Simon asks a chain of two notes over the drone and takes them one by one on the dial. */
+    @Test
+    fun simonAsksAChainAndTakesItNoteByNote() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_SIMON, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Мелодия · 2 нот", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("цепочка 2 · до 8").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the tonic drone is on", audio.drones.lastOrNull()?.isNotEmpty() == true)
+        assertTrue("five degrees on the dial: no 4", rule.onAllNodesWithText("4").fetchSemanticsNodes().isEmpty())
+        val before = audio.played.size
+        rule.onAllNodesWithText("5").onFirst().performClick()
+        assertTrue("one note is not an answer yet", audio.played.size == before)
+        rule.onAllNodesWithText("3").onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > before } // the way home, or the chain again (rule 5)
+    }
+
     /** O-43 (ADR-042): the cadence and a song's opening are played, four songs are offered, a pick is judged. */
     @Test
     fun songQuizPlaysAnOpeningOffersFourSongsAndJudgesAPick() {

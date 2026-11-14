@@ -202,7 +202,7 @@ private const val ANCHOR_TAIL_MS = 600L
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(
-        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
+        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
         Variant.TAPER_STEPS, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING,
     )
 
@@ -214,6 +214,7 @@ object Drills {
         Variant.TIR_OVER_CHORDS -> Levels.TIR_CHORDS.size
         Variant.TIR_UNDER_NOTE -> Levels.TIR_UNDER.size
         Variant.TIR_SONG -> Levels.TIR_SONG.size
+        Variant.TIR_SIMON -> Levels.TIR_SIMON.size
         Variant.TIR_NEXT -> Levels.TIR_NEXT.size
         Variant.TAPER_STEPS -> Levels.STEPS.size
         // Only «ступени от тоники» so far; intervals and melodies are later levels of K-01.
@@ -226,7 +227,7 @@ object Drills {
      * «Ходы» are self-graded: every level is open, start wherever it feels right. «Чья гармония?» (O-43) is a quiz on
      * one's own songs — with the chords written or by the titles alone is a matter of taste, not of a ladder.
      */
-    fun allLevelsOpen(v: Variant): Boolean = v == Variant.TAPER_STEPS || v.isSongQuiz()
+    fun allLevelsOpen(v: Variant): Boolean = v == Variant.TAPER_STEPS || v.isSongQuiz() || v == Variant.TIR_SIMON
 
     /**
      * No lives: the relaxed drills, and «Дуэль» (S-03) — two degrees one takes for each other are missed by
@@ -235,7 +236,7 @@ object Drills {
     fun noLives(v: Variant): Boolean = relaxed(v) || v == Variant.TIR_DUEL
 
     /** The longest round rule 6 allows: the drills without lives, and the quiz whose every question is a whole progression. */
-    fun longRound(v: Variant): Boolean = noLives(v) || v.isSongQuiz()
+    fun longRound(v: Variant): Boolean = noLives(v) || v.isSongQuiz() || v == Variant.TIR_SIMON
 
     /**
      * S-03: the user's own duels — the degrees taken for each other in the Tir lately, the worst first
@@ -265,6 +266,7 @@ object Drills {
             Variant.TIR_UNDER_NOTE -> Levels.TIR_UNDER
             Variant.TIR_SONG -> Levels.TIR_SONG
             Variant.TIR_NEXT -> Levels.TIR_NEXT
+            Variant.TIR_SIMON -> Levels.TIR_SIMON
             Variant.TIR_DUEL -> listOf("две ступени, ${TirDriver.DUEL_GOAL} подряд")
             else -> Levels.TIR
         }.getOrElse(level - 1) { "" }
@@ -313,7 +315,7 @@ object Drills {
             Variant.TIR_SONG -> RoundEngine(SongGuessDriver(songs, KeyPicker(random)), config, random, level, history, epochOffsetMs)
             Variant.TIR_NEXT -> RoundEngine(NextChordDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
-            Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_RADIO ->
+            Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_RADIO ->
                 RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs), config, random, level, history, epochOffsetMs)
             // Without headphones the drone would leak into the microphone (ADR-021).
             Variant.KAMERTON_SING, Variant.KAMERTON_SEARCH ->

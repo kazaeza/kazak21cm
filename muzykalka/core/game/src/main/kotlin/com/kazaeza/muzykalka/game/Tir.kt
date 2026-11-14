@@ -53,6 +53,8 @@ data class TirTask(
     override val introDrone: List<MidiNote>? = null,
     /** S-03 «Дуэль»: the pair this question belongs to and how the duel stands. */
     val duel: TirDuel? = null,
+    /** O-46 «Саймон»: how the chain stands. */
+    val simon: TirSimon? = null,
 ) : DroneTask {
     override val replay: Score get() = question
 
@@ -71,6 +73,13 @@ data class TirTask(
  * previous answer (this question opens the next duel); [wins] — pairs beaten this round.
  */
 data class TirDuel(val pair: List<Degree>, val streak: Int, val goal: Int, val beaten: List<Degree>? = null, val wins: Int = 0)
+
+/**
+ * O-46 «Саймон» (ADR-045): [length] — notes in the chain of this question; [best] — the longest chain answered right
+ * this round; [grew] — the last answer was right and this chain is the last one plus a note; [broke] — the last answer
+ * was wrong and this is a new chain; [wins] — chains played through to the end ([TirDriver.SIMON_MAX] notes).
+ */
+data class TirSimon(val length: Int, val best: Int, val grew: Boolean = false, val broke: Boolean = false, val wins: Int = 0)
 
 /** Why a question came back (O-06): missed [daysAgo] days ago, answered then as [confusedWith]. */
 data class TirReview(val daysAgo: Int, val confusedWith: List<String>)
@@ -107,6 +116,13 @@ class TirDriver(
     private var duelStreak = 0
     private var duelWins = 0
     private var duelLastKey: String? = null
+
+    /** O-46: the chain as places on the pad (a place past the pad's end is the next octave), its key, and the score. */
+    private var simonChain: List<Int> = emptyList()
+    private var simonKey: Key? = null
+    private var simonLastKey: String? = null
+    private var simonBest = 0
+    private var simonWins = 0
 
     /** O-06: earlier days' misses (keys from [reviewKey]) still waiting for a right answer today. */
     private val pendingReview = review.filter { it.key.startsWith(NOTE_GROUP) || it.key.startsWith(CHORD_GROUP) }.toMutableList()
@@ -145,6 +161,7 @@ class TirDriver(
         if (variant == Variant.TIR_OVER_CHORDS) return overChordTask(context)
         if (variant == Variant.TIR_UNDER_NOTE) return underNoteTask(context)
         if (variant == Variant.TIR_DUEL) return duelTask(context)
+        if (variant == Variant.TIR_SIMON) return simonTask(context)
         val level = context.level.coerceIn(1, Levels.TIR.size)
         val r = context.random
         if (!usesDrone(level)) {
@@ -270,6 +287,57 @@ class TirDriver(
         val task = noteTask(1, ctx, pad, pad, context, ownPrefix = duelPrefix(pad))
         duelLastKey = task.itemKey
         return task.copy(duel = TirDuel(pad, duelStreak, DUEL_GOAL, beaten, duelWins))
+    }
+
+    /**
+     * O-46 «Саймон» (ADR-045): melodic memory over the drone. The question is a chain of notes; a right answer makes the
+     * next question the same chain plus one note, a wrong one breaks it and a new chain of [SIMON_START] notes begins.
+     * A chain played through to [SIMON_MAX] notes is won and a new one begins. One key for the whole round, so the
+     * chain stays the same tune. The notes move by steps and small leaps, as a tune does.
+     */
+    private fun simonTask(context: DriverContext): TirTask {
+        val level = context.level.coerceIn(1, Levels.TIR_SIMON.size)
+        val r = context.random
+        var grew = false
+        var broke = false
+        val last = context.history.lastOrNull()
+        if (last != null && last.itemKey == simonLastKey && simonChain.isNotEmpty()) {
+            if (last.correct) {
+                simonBest = maxOf(simonBest, simonChain.size)
+                if (simonChain.size >= SIMON_MAX) {
+                    simonWins++
+                    simonChain = emptyList()
+                } else {
+                    grew = true
+                }
+            } else {
+                broke = true
+                simonChain = emptyList()
+            }
+        }
+        val newKey = simonKey == null
+        val key = simonKey ?: keyPicker.next(if (level >= 2 && r.nextDouble() < MINOR_SHARE) Mode.MINOR else Mode.MAJOR).also { simonKey = it }
+        val pad = simonPad(key.mode, level)
+        fun longer(chain: List<Int>): List<Int> {
+            val from = chain.lastOrNull() ?: return listOf(r.nextInt(pad.size))
+            var next: Int
+            do {
+                next = (from + SIMON_MOVES[r.nextInt(SIMON_MOVES.size)]).coerceIn(-2, pad.size + 1)
+            } while (next == from)
+            return chain + next
+        }
+        if (simonChain.isEmpty()) repeat(SIMON_START) { simonChain = longer(simonChain) } else if (grew) simonChain = longer(simonChain)
+        val notes = simonChain.map { place -> DegreeNote(pad[Math.floorMod(place, pad.size)], Math.floorDiv(place, pad.size)) }
+        val tonic = key.tonicAtOrAbove(MidiNote(55))
+        val question = arranger.line(notes, key, Voice.TONE, beatsEach = 0.9, tempoBpm = TEMPO, tonicFloor = tonic)
+        val itemKey = "tir:simon:L$level:len${notes.size}"
+        simonLastKey = itemKey
+        return TirTask(
+            itemKey = itemKey, prompt = prompt(key, if (newKey) orientation(key) else null, question), kind = TirKind.MELODY, level = level,
+            key = key, tonic = tonic, notes = notes, chords = emptyList(), noteChoices = pad, chordChoices = emptyList(),
+            question = question, drone = arranger.drone(key),
+            simon = TirSimon(notes.size, simonBest, grew, broke, simonWins),
+        )
     }
 
     /** The mode a pair is heard in: the one that has both degrees (minor for ♭3, ♭6, ♭7); major when neither has. */
@@ -533,6 +601,17 @@ class TirDriver(
         private const val OVER_CHORDS_BLOCK = 100
         private const val UNDER_NOTE_BLOCK = 200
         private const val DUEL_BLOCK = 300
+
+        /** O-46: a chain begins with this many notes and is won at [SIMON_MAX]. */
+        const val SIMON_START = 2
+        const val SIMON_MAX = 8
+
+        /** O-46: how a chain goes on — steps mostly, a third now and then (in places of the pad). */
+        private val SIMON_MOVES = listOf(-2, -1, -1, 1, 1, 2)
+
+        /** O-46: the degrees a chain is made of — the scale without its two half-step degrees on level 1, the whole scale on level 2. */
+        fun simonPad(mode: Mode, level: Int): List<Degree> =
+            if (level <= 1) listOf(0, 1, 2, 4, if (mode.hasMinorThird) 6 else 5).map { mode.degrees[it] } else mode.degrees
 
         /** S-03: right answers in a row that beat a pair. */
         const val DUEL_GOAL = 10
