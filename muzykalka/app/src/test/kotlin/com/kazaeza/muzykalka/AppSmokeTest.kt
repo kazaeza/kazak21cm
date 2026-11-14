@@ -160,8 +160,14 @@ class AppSmokeTest {
 
     @Test
     fun feelLessonOpensFromToday() {
-        scrollTo("Вайб ступеней")
-        rule.onNodeWithText("Вайб ступеней").performClick()
+        // O-44: the song of the day comes in with the library (seeded in the background on a first start) and moves
+        // the list under the finger — so scroll and tap until the tap lands
+        rule.waitUntil(15_000) {
+            runCatching {
+                scrollTo("Вайб ступеней")
+                rule.onNodeWithText("Вайб ступеней").performClick()
+            }.isSuccess
+        }
         rule.waitForIdle()
         rule.onNodeWithText("Ступень — это не высота, а ощущение").assertIsDisplayed()
     }

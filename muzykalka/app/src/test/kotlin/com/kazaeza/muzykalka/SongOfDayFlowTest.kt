@@ -48,7 +48,8 @@ class SongOfDayFlowTest {
             }
         }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Начать сет", substring = true).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Песня дня", ignoreCase = true))
+        // the card comes with the library, a moment after the first frame — and below the fold, so it is scrolled to
+        rule.waitUntil(10_000) { runCatching { rule.onNode(hasScrollAction()).performScrollToNode(hasText("Песня дня", ignoreCase = true)) }.isSuccess }
         rule.onAllNodesWithText("Песня дня", ignoreCase = true).onFirst().performClick()
         rule.waitUntil(5_000) { opened != null }
         val entry = runBlocking { graph.library.observeEntries().first() }.firstOrNull { it.id == opened }
