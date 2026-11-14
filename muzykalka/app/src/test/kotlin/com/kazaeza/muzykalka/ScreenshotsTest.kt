@@ -176,6 +176,19 @@ class ScreenshotsTest {
         }
     }
 
+    /** O-48: «Созвучия» — an interval held on the dial, and the chord built by hand. */
+    @Test
+    fun labInterval() = shot("04n-lab-interval", { com.kazaeza.muzykalka.feature.lab.HarmonyLabScreen(onBack = {}) }, "Интервал") {
+        rule.onAllNodesWithText("5").onFirst().performClick()
+    }
+
+    @Test
+    fun labChord() = shot("04o-lab-chord", { com.kazaeza.muzykalka.feature.lab.HarmonyLabScreen(onBack = {}) }, "Аккорд") {
+        rule.onAllNodesWithText("Аккорд").onFirst().performClick()
+        rule.waitForIdle()
+        rule.onAllNodesWithText("♭7").onFirst().performClick()
+    }
+
     /** O-43: «Чья гармония?» — the question with four songs, and the answer with the opening in degrees. */
     @Test
     fun songQuiz() {

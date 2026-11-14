@@ -24,6 +24,9 @@ import kotlinx.serialization.Serializable
 /** O-10: a random song from the likes, without its name. */
 @Serializable data object BlindRoute
 
+/** O-48 «Созвучия»: intervals and chords to hold, change and hear — no score (ADR-047). */
+@Serializable data object HarmonyLabRoute
+
 /** O-47 «Коллекция ходов»: the library's opening loops and which of them the ear knows. */
 @Serializable data object LoopsRoute
 
