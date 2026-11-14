@@ -153,6 +153,13 @@ class ScreenshotsTest {
     @Test
     fun duel() = shot("04j-duel", { GameScreen(RoundSpec(Variant.TIR_DUEL), onExit = {}) }, "Какая ступень?")
 
+    /** O-45: «Куда пойдёт?» — the song, its three chords and the place of the fourth. */
+    @Test
+    fun nextChord() {
+        runBlocking { graph.library.seedBook(emptySet()) }
+        shot("04k-next-chord", { GameScreen(RoundSpec(Variant.TIR_NEXT, level = 1), onExit = {}) }, "Куда пойдёт дальше?")
+    }
+
     /** O-43: «Чья гармония?» — the question with four songs, and the answer with the opening in degrees. */
     @Test
     fun songQuiz() {

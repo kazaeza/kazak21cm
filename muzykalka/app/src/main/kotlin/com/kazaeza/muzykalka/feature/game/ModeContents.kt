@@ -391,7 +391,7 @@ internal fun TirContent(
 }
 
 @Composable
-private fun ChordPad(
+internal fun ChordPad(
     chords: List<ChordDegree>,
     ui: GameUi,
     enabled: Boolean,

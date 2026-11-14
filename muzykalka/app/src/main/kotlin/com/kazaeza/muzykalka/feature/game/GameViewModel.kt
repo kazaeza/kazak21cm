@@ -33,6 +33,7 @@ import com.kazaeza.muzykalka.game.DroneTask
 import com.kazaeza.muzykalka.game.SingDriver
 import com.kazaeza.muzykalka.game.GuessSong
 import com.kazaeza.muzykalka.game.SongGuessDriver
+import com.kazaeza.muzykalka.game.NextChordDriver
 import com.kazaeza.muzykalka.music.SongBook
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.music.DegreeNotation
@@ -171,6 +172,9 @@ data class GameUi(
 
 fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || isSung()
 
+/** The games on the songs of the library: «Чья гармония?» (O-43) and «Куда пойдёт?» (O-45). */
+fun Variant.isSongQuiz(): Boolean = this == Variant.TIR_SONG || this == Variant.TIR_NEXT
+
 /** The voice answers: «Спой ступень» and «Пропевка». */
 fun Variant.isSung(): Boolean = this == Variant.KAMERTON_SING || this == Variant.KAMERTON_SEARCH
 
@@ -198,7 +202,7 @@ private const val ANCHOR_TAIL_MS = 600L
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(
-        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_SONG, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
+        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
         Variant.TAPER_STEPS, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING,
     )
 
@@ -210,6 +214,7 @@ object Drills {
         Variant.TIR_OVER_CHORDS -> Levels.TIR_CHORDS.size
         Variant.TIR_UNDER_NOTE -> Levels.TIR_UNDER.size
         Variant.TIR_SONG -> Levels.TIR_SONG.size
+        Variant.TIR_NEXT -> Levels.TIR_NEXT.size
         Variant.TAPER_STEPS -> Levels.STEPS.size
         // Only «ступени от тоники» so far; intervals and melodies are later levels of K-01.
         Variant.KAMERTON_SING -> 1
@@ -221,7 +226,7 @@ object Drills {
      * «Ходы» are self-graded: every level is open, start wherever it feels right. «Чья гармония?» (O-43) is a quiz on
      * one's own songs — with the chords written or by the titles alone is a matter of taste, not of a ladder.
      */
-    fun allLevelsOpen(v: Variant): Boolean = v == Variant.TAPER_STEPS || v == Variant.TIR_SONG
+    fun allLevelsOpen(v: Variant): Boolean = v == Variant.TAPER_STEPS || v.isSongQuiz()
 
     /**
      * No lives: the relaxed drills, and «Дуэль» (S-03) — two degrees one takes for each other are missed by
@@ -230,7 +235,7 @@ object Drills {
     fun noLives(v: Variant): Boolean = relaxed(v) || v == Variant.TIR_DUEL
 
     /** The longest round rule 6 allows: the drills without lives, and the quiz whose every question is a whole progression. */
-    fun longRound(v: Variant): Boolean = noLives(v) || v == Variant.TIR_SONG
+    fun longRound(v: Variant): Boolean = noLives(v) || v.isSongQuiz()
 
     /**
      * S-03: the user's own duels — the degrees taken for each other in the Tir lately, the worst first
@@ -259,6 +264,7 @@ object Drills {
             Variant.TIR_OVER_CHORDS -> Levels.TIR_CHORDS
             Variant.TIR_UNDER_NOTE -> Levels.TIR_UNDER
             Variant.TIR_SONG -> Levels.TIR_SONG
+            Variant.TIR_NEXT -> Levels.TIR_NEXT
             Variant.TIR_DUEL -> listOf("две ступени, ${TirDriver.DUEL_GOAL} подряд")
             else -> Levels.TIR
         }.getOrElse(level - 1) { "" }
@@ -268,13 +274,14 @@ object Drills {
     }
 
     /** O-27 (ADR-037): the Tir's ladders climb slowly — 60 answers over three days; the rest as before. */
-    fun pace(v: Variant): LevelRules.Pace = if (v.mode == ModeId.TIR && v != Variant.TIR_SONG) LevelRules.SLOW else LevelRules.QUICK
+    fun pace(v: Variant): LevelRules.Pace = if (v.mode == ModeId.TIR && !v.isSongQuiz()) LevelRules.SLOW else LevelRules.QUICK
 
     fun promotionTargetMs(v: Variant, level: Int): Long = when (v.mode) {
         ModeId.TIR -> when (v) {
             Variant.TIR_OVER_CHORDS -> TirDriver.OVER_CHORDS_TARGET_MS
             Variant.TIR_UNDER_NOTE -> TirDriver.UNDER_NOTE_TARGET_MS
             Variant.TIR_SONG -> SongGuessDriver.PROMOTION_TARGET_MS
+            Variant.TIR_NEXT -> NextChordDriver.PROMOTION_TARGET_MS
             else -> TirDriver.promotionTargetMs(level)
         }
         ModeId.TAPER -> StepsDriver.PROMOTION_TARGET_MS
@@ -304,6 +311,7 @@ object Drills {
         val random = Random(System.nanoTime())
         return when (spec.variant) {
             Variant.TIR_SONG -> RoundEngine(SongGuessDriver(songs, KeyPicker(random)), config, random, level, history, epochOffsetMs)
+            Variant.TIR_NEXT -> RoundEngine(NextChordDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_RADIO ->
                 RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs), config, random, level, history, epochOffsetMs)
@@ -415,7 +423,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         val wearsHeadphones = graph.headphones.connected.value || settings.headphones
         engine = Drills.engine(
             spec, level, settings, history, System.currentTimeMillis() - now(), review = review(), headphones = wearsHeadphones,
-            songs = if (spec.variant == Variant.TIR_SONG) guessSongs() else emptyList(),
+            songs = if (spec.variant.isSongQuiz()) guessSongs() else emptyList(),
             duelPairs = if (spec.variant == Variant.TIR_DUEL) Drills.duelPairs(graph.practice.recentAttempts(Variant.TIR_CLASSIC, Drills.DUEL_LOOKBACK)) else emptyList(),
         )
         sessionId = spec.sessionId ?: graph.practice.startSession(SessionKind.FREE, graph.today(settings)).also { ownSession = true }
@@ -439,7 +447,8 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
      */
     private suspend fun guessSongs(): List<GuessSong> {
         val own = graph.library.allOrderable().mapNotNull { e -> e.song?.let { GuessSong(e.id, it, learning = !e.shelved) } }
-        if (SongGuessDriver.playable(own)) return own
+        val enough = if (spec.variant == Variant.TIR_NEXT) NextChordDriver.playable(own) else SongGuessDriver.playable(own)
+        if (enough) return own
         val have = own.map { it.id }.toSet()
         return own + SongBook.ENTRIES.filter { SongBook.libraryId(it) !in have }.map { GuessSong(SongBook.libraryId(it), it.song) }
     }

@@ -210,6 +210,32 @@ class GameFlowTest {
         assertTrue(rule.onAllNodes(hasClickLabel("Выбрать песню")).fetchSemanticsNodes().size == 4)
     }
 
+    /** O-45 (ADR-044): the song is named, three chords sound, the next one is picked and then heard. */
+    @Test
+    fun nextChordNamesTheSongPlaysThreeChordsAndJudgesThePick() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        val entry = com.kazaeza.muzykalka.music.SongBook.byId("stand-by-me")!!
+        // three songs make the game; with one in learning and no history the first question is one of them
+        kotlinx.coroutines.runBlocking { graph.library.seedBook(emptySet(), com.kazaeza.muzykalka.music.SongBook.ENTRIES.take(6) + entry) }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_NEXT, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Куда пойдёт дальше?").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the cadence and three chords were played", audio.played.isNotEmpty())
+        assertTrue("no drone under chords", audio.drones.filterNotNull().isEmpty())
+        assertTrue("the place of the next chord", rule.onAllNodesWithText("?").fetchSemanticsNodes().isNotEmpty())
+        val before = audio.played.size
+        rule.onAllNodesWithText("не знаю").onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > before } // rule 5: how the song really goes
+        val way = audio.played.last()
+        assertTrue("the three chords and the right fourth", way.notes.map { it.startBeat }.toSet().size == 4)
+    }
+
     /** O-17 (ADR-031): in «Ходы» a chord of the pattern sounds when tapped — while the engine is silent. */
     @Test
     @GraphicsMode(GraphicsMode.Mode.NATIVE)

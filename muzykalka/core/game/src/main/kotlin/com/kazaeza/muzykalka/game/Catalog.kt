@@ -48,6 +48,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.1"),
     /** O-43: the opening chords of a library song are played — whose are they (ADR-042). */
     TIR_SONG(ModeId.TIR, "Чья гармония?", GuitarNeed.NONE, "0.1"),
+    /** O-45: three chords of a library song are played — where does it go next (ADR-044). */
+    TIR_NEXT(ModeId.TIR, "Куда пойдёт?", GuitarNeed.NONE, "0.1"),
     TIR_RADIO(ModeId.TIR, "Радио", GuitarNeed.NONE, "0.3"),
     /** O-14: «спой квинту» — search with the voice until it is found (ADR-028). */
     KAMERTON_SEARCH(ModeId.KAMERTON, "Пропевка", GuitarNeed.NONE, "0.1"),
@@ -102,6 +104,9 @@ object Levels {
         "похожие начала",
         "только названия",
     )
+
+    /** «Куда пойдёт?» (O-45): with the chords written and four answers, then by ear on the whole pad. */
+    val TIR_NEXT = listOf("ступени видны", "на слух")
 
     /** Taper «Ходы»: progressions from the most banal up (see [StepsLadder]). */
     val STEPS = listOf(
