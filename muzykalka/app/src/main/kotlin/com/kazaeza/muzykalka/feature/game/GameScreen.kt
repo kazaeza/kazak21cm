@@ -63,6 +63,7 @@ import com.kazaeza.muzykalka.game.SingTask
 import com.kazaeza.muzykalka.game.TirTask
 import com.kazaeza.muzykalka.game.SongGuessTask
 import com.kazaeza.muzykalka.game.NextChordTask
+import com.kazaeza.muzykalka.game.FormulaTask
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.ui.component.ComboBadge
 import com.kazaeza.muzykalka.ui.component.CountUpText
@@ -211,6 +212,7 @@ private fun GameHost(
                         is StepsTask -> StepsContent(task, ui, accent, onAnswer = vm::answer)
                         is SongGuessTask -> SongGuessContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
                         is NextChordTask -> NextChordContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
+                        is FormulaTask -> FormulaContent(task, ui, accent, onAnswer = vm::answer)
                         else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             ModeOrb(spec.variant.mode, size = 96.dp)
                         }

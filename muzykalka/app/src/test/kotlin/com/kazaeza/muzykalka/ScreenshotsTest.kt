@@ -167,6 +167,15 @@ class ScreenshotsTest {
         shot("04l-loops", { com.kazaeza.muzykalka.feature.loops.LoopsScreen(onBack = {}, onOpenSong = {}) }, "узнаю 0 из")
     }
 
+    /** F-08: «Формула вслух» — the answer opened, the grades below. */
+    @Test
+    fun formula() {
+        runBlocking { graph.library.addFromBook(SongBook.byId("autumn-leaves")!!) }
+        shot("04m-formula", { GameScreen(RoundSpec(Variant.FORMULA_ALOUD), onExit = {}) }, "Показать ответ") {
+            rule.onAllNodesWithText("Показать ответ").onFirst().performClick()
+        }
+    }
+
     /** O-43: «Чья гармония?» — the question with four songs, and the answer with the opening in degrees. */
     @Test
     fun songQuiz() {

@@ -63,7 +63,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TAPER_STEPS(ModeId.TAPER, "Ходы", GuitarNeed.REQUIRED, "0.1"),
     TAPER_ORDER(ModeId.TAPER, "Песни из библиотеки", GuitarNeed.REQUIRED, "0.1"),
     TAPER_BLIND(ModeId.TAPER, "Вслепую", GuitarNeed.REQUIRED, "0.1"),
-    FORMULA_ALOUD(ModeId.TAPER, "Формула вслух", GuitarNeed.NONE, "0.2"),
+    /** F-08: a song and its section are named — recall the degrees, open the answer, grade yourself (ADR-046). */
+    FORMULA_ALOUD(ModeId.TAPER, "Формула вслух", GuitarNeed.NONE, "0.1"),
     RECORDER_FREE(ModeId.RECORDER, "Магнитофон", GuitarNeed.REQUIRED, "0.3"),
     DIALOG(ModeId.RECORDER, "Диалог", GuitarNeed.REQUIRED, "0.3"),
 }

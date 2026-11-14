@@ -259,6 +259,32 @@ class GameFlowTest {
         assertTrue("the three chords and the right fourth", way.notes.map { it.startBeat }.toSet().size == 4)
     }
 
+    /** F-08 (ADR-046): the song and its section are named in silence, the answer is opened, graded and then heard. */
+    @Test
+    fun formulaAloudIsSilentUntilTheGradeAndThenTheSectionSounds() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        assertTrue(Drills.noLives(Variant.FORMULA_ALOUD))
+        val id = kotlinx.coroutines.runBlocking { graph.library.addFromBook(com.kazaeza.muzykalka.music.SongBook.byId("stand-by-me")!!) }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.FORMULA_ALOUD), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Показать ответ").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the song in learning is named", rule.onAllNodesWithText("Stand by Me").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("nothing sounds before the answer", audio.played.isEmpty())
+        assertTrue("no grade before the answer is opened", rule.onAllNodesWithText("Помню").fetchSemanticsNodes().isEmpty())
+        rule.onAllNodesWithText("Показать ответ").onFirst().performClick()
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("Помню").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("opening the answer is not an answer", audio.played.isEmpty())
+        rule.onAllNodesWithText("Помню").onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.isNotEmpty() } // the section, so the ear checks the memory
+        rule.waitUntil(5_000) { kotlinx.coroutines.runBlocking { graph.library.get(id)!!.card!!.isNew } } // a recalled formula is not a played order
+    }
+
     /** O-17 (ADR-031): in «Ходы» a chord of the pattern sounds when tapped — while the engine is silent. */
     @Test
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
