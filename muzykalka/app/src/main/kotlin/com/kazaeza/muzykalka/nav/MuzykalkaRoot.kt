@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.nav
 
+import com.kazaeza.muzykalka.feature.loops.LoopsScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -134,6 +135,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                                     onFeel = { nav.navigate(FeelRoute) },
                                     onListen = { nav.navigate(ListenRoute) },
                                     onLibrary = { tab(LIBRARY_TAB) },
+                                    onLoops = { nav.navigate(LoopsRoute) },
                                 )
                                 LIBRARY_TAB -> LibraryScreen(
                                     onCapture = { kind -> nav.navigate(EditorRoute(kind = kind.name)) },
@@ -180,6 +182,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                     }
                     composable<ExamRoute> { ExamScreen(onExit = { nav.popBackStack() }) }
                     composable<ListenRoute> { ListenScreen(onBack = { nav.popBackStack() }) }
+                    composable<LoopsRoute> { LoopsScreen(onBack = { nav.popBackStack() }, onOpenSong = { id -> nav.navigate(ItemRoute(id)) }) }
                     composable<FeelRoute> {
                         FeelScreen(onBack = { nav.popBackStack() }, onTir = { nav.navigate(GameRoute(Variant.TIR_CLASSIC.name)) }, onOpenSong = { id -> nav.navigate(ItemRoute(id)) })
                     }

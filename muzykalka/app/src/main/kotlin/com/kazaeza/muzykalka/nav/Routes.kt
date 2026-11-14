@@ -24,6 +24,9 @@ import kotlinx.serialization.Serializable
 /** O-10: a random song from the likes, without its name. */
 @Serializable data object BlindRoute
 
+/** O-47 «Коллекция ходов»: the library's opening loops and which of them the ear knows. */
+@Serializable data object LoopsRoute
+
 @Serializable data class SetRoute(val minimal: Boolean)
 
 @Serializable data class ItemRoute(val id: String)

@@ -160,6 +160,13 @@ class ScreenshotsTest {
         shot("04k-next-chord", { GameScreen(RoundSpec(Variant.TIR_NEXT, level = 1), onExit = {}) }, "Куда пойдёт дальше?")
     }
 
+    /** O-47: «Коллекция ходов» — the loops of the library with their songs. */
+    @Test
+    fun loops() {
+        runBlocking { graph.library.seedBook(emptySet()) }
+        shot("04l-loops", { com.kazaeza.muzykalka.feature.loops.LoopsScreen(onBack = {}, onOpenSong = {}) }, "узнаю 0 из")
+    }
+
     /** O-43: «Чья гармония?» — the question with four songs, and the answer with the opening in degrees. */
     @Test
     fun songQuiz() {

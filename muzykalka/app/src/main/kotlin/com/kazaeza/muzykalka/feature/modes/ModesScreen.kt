@@ -141,6 +141,7 @@ fun ModesScreen(
     onFeel: () -> Unit = {},
     onListen: () -> Unit = {},
     onLibrary: () -> Unit = {},
+    onLoops: () -> Unit = {},
 ) {
     val graph = LocalAppGraph.current
     val progress by graph.progress.progress.collectAsState(initial = GameProgress())
@@ -188,6 +189,7 @@ fun ModesScreen(
                             }
                         },
                         onLibrary = onLibrary,
+                        onLoops = onLoops,
                     )
                 }
             }
@@ -228,6 +230,7 @@ private fun EntryCard(
     onSelectLevel: (Variant, Int, Boolean) -> Unit,
     onStart: () -> Unit,
     onLibrary: () -> Unit,
+    onLoops: () -> Unit,
 ) {
     val accent = ModeVisuals.accent(mode)
     val title = ModesCatalog.title(entry)
@@ -263,6 +266,11 @@ private fun EntryCard(
             Text(duelLine, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
         }
         if (entry is ModeEntry.Drill) Levels(entry.variant, accent, progress, onSelectLevel, tirHalves.takeIf { entry.variant == Variant.TIR_CLASSIC })
+        if (entry == ModeEntry.Drill(Variant.TIR_SONG)) {
+            // O-47: the album of what the quiz teaches — every loop of the library and the songs that open with it
+            Spacer(Modifier.height(10.dp))
+            GhostButton("Коллекция ходов", onClick = onLoops, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "")
+        }
         if (entry == ModeEntry.Songs) {
             Spacer(Modifier.height(10.dp))
             GhostButton("Взять песню из сборника", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "")
