@@ -27,6 +27,9 @@ import kotlinx.serialization.Serializable
 /** O-48 «Созвучия»: intervals and chords to hold, change and hear — no score (ADR-047). */
 @Serializable data object HarmonyLabRoute
 
+/** O-21 «Позиция»: the chords of a key in one zone of the neck (ADR-050). */
+@Serializable data object PositionRoute
+
 /** O-47 «Коллекция ходов»: the library's opening loops and which of them the ear knows. */
 @Serializable data object LoopsRoute
 

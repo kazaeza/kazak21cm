@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.nav
 
+import com.kazaeza.muzykalka.feature.position.PositionScreen
 import com.kazaeza.muzykalka.feature.lab.HarmonyLabScreen
 import com.kazaeza.muzykalka.feature.loops.LoopsScreen
 import androidx.activity.compose.BackHandler
@@ -138,6 +139,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                                     onLibrary = { tab(LIBRARY_TAB) },
                                     onLoops = { nav.navigate(LoopsRoute) },
                                     onLab = { nav.navigate(HarmonyLabRoute) },
+                                    onPosition = { nav.navigate(PositionRoute) },
                                 )
                                 LIBRARY_TAB -> LibraryScreen(
                                     onCapture = { kind -> nav.navigate(EditorRoute(kind = kind.name)) },
@@ -185,6 +187,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                     composable<ExamRoute> { ExamScreen(onExit = { nav.popBackStack() }) }
                     composable<ListenRoute> { ListenScreen(onBack = { nav.popBackStack() }) }
                     composable<HarmonyLabRoute> { HarmonyLabScreen(onBack = { nav.popBackStack() }) }
+                    composable<PositionRoute> { PositionScreen(onBack = { nav.popBackStack() }) }
                     composable<LoopsRoute> { LoopsScreen(onBack = { nav.popBackStack() }, onOpenSong = { id -> nav.navigate(ItemRoute(id)) }) }
                     composable<FeelRoute> {
                         FeelScreen(onBack = { nav.popBackStack() }, onTir = { nav.navigate(GameRoute(Variant.TIR_CLASSIC.name)) }, onOpenSong = { id -> nav.navigate(ItemRoute(id)) })

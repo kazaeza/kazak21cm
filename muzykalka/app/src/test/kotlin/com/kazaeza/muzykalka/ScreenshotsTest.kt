@@ -199,6 +199,12 @@ class ScreenshotsTest {
         rule.onAllNodesWithText("дорийский").onFirst().performClick()
     }
 
+    /** O-21: «Позиция» — the zone with the roots of the key, one chord lit. */
+    @Test
+    fun position() = shot("04r-position", { com.kazaeza.muzykalka.feature.position.PositionScreen(onBack = {}) }, "лады") {
+        rule.onAllNodes(androidx.compose.ui.test.hasClickAction() and androidx.compose.ui.test.hasText("IV")).onFirst().performClick()
+    }
+
     /** O-43: «Чья гармония?» — the question with four songs, and the answer with the opening in degrees. */
     @Test
     fun songQuiz() {
