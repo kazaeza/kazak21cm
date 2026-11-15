@@ -37,6 +37,7 @@ import com.kazaeza.muzykalka.game.NextChordDriver
 import com.kazaeza.muzykalka.game.FormulaDriver
 import com.kazaeza.muzykalka.game.ColorDriver
 import com.kazaeza.muzykalka.game.ModeQuizDriver
+import com.kazaeza.muzykalka.game.EchoDriver
 import com.kazaeza.muzykalka.music.SongBook
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.music.DegreeNotation
@@ -173,7 +174,7 @@ data class GameUi(
     val playingAnchor: DegreeAnchor? = null,
 )
 
-fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || isSung()
+fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || this == Variant.PARROT_ECHO || isSung()
 
 /** The games on the songs of the library: «Чья гармония?» (O-43) and «Куда пойдёт?» (O-45). */
 fun Variant.isSongQuiz(): Boolean = this == Variant.TIR_SONG || this == Variant.TIR_NEXT
@@ -206,7 +207,7 @@ object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(
         Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_COLOR, Variant.TIR_MODE, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
-        Variant.TAPER_STEPS, Variant.FORMULA_ALOUD, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING,
+        Variant.TAPER_STEPS, Variant.FORMULA_ALOUD, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING, Variant.PARROT_ECHO,
     )
 
     fun maxLevel(v: Variant): Int = when (v) {
@@ -220,6 +221,7 @@ object Drills {
         Variant.TIR_SIMON -> Levels.TIR_SIMON.size
         Variant.TIR_COLOR -> Levels.TIR_COLOR.size
         Variant.TIR_MODE -> Levels.TIR_MODE.size
+        Variant.PARROT_ECHO -> Levels.ECHO.size
         Variant.TIR_NEXT -> Levels.TIR_NEXT.size
         Variant.TAPER_STEPS -> Levels.STEPS.size
         // Only «ступени от тоники» so far; intervals and melodies are later levels of K-01.
@@ -241,7 +243,7 @@ object Drills {
     fun noLives(v: Variant): Boolean = relaxed(v) || v == Variant.TIR_DUEL || v == Variant.FORMULA_ALOUD
 
     /** The longest round rule 6 allows: the drills without lives, and the quiz whose every question is a whole progression. */
-    fun longRound(v: Variant): Boolean = noLives(v) || v.isSongQuiz() || v == Variant.TIR_SIMON
+    fun longRound(v: Variant): Boolean = noLives(v) || v.isSongQuiz() || v == Variant.TIR_SIMON || v == Variant.PARROT_ECHO
 
     /**
      * S-03: the user's own duels — the degrees taken for each other in the Tir lately, the worst first
@@ -279,6 +281,7 @@ object Drills {
         }.getOrElse(level - 1) { "" }
         ModeId.TAPER -> if (v == Variant.FORMULA_ALOUD) "песни из «учу»" else Levels.STEPS.getOrElse(level - 1) { "" }
         ModeId.KAMERTON -> (if (v == Variant.KAMERTON_SEARCH) Levels.KAMERTON_SEARCH else Levels.KAMERTON).getOrElse(level - 1) { "" }
+        ModeId.PARROT -> Levels.ECHO.getOrElse(level - 1) { "" }
         else -> ""
     }
 
@@ -297,6 +300,7 @@ object Drills {
         }
         ModeId.TAPER -> StepsDriver.PROMOTION_TARGET_MS
         ModeId.KAMERTON -> if (v == Variant.KAMERTON_SEARCH) SingDriver.SEARCH_PROMOTION_TARGET_MS else SingDriver.PROMOTION_TARGET_MS
+        ModeId.PARROT -> EchoDriver.PROMOTION_TARGET_MS
         else -> HuntDriver.promotionTargetMs(level)
     }
 
@@ -323,6 +327,7 @@ object Drills {
         return when (spec.variant) {
             Variant.TIR_SONG -> RoundEngine(SongGuessDriver(songs, KeyPicker(random)), config, random, level, history, epochOffsetMs)
             Variant.TIR_NEXT -> RoundEngine(NextChordDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
+            Variant.PARROT_ECHO -> RoundEngine(EchoDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_MODE -> RoundEngine(ModeQuizDriver(KeyPicker(random)), config, random, level, history, epochOffsetMs)
             Variant.TIR_COLOR -> RoundEngine(ColorDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.FORMULA_ALOUD -> RoundEngine(FormulaDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)

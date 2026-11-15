@@ -30,7 +30,7 @@ enum class ModeId(
     HUNT("Охота", "любая нота на грифе быстрее секунды", setOf(Link.NAME_TO_PLACE, Link.PLACE_TO_NAME), GuitarNeed.OPTIONAL, "0.1"),
     TIR("Тир", "слышишь ноту или аккорд — сразу знаешь ступень", setOf(Link.SOUND_TO_NAME), GuitarNeed.NONE, "0.1"),
     KAMERTON("Камертон", "слышать ноту до того, как ударил по струне", setOf(Link.NAME_TO_SOUND, Link.PLACE_TO_SOUND), GuitarNeed.OPTIONAL, "0.1"),
-    PARROT("Попугай", "услышал — сыграл сразу, без поиска", setOf(Link.SOUND_TO_PLACE), GuitarNeed.REQUIRED, "0.2"),
+    PARROT("Попугай", "услышал — сыграл сразу, без поиска", setOf(Link.SOUND_TO_PLACE), GuitarNeed.REQUIRED, "0.1"),
     TAPER("Тапёр", "видишь ступени — играешь на гитаре в любой тональности", setOf(Link.NAME_TO_PLACE), GuitarNeed.REQUIRED, "0.1"),
     RECORDER("Магнитофон", "игра на ощущениях становится словарём", emptySet(), GuitarNeed.REQUIRED, "0.3"),
 }
@@ -62,7 +62,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     KAMERTON_SING(ModeId.KAMERTON, "Спой ступень", GuitarNeed.NONE, "0.1"),
     KAMERTON_PREDICT(ModeId.KAMERTON, "Предскажи лад", GuitarNeed.REQUIRED, "0.2"),
     KAMERTON_DIGITS(ModeId.KAMERTON, "Угадай по цифрам", GuitarNeed.NONE, "0.2"),
-    PARROT_ECHO(ModeId.PARROT, "Попугай", GuitarNeed.REQUIRED, "0.2"),
+    /** PR-01, step 1: a degree sounds — find it on the guitar (ADR-051). */
+    PARROT_ECHO(ModeId.PARROT, "Попугай", GuitarNeed.REQUIRED, "0.1"),
     PARROT_CALL_RESPONSE(ModeId.PARROT, "Перекличка", GuitarNeed.REQUIRED, "0.3"),
     TAPER_STEPS(ModeId.TAPER, "Ходы", GuitarNeed.REQUIRED, "0.1"),
     TAPER_ORDER(ModeId.TAPER, "Песни из библиотеки", GuitarNeed.REQUIRED, "0.1"),
@@ -136,6 +137,8 @@ object Levels {
 
     /** «Пропевка» (O-14): the steady degrees first, then the whole mode. */
     val KAMERTON_SEARCH = listOf("опоры: 1, 3, 5", "все ступени лада")
+    /** «Попугай», step 1 (ADR-051): one note at a time; the phrases of [PARROT] come after it. */
+    val ECHO = listOf("одна нота: 1, 3, 5", "одна нота: весь лад")
     val PARROT = listOf("шаги в одной позиции", "скачки", "смена позиции", "6 нот", "в темп с бэкингом")
 
     fun of(mode: ModeId): List<String> = when (mode) {

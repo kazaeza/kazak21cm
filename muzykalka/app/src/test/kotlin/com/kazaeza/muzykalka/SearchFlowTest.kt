@@ -94,4 +94,31 @@ class SearchFlowTest {
         }
         assertTrue("one of twelve notes is the asked degree", found)
     }
+
+    /** PR-01 «Попугай», step 1 (ADR-051): the tonic and a note sound, a note played into the microphone is the answer. */
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun theParrotHearsTheGuitarAndShowsWhereTheNoteLies() {
+        Shadows.shadowOf(ApplicationProvider.getApplicationContext<Application>()).grantPermissions(Manifest.permission.RECORD_AUDIO)
+        val audio = FakeAudioOutput()
+        val mic = FakePitchInput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+            override val pitchInput: PitchInput = mic
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.PARROT_ECHO, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { has("Найди эту ноту на гитаре") }
+        assertTrue("the microphone is open", mic.isRunning.value)
+        assertTrue("no drone: it would leak into the microphone", audio.drones.filterNotNull().isEmpty())
+        assertTrue("the scale, the tonic and the note were played", audio.played.isNotEmpty())
+        assertTrue("nothing names the note before the answer", !has("нашёл") && !has("ты сыграл"))
+        val before = audio.played.size
+        mic.sing(MidiNote(52))
+        rule.waitUntil(5_000) { has("нашёл") || has("ты сыграл") }
+        rule.waitUntil(5_000) { audio.played.size > before } // the note walks home (rule 5)
+    }
 }

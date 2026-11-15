@@ -84,7 +84,7 @@ sealed interface ModeEntry {
  */
 object ModesCatalog {
     /** Sections in screen order: the ear first, the guitar after. */
-    val SECTIONS: List<ModeId> = listOf(ModeId.TIR, ModeId.KAMERTON, ModeId.TAPER, ModeId.HUNT)
+    val SECTIONS: List<ModeId> = listOf(ModeId.TIR, ModeId.KAMERTON, ModeId.PARROT, ModeId.TAPER, ModeId.HUNT)
 
     fun entries(mode: ModeId): List<ModeEntry> {
         val drills = Variant.entries
@@ -123,6 +123,7 @@ object ModesCatalog {
             Variant.KAMERTON_SING -> "Видишь ступень — поёшь её. Засчитывается первая спетая нота, на скорость."
             Variant.TAPER_STEPS -> "Тональность и ступени, например «ре мажор: I – V». Сыграй ход аккордами и отметь, как вышло."
             Variant.FORMULA_ALOUD -> "Без гитары: названа песня и её часть — проговори ступени, открой ответ и честно оцени. Потом часть прозвучит. Для дороги."
+            Variant.PARROT_ECHO -> "Звучит тоника, потом нота — найди её на гитаре, телефон слушает. Засчитывается первая сыгранная нота, в любой октаве. Потом покажу, какая это ступень и где она на грифе."
             Variant.HUNT_FIND -> "На экране нота — найди её на грифе и сыграй, телефон слушает."
             Variant.HUNT_ALL_OCTAVES -> "Та же нота во всех октавах подряд."
             Variant.HUNT_REVERSE -> "Показано место на грифе — назови ноту."
