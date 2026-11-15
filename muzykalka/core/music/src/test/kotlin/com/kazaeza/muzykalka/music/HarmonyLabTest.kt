@@ -112,4 +112,21 @@ class HarmonyLabTest {
             c.pull.target?.let { assertTrue(LabSound.chord(root, it).size <= 4) }
         }
     }
+
+    /** O-49: the same body on different degrees, each held over the home tone. */
+    @Test
+    fun `a chord of the key is held over the tonic, all seven in one register`() {
+        val tonic = MidiNote(48)
+        assertEquals(listOf(48, 60, 64, 67), LabSound.inKey(tonic, Harmony.diatonicChord(Mode.MAJOR, 0)).map { it.value }, "I: home on home")
+        assertEquals(listOf(48, 67, 71, 74), LabSound.inKey(tonic, Harmony.diatonicChord(Mode.MAJOR, 4)).map { it.value }, "V over the tonic")
+        assertEquals(listOf(48, 57, 60, 64), LabSound.inKey(tonic, Harmony.diatonicChord(Mode.MAJOR, 5)).map { it.value }, "vi comes down an octave")
+        for (mode in listOf(Mode.MAJOR, Mode.MINOR)) for (step in 0..6) {
+            val notes = LabSound.inKey(tonic, Harmony.diatonicChord(mode, step))
+            assertTrue(notes.size in 3..4 && notes.first() == tonic, "$mode $step: $notes")
+            assertTrue(notes.drop(1).all { it.value in 56..75 }, "one register: $notes")
+        }
+        assertEquals(listOf(3, 4), LabSound.sameBody(Mode.MAJOR, 0), "the major triad stands on I, IV and V")
+        assertEquals(listOf(1, 2), LabSound.sameBody(Mode.MAJOR, 5), "the minor one on ii, iii and vi")
+        assertTrue(LabSound.sameBody(Mode.MAJOR, 6).isEmpty(), "the diminished one stands alone")
+    }
 }

@@ -114,4 +114,26 @@ class HarmonyLabFlowTest {
         rule.waitUntil(5_000) { held() == listOf(0, 17, 19, 22) }
         scrollTo("Кварта висит над терцией")
     }
+
+    /** O-49: the chord of a key held over the humming tonic — the body stays, the role changes. */
+    @Test
+    fun aChordOfTheKeyIsHeldOverTheTonicAndItsRoleIsTold() {
+        open()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("В ладу").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("В ладу").performClick()
+        rule.waitForIdle()
+        assertTrue("silent until a chord is picked", audio.drones.filterNotNull().isEmpty())
+        choose("V") // chords are written in Roman numerals by default
+        rule.waitUntil(5_000) { audio.drones.lastOrNull() != null }
+        assertEquals("the tonic low, the V triad above it", listOf(0, 19, 23, 26), held())
+        scrollTo("доминанта")
+        scrollTo("То же тело стоит на")
+        choose("IV")
+        rule.waitUntil(5_000) { held() == listOf(0, 17, 21, 24) }
+        scrollTo("Домой")
+        rule.onAllNodes(hasClickAction() and hasText("Домой", substring = true)).onFirst().performClick()
+        rule.waitUntil(5_000) { held() == listOf(0, 12, 16, 19) }
+        choose("минор")
+        rule.waitUntil(5_000) { held() == listOf(0, 12, 15, 19) }
+    }
 }

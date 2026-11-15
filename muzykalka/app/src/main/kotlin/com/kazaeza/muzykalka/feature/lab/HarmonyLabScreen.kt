@@ -35,6 +35,7 @@ import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.Dyads
+import com.kazaeza.muzykalka.music.Harmony
 import com.kazaeza.muzykalka.music.LabChord
 import com.kazaeza.muzykalka.music.LabFifth
 import com.kazaeza.muzykalka.music.LabSound
@@ -68,13 +69,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-enum class LabRoom(val ru: String) { INTERVAL("Интервал"), CHORD("Аккорд") }
+enum class LabRoom(val ru: String) { INTERVAL("Интервал"), CHORD("Аккорд"), KEY("В ладу") }
 
 data class LabUi(
     val room: LabRoom = LabRoom.INTERVAL,
     /** The interval picked on the dial, as the degree above the lower sound; null — nothing yet. */
     val picked: Degree? = null,
     val chord: LabChord = LabChord(),
+    /** O-49 «В ладу»: the mode of the key and the step (0 = I) whose chord is held over the tonic. */
+    val mode: Mode = Mode.MAJOR,
+    val step: Int = 0,
     val sounding: Boolean = false,
     /** The chord the built one pulls to is sounding instead of it. */
     val pulled: Boolean = false,
@@ -110,6 +114,7 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
     private fun notes(s: LabUi): List<MidiNote>? = when (s.room) {
         LabRoom.INTERVAL -> s.semitones?.let { LabSound.dyad(root + 12, it) }
         LabRoom.CHORD -> LabSound.chord(root, s.chord.intervals)
+        LabRoom.KEY -> LabSound.inKey(root, Harmony.diatonicChord(s.mode, s.step))
     }
 
     private fun sound() {
@@ -146,6 +151,17 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
     private fun change(f: (LabChord) -> LabChord) {
         state.update { it.copy(chord = f(it.chord)) }
         sound()
+    }
+
+    /** O-49: the chord on another step of the key — the home tone stays, the chord moves. */
+    fun setStep(step: Int) {
+        state.update { it.copy(step = step) }
+        sound()
+    }
+
+    fun setMode(mode: Mode) {
+        state.update { it.copy(mode = mode) }
+        if (state.value.sounding) sound()
     }
 
     /** «Играть» / «Стоп». */
@@ -279,6 +295,42 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
             if (picked != null) {
                 item(key = "apart") {
                     GhostButton("По очереди, потом вместе", onClick = vm::apart, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "")
+                }
+            }
+        } else if (ui.room == LabRoom.KEY) {
+            val chord = Harmony.diatonicChord(ui.mode, ui.step)
+            val vibe = ChordVibes.of(chord, ui.mode)
+            val name = { step: Int -> DegreeFormatter.chord(Harmony.diatonicChord(ui.mode, step), ui.notation) }
+            item(key = "key-pick") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ChoiceRow(listOf(Mode.MAJOR, Mode.MINOR), ui.mode, { it.ruName }, vm::setMode, colors = Accents.Tir)
+                    SectionLabel("аккорд лада — над гудящей тоникой")
+                    ChoiceRow((0..6).toList(), ui.step.takeIf { ui.sounding } ?: -1, name, vm::setStep, colors = Accents.Tir)
+                }
+            }
+            item(key = "role") {
+                GlassCard(Modifier.fillMaxWidth(), accent = DegreeColors.gradient(DegreeColors.of(chord.root))) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(name(ui.step), style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(chord.root))
+                        Spacer(Modifier.width(10.dp))
+                        Text(vibe.role, style = MaterialTheme.typography.headlineSmall, color = Juicy.Text)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(vibe.line, style = MaterialTheme.typography.bodyLarge, color = Juicy.Text)
+                    Spacer(Modifier.height(8.dp))
+                    Text(vibe.quality, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                    val twins = LabSound.sameBody(ui.mode, ui.step)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (twins.isEmpty()) "Такое тело в этом ладу одно." else "То же тело стоит на ${twins.joinToString(" и ") { name(it) }} — переключи и сравни: звук тот же, роль другая.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Juicy.Gold,
+                    )
+                }
+            }
+            if (ui.step != 0) {
+                item(key = "home") {
+                    GhostButton("Домой — в ${name(0)}", onClick = { vm.setStep(0) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "→")
                 }
             }
         } else {

@@ -125,4 +125,20 @@ object LabSound {
         val upper = intervals.map { root + 12 + it }
         return (listOf(bass) + if (intervals.size >= 4) upper.drop(1) else upper).distinct().sortedBy { it.value }
     }
+
+    /**
+     * O-49: [chord] of a key whose tonic is [tonic], held over that tonic — the home tone low, the triad above it. The
+     * chords on the upper degrees come down an octave, so all seven sit in one register and only their place differs.
+     */
+    fun inKey(tonic: MidiNote, chord: ChordDegree): List<MidiNote> {
+        val up = Math.floorMod(chord.root.semitones, 12)
+        val base = tonic + 12 + if (up > 7) up - 12 else up
+        return (listOf(tonic) + chord.quality.intervals.take(3).map { base + it }).distinct().sortedBy { it.value }
+    }
+
+    /** The other steps of [mode] (0 = I) whose chord has the same body as the chord on [step]. */
+    fun sameBody(mode: Mode, step: Int): List<Int> {
+        val quality = Harmony.diatonicChord(mode, step).quality
+        return (0..6).filter { it != step && Harmony.diatonicChord(mode, it).quality == quality }
+    }
 }
