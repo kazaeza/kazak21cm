@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.nav
 
+import com.kazaeza.muzykalka.feature.backing.BackingScreen
 import com.kazaeza.muzykalka.feature.position.PositionScreen
 import com.kazaeza.muzykalka.feature.lab.HarmonyLabScreen
 import com.kazaeza.muzykalka.feature.loops.LoopsScreen
@@ -155,6 +156,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                             onBack = { nav.popBackStack() },
                             onEdit = { id -> nav.navigate(EditorRoute(id = id)) },
                             onOrder = { id -> nav.navigate(TaperRoute(itemId = id)) },
+                            onBacking = { id -> nav.navigate(BackingRoute(id)) },
                         )
                     }
                     composable<EditorRoute> { back ->
@@ -188,6 +190,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                     composable<ListenRoute> { ListenScreen(onBack = { nav.popBackStack() }) }
                     composable<HarmonyLabRoute> { HarmonyLabScreen(onBack = { nav.popBackStack() }) }
                     composable<PositionRoute> { PositionScreen(onBack = { nav.popBackStack() }) }
+                    composable<BackingRoute> { back -> BackingScreen(id = back.toRoute<BackingRoute>().id, onBack = { nav.popBackStack() }) }
                     composable<LoopsRoute> { LoopsScreen(onBack = { nav.popBackStack() }, onOpenSong = { id -> nav.navigate(ItemRoute(id)) }) }
                     composable<FeelRoute> {
                         FeelScreen(onBack = { nav.popBackStack() }, onTir = { nav.navigate(GameRoute(Variant.TIR_CLASSIC.name)) }, onOpenSong = { id -> nav.navigate(ItemRoute(id)) })

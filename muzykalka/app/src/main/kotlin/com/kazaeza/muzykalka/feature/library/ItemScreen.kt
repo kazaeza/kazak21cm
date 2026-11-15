@@ -59,7 +59,7 @@ import java.util.Locale
 /** One library item: formula by sections, memory status, order history, actions. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder: (String) -> Unit) {
+fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder: (String) -> Unit, onBacking: (String) -> Unit = {}) {
     val graph = LocalAppGraph.current
     val settings by graph.settings.settings.collectAsState(initial = Settings())
     val entries by graph.library.observeEntries(includeArchived = true).collectAsState(initial = null)
@@ -139,6 +139,9 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
                         colors = Accents.Taper,
                         leading = if (playing) "■" else "►",
                     )
+                    Spacer(Modifier.height(8.dp))
+                    // X-03: the same chords bar by bar, in a loop, to play over
+                    GhostButton("Играть под бэкинг", onClick = { onBacking(e.id) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
                     listenKey?.takeIf { playing }?.let { key ->
                         Spacer(Modifier.height(4.dp))
                         Text("играет в тональности ${RuNames.key(key)} — каждый раз в новой", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)

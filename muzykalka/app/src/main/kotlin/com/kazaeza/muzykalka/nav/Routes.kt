@@ -30,6 +30,9 @@ import kotlinx.serialization.Serializable
 /** O-21 «Позиция»: the chords of a key in one zone of the neck (ADR-050). */
 @Serializable data object PositionRoute
 
+/** X-03 «Под бэкинг»: a library song's chords played bar by bar, to play over (ADR-052). */
+@Serializable data class BackingRoute(val id: String)
+
 /** O-47 «Коллекция ходов»: the library's opening loops and which of them the ear knows. */
 @Serializable data object LoopsRoute
 
