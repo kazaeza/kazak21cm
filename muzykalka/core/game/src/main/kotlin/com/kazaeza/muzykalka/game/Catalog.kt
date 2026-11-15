@@ -49,6 +49,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     /** O-43: the opening chords of a library song are played — whose are they (ADR-042). */
     /** O-50: a chord on a pitch of chance — which quality is it (ADR-048). */
     TIR_COLOR(ModeId.TIR, "Цвет аккорда", GuitarNeed.NONE, "0.1"),
+    /** O-51: a scale over the drone — which mode is it (ADR-049). */
+    TIR_MODE(ModeId.TIR, "Какой лад?", GuitarNeed.NONE, "0.1"),
     /** O-46: a chain of notes over the drone that grows by one with every right answer (ADR-045). */
     TIR_SIMON(ModeId.TIR, "Саймон", GuitarNeed.NONE, "0.1"),
     TIR_SONG(ModeId.TIR, "Чья гармония?", GuitarNeed.NONE, "0.1"),
@@ -112,6 +114,9 @@ object Levels {
 
     /** «Цвет аккорда» (O-50): the two colours first, then the other triads, the sevenths, and all of them. */
     val TIR_COLOR = listOf("мажор или минор", "все трезвучия", "септаккорды", "всё вместе")
+
+    /** «Какой лад?» (O-51): the two colours, then the modes that differ from them by one degree. */
+    val TIR_MODE = listOf("мажор или минор", "+ дорийский, миксолидийский", "+ фригийский, лидийский", "+ гармонический минор")
 
     /** «Саймон» (O-46): the five steady and near degrees first, then the whole scale. */
     val TIR_SIMON = listOf("пять ступеней", "все семь")

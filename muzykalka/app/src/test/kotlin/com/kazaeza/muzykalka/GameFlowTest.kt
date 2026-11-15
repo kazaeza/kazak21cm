@@ -306,6 +306,34 @@ class GameFlowTest {
         assertTrue("the tones are single notes", audio.played.last().notes.any { n -> audio.played.last().notes.count { it.startBeat == n.startBeat } == 1 })
     }
 
+    /** O-51 (ADR-049): a scale runs over the tonic drone, the key is not named, the mode is picked. */
+    @Test
+    fun modeQuizRunsAScaleOverTheDroneAndDoesNotNameTheKey() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_MODE, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Какой это лад?").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the tonic drone is on", audio.drones.lastOrNull()?.size == 2)
+        assertTrue("the scale was played: fifteen single notes", audio.played.last().notes.size == 15)
+        // the name of the key would be the answer: no «ре минор» anywhere on the screen
+        val keyLabel = Regex("^(до|ре|ми|фа|соль|ля|си)(-бемоль|-диез)? (мажор|минор)$")
+        val named = androidx.compose.ui.test.SemanticsMatcher("a key's name") { node ->
+            node.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Text) &&
+                node.config[androidx.compose.ui.semantics.SemanticsProperties.Text].any { keyLabel.matches(it.text) }
+        }
+        assertTrue(rule.onAllNodes(named, useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
+        assertTrue("the two modes of level 1 are offered", rule.onAllNodesWithText("мажор").fetchSemanticsNodes().size == 1 && rule.onAllNodesWithText("минор").fetchSemanticsNodes().size == 1)
+        val before = audio.played.size
+        rule.onAllNodesWithText("минор").onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > before } // the telling degree walks home (after the scale again, if it was a miss)
+    }
+
     /** O-17 (ADR-031): in «Ходы» a chord of the pattern sounds when tapped — while the engine is silent. */
     @Test
     @GraphicsMode(GraphicsMode.Mode.NATIVE)

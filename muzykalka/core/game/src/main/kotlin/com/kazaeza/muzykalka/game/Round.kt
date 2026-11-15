@@ -37,6 +37,9 @@ sealed interface Answer {
     data class ChordFormula(val chords: List<ChordDegree>) : Answer
     data class SelfReport(val grade: SelfGrade) : Answer
 
+    /** O-51 «Какой лад?»: the mode of the scale that sounded. */
+    data class ModeChoice(val mode: com.kazaeza.muzykalka.music.Mode) : Answer
+
     /** O-50 «Цвет аккорда»: the quality of the chord that sounded. */
     data class QualityChoice(val quality: com.kazaeza.muzykalka.music.ChordQuality) : Answer
 

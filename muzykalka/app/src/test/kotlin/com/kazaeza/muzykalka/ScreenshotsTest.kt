@@ -193,6 +193,12 @@ class ScreenshotsTest {
     @Test
     fun chordColour() = shot("04p-colour", { GameScreen(RoundSpec(Variant.TIR_COLOR, level = 4), onExit = {}) }, "Какого цвета аккорд?")
 
+    /** O-51: «Какой лад?» — the answer with the scale and the telling degree. */
+    @Test
+    fun modeQuiz() = shot("04q-mode", { GameScreen(RoundSpec(Variant.TIR_MODE, level = 4), onExit = {}) }, "Какой это лад?") {
+        rule.onAllNodesWithText("дорийский").onFirst().performClick()
+    }
+
     /** O-43: «Чья гармония?» — the question with four songs, and the answer with the opening in degrees. */
     @Test
     fun songQuiz() {

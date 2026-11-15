@@ -179,3 +179,26 @@ object ChordVibes {
         ChordQuality.MINOR9 to "Минорный + септима + нона: бархатный.",
     )
 }
+
+/**
+ * O-51: a mode in words — [word] is its colour, [recipe] how it is made from the major or the minor everyone knows,
+ * and [mark] the degree that gives it away (null for the two parents).
+ */
+data class ModeVibe(val word: String, val recipe: String, val mark: Degree?)
+
+object ModeVibes {
+    fun of(mode: Mode): ModeVibe = when (mode) {
+        Mode.MAJOR -> ModeVibe("светлый и устойчивый", "Точка отсчёта: все ступени чистые.", null)
+        Mode.MINOR -> ModeVibe("сумрачный", "Мажор с пониженными 3, 6 и 7.", null)
+        Mode.DORIAN -> ModeVibe("минор с прищуром", "Минор с большой секстой: светлее и подвижнее.", Degree(6))
+        Mode.MIXOLYDIAN -> ModeVibe("мажор с хрипотцой", "Мажор с малой септимой: блюз и рок.", Degree(7, Accidental.FLAT))
+        Mode.PHRYGIAN -> ModeVibe("тёмный, испанский", "Минор с малой секундой: полтона над тоникой.", Degree(2, Accidental.FLAT))
+        Mode.LYDIAN -> ModeVibe("парящий", "Мажор с повышенной квартой: будто пол убрали.", Degree(4, Accidental.SHARP))
+        Mode.HARMONIC_MINOR -> ModeVibe("восточный", "Минор с большой септимой: широкий шаг от ♭6 к 7.", Degree(7))
+        Mode.MELODIC_MINOR -> ModeVibe("минор со светлым верхом", "Минор с большими секстой и септимой.", Degree(6))
+        Mode.LOCRIAN -> ModeVibe("шаткий", "Минор с малой секундой и пониженной квинтой: опоры нет.", Degree(5, Accidental.FLAT))
+    }
+
+    /** The degrees of [mode] that are not the major's: «♭3 ♭7» for the Dorian, nothing for the major. */
+    fun altered(mode: Mode): List<Degree> = mode.degrees.filter { it.accidental != Accidental.NATURAL }
+}
