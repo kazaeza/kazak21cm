@@ -61,6 +61,38 @@ object RuNames {
         return if (accusative) acc else nom
     }
 
+    /** O-50: [quality] as it fits on a key of the pad: the long names cut short. */
+    fun qualityShort(quality: ChordQuality): String = when (quality) {
+        ChordQuality.MAJOR7 -> "большой маж."
+        ChordQuality.HALF_DIMINISHED7 -> "полуум."
+        ChordQuality.DIMINISHED7 -> "ум. септ"
+        else -> quality(quality)
+    }
+
+    /** O-50: a chord quality in a word or two («мажор», «минорный септ»). */
+    fun quality(quality: ChordQuality): String = when (quality) {
+        ChordQuality.MAJOR -> "мажор"
+        ChordQuality.MINOR -> "минор"
+        ChordQuality.DIMINISHED -> "уменьшённый"
+        ChordQuality.AUGMENTED -> "увеличенный"
+        ChordQuality.SUS2 -> "с секундой"
+        ChordQuality.SUS4 -> "с квартой"
+        ChordQuality.POWER -> "квинта"
+        ChordQuality.DOMINANT7 -> "доминантсепт"
+        ChordQuality.MAJOR7 -> "большой мажорный"
+        ChordQuality.MINOR7 -> "минорный септ"
+        ChordQuality.HALF_DIMINISHED7 -> "полууменьшённый"
+        ChordQuality.DIMINISHED7 -> "уменьшённый септ"
+        ChordQuality.MAJOR6 -> "мажор с секстой"
+        ChordQuality.MINOR6 -> "минор с секстой"
+        ChordQuality.MINOR_MAJOR7 -> "минор с большой септимой"
+        ChordQuality.DOMINANT7_SUS4 -> "септ с квартой"
+        ChordQuality.ADD9 -> "мажор с ноной"
+        ChordQuality.DOMINANT9 -> "доминантнон"
+        ChordQuality.MAJOR9 -> "большой нон"
+        ChordQuality.MINOR9 -> "минорный нон"
+    }
+
     /**
      * O-16: a degree read aloud — «пять», «бемоль три», «диез четыре». Numbers, not ordinals:
      * it is what the screen shows, and short enough to come before the note fades.

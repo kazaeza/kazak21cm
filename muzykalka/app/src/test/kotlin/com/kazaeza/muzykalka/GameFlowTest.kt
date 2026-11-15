@@ -285,6 +285,27 @@ class GameFlowTest {
         rule.waitUntil(5_000) { kotlinx.coroutines.runBlocking { graph.library.get(id)!!.card!!.isNew } } // a recalled formula is not a played order
     }
 
+    /** O-50 (ADR-048): a chord sounds with no key and no drone, its colour is picked, then it is taken apart. */
+    @Test
+    fun chordColourIsPickedAndTheChordIsTakenApart() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_COLOR, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Какого цвета аккорд?").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the chord was played", audio.played.size == 1)
+        assertTrue("no drone: the chord is the whole question", audio.drones.filterNotNull().isEmpty())
+        assertTrue("two colours on level 1", rule.onAllNodesWithText("мажор").fetchSemanticsNodes().size == 1 && rule.onAllNodesWithText("минор").fetchSemanticsNodes().size == 1)
+        rule.onAllNodesWithText("мажор").onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > 1 } // the chord tone by tone (after the chord again, if it was a miss)
+        assertTrue("the tones are single notes", audio.played.last().notes.any { n -> audio.played.last().notes.count { it.startBeat == n.startBeat } == 1 })
+    }
+
     /** O-17 (ADR-031): in «Ходы» a chord of the pattern sounds when tapped — while the engine is silent. */
     @Test
     @GraphicsMode(GraphicsMode.Mode.NATIVE)

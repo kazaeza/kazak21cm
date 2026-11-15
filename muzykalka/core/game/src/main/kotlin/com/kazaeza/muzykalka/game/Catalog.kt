@@ -47,6 +47,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     /** S-03: the two degrees taken for each other most often, until ten in a row are right (ADR-043). */
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.1"),
     /** O-43: the opening chords of a library song are played — whose are they (ADR-042). */
+    /** O-50: a chord on a pitch of chance — which quality is it (ADR-048). */
+    TIR_COLOR(ModeId.TIR, "Цвет аккорда", GuitarNeed.NONE, "0.1"),
     /** O-46: a chain of notes over the drone that grows by one with every right answer (ADR-045). */
     TIR_SIMON(ModeId.TIR, "Саймон", GuitarNeed.NONE, "0.1"),
     TIR_SONG(ModeId.TIR, "Чья гармония?", GuitarNeed.NONE, "0.1"),
@@ -107,6 +109,9 @@ object Levels {
         "похожие начала",
         "только названия",
     )
+
+    /** «Цвет аккорда» (O-50): the two colours first, then the other triads, the sevenths, and all of them. */
+    val TIR_COLOR = listOf("мажор или минор", "все трезвучия", "септаккорды", "всё вместе")
 
     /** «Саймон» (O-46): the five steady and near degrees first, then the whole scale. */
     val TIR_SIMON = listOf("пять ступеней", "все семь")

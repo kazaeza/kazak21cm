@@ -189,6 +189,10 @@ class ScreenshotsTest {
         rule.onAllNodesWithText("♭7").onFirst().performClick()
     }
 
+    /** O-50: «Цвет аккорда» — the whole pad of level 4. */
+    @Test
+    fun chordColour() = shot("04p-colour", { GameScreen(RoundSpec(Variant.TIR_COLOR, level = 4), onExit = {}) }, "Какого цвета аккорд?")
+
     /** O-43: «Чья гармония?» — the question with four songs, and the answer with the opening in degrees. */
     @Test
     fun songQuiz() {
