@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
+import com.kazaeza.muzykalka.ui.orb.ThreadMark
 import kotlin.math.sqrt
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import kotlin.math.cos
@@ -113,68 +114,12 @@ private fun overtoneColors(colors: List<Color>): List<Color> {
 }
 
 /**
- * A sphere of coloured light, like an overtone made visible: [colors] flow inside it, each one
- * circling at its own harmonic speed, under a soft, slightly blurred edge with a coloured rim.
- * [moving] = false freezes it (small marks in lists). [glow] adds a halo, [dim] fades it.
- */
-@Composable
-fun OvertoneOrb(
-    colors: List<Color>,
-    modifier: Modifier = Modifier,
-    moving: Boolean = true,
-    glow: Float = 0.6f,
-    dim: Float = 1f,
-    periodMs: Int = 18_000,
-) {
-    val cs = if (colors.size >= 3) colors else (colors + listOf(Juicy.Magenta, Juicy.Blue, Juicy.Cyan)).take(3)
-    val phase = if (moving) {
-        val t = rememberInfiniteTransition(label = "orb")
-        val p by t.animateFloat(0f, 1f, infiniteRepeatable(tween(periodMs, easing = LinearEasing), RepeatMode.Restart), label = "p")
-        p
-    } else {
-        0.13f
-    }
-    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
-        val side = min(maxWidth.value, maxHeight.value)
-        Canvas(Modifier.fillMaxSize().blur((side * 0.035f).dp, BlurredEdgeTreatment.Unbounded)) {
-            val c = Offset(size.width / 2, size.height / 2)
-            val r = size.minDimension / 2 * 0.84f
-            if (glow > 0f) {
-                drawCircle(Brush.radialGradient(listOf(cs[0].copy(alpha = 0.40f * glow * dim), cs[1].copy(alpha = 0.12f * glow * dim), Color.Transparent), c, r * 1.7f), r * 1.7f, c)
-            }
-            val circle = Path().apply { addOval(Rect(c, r)) }
-            clipPath(circle) {
-                drawCircle(cs.last().copy(alpha = dim), r, c)
-                cs.forEachIndexed { i, col ->
-                    val n = i + 1
-                    val a = 2 * PI * (n * phase + i * 0.29)
-                    val at = c + Offset((r * 0.55f * cos(a)).toFloat(), (r * 0.45f * sin(a * 1.3 + i)).toFloat())
-                    val rr = r * (1.25f - 0.15f * i)
-                    drawCircle(Brush.radialGradient(listOf(col.copy(alpha = dim), col.copy(alpha = 0.55f * dim), Color.Transparent), at, rr), rr, at)
-                }
-                // a light band across, and a coloured rim where the sphere turns away
-                val band = 2 * PI * phase
-                drawCircle(
-                    Brush.radialGradient(listOf(Color.White.copy(alpha = 0.35f * dim), Color.Transparent), c + Offset((-r * 0.35f * cos(band)).toFloat(), (-r * 0.4f).toFloat()), r * 0.6f),
-                    r, c, blendMode = BlendMode.Screen,
-                )
-                drawCircle(Brush.radialGradient(0.72f to Color.Transparent, 1f to cs[1 % cs.size].copy(alpha = 0.9f * dim), center = c, radius = r), r, c)
-            }
-        }
-    }
-}
-
-/**
- * A small, still sphere (marks of modes, empty states): the same lens as the Tir's ([LensOrb], O-26), frozen.
- * Its colours pick the moment it is frozen at, so two modes never show the same picture.
+ * A small, still sphere (marks of modes, empty states): since O-54 the thread wound in a figure ([ThreadMark]),
+ * the same material as the sphere of the Tir. Its colours pick the figure, so two modes never show the same picture.
  */
 @Composable
 fun GlowOrb(colors: List<Color>, modifier: Modifier = Modifier, glow: Float = 0.5f, dim: Float = 1f) {
-    val a = colors.firstOrNull() ?: Juicy.Cyan
-    val b = colors.getOrNull(1) ?: a
-    val own = remember(a, b) { listOf(a, b, lerp(a, Color.White, 0.35f), lerp(a, b, 0.5f)) }
-    val seed = (a.red * 3f + a.green * 5f + a.blue * 7f) % 1f
-    LensOrb(own, modifier, energy = glow, dim = dim, seed = seed, sphere = 0.8f, moving = false)
+    ThreadMark(colors, modifier, glow = glow, dim = dim)
 }
 
 /** Film grain tile: fixed noise, so it never crawls. null where bitmaps cannot be made (JVM tests). */

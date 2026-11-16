@@ -304,7 +304,6 @@ private fun OrbPicker(body: OrbBody, onPick: (OrbBody) -> Unit) {
         Spacer(Modifier.height(6.dp))
         Text(orbHint(body), style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
         OrbSphere(
-            colors = listOf(Juicy.Blue, Juicy.Violet, Juicy.Magenta, Juicy.Cyan),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(260.dp)
@@ -314,8 +313,6 @@ private fun OrbPicker(body: OrbBody, onPick: (OrbBody) -> Unit) {
                 },
             sphere = 0.8f,
             pulses = board,
-            lobes = degree?.let { com.kazaeza.muzykalka.music.Overtones.ratio(it).first } ?: 0,
-            tension = degree?.let { com.kazaeza.muzykalka.music.Overtones.tension(it) } ?: 0f,
             answer = degree?.let { OrbAnswer(it, DegreeColors.ofSemitone(it)) },
             body = body,
         )
@@ -330,20 +327,18 @@ private fun OrbPicker(body: OrbBody, onPick: (OrbBody) -> Unit) {
 /** What the picker's sphere answers on successive taps: a fifth, a major third, a second, a minor sixth. */
 private val ORB_DEMO = listOf(7, 4, 2, 8)
 
-private val ORB_CHOICES = listOf(OrbBody.THREAD, OrbBody.INK, OrbBody.SAND, OrbBody.DROP)
+private val ORB_CHOICES = listOf(OrbBody.THREAD, OrbBody.INK, OrbBody.SAND)
 
 private fun orbName(b: OrbBody): String = when (b) {
     OrbBody.THREAD -> "Нить"
     OrbBody.INK -> "Чернила"
     OrbBody.SAND -> "Песок"
-    OrbBody.DROP -> "Капля"
 }
 
 private fun orbHint(b: OrbBody): String = when (b) {
     OrbBody.THREAD -> "Одна струна в стеклянном шаре. Ответ наматывает её в узор отношения p:q: консонанс стоит, диссонанс ползёт."
     OrbBody.INK -> "Настоящая жидкость: щипок стреляет струёй, ответ закручивает чернила в цвет ступени. Нужен современный телефон."
     OrbBody.SAND -> "Песчинки на звенящей пластине собираются в узловые линии — фигуры Хладни; щипок их разбрасывает."
-    OrbBody.DROP -> "Капля на шейдере, как в версиях до 0.0.64: дёшево и спокойно."
 }
 
 /** O-39: the glass first — it is the sound of the app; the others stay as they were, for whoever wants them. */

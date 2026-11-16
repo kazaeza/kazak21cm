@@ -19,7 +19,8 @@ import com.kazaeza.muzykalka.music.Overtones
 import com.kazaeza.muzykalka.music.PulseKind
 import com.kazaeza.muzykalka.music.SoundPulse
 import com.kazaeza.muzykalka.ui.effect.HarmonicWaves
-import com.kazaeza.muzykalka.ui.effect.LensOrb
+import com.kazaeza.muzykalka.ui.orb.ThreadCanvasOrb
+import com.kazaeza.muzykalka.ui.orb.ThreadMark
 import com.kazaeza.muzykalka.ui.effect.PulseBoard
 import com.kazaeza.muzykalka.ui.effect.WaveReveal
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
@@ -258,48 +259,19 @@ class ScreenshotsTest {
         rule.onAllNodesWithText("5").onFirst().performClick()
     }
 
-    /** O-35 / O-37: the sphere with a wave on its way out — a pluck 0.03 … 0.55 s ago, side by side. */
+    /** O-54: the thread instead of the lens — at rest (the Compose fallback) and wound in the figures of six degrees. */
     @Test
-    fun orbRing() = shot("11-orb-ring", {
-        val colors = listOf(Juicy.Blue, Juicy.Violet, Juicy.Magenta, Juicy.Cyan)
+    fun threadFigures() = shot("12-thread-figures", {
         Column(Modifier.fillMaxSize().background(Juicy.Ink).padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            // O-37: the wave as it runs over the drop (compare docs/design/lab/drop-pluck.jpg)
-            listOf(listOf(0f, 0.1f, 0.3f, 0.55f), listOf(0.03f, 0.14f, 0.28f, 0.46f)).forEach { ages ->
-                Row {
-                    ages.forEach { age ->
-                        val board = PulseBoard.frozen(age to SoundPulse(PulseKind.HOME, 0L, 1f, 0, 0.5f))
-                        LensOrb(colors, Modifier.size(96.dp), pulses = board, moving = false, sphere = 0.7f)
-                    }
-                }
-            }
-            // the same, big, to judge the swell
-            LensOrb(colors, Modifier.size(300.dp), pulses = PulseBoard.frozen(0.28f to SoundPulse(PulseKind.HOME, 0L, 1f, 0, 0.5f)), moving = false, sphere = 0.7f)
-            // leaning towards a pressed degree (top right), and two plucks at once
-            LensOrb(
-                colors, Modifier.size(200.dp), moving = false, sphere = 0.7f, touch = Offset(0.7f, -0.7f),
-                pulses = PulseBoard.frozen(0.1f to SoundPulse(PulseKind.TOUCH, 0L, 0.8f, null, 0.2f), 0.35f to SoundPulse(PulseKind.REVEAL, 0L, 1f, 7, 0.31f)),
-            )
-        }
-    })
-
-    /** O-35: the pattern a degree leaves in the sphere after the answer: a fifth (3 lobes), a third (5), a minor second (16). */
-    @Test
-    fun orbLobes() = shot("12-orb-lobes", {
-        Column(Modifier.fillMaxSize().background(Juicy.Ink).padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            ThreadCanvasOrb(Modifier.size(220.dp), sphere = 0.8f)
             listOf(listOf(0, 7, 4), listOf(1, 3, 2)).forEach { row ->
                 Row {
                     row.forEach { semitones ->
-                        val d = com.kazaeza.muzykalka.music.Degree.canonical(semitones)
-                        val tint = DegreeColors.of(d)
-                        val (p, _) = Overtones.ratio(semitones)
-                        LensOrb(
-                            listOf(tint, lerp(tint, Color.White, 0.4f), Juicy.Magenta, tint), Modifier.size(130.dp), moving = false, sphere = 0.7f,
-                            lobes = p, tension = Overtones.tension(semitones),
-                        )
+                        val tint = DegreeColors.ofSemitone(semitones)
+                        ThreadMark(listOf(tint, lerp(tint, Color.White, 0.4f)), Modifier.size(130.dp), semitone = semitones)
                     }
                 }
             }
-            LensOrb(listOf(Juicy.Blue, Juicy.Violet, Juicy.Magenta, Juicy.Cyan), Modifier.size(130.dp), moving = false, sphere = 0.7f)
         }
     })
 

@@ -180,12 +180,11 @@ object OrbGlSupport {
     private const val ES3 = 0x30000
 }
 
-/** The renderer for [body]; [OrbBody.DROP] is not drawn with OpenGL. */
+/** The renderer for [body]. */
 fun createRenderer(body: OrbBody, gl: Gles, input: OrbInput, gold: FloatArray): OrbRenderer = when (body) {
     OrbBody.THREAD -> ThreadRenderer(gl, input, gold)
     OrbBody.INK -> InkRenderer(gl, input, gold)
     OrbBody.SAND -> SandRenderer(gl, input, gold)
-    OrbBody.DROP -> error("the drop is painted by LensOrb")
 }
 
 /**

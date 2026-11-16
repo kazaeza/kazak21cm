@@ -49,7 +49,6 @@ import com.kazaeza.muzykalka.music.LabThird
 import com.kazaeza.muzykalka.music.LabTop
 import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Mode
-import com.kazaeza.muzykalka.music.Overtones
 import com.kazaeza.muzykalka.music.RuNames
 import com.kazaeza.muzykalka.music.Score
 import com.kazaeza.muzykalka.music.ScoreNote
@@ -291,8 +290,6 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
                         highlight = { d -> if (picked != null && (d sameSoundAs picked || d.semitones == 0)) KeyHighlight.CORRECT else KeyHighlight.NONE },
                         centre = picked,
                         energy = if (ui.sounding) 0.85f else 0.4f,
-                        lobes = if (picked != null && ui.sounding) Overtones.ratio(picked.semitones).first else 0,
-                        tension = picked?.let { Overtones.tension(it.semitones) } ?: 0f,
                         answer = picked?.takeIf { ui.sounding }?.let { OrbAnswer(hourOf(it.semitones), DegreeColors.of(it)) },
                         // the interval is a chord of the circle: from the lower sound at the top to the picked hour
                         figure = picked?.takeIf { it.semitones != 0 }?.let { RingFigure(listOf(0, hourOf(it.semitones)), listOf(home, DegreeColors.of(it)), closed = false) },
@@ -349,8 +346,6 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
                         modifier = Modifier.fillMaxWidth().height(RING_HEIGHT),
                         highlight = { d -> if (chord.tones.any { it sameSoundAs d }) KeyHighlight.CORRECT else KeyHighlight.NONE },
                         energy = if (ui.sounding) 0.85f else 0.4f,
-                        lobes = if (ui.sounding) chord.tones.size else 0,
-                        tension = chord.rough,
                         figure = RingFigure(shown.map { hourOf(it.semitones) }, shown.map { DegreeColors.of(it) }, home = 0.takeIf { ui.pulled }),
                     )
                 }

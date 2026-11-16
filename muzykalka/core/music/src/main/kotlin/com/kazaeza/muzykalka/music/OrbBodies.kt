@@ -24,9 +24,6 @@ enum class OrbBody {
 
     /** Grains on a ringing plate: Chladni figures. */
     SAND,
-
-    /** The drop of O-37, one AGSL shader. The fallback where GLES 3 is not there (and for tests, which have no GPU). */
-    DROP,
 }
 
 /** The numbers every body shares. */

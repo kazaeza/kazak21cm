@@ -106,8 +106,6 @@ fun DegreeRing(
     key: Dp = GameTouchTarget,
     energy: Float = 0.5f,
     pulses: PulseBoard? = null,
-    lobes: Int = 0,
-    tension: Float = 0f,
     answer: OrbAnswer? = null,
     onPress: (hour: Int) -> Unit = {},
     figure: RingFigure? = null,
@@ -141,21 +139,13 @@ fun DegreeRing(
         val rOut = half - 3.dp // the outer end of the ticks
         val rOrb = rHit - 50.dp // the sphere itself; its halo reaches further
 
-        // idle: cold neon, the colours of no degree; once the answer is shown its colour floods the sphere
-        val tint = centre?.let { DegreeColors.of(it) }
-        val o0 by animateColorAsState(tint ?: Juicy.Blue, tween(Motion.LONG), label = "orb0")
-        val o1 by animateColorAsState(tint?.let { lerp(it, Color.White, 0.4f) } ?: Juicy.Violet, tween(Motion.LONG), label = "orb1")
-        val o3 by animateColorAsState(tint ?: Juicy.Cyan, tween(Motion.LONG), label = "orb3")
         if (rOrb > 0.dp) {
             OrbSphere(
-                listOf(o0, o1, Juicy.Magenta, o3),
                 Modifier.size(side).breathe(enabled = breathing, amount = 0.03f, periodMs = 3200),
                 energy = energy,
                 sphere = rOrb / half,
                 pulses = pulses,
                 touch = touch,
-                lobes = lobes,
-                tension = tension,
                 answer = answer,
             )
         }

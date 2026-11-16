@@ -56,7 +56,6 @@ import com.kazaeza.muzykalka.music.Fretboard
 import com.kazaeza.muzykalka.music.NoteName
 import com.kazaeza.muzykalka.music.NoteNaming
 import com.kazaeza.muzykalka.music.RuNames
-import com.kazaeza.muzykalka.music.Overtones
 import com.kazaeza.muzykalka.music.PulseKind
 import com.kazaeza.muzykalka.music.SoundPulse
 import com.kazaeza.muzykalka.ui.Haptics
@@ -165,8 +164,6 @@ internal fun TirContent(
         wrongPhase -> OrbAnswer(Math.floorMod(chosen!!.semitones, 12), Juicy.Bad)
         else -> OrbAnswer(Math.floorMod(single.semitones, 12), DegreeColors.of(single))
     }
-    val lobes = if (feedback && single != null && !wrongPhase) Overtones.ratio(single.semitones).first else 0
-    val tension = single?.let { Overtones.tension(it.semitones) } ?: 0f
 
     // O-25: the dial has a fixed size and the question takes the rest, so an answer never moves it
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -344,8 +341,6 @@ internal fun TirContent(
                             breathing = listening || ui.phase == RoundPhase.PROMPTING,
                             energy = loud,
                             pulses = pulses,
-                            lobes = lobes,
-                            tension = tension,
                             answer = orbAnswer,
                             onPress = { hour ->
                                 // the finger plucks the string at the key's place across the width

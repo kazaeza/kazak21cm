@@ -34,6 +34,11 @@ import kotlin.math.cos
 import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.sqrt
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.FloatState
+import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 
 /**
  * O-35: after the answer the string shows how the note stands against the tonic — two waves, the tonic's
@@ -227,3 +232,23 @@ fun Modifier.strum(onPluck: (SoundPulse) -> Unit, onTick: () -> Unit = {}, line:
 
 /** A haptic tick no more often than this. */
 private const val TICK_GAP_MS = 40L
+
+/**
+ * Seconds that flow at [speed] (asked every frame, so the flow can speed up and slow down without a jump).
+ * Stands still at [start] where endless animation is switched off (tests, «убрать анимации»).
+ */
+@Composable
+fun rememberFlowSeconds(start: Float = 0f, speed: () -> Float = { 1f }): FloatState {
+    val time = remember { mutableFloatStateOf(start) }
+    val rate by rememberUpdatedState(speed)
+    LaunchedEffect(Unit) {
+        var last = -1L
+        while (true) {
+            withInfiniteAnimationFrameNanos { now ->
+                if (last >= 0) time.floatValue += ((now - last) / 1e9f).coerceAtMost(0.1f) * rate()
+                last = now
+            }
+        }
+    }
+    return time
+}

@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 
 /**
  * O-38: where there is no OpenGL (these tests, previews, an emulator without ES 3), whatever body is asked for the
- * sphere is the drop: the screen is never empty and nothing throws.
+ * sphere is the thread drawn by Compose (O-54): the screen is never empty and nothing throws.
  */
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [36])
@@ -30,14 +30,12 @@ class OrbSphereTest {
     @get:Rule
     val rule = createComposeRule()
 
-    private val colors = listOf(Color.Blue, Color.Magenta, Color.Red, Color.Cyan)
-
     @Test
     fun everyBodyIsPaintedWithoutOpenGL() {
         var body by mutableStateOf(OrbBody.THREAD)
         rule.setContent {
             CompositionLocalProvider(LocalOrbBody provides body) {
-                OrbSphere(colors, Modifier.size(240.dp), sphere = 0.7f, answer = OrbAnswer(7, Color.Green))
+                OrbSphere(Modifier.size(240.dp), sphere = 0.7f, answer = OrbAnswer(7, Color.Green))
             }
         }
         for (b in OrbBody.entries) {
@@ -47,10 +45,10 @@ class OrbSphereTest {
     }
 
     @Test
-    fun theDropIsTheDefaultWhereNothingElseIsProvided() {
+    fun theThreadIsTheDefaultWhereNothingElseIsProvided() {
         var seen: OrbBody? = null
         rule.setContent { seen = LocalOrbBody.current }
         rule.waitForIdle()
-        assertEquals(OrbBody.DROP, seen)
+        assertEquals(OrbBody.THREAD, seen)
     }
 }
