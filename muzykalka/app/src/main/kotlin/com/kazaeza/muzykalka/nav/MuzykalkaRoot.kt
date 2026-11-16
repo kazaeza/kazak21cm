@@ -59,6 +59,7 @@ import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
 import com.kazaeza.muzykalka.feature.today.TodayScreen
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.game.Training
 import com.kazaeza.muzykalka.music.OrbBody
 import com.kazaeza.muzykalka.ui.component.FloatingTabBar
 import com.kazaeza.muzykalka.ui.component.FloatingTabBarMargin
@@ -130,6 +131,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                                     onFeel = { nav.navigate(FeelRoute) },
                                     onLibrary = { tab(LIBRARY_TAB) },
                                     onOpenSong = { id -> nav.navigate(ItemRoute(id)) },
+                                    onTraining = { t -> nav.navigate(SetRoute(minimal = false, training = t.name)) },
                                 )
                                 1 -> ModesScreen(
                                     onPlay = { v, level -> nav.navigate(GameRoute(v.name, level)) },
@@ -184,7 +186,8 @@ fun MuzykalkaRoot(graph: AppGraph) {
                     }
                     composable<BlindRoute> { BlindScreen(onExit = { nav.popBackStack() }) }
                     composable<SetRoute> { back ->
-                        SetScreen(minimal = back.toRoute<SetRoute>().minimal, onExit = { nav.popBackStack() }, onLibrary = { tab(LIBRARY_TAB) })
+                        val route = back.toRoute<SetRoute>()
+                        SetScreen(minimal = route.minimal, training = Training.of(route.training), onExit = { nav.popBackStack() }, onLibrary = { tab(LIBRARY_TAB) })
                     }
                     composable<ExamRoute> { ExamScreen(onExit = { nav.popBackStack() }) }
                     composable<ListenRoute> { ListenScreen(onBack = { nav.popBackStack() }) }

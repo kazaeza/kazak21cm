@@ -46,13 +46,13 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_UNDER_NOTE(ModeId.TIR, "Под нотой", GuitarNeed.NONE, "0.1"),
     /** S-03: the two degrees taken for each other most often, until ten in a row are right (ADR-043). */
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.1"),
-    /** O-43: the opening chords of a library song are played — whose are they (ADR-042). */
     /** O-50: a chord on a pitch of chance — which quality is it (ADR-048). */
     TIR_COLOR(ModeId.TIR, "Цвет аккорда", GuitarNeed.NONE, "0.1"),
     /** O-51: a scale over the drone — which mode is it (ADR-049). */
     TIR_MODE(ModeId.TIR, "Какой лад?", GuitarNeed.NONE, "0.1"),
     /** O-46: a chain of notes over the drone that grows by one with every right answer (ADR-045). */
     TIR_SIMON(ModeId.TIR, "Саймон", GuitarNeed.NONE, "0.1"),
+    /** O-43: the opening chords of a library song are played — whose are they (ADR-042). */
     TIR_SONG(ModeId.TIR, "Чья гармония?", GuitarNeed.NONE, "0.1"),
     /** O-45: three chords of a library song are played — where does it go next (ADR-044). */
     TIR_NEXT(ModeId.TIR, "Куда пойдёт?", GuitarNeed.NONE, "0.1"),

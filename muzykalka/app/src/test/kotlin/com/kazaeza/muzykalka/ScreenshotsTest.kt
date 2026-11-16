@@ -37,6 +37,9 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -106,6 +109,12 @@ class ScreenshotsTest {
     fun today() {
         runBlocking { graph.bookSeeder.run() } // O-44: with a library there is a song of the day
         shot("01-today", { TodayScreen({}, {}, {}, {}, {}, {}) }, "Начать сет")
+    }
+
+    /** O-55: the sets besides the daily one — the guitar first, then the ones without it. */
+    @Test
+    fun trainings() = shot("01b-trainings", { TodayScreen({}, {}, {}, {}, {}, {}) }, "Начать сет") {
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Просто Тир"))
     }
 
     @Test

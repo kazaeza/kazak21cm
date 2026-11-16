@@ -41,6 +41,8 @@ import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
 import com.kazaeza.muzykalka.game.SingUnlock
 import com.kazaeza.muzykalka.game.DailySet
+import com.kazaeza.muzykalka.game.GuitarNeed
+import com.kazaeza.muzykalka.game.Training
 import com.kazaeza.muzykalka.game.Metrics
 import com.kazaeza.muzykalka.game.SetSegment
 import com.kazaeza.muzykalka.game.Variant
@@ -69,6 +71,8 @@ enum class SetPhase { INTRO, NEXT_UP, RUNNING, DONE }
 
 data class SetUi(
     val minimal: Boolean,
+    /** O-55: which set this is; the minimal day keeps [Training.DAILY] here. */
+    val training: Training = Training.DAILY,
     val segments: List<SetSegment> = emptyList(),
     val index: Int = 0,
     val round: Int = 0,
@@ -84,9 +88,9 @@ data class SetUi(
     fun roundMsOf(s: SetSegment): Long = (s.minutes * 60_000 / roundsOf(s)).toLong().coerceIn(60_000, 90_000)
 }
 
-/** Ticket T-03: the daily set (or the minimal day) as one guided session. */
-class SetViewModel(private val graph: AppGraph, minimal: Boolean) : ViewModel() {
-    private val state = MutableStateFlow(SetUi(minimal, DailySet.available(if (minimal) DailySet.MINIMAL else DailySet.DEFAULT, APP_STAGE)))
+/** Ticket T-03: the daily set (or the minimal day, or one of the sets of O-55) as one guided session. */
+class SetViewModel(private val graph: AppGraph, minimal: Boolean, training: Training = Training.DAILY) : ViewModel() {
+    private val state = MutableStateFlow(SetUi(minimal, training, DailySet.available(if (minimal) DailySet.MINIMAL else training.plan, APP_STAGE)))
     val ui: StateFlow<SetUi> = state.asStateFlow()
 
     init {
@@ -154,9 +158,9 @@ class SetViewModel(private val graph: AppGraph, minimal: Boolean) : ViewModel() 
 }
 
 @Composable
-fun SetScreen(minimal: Boolean, onExit: () -> Unit, onLibrary: () -> Unit) {
+fun SetScreen(minimal: Boolean, onExit: () -> Unit, onLibrary: () -> Unit, training: Training = Training.DAILY) {
     val graph = LocalAppGraph.current
-    val vm: SetViewModel = viewModel(key = "set-$minimal") { SetViewModel(graph, minimal) }
+    val vm: SetViewModel = viewModel(key = "set-$minimal-${training.name}") { SetViewModel(graph, minimal, training) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val seg = ui.current
 
@@ -195,8 +199,9 @@ private const val EXIT_SET = "Выйти из сета"
 @Composable
 private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
     ScreenFrame(
-        title = if (ui.minimal) "Короткий сет" else "Сет дня",
-        subtitle = if (ui.minimal) "${ui.segments.sumOf { it.minutes }.roundToInt()} минут — серия не прервётся" else "${ui.segments.sumOf { it.minutes }.roundToInt()} минут, по кусочку каждого режима",
+        title = if (ui.minimal) "Короткий сет" else ui.training.ru,
+        subtitle = "${ui.segments.sumOf { it.minutes }.roundToInt()} минут — " + if (ui.minimal) "серия не прервётся" else ui.training.goal +
+            (if (ui.training.guitar == GuitarNeed.NONE) " · гитара не нужна" else ""),
         accent = Accents.Hero,
         onBack = onExit,
     ) {

@@ -30,6 +30,14 @@ import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.feature.common.ruDate
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.game.DailySet
+import com.kazaeza.muzykalka.game.GuitarNeed
+import com.kazaeza.muzykalka.game.Training
+import com.kazaeza.muzykalka.feature.common.APP_STAGE
+import com.kazaeza.muzykalka.ui.effect.GlowOrb
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.Color
+import kotlin.math.roundToInt
 import com.kazaeza.muzykalka.ui.component.CountUpText
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
@@ -53,6 +61,7 @@ fun TodayScreen(
     onFeel: () -> Unit,
     onLibrary: () -> Unit,
     onOpenSong: (String) -> Unit = {},
+    onTraining: (Training) -> Unit = {},
 ) {
     val graph = LocalAppGraph.current
     val vm: TodayViewModel = viewModel { TodayViewModel(graph) }
@@ -128,13 +137,52 @@ fun TodayScreen(
                 }
             }
         }
-        item(key = "noguitar") {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel("Без гитары — в дороге")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GhostButton("Тир", onClick = { onPlay(Variant.TIR_CLASSIC) }, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "")
-                    GhostButton("Вайб ступеней", onClick = onFeel, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "")
-                }
+        // O-55: besides the daily set — one set for the guitar in hands and several for when it is not there
+        item(key = "with-guitar") { SectionLabel("С гитарой") }
+        Training.OTHERS.filter { it.guitar != GuitarNeed.NONE }.forEach { t ->
+            item(key = "training-${t.name}") { TrainingCard(t, onClick = { onTraining(t) }) }
+        }
+        item(key = "no-guitar") { SectionLabel("Без гитары") }
+        Training.OTHERS.filter { it.guitar == GuitarNeed.NONE }.forEach { t ->
+            item(key = "training-${t.name}") { TrainingCard(t, onClick = { onTraining(t) }) }
+        }
+        item(key = "just-play") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton("Просто Тир", onClick = { onPlay(Variant.TIR_CLASSIC) }, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "")
+                GhostButton("Вайб ступеней", onClick = onFeel, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "")
+            }
+        }
+    }
+}
+
+/** O-55: the colours of a set — the mode it leans on. */
+internal fun trainingAccent(t: Training): List<Color> = when (t) {
+    Training.DAILY -> Accents.Hero
+    Training.GUITAR -> Accents.Taper
+    Training.EAR -> Accents.Tir
+    Training.SONGS -> Accents.Parrot
+    Training.ROAD -> Accents.Calm
+}
+
+/** O-55: one set to choose — its thread, its name, what it trains, its parts and how long it takes. */
+@Composable
+private fun TrainingCard(t: Training, onClick: () -> Unit) {
+    val parts = DailySet.available(t.plan, APP_STAGE)
+    val minutes = parts.sumOf { it.minutes }.roundToInt()
+    GlassCard(Modifier.fillMaxWidth(), accent = trainingAccent(t), onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GlowOrb(trainingAccent(t), Modifier.size(44.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(t.ru, style = MaterialTheme.typography.titleLarge)
+                Text(t.goal, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+                Spacer(Modifier.height(4.dp))
+                Text(parts.joinToString(" · ") { it.variant.ru.lowercase() }, style = MaterialTheme.typography.labelMedium, color = Juicy.TextFaint)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text("$minutes", style = Numbers.Small, color = Juicy.Gold)
+                Text("мин", style = MaterialTheme.typography.labelMedium, color = Juicy.TextDim)
             }
         }
     }

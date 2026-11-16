@@ -36,7 +36,8 @@ import kotlinx.serialization.Serializable
 /** O-47 «Коллекция ходов»: the library's opening loops and which of them the ear knows. */
 @Serializable data object LoopsRoute
 
-@Serializable data class SetRoute(val minimal: Boolean)
+/** [training] is a [com.kazaeza.muzykalka.game.Training] name (O-55); ignored for the minimal day. */
+@Serializable data class SetRoute(val minimal: Boolean, val training: String = "DAILY")
 
 @Serializable data class ItemRoute(val id: String)
 

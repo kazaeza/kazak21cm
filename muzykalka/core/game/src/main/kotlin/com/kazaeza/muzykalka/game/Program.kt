@@ -40,19 +40,92 @@ object Graduation {
 data class SetSegment(val variant: Variant, val minutes: Double)
 
 /**
+ * O-55 (ADR-054): the sets to choose from. «Сет дня» mixes everything; the others each lean one way — the guitar in
+ * hands, or none at all («гитара далеко не всегда есть с собой»): the ear with headphones, songs recalled in the head,
+ * and the road, where nothing is sung aloud and a round is short. [guitar] is what the set needs as a whole (the most
+ * of its parts); [goal] says in a line what it trains. Minutes are a budget: the set screen turns them into rounds.
+ */
+enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, val plan: List<SetSegment>) {
+    DAILY(
+        "Сет дня",
+        "по кусочку каждого режима",
+        GuitarNeed.REQUIRED,
+        listOf(
+            SetSegment(Variant.HUNT_FIND, 2.0),
+            SetSegment(Variant.TIR_CLASSIC, 4.0),
+            SetSegment(Variant.KAMERTON_SING, 3.0),
+            SetSegment(Variant.PARROT_ECHO, 3.0),
+            SetSegment(Variant.TAPER_STEPS, 3.0),
+            SetSegment(Variant.TAPER_ORDER, 5.0),
+        ),
+    ),
+    GUITAR(
+        "Гитара в руках",
+        "гриф, звук в пальцы и песни в разных тональностях",
+        GuitarNeed.REQUIRED,
+        listOf(
+            SetSegment(Variant.HUNT_FIND, 3.0),
+            SetSegment(Variant.PARROT_ECHO, 3.0),
+            SetSegment(Variant.TAPER_STEPS, 4.0),
+            SetSegment(Variant.TAPER_ORDER, 6.0),
+        ),
+    ),
+    EAR(
+        "Слух",
+        "ступени, аккорды и лады на слух — в наушниках",
+        GuitarNeed.NONE,
+        listOf(
+            SetSegment(Variant.TIR_CLASSIC, 3.0),
+            SetSegment(Variant.TIR_OVER_CHORDS, 3.0),
+            SetSegment(Variant.TIR_COLOR, 3.0),
+            SetSegment(Variant.TIR_MODE, 2.0),
+            SetSegment(Variant.TIR_SIMON, 3.0),
+        ),
+    ),
+    SONGS(
+        "Песни в голове",
+        "узнать ход, угадать следующий аккорд, вспомнить формулу",
+        GuitarNeed.NONE,
+        listOf(
+            SetSegment(Variant.TIR_SONG, 4.0),
+            SetSegment(Variant.TIR_NEXT, 3.0),
+            SetSegment(Variant.FORMULA_ALOUD, 4.0),
+        ),
+    ),
+    ROAD(
+        "В дороге",
+        "коротко и молча: петь не надо, хватит одной руки",
+        GuitarNeed.NONE,
+        listOf(
+            SetSegment(Variant.TIR_CLASSIC, 2.0),
+            SetSegment(Variant.TIR_UNDER_NOTE, 2.0),
+            SetSegment(Variant.HUNT_REVERSE, 2.0),
+        ),
+    ),
+    ;
+
+    /** No part of it listens to the guitar or to the voice: it can be done where nothing can be played or sung. */
+    val silent: Boolean get() = plan.none { it.variant.guitar == GuitarNeed.REQUIRED || it.variant in VOICE }
+
+    companion object {
+        /** Parts that listen to the voice. */
+        val VOICE = setOf(Variant.KAMERTON_SING, Variant.KAMERTON_SEARCH)
+
+        /** What «Сегодня» offers besides the daily set: the guitar first, then the ones without it. */
+        val OTHERS = listOf(GUITAR, EAR, SONGS, ROAD)
+
+        /** The name a route carries; an unknown one (an older build's) is the daily set. */
+        fun of(name: String?): Training = entries.firstOrNull { it.name == name } ?: DAILY
+    }
+}
+
+/**
  * The daily set (20 min) and the short day (5 min). Defaults from the plan, except that the Taper
  * block starts with «Ходы» — banal progressions as the base — before the user's own songs
  * (ADR-014). The adaptive planner (ticket S-01) redistributes time within ±50% of these.
  */
 object DailySet {
-    val DEFAULT = listOf(
-        SetSegment(Variant.HUNT_FIND, 2.0),
-        SetSegment(Variant.TIR_CLASSIC, 4.0),
-        SetSegment(Variant.KAMERTON_SING, 3.0),
-        SetSegment(Variant.PARROT_ECHO, 3.0),
-        SetSegment(Variant.TAPER_STEPS, 3.0),
-        SetSegment(Variant.TAPER_ORDER, 5.0),
-    )
+    val DEFAULT = Training.DAILY.plan
 
     /** «Нет времени? 5 минут»: still counts toward the streak. */
     val MINIMAL = listOf(
@@ -75,9 +148,6 @@ object DailySet {
             rest + SetSegment(Variant.TAPER_STEPS, songMinutes)
         }
     }
-
-    /** Practice without a guitar (commute): only variants that need none. */
-    val NO_GUITAR = listOf(Variant.TIR_RADIO, Variant.KAMERTON_DIGITS, Variant.HUNT_REVERSE, Variant.FORMULA_ALOUD)
 
     /** Only segments whose variant has shipped in [appVersion] ("0.1" ≤ "0.2" ≤ "0.3"). */
     fun available(plan: List<SetSegment>, appVersion: String): List<SetSegment> =
