@@ -37,6 +37,11 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasScrollAction
@@ -104,6 +109,35 @@ class ScreenshotsTest {
         val dir = File("build/screenshots").apply { mkdirs() }
         File(dir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
+
+    /** O-56: the launcher icon as a launcher masks it — a circle, a squircle, a rounded square — and its themed variant. */
+    @Test
+    fun launcherIcon() = shot("00-icon", {
+        @androidx.compose.runtime.Composable
+        fun icon(shape: androidx.compose.ui.graphics.Shape, side: androidx.compose.ui.unit.Dp, themed: Boolean = false) {
+            Box(Modifier.size(side).clip(shape).background(if (themed) Color(0xFF2B2F3A) else Color.Transparent)) {
+                // the layers are 108 dp of which the launcher shows the middle 72: scale up by 1.5
+                if (!themed) Image(painterResource(R.drawable.ic_launcher_background), null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.5f; scaleY = 1.5f })
+                Image(
+                    painterResource(if (themed) R.drawable.ic_launcher_monochrome else R.drawable.ic_launcher_foreground),
+                    null,
+                    Modifier.fillMaxSize().graphicsLayer { scaleX = 1.5f; scaleY = 1.5f },
+                    colorFilter = if (themed) androidx.compose.ui.graphics.ColorFilter.tint(Color(0xFFD7E0FF)) else null,
+                )
+            }
+        }
+        Column(Modifier.fillMaxSize().background(Color(0xFF3A3F4B)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            icon(androidx.compose.foundation.shape.CircleShape, 300.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                icon(androidx.compose.foundation.shape.RoundedCornerShape(30), 120.dp)
+                icon(androidx.compose.foundation.shape.CircleShape, 120.dp, themed = true)
+                icon(androidx.compose.foundation.shape.RoundedCornerShape(18), 120.dp)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                listOf(48.dp, 56.dp, 64.dp).forEach { icon(androidx.compose.foundation.shape.CircleShape, it) }
+            }
+        }
+    })
 
     @Test
     fun today() {

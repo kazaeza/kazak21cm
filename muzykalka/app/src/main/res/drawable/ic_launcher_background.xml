@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- O-56: the ink of the app with the warm glow of «Обертон» behind the ball. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="50" android:gradientRadius="76">
+                <item android:offset="0" android:color="#FF3A1636" />
+                <item android:offset="0.55" android:color="#FF160C14" />
+                <item android:offset="1" android:color="#FF0A0909" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
