@@ -81,4 +81,29 @@ class PositionsTest {
         val i = Positions.tones(board, aMinor, Harmony.diatonicChord(Mode.MINOR, 0), 4)
         assertEquals(setOf("1", "♭3", "5"), i.map { it.degree.toString() }.toSet())
     }
+
+    /** O-53: CAGED is one chord in five places along the neck. */
+    @Test
+    fun `a major chord has five places along the neck, a minor one three, and the map agrees with each`() {
+        val cMajor = KeyCatalog.practical(PitchClass.of(0), Mode.MAJOR)
+        val one = Harmony.diatonicChord(Mode.MAJOR, 0)
+        val places = Positions.forms(board, cMajor, one)
+        assertEquals(listOf(ChordForm.C, ChordForm.A, ChordForm.G, ChordForm.E, ChordForm.D), places.map { it.form }, "C-A-G-E-D up the neck from the nut: $places")
+        assertEquals(places.map { it.start }.sorted(), places.map { it.start })
+        assertEquals(0, places.first().start, "the open C")
+        for (mode in listOf(Mode.MAJOR, Mode.MINOR)) for (key in KeyCatalog.practical(mode)) for (step in 0..6) {
+            val chord = Harmony.diatonicChord(mode, step)
+            val found = Positions.forms(board, key, chord)
+            val major = chord.quality.intervals[1] == 4
+            assertTrue(found.size <= if (major) 5 else 3, "$key $step: $found")
+            assertTrue(found.isNotEmpty(), "every chord has a place: $key $step")
+            assertEquals(found.size, found.map { it.form }.toSet().size)
+            found.forEach { place ->
+                assertTrue(place.start in 0..Positions.lastStart(board))
+                val onMap = Positions.roots(board, key, place.start).first { it.step == step }
+                assertEquals(place.form, onMap.form, "the strip and the map name the same shape at fret ${place.start}")
+            }
+        }
+        assertTrue(Positions.forms(Fretboard(Tuning.DROP_D), cMajor, one).isEmpty(), "no shapes in a drop tuning")
+    }
 }

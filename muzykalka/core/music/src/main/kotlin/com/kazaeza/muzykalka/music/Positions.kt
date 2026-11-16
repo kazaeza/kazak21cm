@@ -18,6 +18,9 @@ enum class ChordForm(val ru: String) {
  */
 data class RootPlace(val step: Int, val chord: ChordDegree, val place: FretPosition, val form: ChordForm?)
 
+/** O-53: one of the places of a chord along the neck — the [form] it is taken in and the fret its zone starts at. */
+data class FormPlace(val form: ChordForm, val start: Int)
+
 /** A tone of a chord on the neck: where it is and which degree of the KEY it is (the colour and the label). */
 data class TonePlace(val place: FretPosition, val degree: Degree, val isRoot: Boolean)
 
@@ -79,6 +82,31 @@ object Positions {
         rank == 0 -> ChordForm.G
         rank == 1 -> ChordForm.C
         else -> null
+    }
+
+    /**
+     * O-53: the same chord along the whole neck — the zones in which each shape of the system holds it, from the nut
+     * up. This is what CAGED is: one chord, five places, each a few frets after the last. A major chord has all five;
+     * a minor or diminished one only the three with the root under the first finger. Empty when the bass strings are
+     * not a fourth apart (a drop tuning): the shapes do not hold there.
+     */
+    fun forms(board: Fretboard, key: Key, chord: ChordDegree): List<FormPlace> {
+        val bass = bassStrings(board)
+        if (bass.size < 3 || !bass.zipWithNext().all { (low, high) -> board.tuning.open(high).value - board.tuning.open(low).value == 5 }) return emptyList()
+        val pc = key.pitchClassOf(chord.root)
+        val last = lastStart(board)
+        // where the root is on each bass string within the first octave, and how far into the zone each shape wants it
+        fun start(rank: Int, offset: Int): Int? {
+            val fret = board.fretsOf(pc, bass[rank]).first()
+            return listOf(fret - offset, fret - offset + 12).firstOrNull { it in 0..last } ?: (fret - offset).takeIf { fret == 0 && offset == 1 }?.let { 0 }
+        }
+        val major = chord.quality.intervals.getOrNull(1) == 4
+        val wanted = listOf(ChordForm.E to (0 to 1), ChordForm.A to (1 to 1), ChordForm.D to (2 to 1)) +
+            if (major) listOf(ChordForm.G to (0 to 3), ChordForm.C to (1 to 3)) else emptyList()
+        return wanted.mapNotNull { (form, at) -> start(at.first, at.second)?.let { FormPlace(form, it) } }
+            // only the places where the map itself would name this shape: the two must never disagree
+            .filter { place -> roots(board, key, place.start).any { SongOpenings.sameChord(it.chord, chord) && it.form == place.form } }
+            .sortedBy { it.start }
     }
 
     /** Every place in the zone, on every string, where a tone of [chord] sounds — the shape appears by itself. */
