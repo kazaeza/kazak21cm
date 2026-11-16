@@ -1,5 +1,11 @@
 package com.kazaeza.muzykalka.feature.lab
 
+import com.kazaeza.muzykalka.ui.theme.Doto
+import com.kazaeza.muzykalka.ui.effect.HarmonicLadder
+import com.kazaeza.muzykalka.ui.component.RingFigure
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -164,6 +170,21 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
         if (state.value.sounding) sound()
     }
 
+    /**
+     * O-52: the chord is built on the dial itself. An hour in the third's band (2, ♭3, 3, 4), the fifth's (♭5, 5, ♯5)
+     * or the top voice's (6, ♭7, 7) puts that voice there; the same hour again takes the voice away — except the
+     * fifth, which a chord of the lab always has. The «1» is the root: it only starts and stops the sound.
+     */
+    fun tapChordTone(degree: Degree) {
+        val at = Math.floorMod(degree.semitones, 12)
+        when (at) {
+            0 -> toggle()
+            in 2..5 -> LabThird.entries.first { it.degree?.semitones == at }.let { v -> change { it.copy(third = if (it.third == v) LabThird.NONE else v) } }
+            in 6..8 -> change { it.copy(fifth = LabFifth.entries.first { f -> f.degree.semitones == at }) }
+            in 9..11 -> LabTop.entries.first { it.degree?.semitones == at }.let { v -> change { it.copy(top = if (it.top == v) LabTop.NONE else v) } }
+        }
+    }
+
     /** «Играть» / «Стоп». */
     fun toggle() = if (state.value.sounding) stop() else sound()
 
@@ -226,9 +247,20 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
     }
 }
 
-/** The dial of the interval room: a fixed height, so the lazy list knows its size. */
+/** The dial of every room: a fixed height, so the lazy list knows its size. */
 private val RING_HEIGHT = 340.dp
 
+/** The hours a chord of the lab can stand on: the root, the three bands of voices — and no ♭2, which is no voice of it. */
+private val CHORD_DIAL: List<Degree> =
+    listOf(Degree.ONE) + LabThird.entries.mapNotNull { it.degree } + LabFifth.entries.map { it.degree } + LabTop.entries.mapNotNull { it.degree }
+
+private fun hourOf(semitones: Int) = Math.floorMod(semitones, 12)
+
+/**
+ * O-48, redrawn in O-52: every room is the same dial, and what is held is a figure on it — an interval is a chord of
+ * the circle, a chord a polygon, the same chord on another degree the same polygon turned. The sound is changed by
+ * touching the dial; the cards under it only say what the picture shows.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HarmonyLabScreen(onBack: () -> Unit) {
@@ -236,141 +268,185 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
     val vm: HarmonyLabViewModel = viewModel { HarmonyLabViewModel(graph) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val fmt = { d: Degree -> DegreeFormatter.degree(d, ui.notation) }
+    val home = DegreeColors.of(Degree.ONE)
 
     ScreenFrame(title = "Созвучия", subtitle = "держи звук, меняй одну ноту, слушай", accent = Accents.Tir, onBack = onBack) {
         item(key = "rooms") {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ChoiceRow(LabRoom.entries, ui.room, { it.ru }, vm::setRoom, colors = Accents.Tir)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    GhostButton(if (ui.sounding) "Стоп" else "Играть", onClick = vm::toggle, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = if (ui.sounding) "■" else "►")
-                    GhostButton("другая высота", onClick = vm::newRoot, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "⇄")
-                }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChoiceRow(LabRoom.entries, ui.room, { it.ru }, vm::setRoom, modifier = Modifier.weight(1f), colors = Accents.Tir)
+                GhostButton(if (ui.sounding) "■" else "►", onClick = vm::toggle, colors = Accents.Tir)
+                GhostButton("⇄", onClick = vm::newRoot, colors = Accents.Tir)
             }
         }
-        if (ui.room == LabRoom.INTERVAL) {
-            val picked = ui.picked
-            val semitones = ui.semitones
-            item(key = "ring") {
-                Box(Modifier.fillMaxWidth().height(RING_HEIGHT), contentAlignment = Alignment.Center) {
+        when (ui.room) {
+            LabRoom.INTERVAL -> {
+                val picked = ui.picked
+                val semitones = ui.semitones
+                item(key = "ring") {
                     DegreeRing(
                         degrees = Degree.CHROMATIC,
                         notation = ui.notation,
                         onDegree = vm::pick,
                         modifier = Modifier.fillMaxWidth().height(RING_HEIGHT),
-                        highlight = { d -> if (picked != null && d sameSoundAs picked) KeyHighlight.CORRECT else KeyHighlight.NONE },
+                        highlight = { d -> if (picked != null && (d sameSoundAs picked || d.semitones == 0)) KeyHighlight.CORRECT else KeyHighlight.NONE },
                         centre = picked,
                         energy = if (ui.sounding) 0.85f else 0.4f,
-                        // the sphere draws the ratio of the two sounds: its numerator in lobes, the restlessness in tension
                         lobes = if (picked != null && ui.sounding) Overtones.ratio(picked.semitones).first else 0,
                         tension = picked?.let { Overtones.tension(it.semitones) } ?: 0f,
-                        answer = picked?.takeIf { ui.sounding }?.let { OrbAnswer(Math.floorMod(it.semitones, 12), DegreeColors.of(it)) },
+                        answer = picked?.takeIf { ui.sounding }?.let { OrbAnswer(hourOf(it.semitones), DegreeColors.of(it)) },
+                        // the interval is a chord of the circle: from the lower sound at the top to the picked hour
+                        figure = picked?.takeIf { it.semitones != 0 }?.let { RingFigure(listOf(0, hourOf(it.semitones)), listOf(home, DegreeColors.of(it)), closed = false) },
                     )
                 }
+                item(key = "dyad") {
+                    if (picked == null || semitones == null) {
+                        Text(
+                            "Наверху — нижний звук, опора. Нажми любую ступень на круге: она зазвучит вместе с ним и будет держаться. Иди по кругу и слушай, как гладкость сменяется шершавостью.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Juicy.TextDim,
+                        )
+                    } else {
+                        val vibe = Dyads.of(semitones)
+                        val color = DegreeColors.of(picked)
+                        GlassCard(Modifier.fillMaxWidth(), accent = DegreeColors.gradient(color)) {
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Column(Modifier.weight(1f)) {
+                                    SectionLabel(if (semitones == Dyads.OCTAVE) "октава" else RuNames.interval(picked), color = Juicy.TextDim)
+                                    Text(vibe.word, style = MaterialTheme.typography.headlineSmall, color = color)
+                                }
+                                Text("${vibe.ratio.first} : ${vibe.ratio.second}", style = MaterialTheme.typography.displaySmall.copy(fontFamily = Doto), color = color)
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(vibe.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+                            Spacer(Modifier.height(12.dp))
+                            // the two sounds as two combs of harmonics: where the teeth meet it is smooth, where they miss it rubs
+                            HarmonicLadder(vibe.ratio, vibe.meetings(), vibe.rubs(), lower = home, upper = color, modifier = Modifier.fillMaxWidth().height(86.dp))
+                            Spacer(Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Legend(Color.White, "совпали — ${vibe.meetings().size}")
+                                Legend(Juicy.Bad, if (vibe.rubs().isEmpty()) "ничего не трётся" else "трутся — ${vibe.rubs().size}")
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(vibe.meeting, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+                        }
+                    }
+                }
+                if (picked != null) {
+                    item(key = "apart") {
+                        GhostButton("По очереди, потом вместе", onClick = vm::apart, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "")
+                    }
+                }
             }
-            item(key = "dyad") {
-                if (picked == null || semitones == null) {
+            LabRoom.CHORD -> {
+                val chord = ui.chord
+                // while the pull is sounding the figure is the chord it went to: the voices are seen to move
+                val shown = if (ui.pulled) chord.pull.target.orEmpty().map { Degree.canonical(it) } else chord.tones
+                item(key = "ring") {
+                    DegreeRing(
+                        degrees = CHORD_DIAL,
+                        notation = ui.notation,
+                        onDegree = vm::tapChordTone,
+                        modifier = Modifier.fillMaxWidth().height(RING_HEIGHT),
+                        highlight = { d -> if (chord.tones.any { it sameSoundAs d }) KeyHighlight.CORRECT else KeyHighlight.NONE },
+                        energy = if (ui.sounding) 0.85f else 0.4f,
+                        lobes = if (ui.sounding) chord.tones.size else 0,
+                        tension = chord.rough,
+                        figure = RingFigure(shown.map { hourOf(it.semitones) }, shown.map { DegreeColors.of(it) }, home = 0.takeIf { ui.pulled }),
+                    )
+                }
+                item(key = "hint") {
                     Text(
-                        "Нижний звук — опора. Нажми ступень на круге: она зазвучит вместе с ним и будет держаться. Иди по кругу и слушай, как гладкость сменяется шершавостью.",
-                        style = MaterialTheme.typography.bodyLarge,
+                        "Аккорд — фигура на круге. Нажми ступень, и голос встанет на неё: ${fmt(Degree(2))} ${fmt(LabThird.MINOR.degree!!)} ${fmt(Degree(3))} ${fmt(Degree(4))} — терция, " +
+                            "${fmt(LabFifth.DIMINISHED.degree)} ${fmt(Degree(5))} ${fmt(LabFifth.AUGMENTED.degree)} — квинта, ${fmt(Degree(6))} ${fmt(LabTop.MINOR7.degree!!)} ${fmt(Degree(7))} — верх. Ещё раз — убрать.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = Juicy.TextDim,
                     )
-                } else {
-                    val vibe = Dyads.of(semitones)
-                    val color = DegreeColors.of(picked)
-                    GlassCard(Modifier.fillMaxWidth(), accent = DegreeColors.gradient(color)) {
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(if (semitones == Dyads.OCTAVE) "октава" else RuNames.interval(picked), style = MaterialTheme.typography.headlineSmall, color = Juicy.Text, modifier = Modifier.weight(1f))
-                            Text("${vibe.ratio.first} : ${vibe.ratio.second}", style = MaterialTheme.typography.headlineSmall, color = color)
+                }
+                item(key = "chord") {
+                    GlassCard(Modifier.fillMaxWidth(), accent = Accents.Tir) {
+                        // the chord as a stack: its tones, and between them the steps it is built of
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                            chord.tones.forEachIndexed { i, d ->
+                                if (i > 0) Text(RuNames.intervalShort(chord.stack[i - 1]), style = MaterialTheme.typography.labelLarge, color = Juicy.TextDim)
+                                DegreeChip(fmt(d), DegreeColors.of(d), large = true)
+                            }
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = color)
-                        Text(vibe.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
-                        Spacer(Modifier.height(10.dp))
-                        RoughBar(vibe.rough)
                         Spacer(Modifier.height(8.dp))
-                        Text(vibe.meeting, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+                        Text(
+                            chord.quality?.let { ChordVibes.of(ChordDegree(Degree.ONE, it), Mode.MAJOR).quality } ?: "У такого сочетания нет имени — слушай сами звуки.",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Juicy.Text,
+                        )
+                        chord.tritone?.let { (a, b) ->
+                            Spacer(Modifier.height(4.dp))
+                            Text("Внутри тритон: ${fmt(a)} и ${fmt(b)} — на круге они друг против друга. Отсюда беспокойство.", style = MaterialTheme.typography.bodyMedium, color = Juicy.Gold)
+                        }
                     }
                 }
-            }
-            if (picked != null) {
-                item(key = "apart") {
-                    GhostButton("По очереди, потом вместе", onClick = vm::apart, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "")
-                }
-            }
-        } else if (ui.room == LabRoom.KEY) {
-            val chord = Harmony.diatonicChord(ui.mode, ui.step)
-            val vibe = ChordVibes.of(chord, ui.mode)
-            val name = { step: Int -> DegreeFormatter.chord(Harmony.diatonicChord(ui.mode, step), ui.notation) }
-            item(key = "key-pick") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ChoiceRow(listOf(Mode.MAJOR, Mode.MINOR), ui.mode, { it.ruName }, vm::setMode, colors = Accents.Tir)
-                    SectionLabel("аккорд лада — над гудящей тоникой")
-                    ChoiceRow((0..6).toList(), ui.step.takeIf { ui.sounding } ?: -1, name, vm::setStep, colors = Accents.Tir)
-                }
-            }
-            item(key = "role") {
-                GlassCard(Modifier.fillMaxWidth(), accent = DegreeColors.gradient(DegreeColors.of(chord.root))) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(name(ui.step), style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(chord.root))
-                        Spacer(Modifier.width(10.dp))
-                        Text(vibe.role, style = MaterialTheme.typography.headlineSmall, color = Juicy.Text)
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Text(vibe.line, style = MaterialTheme.typography.bodyLarge, color = Juicy.Text)
-                    Spacer(Modifier.height(8.dp))
-                    Text(vibe.quality, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
-                    val twins = LabSound.sameBody(ui.mode, ui.step)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        if (twins.isEmpty()) "Такое тело в этом ладу одно." else "То же тело стоит на ${twins.joinToString(" и ") { name(it) }} — переключи и сравни: звук тот же, роль другая.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Juicy.Gold,
-                    )
-                }
-            }
-            if (ui.step != 0) {
-                item(key = "home") {
-                    GhostButton("Домой — в ${name(0)}", onClick = { vm.setStep(0) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "→")
-                }
-            }
-        } else {
-            val chord = ui.chord
-            item(key = "chord") {
-                GlassCard(Modifier.fillMaxWidth(), accent = Accents.Tir) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        chord.tones.forEach { d -> DegreeChip(fmt(d), DegreeColors.of(d), large = true) }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        chord.quality?.let { ChordVibes.of(ChordDegree(Degree.ONE, it), Mode.MAJOR).quality } ?: "У такого сочетания нет имени — слушай сами звуки.",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Juicy.Text,
-                    )
-                    chord.tritone?.let { (a, b) ->
+                item(key = "pull") {
+                    val pull = chord.pull
+                    GlassCard(Modifier.fillMaxWidth(), accent = if (pull.target != null) Accents.Taper else null) {
+                        SectionLabel("куда тянет", color = Juicy.TextDim)
                         Spacer(Modifier.height(4.dp))
-                        Text("Внутри тритон: ${fmt(a)} и ${fmt(b)} — отсюда беспокойство.", style = MaterialTheme.typography.bodyMedium, color = Juicy.Gold)
+                        Text(pull.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+                        if (pull.target != null) {
+                            Spacer(Modifier.height(10.dp))
+                            GhostButton(if (ui.pulled) "…и обратно" else "Послушать, куда тянет", onClick = vm::pull, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "→")
+                        }
                     }
                 }
             }
-            item(key = "switches") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionLabel("терция — цвет")
-                    ChoiceRow(LabThird.entries, chord.third, { it.degree?.let(fmt) ?: "нет" }, vm::setThird, colors = Accents.Tir)
-                    SectionLabel("квинта — каркас")
-                    ChoiceRow(LabFifth.entries, chord.fifth, { fmt(it.degree) }, vm::setFifth, colors = Accents.Tir)
-                    SectionLabel("верх — напряжение")
-                    ChoiceRow(LabTop.entries, chord.top, { it.degree?.let(fmt) ?: "нет" }, vm::setTop, colors = Accents.Tir)
+            LabRoom.KEY -> {
+                val chord = Harmony.diatonicChord(ui.mode, ui.step)
+                val vibe = ChordVibes.of(chord, ui.mode)
+                val name = { step: Int -> DegreeFormatter.chord(Harmony.diatonicChord(ui.mode, step), ui.notation) }
+                val tones = chord.quality.intervals.take(3).map { ui.mode.diatonicSpelling(chord.root.semitones + it) ?: Degree.canonical(chord.root.semitones + it) }
+                item(key = "mode") { ChoiceRow(listOf(Mode.MAJOR, Mode.MINOR), ui.mode, { it.ruName }, vm::setMode, colors = Accents.Tir) }
+                item(key = "ring") {
+                    DegreeRing(
+                        degrees = ui.mode.degrees,
+                        notation = ui.notation,
+                        onDegree = { d -> vm.setStep(ui.mode.indexOf(d).coerceAtLeast(0)) },
+                        modifier = Modifier.fillMaxWidth().height(RING_HEIGHT),
+                        highlight = { d -> if (ui.sounding && tones.any { it sameSoundAs d }) KeyHighlight.CORRECT else KeyHighlight.NONE },
+                        centre = chord.root.takeIf { ui.sounding },
+                        energy = if (ui.sounding) 0.85f else 0.4f,
+                        answer = chord.root.takeIf { ui.sounding }?.let { OrbAnswer(hourOf(it.semitones), DegreeColors.of(it)) },
+                        // the same triangle, turned to another degree; the ring at the top is home, which goes on humming
+                        figure = if (ui.sounding) RingFigure(tones.map { hourOf(it.semitones) }, tones.map { DegreeColors.of(it) }, home = 0) else null,
+                    )
                 }
-            }
-            item(key = "pull") {
-                val pull = chord.pull
-                GlassCard(Modifier.fillMaxWidth(), accent = if (pull.target != null) Accents.Taper else null) {
-                    SectionLabel("куда тянет", color = Juicy.TextDim)
-                    Spacer(Modifier.height(4.dp))
-                    Text(pull.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
-                    if (pull.target != null) {
-                        Spacer(Modifier.height(10.dp))
-                        GhostButton(if (ui.pulled) "…и обратно" else "Послушать, куда тянет", onClick = vm::pull, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "→")
+                item(key = "role") {
+                    if (!ui.sounding) {
+                        Text(
+                            "Гудит тоника — дом. Нажми ступень на круге: на ней встанет аккорд лада. Фигура та же, только повёрнута — а против дома звучит иначе.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Juicy.TextDim,
+                        )
+                    } else {
+                        GlassCard(Modifier.fillMaxWidth(), accent = DegreeColors.gradient(DegreeColors.of(chord.root))) {
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(name(ui.step), style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(chord.root))
+                                Spacer(Modifier.width(10.dp))
+                                Text(vibe.role, style = MaterialTheme.typography.headlineSmall, color = Juicy.Text)
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(vibe.line, style = MaterialTheme.typography.bodyLarge, color = Juicy.Text)
+                            Spacer(Modifier.height(8.dp))
+                            Text(vibe.quality, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                            val twins = LabSound.sameBody(ui.mode, ui.step)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                if (twins.isEmpty()) "Такая фигура в этом ладу одна." else "Та же фигура стоит на ${twins.joinToString(" и ") { name(it) }} — нажми и смотри, как она поворачивается: звук тот же, роль другая.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Juicy.Gold,
+                            )
+                        }
+                    }
+                }
+                if (ui.sounding && ui.step != 0) {
+                    item(key = "home") {
+                        GhostButton("Домой — в ${name(0)}", onClick = { vm.setStep(0) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "→")
                     }
                 }
             }
@@ -385,16 +461,12 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
     }
 }
 
-/** How restless the interval is: a bar from «гладко» to «шершаво». */
+/** A dot of the ladder's colour and what it stands for. */
 @Composable
-private fun RoughBar(rough: Float) {
+private fun Legend(color: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("гладко", style = MaterialTheme.typography.labelLarge, color = Juicy.TextFaint)
-        Spacer(Modifier.width(8.dp))
-        Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Juicy.Ink4)) {
-            Box(Modifier.fillMaxHeight().fillMaxWidth(rough.coerceIn(0.02f, 1f)).clip(RoundedCornerShape(3.dp)).background(Juicy.Gold))
-        }
-        Spacer(Modifier.width(8.dp))
-        Text("шершаво", style = MaterialTheme.typography.labelLarge, color = Juicy.TextFaint)
+        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.labelLarge, color = Juicy.TextDim)
     }
 }

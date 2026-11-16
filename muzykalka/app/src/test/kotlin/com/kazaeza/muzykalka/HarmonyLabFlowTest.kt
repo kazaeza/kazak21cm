@@ -48,7 +48,7 @@ class HarmonyLabFlowTest {
     private fun held(): List<Int> = audio.drones.last().orEmpty().let { notes -> notes.map { it.value - notes.minOf { n -> n.value } } }
 
     private fun scrollTo(text: String) {
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText(text, substring = true))
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText(text, substring = true, ignoreCase = true))
         rule.waitForIdle()
     }
 
@@ -76,9 +76,9 @@ class HarmonyLabFlowTest {
         rule.waitUntil(5_000) { held() == listOf(0, 12) }
         scrollTo("октава")
         rule.onNodeWithText("2 : 1").assertExists()
-        scrollTo("Стоп")
-        rule.onNodeWithText("Стоп").performClick()
-        rule.waitUntil(5_000) { rule.onAllNodesWithText("Играть").fetchSemanticsNodes().isNotEmpty() }
+        scrollTo("■")
+        rule.onNodeWithText("■").performClick()
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("►").fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test
@@ -123,12 +123,12 @@ class HarmonyLabFlowTest {
         rule.onNodeWithText("В ладу").performClick()
         rule.waitForIdle()
         assertTrue("silent until a chord is picked", audio.drones.filterNotNull().isEmpty())
-        choose("V") // chords are written in Roman numerals by default
+        choose("5") // O-52: the chord is picked on the dial, by the degree it stands on
         rule.waitUntil(5_000) { audio.drones.lastOrNull() != null }
         assertEquals("the tonic low, the V triad above it", listOf(0, 19, 23, 26), held())
         scrollTo("доминанта")
-        scrollTo("То же тело стоит на")
-        choose("IV")
+        scrollTo("Та же фигура стоит на")
+        choose("4")
         rule.waitUntil(5_000) { held() == listOf(0, 17, 21, 24) }
         scrollTo("Домой")
         rule.onAllNodes(hasClickAction() and hasText("Домой", substring = true)).onFirst().performClick()

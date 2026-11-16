@@ -2,6 +2,7 @@ package com.kazaeza.muzykalka.ui.component
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -67,6 +68,19 @@ private const val TICKS = 120
 private const val ARC = 3
 
 /**
+ * O-52: a figure inscribed in the dial — the sounds that are held, joined by lines. An interval is a chord of the
+ * circle, a triad a triangle, a diminished seventh a square: the shape IS the body of the sound, and turning it round
+ * the dial is moving the same chord to another degree. [hours] are the corners in the order they are joined (a
+ * fractional hour is fine), [colors] one per corner; [closed] joins the last corner to the first; [home] rings an hour
+ * that is the tonic when the figure does not start there.
+ */
+data class RingFigure(val hours: List<Int>, val colors: List<Color>, val closed: Boolean = true, val home: Int? = null) {
+    init {
+        require(hours.size == colors.size) { "one colour per corner" }
+    }
+}
+
+/**
  * O-23, redrawn in O-26 after the references: Tir's answer pad as an instrument dial.
  *
  * In the centre the tonic is a sphere of light ([OrbSphere], O-38; the drop of O-37 is one of its bodies), the way the drone sits under every note. Around
@@ -96,7 +110,22 @@ fun DegreeRing(
     tension: Float = 0f,
     answer: OrbAnswer? = null,
     onPress: (hour: Int) -> Unit = {},
+    figure: RingFigure? = null,
 ) {
+    // O-52: the corners of the figure glide to their new hours along the shorter way round the dial, so a voice that
+    // moves is seen to move and a chord taken to another degree is seen to turn
+    val target = figure?.hours?.map { it.toFloat() } ?: emptyList()
+    var corners by remember { mutableStateOf(target) }
+    LaunchedEffect(target) {
+        val start = if (corners.size == target.size) corners else target
+        if (start == target) {
+            corners = target
+        } else {
+            animate(0f, 1f, animationSpec = tween(Motion.MEDIUM)) { t, _ ->
+                corners = start.indices.map { i -> start[i] + shorterWay(target[i] - start[i]) * t }
+            }
+        }
+    }
     // O-35: the sphere leans towards the key under the finger; after the answer it leans to the right one
     var pressedHour by remember { mutableStateOf<Int?>(null) }
     val leanHour = pressedHour ?: centre?.let { Math.floorMod(it.semitones, 12) }
@@ -147,6 +176,26 @@ fun DegreeRing(
             if (rOrb > 0.dp) {
                 drawCircle(Color.White.copy(alpha = 0.07f), radius = (rOrb + 17.dp).toPx(), center = center, style = Stroke(1.dp.toPx()))
             }
+            if (figure != null && corners.size == figure.hours.size && corners.isNotEmpty() && rOrb > 0.dp) {
+                val rv = (rOrb + 17.dp).toPx()
+                val at = { hour: Float -> polar(center, rv, Math.toRadians(hour * 30.0 - 90.0)) }
+                val points = corners.map(at)
+                val last = points.size - 1
+                val edges = (0 until last).map { it to it + 1 } + if (figure.closed && points.size > 2) listOf(last to 0) else emptyList()
+                edges.forEach { (a, b) ->
+                    if ((points[a] - points[b]).getDistance() > 1f) {
+                        val brush = Brush.linearGradient(listOf(figure.colors[a], figure.colors[b]), points[a], points[b])
+                        drawLine(brush, points[a], points[b], 8.dp.toPx(), StrokeCap.Round, alpha = 0.16f)
+                        drawLine(brush, points[a], points[b], 1.8.dp.toPx(), StrokeCap.Round, alpha = 0.95f)
+                    }
+                }
+                points.forEachIndexed { i, p ->
+                    drawCircle(figure.colors[i].copy(alpha = 0.25f), 9.dp.toPx(), p)
+                    drawCircle(figure.colors[i], 4.dp.toPx(), p)
+                    drawCircle(Color.White.copy(alpha = 0.9f), 1.5.dp.toPx(), p)
+                }
+                figure.home?.let { h -> drawCircle(Color.White.copy(alpha = 0.75f), 8.dp.toPx(), at(h.toFloat()), style = Stroke(1.2.dp.toPx())) }
+            }
         }
         val seen = HashMap<Int, Int>()
         degrees.forEach { d ->
@@ -165,7 +214,8 @@ fun DegreeRing(
                 at = at,
                 rOut = rOut,
                 handFrom = rOrb + 4.dp,
-                handTo = r - 24.dp,
+                // with a figure on the dial the corners say where the sounds are: no hands from the sphere
+                handTo = if (figure != null) rOrb + 4.dp else r - 24.dp,
                 arc = slot == 0,
                 onPressed = { down ->
                     if (down) {
@@ -304,6 +354,12 @@ private fun ringLabel(text: String): AnnotatedString = buildAnnotatedString {
         }
         withStyle(style) { append(ch) }
     }
+}
+
+/** The signed way from one hour to another that is the shorter one round a dial of twelve. */
+private fun shorterWay(delta: Float): Float {
+    val turn = ((delta % 12f) + 12f) % 12f
+    return if (turn > 6f) turn - 12f else turn
 }
 
 /** The smallest square a [DegreeRing] needs so that keys a semitone apart do not overlap. */

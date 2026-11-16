@@ -61,6 +61,10 @@ object RuNames {
         return if (accusative) acc else nom
     }
 
+    /** O-52: an interval of [semitones] in the short form musicians write between the tones of a chord: «б3», «ч5». */
+    fun intervalShort(semitones: Int): String =
+        listOf("ч1", "м2", "б2", "м3", "б3", "ч4", "тритон", "ч5", "м6", "б6", "м7", "б7")[Math.floorMod(semitones, 12)]
+
     /** O-50: [quality] as it fits on a key of the pad: the long names cut short. */
     fun qualityShort(quality: ChordQuality): String = when (quality) {
         ChordQuality.MAJOR7 -> "большой маж."

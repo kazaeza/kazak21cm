@@ -129,4 +129,43 @@ class HarmonyLabTest {
         assertEquals(listOf(1, 2), LabSound.sameBody(Mode.MAJOR, 5), "the minor one on ii, iii and vi")
         assertTrue(LabSound.sameBody(Mode.MAJOR, 6).isEmpty(), "the diminished one stands alone")
     }
+
+    /** O-52: the picture of an interval — which harmonics meet and which rub. */
+    @Test
+    fun `the harmonics that meet and the ones that rub explain how an interval sounds`() {
+        assertEquals(listOf(3 to 2, 6 to 4, 9 to 6, 12 to 8, 15 to 10), Dyads.of(7).meetings(), "a fifth: every third harmonic of the lower sound")
+        assertTrue(Dyads.of(7).rubs().isEmpty(), "and nothing rubs: that is why it is smooth")
+        assertEquals(16, Dyads.of(0).meetings().size, "one sound: everything meets")
+        assertEquals((1..8).map { 2 * it to it }, Dyads.of(12).meetings(), "the octave: every harmonic of the upper sound is in the lower")
+        val third = Dyads.of(4)
+        assertEquals(listOf(5 to 4, 10 to 8, 15 to 12), third.meetings())
+        assertTrue((4 to 3) in third.rubs(), "a major third: the 4th of the lower rubs against the 3rd of the upper")
+        val second = Dyads.of(1)
+        assertEquals(listOf(16 to 15), second.meetings(), "a minor second meets once, at the very edge")
+        assertEquals((1..6).map { it to it }, second.rubs(), "and every loud harmonic rubs against its twin")
+        // rougher intervals rub more: the order the ear agrees with
+        val rubs = { st: Int -> Dyads.of(st).rubs().size }
+        assertTrue(rubs(7) < rubs(4) && rubs(4) < rubs(1), "fifth ${rubs(7)}, third ${rubs(4)}, second ${rubs(1)}")
+        assertTrue(rubs(5) <= rubs(6), "the fourth is calmer than the tritone")
+        for (st in 0..12) Dyads.of(st).let { v ->
+            assertTrue(v.meetings().all { (n, k) -> n * v.ratio.second == k * v.ratio.first }, "a meeting is the same pitch")
+            assertTrue(v.rubs().none { it in v.meetings() })
+        }
+    }
+
+    @Test
+    fun `a chord is a stack of steps, and its restlessness is that of its pairs`() {
+        assertEquals(listOf(4, 3), LabChord().stack, "major: the big third below")
+        assertEquals(listOf(3, 4), LabChord(LabThird.MINOR).stack, "minor: the same two thirds the other way round")
+        assertEquals(listOf(4, 3, 3), LabChord(top = LabTop.MINOR7).stack)
+        assertEquals(listOf(7), LabChord(LabThird.NONE).stack)
+        assertEquals(listOf("б3", "м3"), LabChord().stack.map(RuNames::intervalShort))
+        assertEquals("тритон", RuNames.intervalShort(6))
+        val calm = LabChord(LabThird.NONE).rough
+        val major = LabChord().rough
+        val dominant = LabChord(top = LabTop.MINOR7).rough
+        val diminished = LabChord(LabThird.MINOR, LabFifth.DIMINISHED).rough
+        assertTrue(calm < major && major < dominant, "fifth $calm, major $major, dominant $dominant")
+        assertTrue(diminished > major, "a diminished triad is more restless than a major one")
+    }
 }

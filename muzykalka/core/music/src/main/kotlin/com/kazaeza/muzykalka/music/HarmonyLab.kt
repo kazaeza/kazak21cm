@@ -18,8 +18,46 @@ data class DyadVibe(val semitones: Int, val ratio: Pair<Int, Int>, val word: Str
             else -> "Встречаются поздно: только ${ratio.first}-я гармоника нижнего совпадает с ${ratio.second}-й верхнего, а до того они трутся."
         }
 
-    private companion object {
-        const val EARLY = 6
+    /**
+     * O-52: the harmonics of the two sounds that are one and the same — pairs (n-th of the lower, k-th of the upper) up
+     * to the [limit]-th harmonic of the lower sound. A fifth: (3, 2), (6, 4), (9, 6)…
+     */
+    fun meetings(limit: Int = HARMONICS): List<Pair<Int, Int>> {
+        val (p, q) = ratio
+        return (1..limit).mapNotNull { n -> if (n * q % p == 0) n to n * q / p else null }
+    }
+
+    /**
+     * O-52: the harmonics that almost meet and so rub — pairs (n, k) closer than [RUB] of their pitch but not the
+     * same, among the first [limit] harmonics of the lower sound (the loud ones: higher up everything is close to
+     * something, and too quiet to matter). A fifth has none, a major third one, a minor second nothing else.
+     */
+    fun rubs(limit: Int = RUB_HARMONICS): List<Pair<Int, Int>> {
+        val (p, q) = ratio
+        val out = ArrayList<Pair<Int, Int>>()
+        for (n in 1..limit) {
+            var k = 1
+            while (k * p <= (limit + 1) * q) {
+                // the k-th harmonic of the upper sound stands at k·p/q of the lower fundamental
+                val gap = kotlin.math.abs(k * p - n * q).toDouble() / (n * q)
+                if (gap > 0.0 && gap < RUB) out += n to k
+                k++
+            }
+        }
+        return out
+    }
+
+    companion object {
+        private const val EARLY = 6
+
+        /** How many harmonics of the lower sound the picture shows. */
+        const val HARMONICS = 16
+
+        /** The harmonics loud enough for their rubbing to be heard. */
+        const val RUB_HARMONICS = 6
+
+        /** Two harmonics closer than this share of their pitch beat against each other (a just semitone is 1/15). */
+        const val RUB = 0.07
     }
 }
 
@@ -81,6 +119,16 @@ data class LabChord(val third: LabThird = LabThird.MAJOR, val fifth: LabFifth = 
 
     /** The chord's name when it has one (a sus2 with a ♯5 has none: the tones speak for themselves). */
     val quality: ChordQuality? get() = ChordQuality.fromPitchClassSet(intervals.toSet())
+
+    /**
+     * O-52: the steps between neighbouring tones, in semitones — the chord as a stack: 4 and 3 for a major triad,
+     * 3 and 4 for a minor one. What the ear takes for «major» is the order of the two thirds.
+     */
+    val stack: List<Int> get() = intervals.zipWithNext { a, b -> b - a }
+
+    /** How restless the whole chord is: the mean roughness of every pair of its tones, 0..1. */
+    val rough: Float
+        get() = intervals.flatMapIndexed { i, a -> intervals.drop(i + 1).map { b -> Overtones.tension(b - a) } }.let { if (it.isEmpty()) 0f else it.average().toFloat() }
 
     /** The tritone inside, if any: the pair of tones six semitones apart — the restless core of a chord. */
     val tritone: Pair<Degree, Degree>?
