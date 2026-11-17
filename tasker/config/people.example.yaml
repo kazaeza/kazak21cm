@@ -15,7 +15,8 @@ people:
     side: client
     role: SMM-специалист клиента
     sets_tasks: true          # ставит задачи
-    approval_scope: unknown   # all | design | none | unknown
+    approval_scope: all       # all | design | none | unknown
+    final_say: usually        # закрывает большинство финальных вопросов, но не единственная
     vk_id: null
     telegram_id: null
     notes: основной контакт по задачам
@@ -25,10 +26,11 @@ people:
     side: client
     role: дизайнер клиента
     sets_tasks: unknown
-    approval_scope: design
-    # Фактически участвует в решениях и вне дизайна. Правило для агента:
-    # согласование вне своей области записываем как «согласовал(а) <имя>»
-    # с пометкой «вне роли». Само по себе оно не переводит задачу в «Готово».
+    approval_scope: all
+    can_reopen_after_approval: true
+    # Участвует в решениях и вне дизайна. Может вернуть задачу уже после «ок»
+    # от SMM-специалиста: тогда задача снова уходит в revisions, правим и
+    # показываем ей (см. approvals в settings.yaml).
     vk_id: null
     telegram_id: null
 

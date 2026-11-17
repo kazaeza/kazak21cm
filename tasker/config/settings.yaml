@@ -1,7 +1,7 @@
 # Настройки таскера. Значения со словом TODO ещё не согласованы с пользователем.
 
 schedule:
-  timezone: TODO            # часовой пояс пользователя, не назван
+  timezone: Europe/Moscow   # компьютер пользователя работает по московскому времени (Россия)
   workdays: [mon, tue, wed, thu, fri]
   work_hours: ["09:00", "19:00"]
   holidays_file: config/holidays.yaml   # праздники и переносы, править вручную; файла пока нет
@@ -21,12 +21,27 @@ confidence:
   mark_check_min: 0.70      # применяем, но с пометкой «проверьте»
   # ниже 0.70 сообщение уходит в «Разбор»
 
+# Согласование. Единого «последнего слова» у клиента нет: решения принимают все.
+approvals:
+  single_final_authority: false
+  decision_makers: all_client_side
+  usual_closer: client_smm            # закрывает большинство финальных вопросов
+  # После «ок» от usual_closer другой участник клиента может вернуть задачу
+  # («поправьте вот это»). Тогда задача снова уходит в revisions, правим и
+  # показываем тому, кто вернул. Подтверждено на примере дизайнера клиента.
+  reopen_after_approval: true
+  reopen_flow: fix_then_show_reopener
+
+# Уведомления пока не отправляются никому (решение пользователя).
+# Условия ниже остаются как заготовка: таскер может помечать их на экране,
+# но в Telegram ничего не уходит.
 alerts:
+  enabled: false
   client_waiting_over_working_minutes: 60   # клиент написал, ответа нет
   deadline_today: true
   requirement_changed: true
   vk_session_lost: true
-  recipients: TODO          # предположение: ведущий проекта и аккаунт-менеджер; руководитель агентства только недельная сводка
+  recipients: []            # когда включим: решить заново, кому слать
   channel: telegram_dm      # тот же бот, личные сообщения
 
 model:
