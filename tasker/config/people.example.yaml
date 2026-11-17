@@ -1,0 +1,81 @@
+# Формат списка участников. Настоящий список лежит в config/people.local.yaml
+# (в .gitignore, в публичный репозиторий не попадает).
+#
+# Список идёт в промпт модели и на экраны таскера. Поэтому в нём только роли
+# и полномочия, без оценок людей и без личных характеристик.
+
+version: 1
+sides:
+  client: клиент
+  agency: наше агентство
+
+people:
+  - id: client_smm
+    name: Имя
+    side: client
+    role: SMM-специалист клиента
+    sets_tasks: true          # ставит задачи
+    approval_scope: unknown   # all | design | none | unknown
+    vk_id: null
+    telegram_id: null
+    notes: основной контакт по задачам
+
+  - id: client_designer
+    name: Имя
+    side: client
+    role: дизайнер клиента
+    sets_tasks: unknown
+    approval_scope: design
+    # Фактически участвует в решениях и вне дизайна. Правило для агента:
+    # согласование вне своей области записываем как «согласовал(а) <имя>»
+    # с пометкой «вне роли». Само по себе оно не переводит задачу в «Готово».
+    vk_id: null
+    telegram_id: null
+
+  - id: client_head
+    name: Имя
+    side: client
+    role: руководитель клиента
+    sets_tasks: false
+    approval_scope: all
+    priority_alert: true      # её сообщения выделяем и сразу присылаем
+    on_calls: often           # часто на созвонах, а созвонов агент не видит
+    vk_id: null
+    telegram_id: null
+
+  - id: agency_lead
+    name: Имя
+    side: agency
+    role: ведёт проект с нашей стороны
+    default_task_owner: true  # владелец задач по умолчанию
+    vk_id: null
+    telegram_id: null
+
+  - id: agency_am
+    name: Имя
+    side: agency
+    role: аккаунт-менеджер (новый в проекте)
+    vk_id: null
+    telegram_id: null
+
+  - id: agency_head
+    name: Имя
+    side: agency
+    role: руководитель агентства
+    in_daily_work: false      # в работу не вмешивается, ему только недельная сводка
+    vk_id: null
+    telegram_id: null
+
+  - id: agency_staff
+    name: Имя
+    side: agency
+    role: сотрудник агентства
+    vk_id: null
+    telegram_id: null
+
+  - id: agency_owner_of_tasker
+    name: Имя
+    side: agency
+    role: владелец проекта таскера (пользователь)
+    vk_id: null
+    telegram_id: null

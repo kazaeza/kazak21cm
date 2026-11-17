@@ -1,0 +1,21 @@
+# Данные чатов и всё, что получено из ВК и Telegram
+data/
+private/
+*.har
+*.sqlite
+*.sqlite3
+*.db
+
+# Сессии и секреты
+.browser-profile/
+.env
+.env.*
+*.session
+config/people.local.yaml
+
+# Окружение
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.pyc

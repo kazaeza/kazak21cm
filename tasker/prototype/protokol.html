@@ -1,0 +1,1077 @@
+<title>Протокол чата</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: sticky top bar with tabs; content column up to 1280px; a task opens in a right-side drawer as a chat-like timeline */
+:root{
+  --bg:#F3F4F7; --surface:#FFFFFF; --surface-2:#F8F9FB; --ink:#171A22; --muted:#5F6676; --line:#E1E4EA;
+  --client:#B8314A; --client-soft:#FBEAED; --client-line:#F0C6CE;
+  --agency:#245FA3; --agency-soft:#E8F0FA; --agency-line:#C5D7EE;
+  --ai:#715400; --ai-soft:#FFF6D8; --ai-line:#E6CF7E;
+  --warn:#A34A06; --warn-soft:#FDF0DD;
+  --danger:#B42318; --danger-soft:#FDE8E5;
+  --ok:#17773A; --ok-soft:#E3F4E8;
+  --focus:#245FA3;
+  --scrim:rgba(12,14,22,.38);
+  --shadow:0 1px 2px rgba(20,24,40,.06),0 8px 28px rgba(20,24,40,.10);
+  --f-ui:'Onest',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-display:'Unbounded','Onest',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1116; --surface:#171A21; --surface-2:#1C2028; --ink:#E7E9EF; --muted:#9AA1B0; --line:#2A2F3A;
+    --client:#F2879A; --client-soft:#2F1820; --client-line:#55283A;
+    --agency:#7DB0EE; --agency-soft:#142337; --agency-line:#25426A;
+    --ai:#E8C766; --ai-soft:#272210; --ai-line:#53461F;
+    --warn:#F0A04B; --warn-soft:#30220F;
+    --danger:#F97A70; --danger-soft:#371714;
+    --ok:#5BCF86; --ok-soft:#12301D;
+    --focus:#7DB0EE;
+    --scrim:rgba(0,0,0,.55);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1116; --surface:#171A21; --surface-2:#1C2028; --ink:#E7E9EF; --muted:#9AA1B0; --line:#2A2F3A;
+  --client:#F2879A; --client-soft:#2F1820; --client-line:#55283A;
+  --agency:#7DB0EE; --agency-soft:#142337; --agency-line:#25426A;
+  --ai:#E8C766; --ai-soft:#272210; --ai-line:#53461F;
+  --warn:#F0A04B; --warn-soft:#30220F;
+  --danger:#F97A70; --danger-soft:#371714;
+  --ok:#5BCF86; --ok-soft:#12301D;
+  --focus:#7DB0EE;
+  --scrim:rgba(0,0,0,.55);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--f-ui);-webkit-font-smoothing:antialiased}
+body.noscroll{overflow:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+h1,h2,h3{text-wrap:balance}
+.wrap{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 24px;padding-block:14px 4px}
+.brand{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;min-width:0}
+.logo{font:600 19px/1.1 var(--f-display);letter-spacing:-.01em;margin:0}
+.proj{color:var(--muted);font-size:13.5px}
+.sync{display:flex;flex-wrap:wrap;align-items:center;gap:4px 18px;font-size:13px;color:var(--muted)}
+.srcst{display:inline-flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft);flex:none}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;padding:10px 12px 9px;font-weight:500;font-size:14px;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tab:hover{color:var(--ink)}
+.tab[aria-current="page"]{color:var(--ink);border-bottom-color:var(--ink)}
+.cnt{font:500 11.5px/1 var(--f-mono);padding:3px 6px;border-radius:999px;background:var(--ai-soft);color:var(--ai);border:1px solid var(--ai-line)}
+
+main.wrap{padding-block:18px 64px;display:block}
+.demo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:16px}
+.demo b{font:500 11px/1 var(--f-mono);text-transform:uppercase;letter-spacing:.08em;padding:4px 7px;border-radius:5px;border:1px dashed var(--line);color:var(--muted)}
+.view{display:flex;flex-direction:column;gap:18px}
+.sec-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.sec-h h2{font:600 17px/1.3 var(--f-ui);margin:0}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+/* attention bar */
+.attn{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:820px){.attn{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.attn-i{appearance:none;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-width:0}
+.attn-i:hover{border-color:var(--muted)}
+.attn-i[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.attn-n{font:600 24px/1 var(--f-ui);font-variant-numeric:tabular-nums}
+.attn-l{font-weight:600;font-size:14px}
+.attn-s{font-size:12.5px;color:var(--muted)}
+.t-danger .attn-n{color:var(--danger)}
+.t-client .attn-n{color:var(--client)}
+.t-agency .attn-n{color:var(--agency)}
+.t-ai .attn-n{color:var(--ai)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;color:var(--muted)}
+.chip:hover{color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+
+/* board */
+.board-scroll{overflow-x:auto;padding-bottom:4px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(228px,1fr));gap:12px;align-items:start}
+@media (max-width:760px){.board{grid-template-columns:minmax(0,1fr)}}
+.col{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.col-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:2px 4px 0}
+.col-h b{font-size:14px}
+.col-h span{font:500 12px var(--f-mono);color:var(--muted)}
+.col-s{font-size:12px;color:var(--muted);padding:0 4px 2px;margin:0}
+.col-empty{font-size:13px;color:var(--muted);padding:14px 4px;text-align:center;border:1px dashed var(--line);border-radius:8px}
+.card{appearance:none;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card:hover{border-color:var(--muted)}
+.card-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font:500 12px var(--f-mono);color:var(--muted)}
+.card-title{font-weight:600;font-size:15px;line-height:1.3}
+.snip{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.snip b{font-weight:600}
+.c-client{color:var(--client)}
+.c-agency{color:var(--agency)}
+.badges{display:flex;flex-wrap:wrap;gap:5px}
+.b{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;line-height:1.3;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.b--danger{background:var(--danger-soft);color:var(--danger);border-color:transparent}
+.b--warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.b--client{background:var(--client-soft);color:var(--client);border-color:transparent}
+.b--agency{background:var(--agency-soft);color:var(--agency);border-color:transparent}
+.b--ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.b--ai{background:var(--ai-soft);color:var(--ai);border-color:transparent}
+.sdot{width:7px;height:7px;border-radius:50%;flex:none;display:inline-block}
+.sdot--client{background:var(--client)}
+.sdot--agency{background:var(--agency)}
+.sdot--ai{background:var(--ai)}
+
+/* agent log */
+.log{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.log-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;font-size:14px}
+.log ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.log li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;font-size:13.5px}
+.log time{font:500 12.5px/1.6 var(--f-mono);color:var(--muted)}
+
+/* messages */
+.ev{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.ev--agency{align-items:flex-end}
+.ev-tag{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.ev-tag i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.ev-tag time{font:500 11.5px var(--f-mono);text-transform:none;letter-spacing:0;font-weight:400}
+.k-ink{background:var(--ink)} .k-ok{background:var(--ok)} .k-warn{background:var(--warn)} .k-danger{background:var(--danger)} .k-agency{background:var(--agency)} .k-muted{background:var(--muted)} .k-client{background:var(--client)} .k-ai{background:var(--ai)}
+.msg{max-width:min(88%,560px);min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:9px 12px 10px;display:flex;flex-direction:column;gap:5px}
+.msg--client{background:var(--client-soft);border-color:var(--client-line);border-top-left-radius:4px}
+.msg--agency{background:var(--agency-soft);border-color:var(--agency-line);border-top-right-radius:4px}
+.msg-head{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:12.5px}
+.msg-head b{font-weight:600}
+.msg--client .msg-head b{color:var(--client)}
+.msg--agency .msg-head b{color:var(--agency)}
+.role{color:var(--muted)}
+.meta{font:400 11.5px var(--f-mono);color:var(--muted)}
+.msg-text{font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg--deleted .msg-text{text-decoration:line-through;text-decoration-color:var(--danger)}
+.off{font-size:11px;line-height:1.4;padding:1px 7px;border-radius:999px;border:1px dashed var(--line);color:var(--muted);white-space:nowrap}
+.srcchip{font:500 11px/1.4 var(--f-ui);padding:1px 7px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.msg--internal{border-style:dashed}
+.reply{font-size:12.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:8px;overflow-wrap:anywhere}
+.att{display:flex;flex-wrap:wrap;gap:6px}
+.att span{font-size:12px;padding:3px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.voice{font:500 11.5px var(--f-mono);color:var(--muted);display:block;margin-bottom:2px}
+.mnote{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.mnote--danger{color:var(--danger)}
+.ai{max-width:min(88%,560px);background:var(--ai-soft);border:1px dashed var(--ai-line);border-radius:10px;padding:7px 10px;font-size:13.5px;line-height:1.45}
+.ai-k{font-weight:600;color:var(--ai);margin-right:4px}
+.conf{font:500 11.5px var(--f-mono);color:var(--ai);margin-left:4px;white-space:nowrap}
+.flag{max-width:min(88%,560px);font-size:13px;line-height:1.4;padding:7px 10px;border-radius:8px;background:var(--warn-soft);color:var(--warn)}
+.flag--danger{background:var(--danger-soft);color:var(--danger)}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(660px,100%);background:var(--bg);z-index:41;border-left:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px);animation:slide .18s ease-out}
+@media (max-width:660px){.drawer{padding-left:env(safe-area-inset-left,0px);border-left:0}}
+@keyframes slide{from{transform:translateX(24px);opacity:.6}to{transform:none;opacity:1}}
+.d-head{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--surface)}
+.d-head .id{font:500 13px var(--f-mono);color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.x{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13.5px}
+.x:hover{border-color:var(--muted)}
+.d-body{flex:1;min-height:0;overflow-y:auto;padding:18px 20px 48px;display:flex;flex-direction:column;gap:22px}
+@media (max-width:660px){.d-head{padding:10px 16px}.d-body{padding:16px 16px 40px}}
+.d-title{font:600 21px/1.25 var(--f-display);margin:0;letter-spacing:-.01em}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 14px;margin:0;font-size:14px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.src{font:400 12px var(--f-mono);color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13.5px;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn--primary{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn--primary:hover{opacity:.9}
+.d-sec{display:flex;flex-direction:column;gap:10px}
+.d-sec h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0}
+.summary{background:var(--ai-soft);border:1px dashed var(--ai-line);border-radius:10px;padding:10px 12px;font-size:14.5px;margin:0}
+.flags{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.flags .flag{max-width:none}
+.reqs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.reqs li{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr);gap:4px 14px;padding:10px 12px;border-top:1px solid var(--line)}
+.reqs li:first-child{border-top:0}
+@media (max-width:520px){.reqs li{grid-template-columns:minmax(0,1fr)}}
+.reqs .rk{font-size:13px;color:var(--muted)}
+.chain{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-size:14px}
+.chain .old{color:var(--muted);text-decoration:line-through}
+.chain .cur{font-weight:600}
+.chain .arr{color:var(--muted)}
+.opens{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.opens li{display:flex;gap:10px;align-items:flex-start;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+.opens .b{flex:none}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:18px}
+.copybox{width:100%;min-height:180px;font:12.5px/1.5 var(--f-mono);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+
+/* feed */
+.feed-wrap{max-width:860px;display:flex;flex-direction:column;gap:12px}
+.feed{display:flex;flex-direction:column;gap:12px}
+.day{align-self:center;font:500 11.5px var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);margin-top:6px}
+.ev--noise .msg{opacity:.62}
+.tagbtn{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:2px 10px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
+.tagbtn:hover{border-color:var(--muted)}
+.tagbtn[disabled]{cursor:default;color:var(--muted)}
+.tagbtn[disabled]:hover{border-color:var(--line)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
+
+/* inbox */
+.inbox{display:flex;flex-direction:column;gap:12px;max-width:980px}
+.ib{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px 20px;align-items:start}
+@media (max-width:760px){.ib{grid-template-columns:minmax(0,1fr)}}
+.ib .msg{max-width:100%}
+.ib-r{display:flex;flex-direction:column;gap:10px;min-width:0}
+.ib-r p{margin:0;font-size:14px}
+.ib-k{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--muted)}
+
+/* digest */
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+@media (max-width:820px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.stat b{display:block;font:600 22px/1.1 var(--f-ui);font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+@media (max-width:900px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.panel h3{font-size:15px;margin:0}
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-size:12px;font-weight:600;text-align:left;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.num{font-family:var(--f-mono);font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.linkish{appearance:none;background:none;border:0;padding:0;color:var(--agency);cursor:pointer;font:500 12.5px var(--f-mono)}
+.linkish:hover{text-decoration:underline}
+.plain{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:14px}
+
+/* scheme */
+.doc{max-width:900px;display:flex;flex-direction:column;gap:12px}
+.doc h2{font:600 22px/1.25 var(--f-display);margin:4px 0 0;letter-spacing:-.01em}
+.doc h3{font-size:17px;font-weight:600;margin:22px 0 2px}
+.doc p{margin:0;max-width:68ch}
+.lead{font-size:16px}
+.flow{list-style:none;margin:0;padding:0;counter-reset:s;display:flex;flex-direction:column}
+.flow li{counter-increment:s;display:grid;grid-template-columns:30px minmax(0,1fr);column-gap:14px;position:relative;padding-bottom:16px}
+.flow li::before{content:counter(s);grid-row:1 / span 2;width:28px;height:28px;border-radius:50%;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;font:500 12.5px var(--f-mono)}
+.flow li::after{content:"";position:absolute;left:14px;top:30px;bottom:2px;width:1px;background:var(--line)}
+.flow li:last-child::after{display:none}
+.flow-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;padding-top:3px}
+.flow-h b{font-size:15.5px}
+.when{font:400 12px var(--f-mono);color:var(--muted)}
+.flow p{color:var(--muted);font-size:14.5px}
+pre.code{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;font:400 12.5px/1.6 var(--f-mono);color:var(--ink)}
+.code .k{color:var(--agency)} .code .s{color:var(--client)} .code .c{color:var(--muted)}
+.tracks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.track{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--muted)}
+.track b{display:block;color:var(--ink);font-size:14.5px;margin-bottom:3px}
+.states{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.states li{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 14px;padding:10px 12px;border-top:1px solid var(--line);font-size:14px;align-items:baseline}
+.states li:first-child{border-top:0}
+@media (max-width:520px){.states li{grid-template-columns:minmax(0,1fr)}}
+.risks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.risks li{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr);gap:4px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+@media (max-width:640px){.risks li{grid-template-columns:minmax(0,1fr)}}
+.risks b{font-weight:600}
+.risks span{color:var(--muted)}
+.phases{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px;font-size:14.5px;max-width:72ch}
+.phases b{font-weight:600}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+
+@media (prefers-reduced-motion: reduce){.drawer{animation:none}}
+</style>
+
+<header class="top">
+  <div class="wrap top-in">
+    <div class="brand">
+      <h1 class="logo">Протокол</h1>
+      <span class="proj">Проект «Знакомства» · ВК с клиентом и два чата команды</span>
+    </div>
+    <div class="sync" title="ВК читаем каждые 3 минуты, пн–пт с 9:00 до 19:00. Telegram-бот собирает сообщения круглосуточно."><span class="srcst"><span class="dot"></span>ВК · проверен 2 мин назад</span><span class="srcst"><span class="dot"></span>Telegram · бот онлайн</span></div>
+  </div>
+  <nav class="wrap tabs" aria-label="Разделы">
+    <button class="tab" data-view="board">Доска</button>
+    <button class="tab" data-view="inbox">Разбор <span class="cnt" id="inbox-cnt">3</span></button>
+    <button class="tab" data-view="feed">Лента чатов</button>
+    <button class="tab" data-view="digest">Сводка</button>
+    <button class="tab" data-view="scheme">Как это работает</button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="demo"><b>Пример</b><span>Люди, сообщения и задачи выдуманы, чтобы показать, как будет выглядеть таскер. Чаты: ВК с клиентом, Telegram «Дизайн» и «Рабочий». «Сейчас» в прототипе — пт 13 ноября, 14:05.</span></div>
+
+  <!-- BOARD -->
+  <section id="v-board" class="view" hidden>
+    <div class="attn" id="attn"></div>
+    <div class="sec-h">
+      <h2>Задачи из чата</h2>
+      <div class="chips" id="filters"></div>
+    </div>
+    <div class="board-scroll"><div class="board" id="board"></div></div>
+    <div class="log">
+      <div class="log-h"><b>Журнал агента</b><span class="hint">каждый проход: что пришло и что агент сделал</span></div>
+      <ol id="log"></ol>
+    </div>
+  </section>
+
+  <!-- INBOX -->
+  <section id="v-inbox" class="view" hidden>
+    <div class="sec-h">
+      <h2>Разбор</h2>
+      <p class="hint">Сообщения, в которых агент не уверен. Ваш выбор сохранится и станет примером для агента.</p>
+    </div>
+    <div class="inbox" id="inbox"></div>
+  </section>
+
+  <!-- FEED -->
+  <section id="v-feed" class="view" hidden>
+    <div class="feed-wrap">
+      <div class="sec-h">
+        <h2>Лента чатов</h2>
+        <label class="toggle"><input type="checkbox" id="hide-noise"> Скрыть шум</label>
+      </div>
+      <div class="chips" id="feed-src"></div>
+      <p class="hint">Все три чата по времени, с пометкой, куда агент отнёс каждое сообщение. Пунктир: внутренние чаты Telegram, клиент их не видит. Правки сохраняются, удалённые в ВК тоже, удаления в Telegram бот не видит. Сообщения вне пн–пт 9–19 помечены: агент прочитает их в ближайшем рабочем окне.</p>
+      <div class="feed" id="feed"></div>
+    </div>
+  </section>
+
+  <!-- DIGEST -->
+  <section id="v-digest" class="view" hidden>
+    <div class="sec-h">
+      <h2>Сводка за 6–13 ноября</h2>
+      <p class="hint">Собирается автоматически каждый вечер и в пятницу за неделю. Время ответов считается только в рабочие часы, пн–пт 9–19.</p>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="panel">
+      <h3>Обещания сторон</h3>
+      <p class="hint">Кто что пообещал, к какому сроку и выполнено ли. «Внутри» значит, что обещание дано в Telegram-чате команды и клиент его не видел.</p>
+      <div class="tscroll"><table id="promises"></table></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Первый ответ агентства на новую задачу</h3>
+        <div class="tscroll"><table id="resp-agency"></table></div>
+      </div>
+      <div class="panel">
+        <h3>Ответ клиента на присланный результат</h3>
+        <div class="tscroll"><table id="resp-client"></table></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Где менялось ТЗ</h3>
+        <ul class="plain" id="changes"></ul>
+      </div>
+      <div class="panel">
+        <h3>Клиент не знает или ушло мимо чата</h3>
+        <ul class="plain">
+          <li>вт 10 ноя, 10:20 · Дарья передала скрипт ответов Игорю в личку <button class="linkish" data-task="T-39">T-39</button>. В чате его нет, агент не видит содержимое.</li>
+          <li>вт 10 ноя, 17:42 · Игорь написал в рабочем чате, что ответил на 12 из ~15 комментариев <button class="linkish" data-task="T-39">T-39</button>. Клиенту в ВК не сообщил.</li>
+          <li>пт 13 ноя, 12:35 · Лиза обещала исправить 4-ю карточку к пн 12:00 в чате «Дизайн» <button class="linkish" data-task="T-41">T-41</button>. Клиенту срок не назван.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCHEME -->
+  <section id="v-scheme" class="view" hidden>
+    <div class="doc">
+      <h2>Как это работает</h2>
+      <p class="lead">Таскер читает три чата: переписку с клиентом в ВК и два внутренних чата в Telegram, дизайнерский и рабочий. Все сообщения попадают в один архив. Раз в 3 минуты в рабочее время (пн–пт, 9:00–19:00) модель Gemini Flash решает, к какой задаче относится каждое новое сообщение, и связывает цепочку: поручение клиента, передача исполнителю, результат, отправка клиенту. Цитаты в таскере всегда берутся из архива слово в слово. От себя модель добавляет только пометку «как понял», она визуально отделена от цитаты.</p>
+
+      <h3>Путь сообщения</h3>
+      <ol class="flow">
+        <li><div class="flow-h"><b>Три чата</b><span class="when">источники</span></div><p>Беседа с клиентом в ВК и два чата в Telegram. Мы только читаем: ничего не пишем, не ставим реакции и не отвечаем. Открытие ВК-чата помечает сообщения прочитанными в вашем аккаунте, вы с этим согласны.</p></li>
+        <li><div class="flow-h"><b>Два сборщика</b><span class="when">ВК: пн–пт 9–19 · Telegram: круглосуточно</span></div><p>ВК: браузер с вашей сессией, раз в 3 минуты. Забирает новые сообщения, а последние 50 перечитывает, чтобы поймать правки и удаления. Telegram: бот в обоих чатах, получает сообщения сразу, как они пришли.</p></li>
+        <li><div class="flow-h"><b>Архив</b><span class="when">хранится всё</span></div><p>Каждое сообщение как есть: чат, автор, время, текст, на что ответ, пересылки, вложения, все версии после правок. Если сообщение удалят в ВК, здесь оно останется с пометкой (в Telegram удаления бот не видит).</p></li>
+        <li><div class="flow-h"><b>Подготовка кодом</b><span class="when">без ИИ</span></div><p>Реплаи (у каждого сообщения в ВК есть номер того, на что ответили), автор и его сторона, время, правки, удаления, рабочие часы. Это решает обычный код, чтобы лёгкой модели не приходилось угадывать структуру.</p></li>
+        <li><div class="flow-h"><b>Модель</b><span class="when">когда есть новое и чат затих на минуту</span></div><p>Gemini Flash получает правила, список участников с их ролями, открытые задачи и последние ~40 сообщений из всех чатов, каждое с пометкой, откуда оно. Возвращает не текст, а список операций в JSON по заданной схеме. Если ответ не прошёл проверку схемы, проход повторяется один раз, потом сообщения уходят в «Разбор».</p></li>
+        <li><div class="flow-h"><b>Проверка</b><span class="when">обычный код</span></div><p>Операции сверяются: сообщение и задача существуют, переход статуса допустим. Если модель уверена меньше чем на 70 %, сообщение уходит в «Разбор». От 70 до 85 % оно привязывается с пометкой «проверьте».</p></li>
+        <li><div class="flow-h"><b>Таскер и команда</b><span class="when">веб + Telegram</span></div><p>Задачи, ТЗ с историей версий, хронология с цитатами, вопросы без ответа, обещания обеих сторон. Уведомления в Telegram: новая задача, клиент ждёт ответа дольше часа рабочего времени, поменялось ТЗ, горит срок, слетела сессия ВК. Каждую операцию можно откатить, а ручные исправления становятся примерами для модели.</p></li>
+      </ol>
+
+      <h3>Как сборщик заходит в ВК</h3>
+      <ol class="flow">
+        <li><div class="flow-h"><b>Разовая настройка</b><span class="when">около 10 минут, делаете вы</span></div><p>На машине, где будет работать сборщик, открывается окно браузера с отдельным профилем. Вы входите в ВК сами: логин, пароль, код из SMS или приложения. Профиль с сессией сохраняется на диск. Пароль агенту не передаётся и нигде не хранится.</p></li>
+        <li><div class="flow-h"><b>Дальше без вас</b><span class="when">каждый рабочий день</span></div><p>Сборщик запускает тот же профиль в фоне, без окна, открывает нужную беседу и читает сообщения. Для ВК это обычный браузер с вашей обычной сессией.</p></li>
+        <li><div class="flow-h"><b>Если сессия слетела</b><span class="when">редко</span></div><p>ВК запросил капчу или код, вы вышли на всех устройствах, сменили пароль. Сборщик останавливается, не пытается обойти проверку и пишет вам в Telegram. Вы заходите в профиль заново. В таскере до этого момента висит «данные устарели с 11:20».</p></li>
+      </ol>
+
+      <h3>Откуда ВК-сборщик берёт сообщения</h3>
+      <div class="tracks">
+        <div class="track"><b>Ответы, которые ВК сам присылает странице</b>Основной вариант. Это те же данные, что рисуют чат, только в виде JSON: есть номера сообщений, реплаи, пересылки, вложения, правки. Не ломается, когда ВК меняет оформление.</div>
+        <div class="track"><b>Разметка страницы</b>Запасной вариант. Читаем то, что нарисовано на экране. Хуже: ломается при каждом обновлении интерфейса ВК.</div>
+        <div class="track"><b>Официальный API ВК</b>Был бы самым чистым. Я не уверен, что сейчас можно получить токен с доступом к личным сообщениям. Проверим на пилоте, но не рассчитываем на него.</div>
+      </div>
+      <p class="hint">Какой из вариантов выбрать, решим на пилоте. Я не могу проверить это отсюда: нужно посмотреть, что реально отдаёт ваша сессия.</p>
+
+      <h3>Как читаем Telegram</h3>
+      <ul class="states">
+        <li><b>Бот в двух чатах</b><span>Бот добавляется в дизайнерский и рабочий чаты как обычный участник. Токен бота вы создаёте сами через BotFather, это пять минут.</span></li>
+        <li><b>Режим приватности</b><span>По умолчанию бот в группе видит только команды и ответы на свои сообщения. Режим выключается в BotFather (/setprivacy → Disable), после этого бота нужно удалить из чатов и добавить заново. Без этого он не увидит почти ничего.</span></li>
+        <li><b>Что бот видит</b><span>Новые сообщения, правки, реплаи, пересылки, вложения, голосовые, темы в чатах с форумным режимом. Реакции только если бот админ.</span></li>
+        <li><b>Чего не видит</b><span>Сообщений до своего добавления и удалений. Если кто-то удалит сообщение в Telegram, у нас оно останется, но пометки «удалено» не будет.</span></li>
+        <li><b>Режим работы</b><span>Сообщения приходят сразу, расписание не нужно. Но если бот выключен дольше суток, Telegram уже не вернёт пропущенное. Поэтому бот работает на сервере круглосуточно, в том числе в выходные.</span></li>
+        <li><b>История</b><span>Бот прошлого не видит. Историю берём из экспорта чата в Telegram Desktop (JSON за нужный период) и используем так же, как историю ВК, для теста модели.</span></li>
+        <li><b>Команда в курсе</b><span>В чате появится участник-бот, который сохраняет переписку. Людей стоит предупредить заранее.</span></li>
+      </ul>
+
+      <h3>Как связываются чаты</h3>
+      <ul class="states">
+        <li><b>Цепочка</b><span>Поручение клиента в ВК, передача исполнителю в Telegram, результат и отправка клиенту собираются в одну задачу. Видно, на каком звене она стоит и сколько там лежит.</span></li>
+        <li><b>Как модель находит связь</b><span>По имени исполнителя, словам из задачи («обложка», «карусель»), срокам и порядку по времени. Если уверенность низкая, предлагает варианты в «Разбор».</span></li>
+        <li><b>Расхождения</b><span>Внутри что-то обещали или сделали, а клиенту в ВК не сказали. Это сигнал на карточке и строка в «Сводке».</span></li>
+        <li><b>Внутренние задачи</b><span>Поручение из рабочего чата без запроса клиента становится внутренней задачей с пометкой. Если позже окажется, что это часть клиентской, их можно слить.</span></li>
+        <li><b>Что клиент не видит</b><span>У каждой цитаты указан чат. Для споров есть копирование только переписки с клиентом.</span></li>
+        <li><b>Поначалу больше «Разбора»</b><span>В рабочих чатах пишут сокращённо («по вчерашнему», «ту обложку»). Пока модель не привыкла, часть привязок уйдёт на ручной выбор. Каждый выбор учит её.</span></li>
+      </ul>
+
+      <h3>Расписание</h3>
+      <ul class="states">
+        <li><b>Окно</b><span>Пн–пт, 9:00–19:00 по вашему часовому поясу. Вне окна сборщик не запускается: ни входов, ни запросов к ВК.</span></li>
+        <li><b>Частота</b><span>Каждые 3 минуты. Если новых сообщений нет, модель не вызывается и ничего не стоит.</span></li>
+        <li><b>Telegram</b><span>Бот собирает сообщения круглосуточно. Модель разбирает их в те же окна, что и ВК, а в 9:00 разбирает накопленное. Уведомления тоже приходят только в рабочее время.</span></li>
+        <li><b>Утренний проход</b><span>В 9:00 сборщик забирает всё, что накопилось с прошлого вечера и за выходные. Отсчёт идёт от номера последнего сохранённого сообщения, поэтому ничего не теряется. Большие пачки обрабатываются порциями по ~100.</span></li>
+        <li><b>Серии сообщений</b><span>Если последнее сообщение моложе минуты, проход откладывается на следующий тик (не больше двух раз). Серия «Нужно… / И ещё… / Срочно!» обрабатывается как одно целое.</span></li>
+        <li><b>Праздники</b><span>Праздничные и перенесённые дни берутся из списка, который можно править. В такие дни сборщик не работает.</span></li>
+        <li><b>Сроки ответа</b><span>Считаются только в рабочие часы. Если мы отправили план в 19:52, а клиент ответил в 9:15, это 15 минут, а не 13 часов. В ленте сообщения вне окна помечены «вне рабочего времени». Так в прототипе и показано.</span></li>
+      </ul>
+
+      <h3>Где что работает</h3>
+      <div class="tracks">
+        <div class="track"><b>Сервер, круглосуточно</b>Архив, Telegram-бот, модель, таскер и уведомления. Маленький VPS за несколько долларов в месяц. Регион выбираем так, чтобы оттуда отвечал Gemini API.</div>
+        <div class="track"><b>Ваш компьютер, пн–пт 9–19</b>Только ВК-сборщик. Сессия остаётся на вашем устройстве и IP, ВК меньше удивляется. Сборщик отправляет сообщения на сервер по HTTPS. Компьютер должен быть включён и не засыпать в рабочие часы.</div>
+      </div>
+      <p class="hint">Раньше я предлагал начать всё на вашем компьютере. С Telegram так не выйдет: бот должен быть онлайн и в выходные. Если сессия ВК проживёт неделю без капч, сборщик можно будет переселить на сервер тоже.</p>
+
+      <h3>Что возвращает модель</h3>
+      <p>Пример для сообщений #1232–#1245 из ленты. Цитат в ответе нет: только номера сообщений. Текст цитаты интерфейс берёт из архива, поэтому модель не может её исказить.</p>
+<pre class="code">{ <span class="k">"ops"</span>: [
+  { <span class="k">"op"</span>: <span class="s">"change_requirement"</span>, <span class="k">"task"</span>: <span class="s">"T-41"</span>, <span class="k">"message"</span>: 1232,
+    <span class="k">"item"</span>: <span class="s">"Карточек"</span>, <span class="k">"from"</span>: <span class="s">"5"</span>, <span class="k">"to"</span>: <span class="s">"7"</span>, <span class="k">"confidence"</span>: 0.96 },
+  { <span class="k">"op"</span>: <span class="s">"flag_contradiction"</span>, <span class="k">"task"</span>: <span class="s">"T-41"</span>, <span class="k">"message"</span>: 1232, <span class="k">"conflicts_with"</span>: 1218,
+    <span class="k">"note"</span>: <span class="s">"Во вторник просили без эмодзи, сейчас просят с эмодзи"</span> },
+  { <span class="k">"op"</span>: <span class="s">"attach"</span>, <span class="k">"task"</span>: <span class="s">"T-41"</span>, <span class="k">"message"</span>: 1239, <span class="k">"event"</span>: <span class="s">"agree"</span>, <span class="k">"confidence"</span>: 0.74,
+    <span class="k">"interpretation"</span>: <span class="s">"Похоже, Ольга согласилась с Кириллом"</span> },
+  { <span class="k">"op"</span>: <span class="s">"needs_review"</span>, <span class="k">"message"</span>: 1245,
+    <span class="k">"candidates"</span>: [ { <span class="k">"task"</span>: <span class="s">"T-41"</span>, <span class="k">"p"</span>: 0.58 }, { <span class="k">"task"</span>: <span class="s">"T-39"</span>, <span class="k">"p"</span>: 0.27 } ] }
+] }</pre>
+
+      <h3>Как работаем с Gemini Flash</h3>
+      <ul class="states">
+        <li><b>Формат ответа</b><span>Только JSON по заданной схеме. Код дополнительно проверяет смысл: существует ли сообщение и задача, допустим ли переход статуса.</span></li>
+        <li><b>Что делает код</b><span>Реплаи, авторов, время, рабочие часы, правки и удаления. Модели остаётся то, что требует понимания: новая ли это задача, что изменилось в ТЗ, кто что пообещал.</span></li>
+        <li><b>Вторая ступень</b><span>Спорные случаи (уверенность ниже 85 %, изменение ТЗ, противоречие) можно перепроверять более сильной моделью Gemini. Нужна ли она, решим по тесту на истории.</span></li>
+        <li><b>Тест до запуска</b><span>По истории чата размечаем 100–200 сообщений вручную и считаем, как часто модель попадает в нужную задачу, статус и изменение ТЗ. Без этого в бой не идём.</span></li>
+        <li><b>Голос и картинки</b><span>Голосовые берём с расшифровкой ВК или отправляем аудио в Gemini. Скриншоты с правками модель читает как картинки.</span></li>
+      </ul>
+
+      <h3>Что агент отслеживает, кроме самих задач</h3>
+      <div class="tracks">
+        <div class="track"><b>Принятие</b>Кто из наших ответил, когда и что пообещал. Задача без ответа дольше часа рабочего времени поднимается наверх.</div>
+        <div class="track"><b>ТЗ и его версии</b>Каждое требование хранит историю: было → стало, кто и когда поменял.</div>
+        <div class="track"><b>Противоречия</b>Новое указание расходится со старым или два человека клиента говорят разное.</div>
+        <div class="track"><b>Чей ход</b>У кого сейчас мяч и сколько рабочего времени он там лежит: у нас или у клиента.</div>
+        <div class="track"><b>Обещания и сроки</b>С обеих сторон: «пришлём во вторник», «скину промокод до среды».</div>
+        <div class="track"><b>Цепочка между чатами</b>Поручение клиента, передача дизайнеру, результат и отправка клиенту. Видно, на каком звене задача застряла.</div>
+        <div class="track"><b>Расхождения между чатами</b>Что внутри обещали или сделали, а клиенту не сообщили.</div>
+        <div class="track"><b>Уход из чата</b>«Скинула в личку», «обсудили на созвоне». Это фиксируется, чтобы не потерять договорённости.</div>
+      </div>
+
+      <h3>Статусы и что их двигает</h3>
+      <ul class="states">
+        <li><span class="b b--danger">Новая</span><span>Клиент написал поручение, от агентства ответа ещё нет.</span></li>
+        <li><span class="b b--agency">В работе</span><span>Наш ответил «приняли», «берём», «сделаем» реплаем или по смыслу. Агент записывает, кто принял и что пообещал.</span></li>
+        <li><span class="b b--client">На согласовании</span><span>Мы прислали результат: файл, фото, текст, ссылку.</span></li>
+        <li><span class="b b--warn">Правки</span><span>Клиент вернул результат с замечаниями. Каждое замечание попадает в ТЗ.</span></li>
+        <li><span class="b b--ok">Готово</span><span>Клиент согласовал: «ок», «согласовано», 👍 на результате. Одинокий 👍 агент ставит с пониженной уверенностью.</span></li>
+        <li><span class="b">Отменена / пауза</span><span>Клиент отменил или отложил задачу.</span></li>
+      </ul>
+
+      <h3>Риски и что с ними делаем</h3>
+      <ul class="risks">
+        <li><b>Сессия слетела</b><span>Капча, код, выход на всех устройствах, смена пароля. Сборщик останавливается, не пытается обойти проверку и пишет вам в Telegram. Вы входите в профиль заново, это минута.</span></li>
+        <li><b>Блокировка личного аккаунта</b><span>Правила ВК не одобряют автоматизацию, а у вас личный аккаунт. Мы ничего не пишем и не ставим реакции, открываем один чат раз в 3 минуты, только в рабочие часы и с вашего обычного компьютера. Это похоже на человека, который смотрит в чат, но риск полностью не убрать. Если аккаунт важен, заведём отдельный аккаунт-наблюдатель и добавим его в беседу (клиент увидит нового участника).</span></li>
+        <li><b>Модель ошиблась</b><span>Flash слабее топовых моделей на тонких вещах: ирония, «ок» без реплая, противоречия. Поэтому код делает всё, что можно без ИИ, неуверенное уходит в «Разбор», любую операцию можно откатить, а до запуска мы проверяем точность на истории.</span></li>
+        <li><b>Общение вне чата</b><span>Личка и созвоны агенту не видны. Кнопка «Добавить заметку» фиксирует такие договорённости вручную.</span></li>
+        <li><b>Лишнее в рабочем чате</b><span>Если там обсуждают другие проекты или личное, эти сообщения тоже попадут в архив и к модели. Модель пометит их как не относящиеся к проекту, в таскере они не появятся. Если вам это не подходит, нужен отдельный чат для проекта или ограничение по темам.</span></li>
+        <li><b>Приватность переписки</b><span>Переписка клиента и внутренние чаты команды уходят в Google. Нужен платный тариф Gemini API: на бесплатном Google может использовать запросы для улучшения своих продуктов. Проверьте, что договор с клиентом это допускает и что Gemini API отвечает с сервера: в некоторых странах он недоступен. Команду стоит предупредить, что в Telegram-чатах будет бот.</span></li>
+      </ul>
+
+      <h3>Стек и деньги</h3>
+      <p>Python, Playwright для ВК-сборщика, Telegram-бот (aiogram), SQLite на старте (потом PostgreSQL), FastAPI и простой веб-интерфейс. Тот же бот шлёт вам уведомления в личку. Модель: Gemini Flash через Google API, платный тариф.</p>
+      <p>Оценка по ценам Flash-моделей на сегодня: до 50–80 проходов в день (проход запускается, только когда есть новые сообщения) по ~14 тыс. токенов на вход и ~3 тыс. на выход. С тремя чатами выходит порядка $15–30 в месяц. Сервер добавит ещё несколько долларов. Точнее посчитаем на реальном объёме чатов и актуальном прайсе Google.</p>
+
+      <h3>Этапы</h3>
+      <ol class="phases">
+        <li><b>Пилот сборщиков.</b> Поднимаем сервер с Telegram-ботом, ВК-сборщик запускаем на вашем компьютере. Проверяем, что сессия ВК живёт неделю, что бот видит все сообщения, выбираем способ чтения ВК (JSON или разметка). Итог: архив трёх чатов.</li>
+        <li><b>Модель на истории.</b> Вы даёте историю ВК и экспорт Telegram-чатов за тот же период. Мы размечаем 100–200 сообщений и меряем точность Flash, отдельно проверяем связи между чатами. При необходимости добавляем вторую ступень. Итог: точность известна до запуска.</li>
+        <li><b>Таскер и уведомления.</b> Интерфейс как в этом прототипе, Telegram-алерты, ручные правки и «Разбор».</li>
+        <li><b>Боевой режим.</b> Проверка каждые 3 минуты в рабочее окно, ежедневная сводка, недельный отчёт по обещаниям сторон.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" hidden>
+  <div class="d-head" id="d-head"></div>
+  <div class="d-body" id="d-body"></div>
+</aside>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function(){
+const NOW = new Date('2026-11-13T14:05:00');
+const PEOPLE = {
+  olga:  {name:'Ольга Седова',   short:'Ольга',  side:'client', role:'бренд-менеджер'},
+  kirill:{name:'Кирилл Ахмедов', short:'Кирилл', side:'client', role:'руководитель маркетинга'},
+  dasha: {name:'Дарья Ли',       short:'Дарья',  side:'client', role:'PR'},
+  artem: {name:'Артём Волков',   short:'Артём',  side:'agency', role:'SMM-менеджер'},
+  liza:  {name:'Лиза Гринько',   short:'Лиза',   side:'agency', role:'дизайнер'},
+  igor:  {name:'Игорь Пан',      short:'Игорь',  side:'agency', role:'аккаунт-менеджер'}
+};
+const SIDE = {client:'клиент', agency:'агентство'};
+const SRC = {
+  vk:{name:'ВК', full:'ВК, чат с клиентом', internal:false},
+  design:{name:'Дизайн', full:'Telegram, чат «Дизайн»', internal:true},
+  work:{name:'Рабочий', full:'Telegram, чат «Рабочий»', internal:true}
+};
+
+const MSG = [
+  {id:1180,t:'2026-11-06T11:20',who:'kirill',text:'Пришлите, пожалуйста, контент-план на декабрь до среды. Хотим заранее согласовать всё, что связано с Новым годом.'},
+  {id:1182,t:'2026-11-06T11:41',who:'igor',reply:1180,text:'Принято, пришлём во вторник вечером.'},
+  {id:1188,t:'2026-11-09T09:58',who:'olga',text:'Всем доброе утро!',noise:true},
+  {id:1190,t:'2026-11-09T12:30',who:'olga',text:'Нужно обновить обложку сообщества к зиме. Только без снежинок, они у всех. Хочется чего-то тёплого, уютного.'},
+  {id:1191,t:'2026-11-09T12:31',who:'kirill',text:'👍',noise:true},
+  {id:1193,t:'2026-11-09T13:02',who:'liza',reply:1190,text:'Взяла. Покажу два варианта в четверг.'},
+  {id:1201,t:'2026-11-09T15:47',who:'dasha',text:'Под постом про безопасность на свиданиях пошёл негатив, человек 15 пишут, что приложение сливает данные. Ответьте всем по скрипту, срочно.'},
+  {id:1203,t:'2026-11-09T16:10',who:'artem',reply:1201,text:'Дарья, скрипта у нас нет. Пришлёте? Без него на тему данных отвечать не будем, слишком рискованно.'},
+  {id:1205,t:'2026-11-09T17:30',who:'kirill',text:'И отчёт по охватам за октябрь нужен, для руководства. До пятницы.'},
+  {id:1207,t:'2026-11-09T17:55',who:'igor',reply:1205,text:'Сделаем.'},
+  {id:1209,t:'2026-11-09T18:30',who:'dasha',reply:1203,text:'Почему так долго? Комментарии висят уже три часа.'},
+  {id:1210,t:'2026-11-09T18:31',who:'dasha',text:'Вы вообще читаете чат?',deleted:{at:'18:33'}},
+  {id:1211,t:'2026-11-09T18:34',who:'artem',reply:1209,text:'Читаем. Ждём скрипт, см. мой вопрос выше в 16:10.'},
+  {id:1212,t:'2026-11-10T10:20',who:'dasha',text:'Скинула скрипт Игорю в личку.'},
+  {id:1213,t:'2026-11-10T10:41',who:'igor',reply:1212,text:'Получил, отвечаем сегодня до 18:00.'},
+  {id:1214,t:'2026-11-10T11:02',who:'kirill',text:'Всем продуктивного дня!',noise:true},
+  {id:1218,t:'2026-11-10T12:14',who:'olga',text:'Нужен пост-карусель к пятнице: «5 признаков, что мэтч взаимный». Без эмодзи в заголовках, пожалуйста.'},
+  {id:1219,t:'2026-11-10T12:30',who:'artem',reply:1218,text:'Приняли. Тексты пришлю в среду, визуал в четверг.'},
+  {id:1222,t:'2026-11-10T19:52',who:'igor',text:'Контент-план на декабрь во вложении. Ждём комментариев.',att:['Документ · КП_декабрь_v1.xlsx']},
+  {id:1224,t:'2026-11-11T09:15',who:'kirill',reply:1222,text:'Согласовано 👍 Только 31-го ничего не публикуем.'},
+  {id:1225,t:'2026-11-11T09:20',who:'igor',text:'Спасибо!',noise:true},
+  {id:1230,t:'2026-11-11T16:20',who:'artem',text:'Тексты для карусели во вложении.',att:['Документ · Карусель_тексты.docx']},
+  {id:1231,t:'2026-11-11T17:02',who:'dasha',text:'Под тем же постом ещё 4 новых комментария, их тоже.'},
+  {id:1232,t:'2026-11-11T19:48',who:'olga',reply:1230,text:'Давайте не 5, а 7 карточек. И добавьте эмодзи в заголовки, так живее.',edited:{at:'19:51',was:'Давайте не 5, а 7 карточек.'}},
+  {id:1233,t:'2026-11-11T20:05',who:'artem',reply:1232,text:'Ок, сделаем 7. По эмодзи: во вторник просили без них. Делаем с эмодзи, верно?'},
+  {id:1238,t:'2026-11-12T10:12',who:'kirill',reply:1233,text:'Без эмодзи. Это наш гайд.'},
+  {id:1239,t:'2026-11-12T10:30',who:'olga',text:'Ок'},
+  {id:1240,t:'2026-11-12T11:05',who:'liza',text:'Обложка, два варианта. А — свечи и плед, Б — пара на катке.',att:['Фото × 2']},
+  {id:1245,t:'2026-11-12T15:40',who:'olga',text:'А что там по вчерашнему?'},
+  {id:1247,t:'2026-11-12T18:10',who:'kirill',text:'Может, розыгрыш какой-то сделаем к Новому году? Подумайте.'},
+  {id:1249,t:'2026-11-13T09:40',who:'kirill',text:'[стикер]',noise:true},
+  {id:1250,t:'2026-11-13T11:25',who:'kirill',text:'Нужны 3 сторис с промокодом на Премиум, запуск в четверг 19-го. Промокод пока рабочий, LOVE20, финальный пришлю до вторника.'},
+  {id:1251,t:'2026-11-13T11:30',who:'artem',text:'Визуал карусели, 7 карточек.',att:['Фото × 7']},
+  {id:1252,t:'2026-11-13T12:02',who:'olga',reply:1251,text:'На 4-й карточке пара слишком постановочная, замените. И сдвиньте публикацию на понедельник.'},
+  {id:1253,t:'2026-11-13T12:40',who:'dasha',voice:'0:48',text:'Ребят, по комментариям. Посмотрите ещё ветку под постом про верификацию, там опять пишут про данные. Это надо до вечера закрыть.'},
+  {id:1254,t:'2026-11-13T13:15',who:'igor',reply:1240,text:'Ольга, Кирилл, посмотрите, пожалуйста, обложку, когда будет минутка.'},
+  /* Telegram, чат «Дизайн» */
+  {id:2001,t:'2026-11-09T12:48',src:'design',who:'igor',text:'Лиза, задача от Ольги: обложка сообщества к зиме. Без снежинок, тепло и уютно. Нужно два варианта к четвергу, успеешь?'},
+  {id:2002,t:'2026-11-09T12:55',src:'design',who:'liza',reply:2001,text:'Да, сделаю два варианта к четвергу.'},
+  {id:2003,t:'2026-11-12T10:50',src:'design',who:'liza',text:'Обложка готова, два варианта. Посмотрите.',att:['Фото × 2']},
+  {id:2004,t:'2026-11-12T10:58',src:'design',who:'igor',reply:2003,text:'Хорошо выглядит. Кидай клиенту сама, в общий чат.'},
+  {id:2005,t:'2026-11-13T12:20',src:'design',who:'artem',text:'Лиза, правка по карусели: заменить фото на 4-й карточке, пара слишком постановочная. Успеешь к понедельнику?'},
+  {id:2006,t:'2026-11-13T12:35',src:'design',who:'liza',reply:2005,text:'К понедельнику к 12:00 сделаю.'},
+  /* Telegram, чат «Рабочий» */
+  {id:3001,t:'2026-11-10T17:42',src:'work',who:'igor',text:'По негативу под постом: ответил на 12 комментариев из ~15, по скрипту. Остальные завтра с утра.'},
+  {id:3004,t:'2026-11-12T13:05',src:'work',who:'liza',text:'Кто идёт на обед?',noise:true},
+  {id:3002,t:'2026-11-13T13:40',src:'work',who:'igor',text:'Артём, отчёт по охватам за октябрь нужен сегодня. Сделаешь?'},
+  {id:3003,t:'2026-11-13T13:48',src:'work',who:'artem',reply:3002,text:'Сделаю, пришлю тебе к 16:00.'}
+];
+const M = Object.fromEntries(MSG.map(m => [m.id, m]));
+
+const STATUS = {new:'Новая', work:'В работе', review:'На согласовании', revisions:'Правки', done:'Готово'};
+const STATUS_B = {new:'b--danger', work:'b--agency', review:'b--client', revisions:'b--warn', done:'b--ok'};
+const COLS = [
+  ['new','Новые','поставили, мы не ответили'],
+  ['work','В работе','приняли, делаем'],
+  ['review','На согласовании','результат у клиента'],
+  ['revisions','Правки','клиент вернул'],
+  ['done','Готово','согласовано']
+];
+const EV = {
+  created:['Задача создана','k-ink'], accepted:['Принята','k-ok'], question:['Вопрос','k-muted'], answer:['Ответ','k-muted'],
+  req_change:['ТЗ изменено','k-warn'], req_add:['ТЗ дополнено','k-warn'], result:['Результат отправлен','k-agency'],
+  revision:['Правки','k-warn'], approved:['Согласовано','k-ok'], tension:['Претензия','k-danger'], offchat:['Ушло в личку','k-warn'],
+  deleted:['Удалено автором','k-danger'], nudge:['Напоминание','k-muted'], promise:['Обещание','k-agency'], agree:['Согласие','k-ok'],
+  assign:['Передано исполнителю','k-agency'], result_internal:['Готово внутри','k-ok'], progress:['Статус внутри','k-muted'], internal_ok:['Одобрено внутри','k-ok']
+};
+
+const TASKS = [
+  {id:'T-42', title:'3 сторис с промокодом на Премиум', status:'new', by:'kirill', owner:null, created:'2026-11-13T11:25',
+   deadline:{label:'запуск чт 19 ноя', m:1250},
+   ball:{side:'agency', since:'2026-11-13T11:25', what:'принять задачу или задать вопросы'},
+   summary:'Три сторис с промокодом на подписку Премиум, запуск в четверг 19 ноября. Промокод LOVE20 рабочий, финальный Кирилл обещал прислать до вторника 17 ноября. Из агентства пока никто не ответил.',
+   reqs:[{k:'Формат', v:[{t:'3 сторис', m:1250}]},{k:'Промокод', v:[{t:'LOVE20, временный', m:1250}]},{k:'Запуск', v:[{t:'чт 19 ноя', m:1250}]}],
+   open:[{side:'agency', text:'Никто не принял задачу', m:1250},{side:'client', who:'kirill', text:'Прислать финальный промокод до вт 17 ноя', m:1250}],
+   flags:[{lvl:'danger', text:'Никто из агентства не ответил за 2 ч 40 мин.'}],
+   events:[{m:1250,type:'created',ai:'Новая задача: 3 сторис с промокодом на Премиум, запуск в чт 19 ноя. LOVE20 временный, финальный промокод Кирилл пришлёт до вт 17 ноя.'}]},
+
+  {id:'T-40', title:'Отчёт по охватам за октябрь', status:'work', by:'kirill', owner:'igor', exec:{who:'artem', via:'work'}, created:'2026-11-09T17:30',
+   deadline:{label:'сегодня, пт 13 ноя', today:true, m:1205},
+   ball:{side:'agency', since:'2026-11-09T17:55', what:'прислать отчёт'},
+   summary:'Отчёт по охватам за октябрь для руководства клиента. Срок сегодня. Игорь принял в понедельник, клиенту с тех пор ничего не писали. В рабочем чате Игорь передал отчёт Артёму, тот обещал к 16:00.',
+   reqs:[{k:'Период', v:[{t:'октябрь', m:1205}]},{k:'Для кого', v:[{t:'руководство клиента', m:1205}]},{k:'Срок', v:[{t:'пт 13 ноя', m:1205}]}],
+   open:[{side:'agency', who:'artem', text:'Прислать Игорю отчёт до 16:00 (внутреннее обещание)', m:3003},{side:'agency', who:'igor', text:'Отправить отчёт клиенту: срок сегодня', m:1207}],
+   flags:[{lvl:'warn', text:'Срок сегодня. Клиенту после «Сделаем» в понедельник ничего не писали. Внутри Артём обещал отчёт Игорю к 16:00.'}],
+   events:[
+     {m:1205,type:'created',ai:'Отчёт по охватам за октябрь для руководства клиента. Срок: пт 13 ноя.'},
+     {m:1207,type:'accepted',ai:'Игорь принял. Время сдачи не назвал.'},
+     {m:3002,type:'assign',ai:'Игорь передал отчёт Артёму в рабочем чате и напомнил, что срок сегодня.'},
+     {m:3003,type:'promise',ai:'Артём берёт отчёт и обещает Игорю прислать его к 16:00.'}]},
+
+  {id:'T-39', title:'Ответы на негатив под постом о безопасности', status:'work', by:'dasha', owner:'igor', created:'2026-11-09T15:47',
+   deadline:{label:'вт 10 ноя, 18:00', m:1213},
+   ball:{side:'agency', since:'2026-11-10T18:00', what:'подтвердить, что ответы опубликованы'},
+   summary:'Ответить на негативные комментарии про утечку данных под постом о безопасности на свиданиях, сейчас их около 19. Отвечать только по скрипту клиента, скрипт у Игоря в личке. Внутри Игорь отчитался о 12 ответах из ~15, клиенту об этом не сообщили.',
+   reqs:[
+     {k:'Объём', v:[{t:'~15 комментариев', m:1201},{t:'~19 (+4 новых)', m:1231}]},
+     {k:'Как отвечать', v:[{t:'по скрипту клиента', m:1201}]},
+     {k:'Скрипт', v:[{t:'у Игоря в личке, в чате его нет', m:1212}]}],
+   open:[{side:'agency', who:'igor', text:'Отчитаться клиенту в ВК: обещали до вт 18:00, а внутри сделано 12 из ~15', m:1213}],
+   flags:[
+     {lvl:'danger', text:'Игорь обещал клиенту закончить до вт 10 ноя, 18:00. Клиенту в ВК с тех пор ничего не сообщали: 2 раб. д 6 ч.'},
+     {lvl:'warn', text:'В рабочем чате Игорь написал во вт в 17:42, что ответил на 12 из ~15 комментариев. Клиенту об этом не сообщили, про 4 новых комментария (ср) тоже тишина.'},
+     {lvl:'warn', text:'Претензия Дарьи по срокам пришла, когда агентство ждало от клиента скрипт.'},
+     {lvl:'warn', text:'Скрипт передан в личку, в истории чата его нет.'}],
+   events:[
+     {m:1201,type:'created',ai:'Срочная задача: ответить примерно на 15 негативных комментариев про утечку данных под постом о безопасности на свиданиях. Отвечать по скрипту клиента.'},
+     {m:1203,type:'question',ai:'Артём не начинает без скрипта и объясняет почему. Задача ждёт клиента.'},
+     {m:1209,type:'tension',ai:'Дарья недовольна скоростью. Про скрипт ничего не ответила, задача по-прежнему его ждёт.',flag:{lvl:'warn',text:'Претензия по срокам, хотя ход за клиентом: агентство ждёт скрипт с 16:10.'}},
+     {m:1210,type:'deleted',ai:'Дарья удалила сообщение через 2 минуты. Текст сохранён в архиве.'},
+     {m:1211,type:'answer',ai:'Артём спокойно напоминает, что ждёт скрипт.'},
+     {m:1212,type:'offchat',ai:'Скрипт передан Игорю в личные сообщения, в этом чате его нет. Ответ на вопрос Артёма пришёл через 4 ч 10 мин рабочего времени.',flag:{lvl:'warn',text:'Часть переписки ушла в личку. Агент её не видит.'}},
+     {m:1213,type:'promise',ai:'Игорь берёт задачу и обещает ответить на комментарии до вт 10 ноя, 18:00.'},
+     {m:3001,type:'progress',ai:'Игорь отчитался в рабочем чате: 12 ответов из ~15 опубликованы, остальные обещает завтра с утра. Клиенту в ВК об этом не написал.',flag:{lvl:'warn',text:'Клиент об этом не знает: в ВК после 10:41 во вторник по задаче тишина.'}},
+     {m:1231,type:'req_add',ai:'Объём вырос: ещё 4 комментария под тем же постом. Срок Дарья не назвала.'}]},
+
+  {id:'T-37', title:'Зимняя обложка сообщества', status:'review', by:'olga', owner:'liza', created:'2026-11-09T12:30',
+   deadline:null,
+   ball:{side:'client', since:'2026-11-12T11:05', what:'выбрать вариант А или Б'},
+   summary:'Зимняя обложка сообщества: тепло и уют, без снежинок. Лиза прислала два варианта в обещанный день. Ждём, какой выберет клиент.',
+   reqs:[{k:'Тема', v:[{t:'зима', m:1190}]},{k:'Нельзя', v:[{t:'снежинки', m:1190}]},{k:'Настроение', v:[{t:'тепло, уют', m:1190}]}],
+   open:[{side:'client', text:'Выбрать вариант обложки: А или Б', m:1240}],
+   flags:[{lvl:'warn', text:'Клиент не отвечает на варианты 1 раб. д 3 ч. Сегодня в 13:15 Игорь уже напомнил.'}],
+   events:[
+     {m:1190,type:'created',ai:'Новая обложка сообщества к зиме: без снежинок, настроение тепла и уюта. Срок клиент не назвал.'},
+     {m:1193,type:'accepted',ai:'Лиза приняла и сама назначила срок: два варианта в чт 12 ноя.'},
+     {m:1240,type:'result',ai:'Два варианта отправлены в обещанный день. Нужен выбор клиента.'},
+     {m:1254,type:'nudge',ai:'Игорь напомнил про обложку. Клиент пока не ответил.'},
+     {m:2001,type:'assign',ai:'Игорь передал Лизе задачу клиента: без снежинок, тепло, уютно. Два варианта к четвергу.'},
+     {m:2002,type:'accepted',ai:'Лиза приняла внутри: два варианта к четвергу.'},
+     {m:2003,type:'result_internal',ai:'Лиза показала команде два варианта в обещанный день.'},
+     {m:2004,type:'internal_ok',ai:'Игорь одобрил и попросил Лизу отправить варианты клиенту самой.'}]},
+
+  {id:'T-41', title:'Карусель «7 признаков взаимного мэтча»', status:'revisions', by:'olga', owner:'artem', exec:{who:'liza', via:'design'}, created:'2026-11-10T12:14',
+   deadline:{label:'публикация пн 16 ноя', m:1252},
+   ball:{side:'agency', since:'2026-11-13T12:02', what:'заменить фото на 4-й карточке (Лиза обещала к пн 12:00)'},
+   summary:'Карусель про признаки взаимного мэтча. Сейчас: 7 карточек, без эмодзи в заголовках, публикация в понедельник 16 ноября. Осталась одна правка: заменить фото на 4-й карточке. Лиза обещает сделать к пн 16 ноя, 12:00 (чат «Дизайн»), клиенту этот срок не называли.',
+   reqs:[
+     {k:'Карточек', v:[{t:'5', m:1218},{t:'7', m:1232}]},
+     {k:'Эмодзи в заголовках', v:[{t:'без эмодзи', m:1218},{t:'с эмодзи', m:1232},{t:'без эмодзи', m:1238}]},
+     {k:'4-я карточка', v:[{t:'заменить фото: пара слишком постановочная', m:1252}]},
+     {k:'Публикация', v:[{t:'пт 13 ноя', m:1218},{t:'пн 16 ноя', m:1252}]}],
+   open:[{side:'agency', who:'liza', text:'Заменить фото на 4-й карточке: обещано внутри к пн 16 ноя, 12:00', m:2006},{side:'agency', who:'artem', text:'Сообщить клиенту срок исправления: в ВК он не назван', m:1252}],
+   flags:[
+     {lvl:'warn', text:'Указание по эмодзи менялось дважды. Последнее от Кирилла: без эмодзи.'},
+     {lvl:'warn', text:'Визуал прислали на день позже обещанного.'},
+     {lvl:'warn', text:'Внутри срок исправления назван (пн 12:00), клиенту в ВК не сообщён.'}],
+   events:[
+     {m:1218,type:'created',ai:'Новая задача: карусель из 5 карточек к пт 13 ноя. Условие: без эмодзи в заголовках.'},
+     {m:1219,type:'accepted',ai:'Артём принял и сам назначил сроки: тексты в ср 11 ноя, визуал в чт 12 ноя.'},
+     {m:1230,type:'result',ai:'Тексты отправлены в обещанный день.'},
+     {m:1232,type:'req_change',ai:'Ольга меняет ТЗ: 7 карточек вместо 5 и эмодзи в заголовках. Про эмодзи дописала через 3 минуты, отредактировав сообщение.',flag:{lvl:'warn',text:'Противоречит #1218 от вт 10 ноя: «Без эмодзи в заголовках, пожалуйста».'}},
+     {m:1233,type:'question',ai:'Артём согласен на 7 карточек и просит подтвердить, что правило про эмодзи меняется.'},
+     {m:1238,type:'answer',ai:'Ответил Кирилл, а не Ольга: эмодзи не нужны, это гайд бренда. Указание Ольги от 11 ноя отменено.',flag:{lvl:'warn',text:'Два человека со стороны клиента дали противоположные указания.'}},
+     {m:1239,type:'agree',ai:'Похоже, Ольга согласилась с Кириллом: «Ок» пришло через 18 минут, без реплая.',conf:0.74},
+     {m:1251,type:'result',ai:'Визуал отправлен: 7 карточек, без эмодзи.',flag:{lvl:'warn',text:'Визуал обещали в чт 12 ноя, прислали в пт 13 ноя.'}},
+     {m:1252,type:'revision',ai:'Две правки: заменить фото на 4-й карточке и перенести публикацию с пт 13 на пн 16 ноя.'},
+     {m:2005,type:'assign',ai:'Артём передал Лизе правку по 4-й карточке и спросил, успеет ли она к понедельнику.'},
+     {m:2006,type:'promise',ai:'Лиза обещает сделать к пн 16 ноя, 12:00. Клиенту в ВК этот срок не называли.'}]},
+
+  {id:'T-35', title:'Контент-план на декабрь', status:'done', by:'kirill', owner:'igor', created:'2026-11-06T11:20',
+   deadline:{label:'ср 11 ноя', m:1180},
+   ball:null,
+   summary:'Контент-план на декабрь с упором на новогодние темы. Отправлен раньше срока и согласован Кириллом с условием: 31 декабря ничего не публикуем.',
+   reqs:[{k:'Период', v:[{t:'декабрь, упор на Новый год', m:1180}]},{k:'Срок', v:[{t:'ср 11 ноя', m:1180}]},{k:'Условие', v:[{t:'31 декабря без публикаций', m:1224}]}],
+   open:[], flags:[],
+   events:[
+     {m:1180,type:'created',ai:'Контент-план на декабрь, срок ср 11 ноя. Главное: новогодние темы.'},
+     {m:1182,type:'accepted',ai:'Игорь принял и пообещал раньше срока: во вт 10 ноя вечером.'},
+     {m:1222,type:'result',ai:'План отправлен во вт 19:52. Обещание выполнено.'},
+     {m:1224,type:'approved',ai:'Кирилл согласовал с условием: 31 декабря без публикаций.'}]}
+];
+const T = Object.fromEntries(TASKS.map(t => [t.id, t]));
+
+const INBOX0 = [
+  {m:1245, reason:'Без реплая. «Вчерашнее» подходит к двум задачам: в среду обсуждали карусель и новые комментарии под постом.', cands:[{task:'T-41',p:58},{task:'T-39',p:27}]},
+  {m:1247, reason:'Похоже на идею, а не на поручение: нет срока и формата, «подумайте».', cands:[], idea:true},
+  {m:1253, reason:'Голосовое, текст из расшифровки ВК. Похоже на T-39, но речь о другом посте, про верификацию. Возможно, это новая задача со сроком «до вечера».', cands:[{task:'T-39',p:61}]}
+];
+let inbox = INBOX0.slice();
+const resolved = {};
+
+const LOG = [
+  {t:'14:03', text:'Новых сообщений нет'},
+  {t:'13:51', text:'Рабочий, 2 сообщения → T-40: Артём обещает отчёт Игорю к 16:00'},
+  {t:'13:18', text:'ВК, 1 сообщение → T-37: Игорь напомнил клиенту про обложку'},
+  {t:'12:43', text:'ВК, 1 голосовое → расшифровано, отправлено в «Разбор»'},
+  {t:'12:38', text:'Дизайн, 2 сообщения → T-41: Лиза обещает исправить карточку к пн 12:00'},
+  {t:'12:05', text:'ВК, 1 сообщение → T-41: правки, публикация перенесена на пн 16 ноя'},
+  {t:'11:33', text:'ВК, 2 сообщения → создана T-42; T-41: визуал отправлен'}
+];
+
+const PROMISES = [
+  {who:'igor', what:'Контент-план на декабрь', due:'вт 10 ноя, вечер', res:'ok', note:'Отправлен вт 19:52', task:'T-35'},
+  {who:'liza', what:'Два варианта обложки', due:'чт 12 ноя', res:'ok', note:'Отправлены чт 11:05', task:'T-37'},
+  {who:'artem', what:'Тексты карусели', due:'ср 11 ноя', res:'ok', note:'Отправлены ср 16:20', task:'T-41'},
+  {who:'artem', what:'Визуал карусели', due:'чт 12 ноя', res:'late', note:'Отправлен пт 11:30, на день позже', task:'T-41'},
+  {who:'igor', what:'Ответить на комментарии', due:'вт 10 ноя, 18:00', res:'partial', note:'Внутри: 12 из ~15 (вт 17:42). Клиенту не сообщили', task:'T-39'},
+  {who:'igor', what:'Отчёт по охватам', due:'пт 13 ноя', res:'today', note:'Срок сегодня, клиенту обновлений нет', task:'T-40'},
+  {who:'dasha', what:'Скрипт ответов на негатив', due:'не назван, задача срочная', res:'late', note:'Передан через 4 ч 10 мин раб. времени, в личку', task:'T-39'},
+  {who:'kirill', what:'Финальный промокод', due:'вт 17 ноя', res:'wait', note:'Срок не наступил', task:'T-42'},
+  {who:'liza', what:'Исправить 4-ю карточку', due:'пн 16 ноя, 12:00', res:'wait', note:'Клиенту срок не называли', task:'T-41', to:'internal'},
+  {who:'artem', what:'Отчёт по охватам для Игоря', due:'пт 13 ноя, 16:00', res:'wait', note:'Срок не наступил', task:'T-40', to:'internal'}
+];
+const RES = {ok:['Выполнено','b--ok'], late:['С опозданием','b--warn'], none:['Нет подтверждения','b--danger'], partial:['Частично','b--warn'], today:['Горит','b--danger'], wait:['Ждём','']};
+
+/* helpers */
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const WD = ['вс','пн','вт','ср','чт','пт','сб'];
+const WDL = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+const MON = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+const MONL = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const D = s => new Date(s);
+const pad = n => String(n).padStart(2,'0');
+const fTime = s => { const x = D(s); return pad(x.getHours()) + ':' + pad(x.getMinutes()); };
+const fDay = s => { const x = D(s); return WD[x.getDay()] + ' ' + x.getDate() + ' ' + MON[x.getMonth()]; };
+const fDT = s => fDay(s) + ', ' + fTime(s);
+const fDayLong = s => { const x = D(s); return WDL[x.getDay()] + ', ' + x.getDate() + ' ' + MONL[x.getMonth()]; };
+/* рабочее время: пн–пт, 9:00–19:00 */
+const WS = 9, WE = 19;
+function workMin(a, b){
+  const start = D(a), end = b ? D(b) : NOW;
+  if (end <= start) return 0;
+  let total = 0;
+  const day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  while (day < end){
+    const wd = day.getDay();
+    if (wd >= 1 && wd <= 5){
+      const ws = new Date(day); ws.setHours(WS, 0, 0, 0);
+      const we = new Date(day); we.setHours(WE, 0, 0, 0);
+      const s = Math.max(ws, start), e = Math.min(we, end);
+      if (e > s) total += (e - s) / 60000;
+    }
+    day.setDate(day.getDate() + 1);
+  }
+  return Math.round(total);
+}
+function dur(from, to){
+  let m = workMin(from, to);
+  const d = Math.floor(m / 600); m -= d * 600;
+  const h = Math.floor(m / 60); m -= h * 60;
+  if (d) return d + ' раб. д ' + h + ' ч';
+  if (h) return h + ' ч ' + pad(m) + ' мин';
+  return m + ' мин';
+}
+function offHours(t){
+  const x = D(t), wd = x.getDay(), h = x.getHours() + x.getMinutes() / 60;
+  return wd === 0 || wd === 6 || h < WS || h >= WE;
+}
+const trunc = (s, n) => s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s;
+const sideOf = m => PEOPLE[m.who].side;
+
+MSG.forEach(m => { if (!m.src) m.src = 'vk'; });
+MSG.sort((a, b) => D(a.t) - D(b.t) || a.id - b.id);
+TASKS.forEach(t => t.events.sort((a, b) => D(M[a.m].t) - D(M[b.m].t)));
+const msgTag = {};
+TASKS.forEach(t => t.events.forEach(e => { msgTag[e.m] = {task:t.id, type:e.type}; }));
+
+function bubble(m, withDate){
+  const p = PEOPLE[m.who], side = p.side, r = m.reply ? M[m.reply] : null;
+  let h = '<div class="msg msg--' + side + (m.deleted ? ' msg--deleted' : '') + (SRC[m.src].internal ? ' msg--internal' : '') + '">';
+  h += '<div class="msg-head"><b>' + esc(p.name) + '</b><span class="role">' + SIDE[side] + ' · ' + esc(p.role) + '</span><span class="meta">' + (withDate ? fDT(m.t) : fTime(m.t)) + ' · #' + m.id + '</span><span class="srcchip">' + SRC[m.src].name + '</span>' + (offHours(m.t) ? '<span class="off">вне рабочего времени</span>' : '') + '</div>';
+  if (r) h += '<div class="reply">в ответ на ' + esc(PEOPLE[r.who].short) + ', #' + r.id + ': «' + esc(trunc(r.text, 90)) + '»</div>';
+  h += '<div class="msg-text">' + (m.voice ? '<span class="voice">Голосовое ' + m.voice + ' · расшифровка</span>' : '') + esc(m.text) + '</div>';
+  if (m.att) h += '<div class="att">' + m.att.map(a => '<span>' + esc(a) + '</span>').join('') + '</div>';
+  if (m.edited) h += '<div class="mnote">Изменено в ' + m.edited.at + '. Было: «' + esc(m.edited.was) + '»</div>';
+  if (m.deleted) h += '<div class="mnote mnote--danger">Удалено автором в ' + m.deleted.at + '. Текст сохранён в архиве.</div>';
+  return h + '</div>';
+}
+
+/* board */
+let filter = 'all';
+const FILTERS = [
+  ['all','Все', () => true],
+  ['unanswered','Без нашего ответа', t => t.status === 'new'],
+  ['ours','Ход наш', t => t.ball && t.ball.side === 'agency'],
+  ['client','Ждём клиента', t => t.ball && t.ball.side === 'client'],
+  ['signals','Есть сигналы', t => t.flags.length > 0]
+];
+const fpred = k => FILTERS.find(f => f[0] === k)[2];
+
+function ballBadge(t){
+  if (!t.ball) return '';
+  if (t.status === 'new') return '<span class="b b--danger">Без ответа ' + dur(t.ball.since) + '</span>';
+  if (t.ball.side === 'agency') return '<span class="b b--agency">Ход наш · ' + dur(t.ball.since) + '</span>';
+  return '<span class="b b--client">Ждём клиента · ' + dur(t.ball.since) + '</span>';
+}
+function reqChanges(t){ return t.reqs.reduce((n, r) => n + r.v.length - 1, 0); }
+
+function card(t){
+  const last = M[t.events[t.events.length - 1].m], lp = PEOPLE[last.who];
+  const by = PEOPLE[t.by];
+  let b = ballBadge(t);
+  if (t.deadline) b += '<span class="b' + (t.deadline.today ? ' b--danger' : '') + '">' + (t.deadline.today ? 'Срок сегодня' : 'Срок: ' + esc(t.deadline.label)) + '</span>';
+  const rc = reqChanges(t);
+  if (rc) b += '<span class="b b--warn">ТЗ менялось ' + rc + '×</span>';
+  const inn = t.events.filter(e => SRC[M[e.m].src].internal).length;
+  if (inn) b += '<span class="b">Внутри: ' + inn + '</span>';
+  if (t.flags.length) b += '<span class="b b--ai">Сигналы: ' + t.flags.length + '</span>';
+  return '<button class="card" data-task="' + t.id + '">' +
+    '<span class="card-top"><span>' + t.id + '</span><span><span class="sdot sdot--client"></span> ' + esc(by.short) + ', ' + fDay(t.created) + '</span></span>' +
+    '<span class="card-title">' + esc(t.title) + '</span>' +
+    '<span class="snip"><b class="c-' + lp.side + '">' + esc(lp.short) + (SRC[last.src].internal ? ' · ' + SRC[last.src].name : '') + ':</b> «' + esc(last.text) + '»</span>' +
+    (b ? '<span class="badges">' + b + '</span>' : '') +
+  '</button>';
+}
+
+function renderAttn(){
+  const c = k => TASKS.filter(fpred(k)).length;
+  const items = [
+    ['unanswered','t-danger',c('unanswered'),'Без нашего ответа','клиент поставил задачу, никто не ответил'],
+    ['ours','t-agency',c('ours'),'Ход наш','ждут результата или ответа от нас'],
+    ['client','t-client',c('client'),'Ждём клиента','результат или вопрос у клиента'],
+    ['inbox','t-ai',inbox.length,'На разборе','агент не уверен, нужен ваш выбор']
+  ];
+  $('#attn').innerHTML = items.map(i =>
+    '<button class="attn-i ' + i[1] + '" data-attn="' + i[0] + '" aria-pressed="' + (filter === i[0]) + '"><span class="attn-n">' + i[2] + '</span><span class="attn-l">' + i[3] + '</span><span class="attn-s">' + i[4] + '</span></button>'
+  ).join('');
+}
+function renderFilters(){
+  $('#filters').innerHTML = FILTERS.map(f => '<button class="chip" data-filter="' + f[0] + '" aria-pressed="' + (filter === f[0]) + '">' + f[1] + '</button>').join('');
+}
+function renderBoard(){
+  const p = fpred(filter);
+  $('#board').innerHTML = COLS.map(([k, name, sub]) => {
+    const list = TASKS.filter(t => t.status === k && p(t));
+    const all = TASKS.filter(t => t.status === k).length;
+    return '<div class="col"><div class="col-h"><b>' + name + '</b><span>' + (list.length === all ? all : list.length + ' из ' + all) + '</span></div><p class="col-s">' + sub + '</p>' +
+      (list.length ? list.map(card).join('') : '<div class="col-empty">Пусто</div>') + '</div>';
+  }).join('');
+  renderAttn(); renderFilters();
+}
+function renderLog(){
+  $('#log').innerHTML = LOG.map(l => '<li><time>' + l.t + '</time><span>' + esc(l.text) + '</span></li>').join('');
+}
+
+/* drawer */
+let lastFocus = null, current = null;
+function openTask(id){
+  const t = T[id]; if (!t) return;
+  current = t;
+  const by = PEOPLE[t.by], ow = t.owner ? PEOPLE[t.owner] : null;
+  $('#d-head').innerHTML = '<span class="id">' + t.id + ' <span class="b ' + STATUS_B[t.status] + '">' + STATUS[t.status] + '</span></span><button class="x" id="d-close">Закрыть</button>';
+  let h = '<div class="d-sec"><h2 class="d-title" id="d-title">' + esc(t.title) + '</h2>';
+  h += '<dl class="kv"><dt>Автор задачи</dt><dd><span class="c-client">' + esc(by.name) + '</span>, ' + esc(by.role) + ' · ' + fDT(t.created) + '</dd>';
+  h += '<dt>Ведёт</dt><dd>' + (ow ? '<span class="c-agency">' + esc(ow.name) + '</span>, ' + esc(ow.role) : '<span class="c-client">никто не назначен</span>') + '</dd>';
+  if (t.exec) h += '<dt>Исполняет</dt><dd><span class="c-agency">' + esc(PEOPLE[t.exec.who].name) + '</span>, ' + esc(PEOPLE[t.exec.who].role) + ' <span class="src">по чату «' + SRC[t.exec.via].name + '»</span></dd>';
+  h += '<dt>Срок</dt><dd>' + (t.deadline ? esc(t.deadline.label) + ' <span class="src">из #' + t.deadline.m + '</span>' : 'клиент не назвал') + '</dd>';
+  if (t.ball) h += '<dt>Чей ход</dt><dd>' + (t.ball.side === 'agency' ? '<span class="c-agency">наш</span>' : '<span class="c-client">клиента</span>') + ' · ' + dur(t.ball.since) + ' · ' + esc(t.ball.what) + '</dd>';
+  h += '</dl><div class="actions"><button class="btn btn--primary" id="copy-hist">Скопировать переписку с клиентом</button><button class="btn" id="copy-all">Скопировать всё, с внутренними чатами</button><button class="btn" id="open-vk">Открыть в чате</button><button class="btn" id="add-note">Добавить заметку</button></div>';
+  h += '<textarea class="copybox" id="copy-fallback" readonly hidden aria-label="История задачи"></textarea></div>';
+  h += '<div class="d-sec"><h3>Суть, как понял агент</h3><p class="summary">' + esc(t.summary) + '</p></div>';
+  if (t.flags.length) h += '<div class="d-sec"><h3>Сигналы</h3><ul class="flags">' + t.flags.map(f => '<li class="flag' + (f.lvl === 'danger' ? ' flag--danger' : '') + '">' + esc(f.text) + '</li>').join('') + '</ul></div>';
+  h += '<div class="d-sec"><h3>ТЗ сейчас</h3><ul class="reqs">' + t.reqs.map(r => {
+    const chain = r.v.map((v, i) => {
+      const last = i === r.v.length - 1, p = PEOPLE[M[v.m].who];
+      return (i ? '<span class="arr">→</span>' : '') + '<span class="' + (last ? 'cur' : 'old') + '">' + esc(v.t) + '</span><span class="src">' + esc(p.short) + ', #' + v.m + '</span>';
+    }).join('');
+    return '<li><span class="rk">' + esc(r.k) + '</span><span class="chain">' + chain + '</span></li>';
+  }).join('') + '</ul></div>';
+  if (t.open.length) h += '<div class="d-sec"><h3>Открытые вопросы и обещания</h3><ul class="opens">' + t.open.map(o =>
+    '<li><span class="b ' + (o.side === 'agency' ? 'b--agency' : 'b--client') + '">' + (o.side === 'agency' ? 'за нами' : 'за клиентом') + '</span><span>' + (o.who ? '<b>' + esc(PEOPLE[o.who].short) + ':</b> ' : '') + esc(o.text) + ' <span class="src">#' + o.m + '</span></span></li>').join('') + '</ul></div>';
+  h += '<div class="d-sec"><h3>Хронология · ' + t.events.length + '</h3>' + (t.events.some(e => SRC[M[e.m].src].internal) ? '<p class="hint">Пунктир: внутренние чаты Telegram, клиент их не видит.</p>' : '') + '<ol class="tl">' + t.events.map(e => {
+    const m = M[e.m], s = sideOf(m), ev = EV[e.type];
+    let x = '<li class="ev ev--' + s + '"><span class="ev-tag"><i class="' + ev[1] + '"></i>' + ev[0] + '<time>' + fDT(m.t) + '</time></span>';
+    x += bubble(m, false);
+    x += '<div class="ai"><span class="ai-k">Агент:</span>' + esc(e.ai) + (e.conf ? '<span class="conf">уверенность ' + Math.round(e.conf * 100) + ' % · проверьте</span>' : '') + '</div>';
+    if (e.flag) x += '<div class="flag' + (e.flag.lvl === 'danger' ? ' flag--danger' : '') + '">' + esc(e.flag.text) + '</div>';
+    return x + '</li>';
+  }).join('') + '</ol></div>';
+  $('#d-body').innerHTML = h;
+  $('#d-body').scrollTop = 0;
+  $('#drawer').hidden = false; $('#scrim').hidden = false;
+  document.body.classList.add('noscroll');
+  $('#d-close').focus();
+}
+function closeTask(){
+  $('#drawer').hidden = true; $('#scrim').hidden = true;
+  document.body.classList.remove('noscroll');
+  current = null;
+  if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+function historyText(t, all){
+  const L = [t.id + ' · ' + t.title, 'Статус: ' + STATUS[t.status], 'Автор задачи: ' + PEOPLE[t.by].name + ' (клиент), ' + fDT(t.created), all ? 'Вместе с внутренними чатами' : 'Только переписка с клиентом, ВК', ''];
+  t.events.filter(e => all || !SRC[M[e.m].src].internal).forEach(e => {
+    const m = M[e.m], p = PEOPLE[m.who];
+    L.push(fDT(m.t) + ' — ' + p.name + ' (' + SIDE[p.side] + '), ' + SRC[m.src].full + ', сообщение #' + m.id);
+    if (m.reply) L.push('  в ответ на #' + m.reply + ' (' + PEOPLE[M[m.reply].who].short + ')');
+    L.push('  «' + m.text + '»');
+    if (m.edited) L.push('  изменено в ' + m.edited.at + ', было: «' + m.edited.was + '»');
+    if (m.deleted) L.push('  удалено автором в ' + m.deleted.at + ', текст из архива');
+    L.push('  [' + EV[e.type][0] + '] Агент: ' + e.ai);
+    L.push('');
+  });
+  return L.join('\n');
+}
+
+/* inbox */
+function renderInbox(){
+  $('#inbox-cnt').textContent = inbox.length;
+  $('#inbox-cnt').hidden = inbox.length === 0;
+  if (!inbox.length){ $('#inbox').innerHTML = '<div class="empty">Всё разобрано. Новые неуверенные сообщения появятся здесь.</div>'; return; }
+  $('#inbox').innerHTML = inbox.map(i => {
+    const m = M[i.m];
+    let a = i.cands.map(c => '<button class="btn" data-res="' + m.id + '" data-to="' + c.task + '">К ' + c.task + ' · ' + c.p + ' %</button>').join('');
+    a += '<button class="btn" data-res="' + m.id + '" data-to="new">Новая задача</button>';
+    if (i.idea) a += '<button class="btn" data-res="' + m.id + '" data-to="idea">Записать как идею</button>';
+    a += '<button class="btn" data-res="' + m.id + '" data-to="noise">Это шум</button>';
+    const cl = i.cands.length ? '<p class="hint">' + i.cands.map(c => c.task + ' — ' + esc(T[c.task].title)).join('<br>') + '</p>' : '';
+    return '<div class="ib">' + bubble(m, true) + '<div class="ib-r"><span class="ib-k">Почему на разборе</span><p>' + esc(i.reason) + '</p>' + cl + '<div class="actions">' + a + '</div></div></div>';
+  }).join('');
+}
+function resolve(mid, to){
+  inbox = inbox.filter(i => i.m !== mid);
+  resolved[mid] = to;
+  const label = to === 'noise' ? 'Отмечено как шум' : to === 'idea' ? 'Записано в идеи' : to === 'new' ? 'Создана новая задача' : 'Привязано к ' + to;
+  toast(label + '. Агент учтёт это как пример.');
+  renderInbox(); renderBoard(); renderFeed();
+}
+
+/* feed */
+let feedSrc = 'all';
+function renderFeedSrc(){
+  const opts = [['all','Все чаты'],['vk','ВК · клиент'],['design','Дизайн'],['work','Рабочий']];
+  $('#feed-src').innerHTML = opts.map(o => '<button class="chip" data-fsrc="' + o[0] + '" aria-pressed="' + (feedSrc === o[0]) + '">' + o[1] + '</button>').join('');
+}
+function feedTag(m){
+  if (resolved[m.id]){
+    const r = resolved[m.id];
+    if (T[r]) return '<button class="tagbtn" data-task="' + r + '"><i class="sdot sdot--agency"></i>→ ' + r + ' · вручную</button>';
+    return '<button class="tagbtn" disabled>' + (r === 'noise' ? 'Шум · вручную' : r === 'idea' ? 'Идея · вручную' : 'Новая задача · вручную') + '</button>';
+  }
+  const tg = msgTag[m.id];
+  if (tg) return '<button class="tagbtn" data-task="' + tg.task + '"><i class="sdot ' + EV[tg.type][1] + '"></i>→ ' + tg.task + ' · ' + EV[tg.type][0] + '</button>';
+  if (inbox.some(i => i.m === m.id)) return '<button class="tagbtn" data-goto="inbox"><i class="sdot sdot--ai"></i>На разборе</button>';
+  if (m.noise) return '<button class="tagbtn" disabled>Шум</button>';
+  return '';
+}
+function renderFeed(){
+  renderFeedSrc();
+  const hide = $('#hide-noise').checked;
+  let out = '', day = '';
+  MSG.forEach(m => {
+    const isNoise = m.noise || resolved[m.id] === 'noise';
+    if (hide && isNoise) return;
+    if (feedSrc !== 'all' && m.src !== feedSrc) return;
+    const dk = m.t.slice(0, 10);
+    if (dk !== day){ day = dk; out += '<div class="day">' + fDayLong(m.t) + '</div>'; }
+    out += '<div class="ev ev--' + sideOf(m) + (isNoise ? ' ev--noise' : '') + '">' + bubble(m, false) + feedTag(m) + '</div>';
+  });
+  $('#feed').innerHTML = out;
+}
+
+/* digest */
+function renderDigest(){
+  const noise = MSG.filter(m => m.noise).length;
+  const ch = TASKS.reduce((n, t) => n + reqChanges(t), 0);
+  const st = [[MSG.length,'сообщений в трёх чатах'],[noise,'из них шум'],[TASKS.length,'задач поставлено'],[ch,'изменений ТЗ'],[inbox.length,'на разборе сейчас']];
+  $('#stats').innerHTML = st.map(s => '<div class="stat"><b>' + s[0] + '</b><span>' + s[1] + '</span></div>').join('');
+  $('#promises').innerHTML = '<thead><tr><th>Кто</th><th>Что</th><th>Срок</th><th>Итог</th><th>Задача</th></tr></thead><tbody>' + PROMISES.map(p => {
+    const pp = PEOPLE[p.who], r = RES[p.res];
+    return '<tr><td><span class="c-' + pp.side + '">' + esc(pp.short) + '</span><br><span class="hint">' + SIDE[pp.side] + (p.to === 'internal' ? ' · внутри' : '') + '</span></td><td>' + esc(p.what) + '</td><td>' + esc(p.due) + '</td><td><span class="b ' + r[1] + '">' + r[0] + '</span><br><span class="hint">' + esc(p.note) + '</span></td><td><button class="linkish" data-task="' + p.task + '">' + p.task + '</button></td></tr>';
+  }).join('') + '</tbody>';
+  const ag = [['T-41',1218,1219],['T-35',1180,1182],['T-39',1201,1203],['T-40',1205,1207],['T-37',1190,1193],['T-42',1250,null]];
+  $('#resp-agency').innerHTML = '<thead><tr><th>Задача</th><th>Поставили</th><th>Ответ через</th></tr></thead><tbody>' + ag.map(a =>
+    '<tr><td><button class="linkish" data-task="' + a[0] + '">' + a[0] + '</button> ' + esc(trunc(T[a[0]].title, 34)) + '</td><td class="num">' + fDT(M[a[1]].t) + '</td><td class="num">' + (a[2] ? dur(M[a[1]].t, M[a[2]].t) : '<span class="b b--danger">нет ответа · ' + dur(M[a[1]].t) + '</span>') + '</td></tr>').join('') + '</tbody>';
+  const cl = [['T-41',1251,1252,'визуал'],['T-41',1230,1232,'тексты'],['T-35',1222,1224,'контент-план'],['T-37',1240,null,'обложка']];
+  $('#resp-client').innerHTML = '<thead><tr><th>Что прислали</th><th>Когда</th><th>Ответ через</th></tr></thead><tbody>' + cl.map(a =>
+    '<tr><td><button class="linkish" data-task="' + a[0] + '">' + a[0] + '</button> ' + a[3] + '</td><td class="num">' + fDT(M[a[1]].t) + '</td><td class="num">' + (a[2] ? dur(M[a[1]].t, M[a[2]].t) : '<span class="b b--client">нет ответа · ' + dur(M[a[1]].t) + '</span>') + '</td></tr>').join('') + '</tbody>';
+  const items = [];
+  TASKS.forEach(t => t.reqs.forEach(r => { for (let i = 1; i < r.v.length; i++){
+    const v = r.v[i], m = M[v.m];
+    items.push({t:m.t, html:'<button class="linkish" data-task="' + t.id + '">' + t.id + '</button> ' + esc(r.k) + ': <span class="chain" style="display:inline-flex"><span class="old">' + esc(r.v[i-1].t) + '</span><span class="arr">→</span><span class="cur">' + esc(v.t) + '</span></span> <span class="hint">' + esc(PEOPLE[m.who].short) + ', ' + fDT(m.t) + '</span>'});
+  }}));
+  items.sort((a, b) => D(a.t) - D(b.t));
+  $('#changes').innerHTML = items.map(i => '<li>' + i.html + '</li>').join('');
+}
+
+/* toast */
+let tt = null;
+function toast(s){ const el = $('#toast'); el.textContent = s; el.hidden = false; clearTimeout(tt); tt = setTimeout(() => { el.hidden = true; }, 3200); }
+
+/* routing */
+const VIEWS = ['board','inbox','feed','digest','scheme'];
+function show(v){
+  if (!VIEWS.includes(v)) v = 'board';
+  VIEWS.forEach(x => { $('#v-' + x).hidden = x !== v; });
+  document.querySelectorAll('.tab').forEach(b => { if (b.dataset.view === v) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+}
+function go(v){ if (location.hash !== '#' + v) location.hash = v; else show(v); window.scrollTo(0, 0); }
+window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+/* events */
+document.addEventListener('click', e => {
+  const tab = e.target.closest('.tab'); if (tab){ go(tab.dataset.view); return; }
+  const at = e.target.closest('[data-attn]');
+  if (at){ const k = at.dataset.attn; if (k === 'inbox'){ go('inbox'); return; } filter = filter === k ? 'all' : k; renderBoard(); return; }
+  const fl = e.target.closest('[data-filter]'); if (fl){ filter = fl.dataset.filter; renderBoard(); return; }
+  const fs = e.target.closest('[data-fsrc]'); if (fs){ feedSrc = fs.dataset.fsrc; renderFeed(); return; }
+  const tk = e.target.closest('[data-task]'); if (tk && !tk.disabled){ lastFocus = tk; openTask(tk.dataset.task); return; }
+  const gt = e.target.closest('[data-goto]'); if (gt){ go(gt.dataset.goto); return; }
+  const rs = e.target.closest('[data-res]'); if (rs){ resolve(Number(rs.dataset.res), rs.dataset.to); return; }
+  if (e.target.closest('#d-close') || e.target === $('#scrim')){ closeTask(); return; }
+  if (e.target.closest('#open-vk')){ toast('В рабочей версии откроется нужный чат на этом сообщении.'); return; }
+  if (e.target.closest('#add-note')){ toast('Заметка фиксирует договорённость вне чата: созвон, личку.'); return; }
+  const cp = e.target.closest('#copy-hist, #copy-all');
+  if (cp && current){
+    const all = cp.id === 'copy-all';
+    const txt = historyText(current, all), box = $('#copy-fallback');
+    const fallback = () => { box.value = txt; box.hidden = false; box.focus(); box.select(); toast('Текст выделен, скопируйте его вручную.'); };
+    try {
+      navigator.clipboard.writeText(txt).then(() => toast('История ' + current.id + (all ? ' скопирована вместе с внутренними чатами.' : ' скопирована: только переписка с клиентом.')), fallback);
+    } catch (err) { fallback(); }
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#drawer').hidden) closeTask(); });
+$('#hide-noise').addEventListener('change', renderFeed);
+
+renderBoard(); renderLog(); renderInbox(); renderFeed(); renderDigest();
+show(location.hash.slice(1));
+})();
+</script>

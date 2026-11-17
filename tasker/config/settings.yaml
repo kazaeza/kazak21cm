@@ -1,0 +1,41 @@
+# Настройки таскера. Значения со словом TODO ещё не согласованы с пользователем.
+
+schedule:
+  timezone: TODO            # часовой пояс пользователя, не назван
+  workdays: [mon, tue, wed, thu, fri]
+  work_hours: ["09:00", "19:00"]
+  holidays_file: config/holidays.yaml   # праздники и переносы, править вручную; файла пока нет
+  vk_poll_interval_min: 3   # ВК читаем только в рабочее окно
+  telegram: always_collect  # бот собирает круглосуточно, модель разбирает в рабочее окно
+  morning_catchup: true     # в 09:00 разбираем всё накопленное
+
+batching:
+  debounce_seconds: 60      # если последнее сообщение моложе, проход откладываем
+  max_deferrals: 2
+  context_messages: 40      # сколько последних сообщений идёт в промпт вместе с новыми
+  reread_last_n: 50         # ВК: перечитываем последние N, чтобы поймать правки и удаления
+  backlog_chunk: 100        # большие пачки (утро после выходных) обрабатываем порциями
+
+confidence:
+  auto_apply_min: 0.85      # применяем без пометки
+  mark_check_min: 0.70      # применяем, но с пометкой «проверьте»
+  # ниже 0.70 сообщение уходит в «Разбор»
+
+alerts:
+  client_waiting_over_working_minutes: 60   # клиент написал, ответа нет
+  deadline_today: true
+  requirement_changed: true
+  vk_session_lost: true
+  recipients: TODO          # предположение: ведущий проекта и аккаунт-менеджер; руководитель агентства только недельная сводка
+  channel: telegram_dm      # тот же бот, личные сообщения
+
+model:
+  provider: google_gemini
+  name: TODO                # актуальную Flash-модель выбрать по прайсу на момент запуска
+  structured_output: json_schema   # см. schema/ops.schema.json
+  second_stage: undecided   # перепроверка спорных случаев более сильной моделью, решим по тесту на истории
+  paid_tier_required: true  # на бесплатном тарифе Google может использовать запросы для улучшения продуктов
+
+hosting:
+  server: TODO              # маленький VPS, 24/7: архив, Telegram-бот, модель, таскер, уведомления
+  vk_collector: user_pc     # на компьютере пользователя, пн-пт 9-19, шлёт сообщения на сервер по HTTPS

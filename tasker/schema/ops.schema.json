@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentOps v0",
+  "description": "Черновик контракта: что модель возвращает на каждый проход. Цитат здесь нет: только номера сообщений из архива. Gemini поддерживает подмножество JSON Schema, поэтому при подключении схему нужно проверить и при необходимости упростить.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ops"],
+  "properties": {
+    "ops": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/op" }
+    }
+  },
+  "$defs": {
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "messageId": { "type": "integer", "description": "Сквозной номер сообщения в нашем архиве" },
+    "taskId": { "type": "string", "pattern": "^T-[0-9]+$" },
+    "personId": { "type": "string", "description": "id из people.yaml" },
+    "status": {
+      "type": "string",
+      "enum": ["new", "work", "review", "revisions", "done", "cancelled", "paused"]
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "accepted", "question", "answer", "req_add", "result", "result_internal",
+        "revision", "approved", "internal_ok", "tension", "offchat", "deleted",
+        "nudge", "promise", "agree", "assign", "progress"
+      ]
+    },
+    "op": {
+      "anyOf": [
+        { "$ref": "#/$defs/create_task" },
+        { "$ref": "#/$defs/attach" },
+        { "$ref": "#/$defs/change_requirement" },
+        { "$ref": "#/$defs/flag_contradiction" },
+        { "$ref": "#/$defs/set_status" },
+        { "$ref": "#/$defs/record_promise" },
+        { "$ref": "#/$defs/link_tasks" },
+        { "$ref": "#/$defs/note_offchat" },
+        { "$ref": "#/$defs/needs_review" },
+        { "$ref": "#/$defs/mark_noise" }
+      ]
+    },
+    "create_task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "message", "title", "kind", "confidence"],
+      "properties": {
+        "op": { "const": "create_task" },
+        "message": { "$ref": "#/$defs/messageId" },
+        "title": { "type": "string", "maxLength": 120 },
+        "kind": { "type": "string", "enum": ["client", "internal"] },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "value"],
+            "properties": { "key": { "type": "string" }, "value": { "type": "string" } }
+          }
+        },
+        "deadline_text": { "type": ["string", "null"], "description": "Срок словами, как его назвали" },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "attach": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "task", "message", "event", "confidence"],
+      "properties": {
+        "op": { "const": "attach" },
+        "task": { "$ref": "#/$defs/taskId" },
+        "message": { "$ref": "#/$defs/messageId" },
+        "event": { "$ref": "#/$defs/eventType" },
+        "interpretation": { "type": "string", "description": "Как понял модель. Отдельно от цитаты" },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "change_requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "task", "message", "key", "to", "confidence"],
+      "properties": {
+        "op": { "const": "change_requirement" },
+        "task": { "$ref": "#/$defs/taskId" },
+        "message": { "$ref": "#/$defs/messageId" },
+        "key": { "type": "string" },
+        "from": { "type": ["string", "null"] },
+        "to": { "type": "string" },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "flag_contradiction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "task", "message", "conflicts_with", "note"],
+      "properties": {
+        "op": { "const": "flag_contradiction" },
+        "task": { "$ref": "#/$defs/taskId" },
+        "message": { "$ref": "#/$defs/messageId" },
+        "conflicts_with": { "$ref": "#/$defs/messageId" },
+        "note": { "type": "string" }
+      }
+    },
+    "set_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "task", "status", "message", "confidence"],
+      "properties": {
+        "op": { "const": "set_status" },
+        "task": { "$ref": "#/$defs/taskId" },
+        "status": { "$ref": "#/$defs/status" },
+        "message": { "$ref": "#/$defs/messageId" },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "record_promise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "task", "message", "person", "what", "audience", "confidence"],
+      "properties": {
+        "op": { "const": "record_promise" },
+        "task": { "$ref": "#/$defs/taskId" },
+        "message": { "$ref": "#/$defs/messageId" },
+        "person": { "$ref": "#/$defs/personId" },
+        "what": { "type": "string" },
+        "due_text": { "type": ["string", "null"] },
+        "audience": { "type": "string", "enum": ["client", "internal"], "description": "Кому обещано: клиенту или внутри команды" },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "link_tasks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "task", "parent_task", "confidence"],
+      "properties": {
+        "op": { "const": "link_tasks" },
+        "task": { "$ref": "#/$defs/taskId", "description": "Обычно внутренняя задача" },
+        "parent_task": { "$ref": "#/$defs/taskId", "description": "Клиентская задача, частью которой она является" },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "note_offchat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "message", "channel", "note"],
+      "properties": {
+        "op": { "const": "note_offchat" },
+        "task": { "type": ["string", "null"], "pattern": "^T-[0-9]+$" },
+        "message": { "$ref": "#/$defs/messageId" },
+        "channel": { "type": "string", "enum": ["dm", "call", "other"] },
+        "note": { "type": "string" }
+      }
+    },
+    "needs_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "message", "reason"],
+      "properties": {
+        "op": { "const": "needs_review" },
+        "message": { "$ref": "#/$defs/messageId" },
+        "reason": { "type": "string" },
+        "looks_like_idea": { "type": "boolean" },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["task", "p"],
+            "properties": { "task": { "$ref": "#/$defs/taskId" }, "p": { "$ref": "#/$defs/confidence" } }
+          }
+        }
+      }
+    },
+    "mark_noise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "message"],
+      "properties": {
+        "op": { "const": "mark_noise" },
+        "message": { "$ref": "#/$defs/messageId" }
+      }
+    }
+  }
+}
