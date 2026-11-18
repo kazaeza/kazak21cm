@@ -322,15 +322,22 @@ class TirDriver(
         fun longer(chain: List<Int>): List<Int> {
             val from = chain.lastOrNull() ?: return listOf(r.nextInt(pad.size))
             var next: Int
+            val moves = simonMoves(level)
             do {
-                next = (from + SIMON_MOVES[r.nextInt(SIMON_MOVES.size)]).coerceIn(-2, pad.size + 1)
+                next = (from + moves[r.nextInt(moves.size)]).coerceIn(-2, pad.size + 1)
             } while (next == from)
             return chain + next
         }
         if (simonChain.isEmpty()) repeat(SIMON_START) { simonChain = longer(simonChain) } else if (grew) simonChain = longer(simonChain)
         val notes = simonChain.map { place -> DegreeNote(pad[Math.floorMod(place, pad.size)], Math.floorDiv(place, pad.size)) }
         val tonic = key.tonicAtOrAbove(MidiNote(55))
-        val question = arranger.line(notes, key, Voice.TONE, beatsEach = 0.9, tempoBpm = TEMPO, tonicFloor = tonic)
+        val chain = arranger.line(notes, key, Voice.TONE, beatsEach = simonBeats(level), tempoBpm = TEMPO, tonicFloor = tonic)
+        // O-59: «дом» first — the tonic alone, so the first note is heard against it and not against nothing
+        val question = if (simonAnchored(level)) {
+            arranger.line(listOf(DegreeNote(Degree.ONE)), key, Voice.TONE, beatsEach = SIMON_HOME_BEATS, tempoBpm = TEMPO, tonicFloor = tonic).then(chain, gapBeats = SIMON_HOME_GAP)
+        } else {
+            chain
+        }
         val itemKey = "tir:simon:L$level:len${notes.size}"
         simonLastKey = itemKey
         return TirTask(
@@ -599,6 +606,13 @@ class TirDriver(
             arranger.chords(listOf(Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.5, tempoBpm = TEMPO),
             gapBeats = 0.25,
         )
+        // O-59 «Саймон»: the chain again, slowly — which note it was is what has to be heard
+        task.simon != null -> {
+            val last = task.notes.last()
+            val slow = arranger.line(task.notes, task.key, Voice.TONE, beatsEach = SIMON_SLOW_BEATS, tempoBpm = TEMPO, tonicFloor = task.tonic)
+            val resolution = arranger.line(listOf(last) + Harmony.resolution(last, task.key.mode), task.key, Voice.TONE, beatsEach = 0.75, tempoBpm = TEMPO, tonicFloor = task.tonic)
+            slow.then(resolution, gapBeats = 0.5)
+        }
         else -> plainCorrection(task)
     }
 
@@ -640,6 +654,27 @@ class TirDriver(
 
         /** O-46: how a chain goes on — steps mostly, a third now and then (in places of the pad). */
         private val SIMON_MOVES = listOf(-2, -1, -1, 1, 1, 2)
+
+        /** O-59: from level 2 the tune also leaps — a ear that only follows the steps has nothing to hold on to. */
+        private val SIMON_MOVES_LEAPS = listOf(-4, -3, -2, -1, 1, 2, 3, 4)
+
+        /** O-59: how long each note of a chain lasts (in beats) — slow at first, as fast as before at the top. */
+        fun simonBeats(level: Int): Double = when {
+            level <= 1 -> 1.5
+            level == 2 -> 1.2
+            else -> 0.9
+        }
+
+        /** O-59: the tonic sounds alone before the chain on levels 1 and 2. */
+        fun simonAnchored(level: Int): Boolean = level <= 2
+
+        fun simonMoves(level: Int): List<Int> = if (level <= 1) SIMON_MOVES else SIMON_MOVES_LEAPS
+
+        const val SIMON_HOME_BEATS = 2.0
+        const val SIMON_HOME_GAP = 0.5
+
+        /** O-59: after a miss the chain is heard again slowly, a note at a time. */
+        const val SIMON_SLOW_BEATS = 1.6
 
         /** O-46: the degrees a chain is made of — the scale without its two half-step degrees on level 1, the whole scale on level 2. */
         fun simonPad(mode: Mode, level: Int): List<Degree> =

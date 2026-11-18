@@ -129,8 +129,11 @@ object Levels {
     /** «Какой лад?» (O-51): the two colours, then the modes that differ from them by one degree. */
     val TIR_MODE = listOf("мажор или минор", "+ дорийский, миксолидийский", "+ фригийский, лидийский", "+ гармонический минор")
 
-    /** «Саймон» (O-46): the five steady and near degrees first, then the whole scale. */
-    val TIR_SIMON = listOf("пять ступеней", "все семь")
+    /**
+     * «Саймон» (O-46, O-59): the five steady degrees, slowly and from the tonic; the whole scale with leaps; then without
+     * the tonic first and faster — the ear that thinks «выше, чем была» has to hold the notes against home instead.
+     */
+    val TIR_SIMON = listOf("пять ступеней, не спеша", "все семь, с прыжками", "без опоры, быстро")
 
     /** «Куда пойдёт?» (O-45): with the chords written and four answers, then by ear on the whole pad. */
     val TIR_NEXT = listOf("ступени видны", "на слух")

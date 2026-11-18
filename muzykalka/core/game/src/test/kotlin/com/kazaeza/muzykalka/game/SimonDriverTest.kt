@@ -107,4 +107,37 @@ class SimonDriverTest {
         assertNull(TirDriver.reviewKey(t.itemKey))
         assertEquals(0, Metrics.confusion(listOf(record(t, false))).counts.sumOf { it.sum() })
     }
+
+    @Test
+    fun `the tonic sounds alone before the chain on the first two levels, not on the third`() {
+        val l1 = play(driver(2), listOf(true, true), level = 1).last()
+        val l3 = play(driver(2), listOf(true, true), level = 3).last()
+        assertEquals(l1.notes.size + 1, l1.question.notes.size, "the tonic and the chain")
+        assertEquals(l3.notes.size, l3.question.notes.size, "no crutch on level 3")
+        val home = l1.question.notes.first()
+        assertEquals(l1.drone!!.first().pitchClass, home.note!!.pitchClass, "the first sound is the tonic")
+        assertTrue(l1.question.notes.drop(1).all { it.startBeat >= home.endBeat }, "the chain begins after the tonic has sounded")
+    }
+
+    @Test
+    fun `the tempo goes up with the level and the tune leaps from level 2`() {
+        assertTrue(TirDriver.simonBeats(1) > TirDriver.simonBeats(2) && TirDriver.simonBeats(2) > TirDriver.simonBeats(3))
+        assertTrue(TirDriver.simonMoves(1).all { kotlin.math.abs(it) <= 2 }, "level 1 walks")
+        assertTrue(TirDriver.simonMoves(2).any { kotlin.math.abs(it) >= 3 }, "level 2 leaps")
+        assertEquals(3, Levels.TIR_SIMON.size)
+        val chain = play(driver(4), List(6) { true }, level = 2, seed = 9).last()
+        val places = chain.notes.map { chain.noteChoices.indexOf(it.degree) + 7 * it.octave }
+        assertTrue(places.zipWithNext().any { (a, b) -> kotlin.math.abs(a - b) >= 3 }, "a leap in $places")
+    }
+
+    @Test
+    fun `a miss is answered with the chain again, slowly (rule 5)`() {
+        val d = driver(6)
+        val t = play(d, listOf(true, true)).last()
+        val wrong = d.evaluate(t, Answer.Pass)
+        val fix = requireNotNull(wrong.correction)
+        val gaps = fix.notes.map { it.startBeat }.sorted().zipWithNext { a, b -> b - a }.filter { it > 0.0 }
+        assertTrue(gaps.max() >= TirDriver.SIMON_SLOW_BEATS - 1e-9, "a note at a time: $gaps")
+        assertTrue(fix.notes.size > t.notes.size, "the chain and the way home")
+    }
 }

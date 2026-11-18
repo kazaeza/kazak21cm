@@ -233,6 +233,23 @@ internal fun TirContent(
                     if (!feedback && (chain.broke || chain.wins > 0 && chain.length == TirDriver.SIMON_START && !chain.grew)) {
                         Text(if (chain.broke) "оборвалась — новая" else "доиграна до конца — новая", style = MaterialTheme.typography.bodyMedium, color = if (chain.broke) Juicy.TextDim else Juicy.Good)
                     }
+                    // O-59: which note it broke on — the ear hears the chain as a whole, and the miss is one place of it
+                    if (feedback && !correct) {
+                        val at = (0 until task.notes.size).firstOrNull { i -> i >= enteredNotes.size || !(enteredNotes[i] sameSoundAs task.notes[i].degree) }
+                        if (at != null) {
+                            val want = DegreeFormatter.degree(task.notes[at].degree, ui.notation)
+                            Text(
+                                if (at < enteredNotes.size) {
+                                    "сорвалось на ноте ${at + 1}: была $want, ты нажал ${DegreeFormatter.degree(enteredNotes[at], ui.notation)}"
+                                } else {
+                                    "не вспомнил ноту ${at + 1}: это $want"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Juicy.Gold,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 // O-15 «Под нотой» (turned round in O-40): the note is given and hums, the chord played over it is the question.
