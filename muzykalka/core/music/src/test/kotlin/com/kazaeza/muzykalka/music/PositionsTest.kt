@@ -106,4 +106,71 @@ class PositionsTest {
         }
         assertTrue(Positions.forms(Fretboard(Tuning.DROP_D), cMajor, one).isEmpty(), "no shapes in a drop tuning")
     }
+
+    private fun frets(grip: Grip): List<Int?> {
+        val lowToHigh = board.strings.sortedBy { board.tuning.open(it).value }
+        return lowToHigh.map { s ->
+            when {
+                s in grip.muted -> null
+                s in grip.open -> 0
+                else -> grip.dots.first { it.place.string == s }.place.fret
+            }
+        }
+    }
+
+    @Test
+    fun `a grip is the open chord it is named after, moved to where the root is`() {
+        val roots = Positions.roots(board, gMajor, 2).associateBy { it.step }
+        // I: the barre from the 6th string; IV: from the 5th; V: the C shape under the little finger
+        assertEquals(listOf(3, 5, 5, 4, 3, 3), frets(requireNotNull(Positions.grip(board, gMajor, roots.getValue(0)))))
+        assertEquals(listOf(null, 3, 5, 5, 5, 3), frets(requireNotNull(Positions.grip(board, gMajor, roots.getValue(3)))))
+        assertEquals(listOf(null, 5, 4, 2, 3, 2), frets(requireNotNull(Positions.grip(board, gMajor, roots.getValue(4)))))
+        // vi: Em, the minor D shape from the 4th string: x x 2 4 5 3
+        assertEquals(listOf(null, null, 2, 4, 5, 3), frets(requireNotNull(Positions.grip(board, gMajor, roots.getValue(5)))))
+    }
+
+    @Test
+    fun `the open position gives the open chords of a guitarist`() {
+        val c = KeyCatalog.practical(PitchClass.of(0), Mode.MAJOR)
+        val roots = Positions.roots(board, c, 0).associateBy { it.step }
+        val g = requireNotNull(Positions.grip(board, c, roots.getValue(4)))
+        assertEquals(listOf(3, 2, 0, 0, 0, 3), frets(g), "G")
+        val a = KeyCatalog.practical(PitchClass.of(9), Mode.MINOR)
+        val aRoots = Positions.roots(board, a, 0).associateBy { it.step }
+        assertEquals(listOf(null, 0, 2, 2, 1, 0), frets(requireNotNull(Positions.grip(board, a, aRoots.getValue(0)))), "Am")
+    }
+
+    @Test
+    fun `every grip sounds only the tones of its chord and all of them, with the root marked`() {
+        for (mode in listOf(Mode.MAJOR, Mode.MINOR)) for (key in KeyCatalog.practical(mode)) for (start in 0..Positions.lastStart(board)) {
+            for (r in Positions.roots(board, key, start)) {
+                val grip = Positions.grip(board, key, r) ?: continue
+                val tones = r.chord.quality.intervals.take(3).map { key.pitchClassOf(r.chord.root) + it }.toSet()
+                val sounding = (grip.dots.map { it.place } + grip.open.map { FretPosition(it, 0) }).map { board.noteAt(it).pitchClass }.toSet()
+                assertEquals(tones, sounding, "$key $r")
+                assertTrue(grip.dots.any { it.isRoot }, "the root is pressed or open: $r")
+                assertTrue(grip.dots.all { it.place.fret in 1..board.fretCount })
+                assertTrue(grip.open.size + grip.muted.size + grip.dots.size >= 6)
+            }
+        }
+    }
+
+    @Test
+    fun `a diminished chord or a drop tuning has no grip, only the tones in the zone`() {
+        val roots = Positions.roots(board, gMajor, 2).associateBy { it.step }
+        assertNull(Positions.grip(board, gMajor, roots.getValue(6)), "vii° has no handy shape")
+        assertNull(Positions.grip(board, gMajor, roots.getValue(1)), "ii: no form in this zone")
+        val drop = Fretboard(Tuning.DROP_D)
+        assertTrue(Positions.roots(drop, gMajor, 2).all { Positions.grip(drop, gMajor, it) == null })
+    }
+
+    @Test
+    fun `the rule from the tonic says where a root stands, as the map shows it`() {
+        val home = FretPosition(6, 3)
+        assertEquals("Это дом: отсюда всё считается.", Positions.hop(home, home))
+        assertEquals("Корень — на струну тоньше, на том же ладу, что корень I.", Positions.hop(home, FretPosition(5, 3)))
+        assertEquals("Корень — на струну тоньше и на 2 лада выше, чем корень I.", Positions.hop(home, FretPosition(5, 5)))
+        assertEquals("Корень — по той же струне, на 2 лада выше корня I.", Positions.hop(home, FretPosition(6, 5)))
+        assertEquals("Корень — на 2 струны тоньше и на 1 лад ниже, чем корень I.", Positions.hop(home, FretPosition(4, 2)))
+    }
 }

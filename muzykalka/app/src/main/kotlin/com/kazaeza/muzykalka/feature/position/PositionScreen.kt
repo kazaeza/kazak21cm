@@ -2,6 +2,10 @@ package com.kazaeza.muzykalka.feature.position
 
 import com.kazaeza.muzykalka.ui.theme.Manrope
 import com.kazaeza.muzykalka.music.FretPosition
+import com.kazaeza.muzykalka.music.Grip
+import com.kazaeza.muzykalka.music.DegreeNotation
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
 import com.kazaeza.muzykalka.music.FormPlace
 import com.kazaeza.muzykalka.feature.common.plural
 import androidx.compose.ui.unit.sp
@@ -88,6 +92,13 @@ data class PositionUi(
     /** O-53: the places of the picked chord (the tonic chord while none is picked) along the whole neck. */
     val forms: List<FormPlace> = emptyList(),
     val settings: Settings = Settings(),
+    /** O-61: the picked chord as one shape of the hand, for the diagram (null — no handy shape). */
+    val grip: Grip? = null,
+    /** O-61: the big neck, the zone and the strip of places are behind a button. */
+    val wholeNeck: Boolean = false,
+    /** O-61: the chord the self-check asks for (step of the scale); null — no question. */
+    val quiz: Int? = null,
+    val quizRound: Int = 0,
 ) {
     val picked: RootPlace? get() = roots.firstOrNull { it.step == step }
 }
@@ -97,7 +108,8 @@ data class PositionUi(
  * the root of every chord on one of the three bass strings. A map, not a drill: nothing is judged or recorded.
  */
 class PositionViewModel(private val graph: AppGraph) : ViewModel() {
-    private val keys = KeyPicker(Random(System.nanoTime()))
+    private val random = Random(System.nanoTime())
+    private val keys = KeyPicker(random)
     private val arranger = Arranger()
     private val state = MutableStateFlow(PositionUi())
     val ui: StateFlow<PositionUi> = state.asStateFlow()
@@ -111,7 +123,7 @@ class PositionViewModel(private val graph: AppGraph) : ViewModel() {
             board = Fretboard(settings.tuning, settings.fretCount)
             val key = keys.next(Mode.MAJOR)
             state.update { it.copy(loading = false, settings = settings, lastStart = Positions.lastStart(board)) }
-            show(key, Positions.homeZone(board, key), null)
+            show(key, Positions.homeZone(board, key), 0)
         }
     }
 
@@ -119,20 +131,43 @@ class PositionViewModel(private val graph: AppGraph) : ViewModel() {
         val roots = Positions.roots(board, key, start)
         val tones = step?.let { s -> Positions.tones(board, key, roots.first { it.step == s }.chord, start) }.orEmpty()
         val forms = Positions.forms(board, key, roots.first { it.step == (step ?: 0) }.chord)
-        state.update { it.copy(key = key, start = start, step = step, roots = roots, tones = tones, forms = forms) }
+        val grip = step?.let { s -> Positions.grip(board, key, roots.first { it.step == s }) }
+        state.update { it.copy(key = key, start = start, step = step, roots = roots, tones = tones, forms = forms, grip = grip) }
     }
 
     fun newKey() {
         val mode = state.value.key?.mode ?: Mode.MAJOR
         val key = keys.next(mode)
-        show(key, Positions.homeZone(board, key), null)
+        show(key, Positions.homeZone(board, key), 0)
+        state.update { it.copy(quiz = null) }
     }
 
     /** The same tonic in the other mode: the roots move, the zone stays. */
     fun setMode(mode: Mode) {
         val key = state.value.key ?: return
         if (key.mode == mode) return
-        show(KeyCatalog.practical(key.tonic.pitchClass, mode), state.value.start, null)
+        show(KeyCatalog.practical(key.tonic.pitchClass, mode), state.value.start, 0)
+        state.update { it.copy(quiz = null) }
+    }
+
+    /** O-61: the big neck, the zone controls and the strip of places — shown or tucked away. */
+    fun toggleNeck() = state.update { it.copy(wholeNeck = !it.wholeNeck) }
+
+    /**
+     * O-61: a question to ask oneself — «where is IV?». Nothing is judged and nothing recorded (a map, not a drill):
+     * [reveal] shows the answer, and the check is the user's own.
+     */
+    fun ask() {
+        val s = state.value
+        val next = (1..6).filter { it != s.quiz }.random(random)
+        state.update { it.copy(quiz = next, quizRound = it.quizRound + 1) }
+    }
+
+    /** O-61: the answer to the question — the chord is picked, its shape and the rule appear (and it sounds). */
+    fun reveal() {
+        val step = state.value.quiz ?: return
+        pick(step)
+        state.update { it.copy(quiz = null) }
     }
 
     fun shift(by: Int) {
@@ -201,45 +236,23 @@ fun PositionScreen(onBack: () -> Unit) {
                 GhostButton("⇄", onClick = vm::newKey, colors = Accents.Hunt)
             }
         }
-        item(key = "neck") {
-            val lit = ui.tones.map { it.place }.toSet()
-            val rootPlace = ui.picked?.place
-            val markers =
-                // the roots of the other chords stay on the neck as rings: the whole key is in sight
-                ui.roots.filter { it.place !in lit }.map { r ->
-                    FretMarker(r.place, DegreeColors.of(r.chord.root), name(r), ghost = true)
-                } + ui.tones.map { t ->
-                    FretMarker(t.place, DegreeColors.of(t.degree), DegreeFormatter.degree(t.degree, notation), pulse = t.place == rootPlace)
-                }
-            com.kazaeza.muzykalka.ui.neck.Fretboard(
-                stringCount = ui.settings.tuning.stringCount,
-                fromFret = maxOf(0, zone.first - 2),
-                toFret = minOf(ui.settings.fretCount, zone.last + 2),
-                markers = markers,
-                leftHanded = ui.settings.leftHanded,
-                height = 240.dp,
-                onTap = vm::tapNeck,
-                glass = true,
-                zone = zone,
-            )
-        }
-        item(key = "zone") {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GhostButton("‹", onClick = { vm.shift(-1) }, colors = Accents.Hunt, enabled = ui.start > 0)
+        item(key = "howto") {
+            GlassCard(Modifier.fillMaxWidth()) {
+                SectionLabel("как читать")
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    if (zone.first == 0) "открытая позиция: лады 0–${zone.last}" else "лады ${zone.first}–${zone.last}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Juicy.Text,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f),
+                    "1. Выбери аккорд — ниже появится его хват, как на схемах в песенниках: вертикальные линии — струны (слева самая басовая), поперечные — лады.\n" +
+                        "2. Кружок — палец, цифра в нём — ступень лада, цвет тот же, что везде. Золотая обводка — корень, от него хват «растёт».\n" +
+                        "3. ○ над струной — играет открытой, × — её не трогаем.\n" +
+                        "4. Все семь аккордов лада находятся одним правилом от первого, I, — оно под схемой.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Juicy.TextDim,
                 )
-                GhostButton("›", onClick = { vm.shift(1) }, colors = Accents.Hunt, enabled = ui.start < ui.lastStart)
-                GhostButton("домой", onClick = vm::home, colors = Accents.Hunt)
             }
         }
         item(key = "chords") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel("аккорды лада — нажми здесь или корень на грифе")
+                SectionLabel("аккорды лада — нажми любой")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ui.roots.forEach { r ->
                         DegreeChip(name(r), DegreeColors.of(r.chord.root), large = true, onClick = { vm.pick(r.step) }, selected = r.step == ui.step)
@@ -247,48 +260,38 @@ fun PositionScreen(onBack: () -> Unit) {
                 }
             }
         }
-        if (ui.forms.isNotEmpty()) {
-            item(key = "forms") {
-                val chord = ui.roots.firstOrNull { it.step == (ui.step ?: 0) }
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SectionLabel((chord?.let(name) ?: "") + " по всему грифу — " + ui.forms.size + " " + plural(ui.forms.size, "место", "места", "мест") + ", нажми любое")
-                    FormStrip(ui.forms, ui.start, ui.lastStart, chord?.let { DegreeColors.of(it.chord.root) } ?: Juicy.Gold, ui.settings.leftHanded, vm::goTo)
-                }
-            }
-        }
         item(key = "card") {
             val picked = ui.picked
-            if (picked == null) {
-                Text(
-                    "Три басовые струны настроены по квартам, поэтому в любых пяти ладах на них есть корень каждого из семи аккордов лада: ехать по грифу не нужно. " +
-                        "Кольца на грифе — эти корни. Нажми аккорд: загорятся все его ноты в зоне, форма сложится сама.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Juicy.TextDim,
-                )
-            } else {
+            if (picked != null) {
                 val color = DegreeColors.of(picked.chord.root)
+                val home = ui.roots.first().place
                 GlassCard(Modifier.fillMaxWidth(), accent = DegreeColors.gradient(color)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // the shape's name is the biggest thing on the card: it is what the hand needs first
-                        picked.form?.let {
-                            Text(it.name, style = MaterialTheme.typography.displayMedium, color = Juicy.Gold)
-                            Spacer(Modifier.width(14.dp))
+                    Text(ChordVibes.title(picked.chord, key.mode, notation), style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
+                        val grip = ui.grip
+                        if (grip != null) {
+                            GripDiagram(grip, ui.settings.tuning.stringCount, notation, ui.settings.leftHanded)
                         }
-                        Column(Modifier.weight(1f)) {
-                            Text(ChordVibes.title(picked.chord, key.mode, notation), style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            picked.form?.let { Text(it.name, style = MaterialTheme.typography.displaySmall, color = Juicy.Gold) }
                             Text(
                                 "Корень: ${picked.place.string}-я струна, " + if (picked.place.fret == 0) "открытая" else "${picked.place.fret}-й лад",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = color,
                             )
+                            Text(
+                                if (grip != null) "Хват " + (picked.form?.ru ?: "") else
+                                    "Готового хвата для этого аккорда в этой зоне нет: он уменьшённый или корень лежит под мизинцем. " +
+                                        "Кнопка «Весь гриф» покажет все его ноты и сдвинет зону.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (grip != null) Juicy.Text else Juicy.Gold,
+                            )
                         }
                     }
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        picked.form?.ru ?: "Удобной формы от этого корня нет — нажми другое место на полоске грифа: корень уйдёт под указательный.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (picked.form != null) Juicy.Text else Juicy.Gold,
-                    )
+                    Spacer(Modifier.height(10.dp))
+                    SectionLabel("правило от I")
+                    Text(Positions.hop(home, picked.place), style = MaterialTheme.typography.bodyLarge, color = Juicy.Text)
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("ноты в ладу:", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
@@ -300,9 +303,82 @@ fun PositionScreen(onBack: () -> Unit) {
                 }
             }
         }
+        item(key = "quiz") {
+            val q = ui.quiz?.let { step -> ui.roots.firstOrNull { it.step == step } }
+            GlassCard(Modifier.fillMaxWidth()) {
+                if (q == null) {
+                    SectionLabel("проверь себя")
+                    Text("Спроси себя, где лежит аккорд, и найди его корень по правилу.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                    Spacer(Modifier.height(8.dp))
+                    GhostButton("Проверь себя: где аккорд?", onClick = vm::ask, colors = Accents.Hunt)
+                } else {
+                    Text("Где ${name(q)}?", style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(q.chord.root))
+                    Text(
+                        "Отсчитай от корня I по правилу и найди корень на грифе. Готов — нажми «Показать»: сверишь сам, приложение не судит.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Juicy.TextDim,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GhostButton("Показать", onClick = vm::reveal, colors = Accents.Hunt)
+                        GhostButton("Другой", onClick = vm::ask, colors = Accents.Hunt)
+                    }
+                }
+            }
+        }
+        item(key = "wholeNeck") {
+            GhostButton(if (ui.wholeNeck) "Скрыть гриф" else "Весь гриф — зона, места аккорда", onClick = vm::toggleNeck, colors = Accents.Hunt)
+        }
+        if (ui.wholeNeck) {
+            item(key = "neck") {
+                val lit = ui.tones.map { it.place }.toSet()
+                val rootPlace = ui.picked?.place
+                val markers =
+                    // the roots of the other chords stay on the neck as rings: the whole key is in sight
+                    ui.roots.filter { it.place !in lit }.map { r ->
+                        FretMarker(r.place, DegreeColors.of(r.chord.root), name(r), ghost = true)
+                    } + ui.tones.map { t ->
+                        FretMarker(t.place, DegreeColors.of(t.degree), DegreeFormatter.degree(t.degree, notation), pulse = t.place == rootPlace)
+                    }
+                com.kazaeza.muzykalka.ui.neck.Fretboard(
+                    stringCount = ui.settings.tuning.stringCount,
+                    fromFret = maxOf(0, zone.first - 2),
+                    toFret = minOf(ui.settings.fretCount, zone.last + 2),
+                    markers = markers,
+                    leftHanded = ui.settings.leftHanded,
+                    height = 240.dp,
+                    onTap = vm::tapNeck,
+                    glass = true,
+                    zone = zone,
+                )
+            }
+            item(key = "zone") {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GhostButton("‹", onClick = { vm.shift(-1) }, colors = Accents.Hunt, enabled = ui.start > 0)
+                    Text(
+                        if (zone.first == 0) "открытая позиция: лады 0–${zone.last}" else "лады ${zone.first}–${zone.last}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Juicy.Text,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f),
+                    )
+                    GhostButton("›", onClick = { vm.shift(1) }, colors = Accents.Hunt, enabled = ui.start < ui.lastStart)
+                    GhostButton("домой", onClick = vm::home, colors = Accents.Hunt)
+                }
+            }
+            if (ui.forms.isNotEmpty()) {
+                item(key = "forms") {
+                    val chord = ui.roots.firstOrNull { it.step == (ui.step ?: 0) }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SectionLabel((chord?.let(name) ?: "") + " по всему грифу — " + ui.forms.size + " " + plural(ui.forms.size, "место", "места", "мест") + ", нажми любое")
+                        FormStrip(ui.forms, ui.start, ui.lastStart, chord?.let { DegreeColors.of(it.chord.root) } ?: Juicy.Gold, ui.settings.leftHanded, vm::goTo)
+                    }
+                }
+            }
+        }
         item(key = "next") {
             Text(
-                "Это карта. Упражнения «ход в одной позиции», переходы между соседними зонами и обращения — следующий шаг.",
+                "Это карта, а не упражнение: ничего не оценивается. «Ход в одной позиции» и переходы между зонами — следующий шаг.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Juicy.TextFaint,
             )
@@ -367,5 +443,65 @@ private fun FormStrip(forms: List<FormPlace>, start: Int, lastStart: Int, color:
         val z1 = mirror((start + Positions.SPAN) * cell)
         drawLine(Juicy.Gold.copy(alpha = 0.25f), Offset(z0, rail), Offset(z1, rail), 9.dp.toPx(), StrokeCap.Round)
         drawLine(Juicy.Gold, Offset(z0, rail), Offset(z1, rail), 3.dp.toPx(), StrokeCap.Round)
+    }
+}
+
+/**
+ * O-61: a chord as the hand takes it, in the way of a songbook's chord box but in the app's colours: the strings run
+ * up (the bass one at the left), the frets across; a finger is a dot in the colour of its degree with the numeral in
+ * it, the root rimmed in gold; ○ over a string — open, × — not played. The frets shown are those the fingers use (from
+ * the nut when the shape is near it, else from its first fret, with that fret's number at the side).
+ */
+@Composable
+private fun GripDiagram(grip: Grip, stringCount: Int, notation: DegreeNotation, leftHanded: Boolean, modifier: Modifier = Modifier) {
+    val measurer = rememberTextMeasurer()
+    val hi = grip.dots.maxOfOrNull { it.place.fret } ?: 1
+    val lo = grip.dots.minOfOrNull { it.place.fret } ?: 1
+    val first = if (hi <= 4) 1 else lo
+    val rows = maxOf(4, hi - first + 1)
+    val digit = TextStyle(fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, color = Juicy.PaperInk)
+    val fretNo = TextStyle(fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Juicy.TextDim)
+    val description = "Схема хвата: " + grip.dots.joinToString(", ") { "${it.place.string}-я струна, ${it.place.fret}-й лад" }
+    Canvas(
+        modifier
+            .size(width = 172.dp, height = 212.dp)
+            .semantics { contentDescription = description },
+    ) {
+        val left = 30.dp.toPx()
+        val right = size.width - 10.dp.toPx()
+        val top = 26.dp.toPx()
+        val bottom = size.height - 6.dp.toPx()
+        val gap = (right - left) / (stringCount - 1)
+        val row = (bottom - top) / rows
+        // the bass string (the highest number) is the leftmost, unless the guitar is held the other way round
+        fun x(string: Int): Float {
+            val i = stringCount - string
+            return if (leftHanded) right - i * gap else left + i * gap
+        }
+        val line = Color.White
+        for (r in 0..rows) {
+            val nut = r == 0 && first == 1
+            drawLine(line.copy(alpha = if (nut) 0.8f else 0.18f), Offset(left, top + r * row), Offset(right, top + r * row), if (nut) 4.dp.toPx() else 1.dp.toPx())
+        }
+        for (string in 1..stringCount) drawLine(line.copy(alpha = 0.4f), Offset(x(string), top), Offset(x(string), bottom), 1.2.dp.toPx())
+        if (first > 1) {
+            val layout = measurer.measure("$first", fretNo)
+            drawText(layout, topLeft = Offset(left - layout.size.width - 6.dp.toPx(), top + row / 2 - layout.size.height / 2))
+        }
+        grip.open.forEach { drawCircle(line.copy(alpha = 0.7f), 5.dp.toPx(), Offset(x(it), top - 12.dp.toPx()), style = Stroke(1.6.dp.toPx())) }
+        grip.muted.forEach {
+            val c = Offset(x(it), top - 12.dp.toPx())
+            val d = 4.5.dp.toPx()
+            drawLine(line.copy(alpha = 0.55f), c - Offset(d, d), c + Offset(d, d), 1.6.dp.toPx(), StrokeCap.Round)
+            drawLine(line.copy(alpha = 0.55f), c - Offset(d, -d), c + Offset(d, -d), 1.6.dp.toPx(), StrokeCap.Round)
+        }
+        val radius = minOf(gap * 0.46f, row * 0.4f)
+        grip.dots.forEach { dot ->
+            val c = Offset(x(dot.place.string), top + (dot.place.fret - first + 0.5f) * row)
+            drawCircle(DegreeColors.of(dot.degree), radius, c)
+            if (dot.isRoot) drawCircle(Juicy.Gold, radius + 1.5.dp.toPx(), c, style = Stroke(2.5.dp.toPx()))
+            val layout = measurer.measure(DegreeFormatter.degree(dot.degree, notation), digit)
+            drawText(layout, topLeft = Offset(c.x - layout.size.width / 2, c.y - layout.size.height / 2))
+        }
     }
 }

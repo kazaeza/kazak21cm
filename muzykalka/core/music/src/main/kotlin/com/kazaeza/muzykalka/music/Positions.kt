@@ -21,6 +21,17 @@ data class RootPlace(val step: Int, val chord: ChordDegree, val place: FretPosit
 /** O-53: one of the places of a chord along the neck — the [form] it is taken in and the fret its zone starts at. */
 data class FormPlace(val form: ChordForm, val start: Int)
 
+/**
+ * O-61: one finger of a [Grip] — the [place] it presses, the [degree] of the key it sounds, and whether it is the chord's root.
+ */
+data class GripDot(val place: FretPosition, val degree: Degree, val isRoot: Boolean)
+
+/**
+ * O-61: a chord as one shape of the hand, for the diagram: the [dots] pressed, the strings that ring [open] and those
+ * that are not played ([muted]); [form] is the open chord the shape grows from.
+ */
+data class Grip(val form: ChordForm, val dots: List<GripDot>, val open: List<Int>, val muted: List<Int>)
+
 /** A tone of a chord on the neck: where it is and which degree of the KEY it is (the colour and the label). */
 data class TonePlace(val place: FretPosition, val degree: Degree, val isRoot: Boolean)
 
@@ -121,6 +132,86 @@ object Positions {
                 val pc = board.noteAt(FretPosition(s, fret)).pitchClass
                 byPc[pc]?.let { TonePlace(FretPosition(s, fret), it, pc == rootPc) }
             }
+        }
+    }
+
+    /**
+     * O-61: the fret of each string, low to high, of a major or minor chord in [form], as the distance from the fret the
+     * root is under; null — the string is not played. Written once, from the open chords the shapes are named after.
+     */
+    private fun template(form: ChordForm, minor: Boolean): List<Int?>? = when (form) {
+        ChordForm.E -> if (minor) listOf(0, 2, 2, 0, 0, 0) else listOf(0, 2, 2, 1, 0, 0)
+        ChordForm.A -> if (minor) listOf(null, 0, 2, 2, 1, 0) else listOf(null, 0, 2, 2, 2, 0)
+        ChordForm.D -> if (minor) listOf(null, null, 0, 2, 3, 1) else listOf(null, null, 0, 2, 3, 2)
+        ChordForm.G -> if (minor) null else listOf(0, -1, -3, -3, -3, 0)
+        ChordForm.C -> if (minor) null else listOf(null, 0, -1, -3, -2, -3)
+    }
+
+    /**
+     * O-61: the one shape of the hand for the chord whose root is at [root] — the fingers pressed, the open strings and
+     * the muted ones. Only for a major or minor triad in a shape that has one, on a six-string neck in fourths with the
+     * usual third between its two highest strings; null otherwise (the tones in the zone are all there is to show). The shape
+     * is checked against the chord itself: every sound is a tone of it and all of its tones are there, or there is no grip.
+     */
+    fun grip(board: Fretboard, key: Key, root: RootPlace): Grip? {
+        val form = root.form ?: return null
+        val intervals = root.chord.quality.intervals.take(3)
+        val minor = when (intervals) {
+            listOf(0, 4, 7) -> false
+            listOf(0, 3, 7) -> true
+            else -> return null
+        }
+        val offsets = template(form, minor) ?: return null
+        val lowToHigh = board.strings.sortedBy { board.tuning.open(it).value }
+        if (lowToHigh.size != offsets.size) return null
+        val rootPc = key.pitchClassOf(root.chord.root)
+        val wanted = intervals.map { rootPc + it }.toSet()
+        val dots = ArrayList<GripDot>()
+        val open = ArrayList<Int>()
+        val muted = ArrayList<Int>()
+        val base = root.place.fret
+        offsets.forEachIndexed { i, off ->
+            val string = lowToHigh[i]
+            if (off == null) {
+                muted += string
+                return@forEachIndexed
+            }
+            val fret = base + off
+            if (fret < 0 || fret > board.fretCount) return null
+            val pc = board.noteAt(FretPosition(string, fret)).pitchClass
+            if (pc !in wanted) return null
+            if (fret == 0) open += string
+            val semis = Math.floorMod(pc.value - key.tonic.pitchClass.value, 12)
+            dots += GripDot(FretPosition(string, fret), key.mode.diatonicSpelling(semis) ?: Degree.canonical(semis), pc == rootPc)
+        }
+        if (dots.map { board.noteAt(it.place).pitchClass }.toSet() != wanted) return null
+        return Grip(form, dots.filter { it.place.fret > 0 }, open, muted)
+    }
+
+    /**
+     * O-61: where the root at [place] stands against the root of the tonic chord at [home], in words — the rule that lets
+     * the hand find any chord of the key from the first one: «на струну тоньше, на 2 лада выше». Read off the actual
+     * places, so it is always what the map shows.
+     */
+    fun hop(home: FretPosition, place: FretPosition): String {
+        val strings = home.string - place.string // positive: thinner
+        val frets = place.fret - home.fret
+        fun count(n: Int, one: String, few: String, many: String) = if (n == 1) one else if (n in 2..4) few else many
+        val stringPart = when {
+            strings == 0 -> "по той же струне"
+            strings > 0 -> "на ${count(strings, "струну", "$strings струны", "$strings струн")} тоньше"
+            else -> "на ${count(-strings, "струну", "${-strings} струны", "${-strings} струн")} толще"
+        }
+        val fretPart = when {
+            frets == 0 -> "на том же ладу"
+            frets > 0 -> "на ${count(frets, "1 лад", "$frets лада", "$frets ладов")} выше"
+            else -> "на ${count(-frets, "1 лад", "${-frets} лада", "${-frets} ладов")} ниже"
+        }
+        return when {
+            strings == 0 && frets == 0 -> "Это дом: отсюда всё считается."
+            strings == 0 -> "Корень — $stringPart, $fretPart корня I."
+            frets == 0 -> "Корень — $stringPart, $fretPart, что корень I."
+            else -> "Корень — $stringPart и $fretPart, чем корень I."
         }
     }
 }
