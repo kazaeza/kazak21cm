@@ -50,7 +50,7 @@ import com.kazaeza.muzykalka.music.DegreeVibes
 import com.kazaeza.muzykalka.music.HintStyle
 import com.kazaeza.muzykalka.music.SongHint
 import com.kazaeza.muzykalka.feature.common.HintStyleSwitch
-import com.kazaeza.muzykalka.feature.common.melodyText
+import com.kazaeza.muzykalka.feature.common.melodyAccented
 import com.kazaeza.muzykalka.music.Harmony
 import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.KeyPicker
@@ -194,15 +194,21 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
     /** The anchor's opening over the tonic drone of the current key. */
     fun playAnchor(anchor: DegreeAnchor) {
         val key = state.value.key ?: return
+        playTune(anchor.degree, anchor.score(key, arranger))
+    }
+
+    /** O-64: a tune over the drone of the key — an own anchor, or a song with its rhythm and its accented note. */
+    private fun playTune(degree: Degree, score: Score) {
+        val key = state.value.key ?: return
         val wasOn = state.value.droneOn && state.value.context == FEEL_DRONE
         job?.cancel()
         job = viewModelScope.launch {
-            state.update { it.copy(context = FEEL_DRONE, droneOn = true, playing = anchor.degree) }
+            state.update { it.copy(context = FEEL_DRONE, droneOn = true, playing = degree) }
             if (!wasOn) {
                 graph.audioOutput.drone(arranger.drone(key))
                 delay(1_200)
             }
-            graph.audioOutput.play(anchor.score(key, arranger))
+            graph.audioOutput.play(score)
             state.update { it.copy(playing = null) }
         }
     }
@@ -266,7 +272,10 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
     }
 
     /** O-57: the notes of the song that has this sound, over the drone of the key on screen. */
-    fun playSongHint(song: SongHint) = playAnchor(DegreeAnchor(song.degree, song.title, song.melody))
+    fun playSongHint(song: SongHint) {
+        val key = state.value.key ?: return
+        playTune(song.degree, song.score(key))
+    }
 
     /** Same degree, another chord under it (RESEARCH §4 D): «5 над I — опора, 5 над IV — тянет вниз». */
     fun setContext(step: Int) {
@@ -609,7 +618,8 @@ private fun VibeCard(
             // O-57: a tune takes the place of the words; a sound without one keeps them
             Text(song.line, style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
             Spacer(Modifier.height(4.dp))
-            Text(melodyText(song, notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+            Text(melodyAccented(song, notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+            Text(song.cue, style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
             Text(
                 "► мотив",
                 style = MaterialTheme.typography.labelLarge,

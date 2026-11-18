@@ -66,14 +66,15 @@ class SongHintFlowTest {
 
         click("Песни")
         scrollTo("как в «")
-        assertTrue("the fifth is hung on a tune: ${has("Twinkle")}", has("как в «Twinkle, twinkle»"))
-        assertTrue("with its notes in degrees", has("1 1 5 5"))
+        assertTrue("the fifth is hung on a tune", has("как в «Звёздные войны»"))
+        assertTrue("with its notes in degrees", has("1 —"))
+        assertTrue("and where the sound is in it", has("запомни 5"))
         val before = audio.played.size
         click("Послушать")
         // the hum of the lower sound first, then the tune: the view model's delay needs the looper moved
         org.robolectric.shadows.ShadowLooper.idleMainLooper(HarmonyLabViewModel.SONG_SETTLE_MS + 200, java.util.concurrent.TimeUnit.MILLISECONDS)
         rule.waitUntil(10_000) { audio.played.size > before }
-        assertTrue("four notes", audio.played.last().notes.size == 4)
+        assertTrue("the tune and its echo", audio.played.last().notes.size == com.kazaeza.muzykalka.music.SongHint.forSemitone(7).first().melody.size + 1)
 
         click("Ощущение") // leaves the switch where a fresh install has it
         rule.waitUntil(5_000) { !has("как в «") }
@@ -104,7 +105,8 @@ class SongHintFlowTest {
                     rule.waitUntil(10_000) { audio.played.size >= before + 1 }
                     val correction = audio.played.last()
                     // O-63: the note again, then the song (3–4 notes) — not a walk home along the scale
-                    assertTrue("the note and a few notes of a song: ${correction.notes.size}", correction.notes.size in 4..5)
+                    assertTrue("the note, the tune and its echo: ${correction.notes.size}", correction.notes.size in 5..10)
+                    assertTrue("where the sound is in the tune", has("запомни"))
                     assertTrue("and its line on the screen", has("как в «"))
                     break
                 }

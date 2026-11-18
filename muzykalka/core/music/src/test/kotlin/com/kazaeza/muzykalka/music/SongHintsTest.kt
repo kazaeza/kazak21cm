@@ -25,26 +25,47 @@ class SongHintsTest {
 
     @Test
     fun `the line reads like an own anchor`() {
-        assertEquals("как в «С днём рождения»", SongHint.forDegree(Degree.SIX)?.line)
+        assertEquals("как в «Twinkle, twinkle»", SongHint.forDegree(Degree.SIX)?.line)
     }
 
     @Test
-    fun `the notes are in the key and play`() {
+    fun `no two sounds are hung on the same song (O-64)`() {
+        val mains = (1..11).map { requireNotNull(SongHint.forSemitone(it).first()).title }
+        assertEquals(mains.size, mains.toSet().size, mains.toString())
+    }
+
+    @Test
+    fun `the tune plays in its rhythm, the notes to remember accented, then the first of them alone`() {
         val key = Key(NoteName(Letter.D), Mode.MAJOR)
         for (h in SongHint.ALL) {
             val score = h.score(key)
-            assertNotNull(score)
-            assertEquals(h.melody.size, score.notes.size, h.title)
-            assertTrue(score.lengthSeconds > 0, h.title)
+            assertEquals(h.melody.size + 1, score.notes.size, h.title)
+            val tune = score.notes.dropLast(1)
+            // the starts follow the lengths
+            var at = 0.0
+            tune.forEachIndexed { i, n ->
+                assertEquals(at, n.startBeat, 1e-9, "${h.title} note $i")
+                at += h.beats[i]
+            }
+            tune.forEachIndexed { i, n ->
+                if (i in h.targets) assertEquals(SongHint.ACCENT, n.velocity, h.title) else assertEquals(SongHint.SOFT, n.velocity, h.title)
+            }
+            val echo = score.notes.last()
+            assertTrue(echo.startBeat > at, "the echo after a breath")
+            assertEquals(tune[h.targets.min()].note, echo.note, "${h.title}: the echo is the note to remember")
+            assertTrue(echo.durationBeats >= 2.0)
+            assertTrue(h.cue.isNotBlank())
         }
     }
 
     @Test
-    fun `the degrees of a hint are written as the song has them`() {
-        assertEquals("5 5 6 5", SongHint.forDegree(Degree.SIX)?.melodyText)
-        assertEquals("1 1 ♭3 1", SongHint.forDegree(Degree.FLAT_THREE)?.melodyText)
-        // «С днём рождения» ends on the leading tone one octave below the tonic's octave above
-        assertEquals(DegreeNote(Degree.ONE, 1), SongHint.forDegree(Degree.SEVEN)?.melody?.get(2))
+    fun `a tune is written with stars and lengths`() {
+        val h = SongHint.parse("7", "С днём рождения", "5/0.75 5/0.25 6 5 1' *7/2", "x")
+        assertEquals(listOf(0.75, 0.25, 1.0, 1.0, 1.0, 2.0), h.beats)
+        assertEquals(setOf(5), h.targets)
+        assertEquals(DegreeNote(Degree.ONE, 1), h.melody[4])
+        assertEquals(DegreeNote(Degree.SEVEN), h.target)
+        assertEquals("1 1 5 5 6 6 5", SongHint.forDegree(Degree.SIX)?.melodyText)
         assertEquals(HintStyle.FEEL, HintStyle.entries.first())
     }
 }

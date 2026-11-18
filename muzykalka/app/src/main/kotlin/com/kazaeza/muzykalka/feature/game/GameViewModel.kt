@@ -616,7 +616,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     /** O-63: the tune of [d] in [key] — the user's own anchor first, else the song of [SongHint]; null while the feel is chosen. */
     private fun hintTune(d: Degree, key: Key): Score? {
         if (state.value.settings.hintStyle != HintStyle.SONGS) return null
-        return state.value.anchors[d.semitones]?.score(key, arranger) ?: SongHint.forDegree(d)?.score(key, arranger)
+        return state.value.anchors[d.semitones]?.score(key, arranger) ?: SongHint.forDegree(d)?.score(key)
     }
 
     /** O-57: «▶» by the song of the hint — again, over the drone that still hums. */
