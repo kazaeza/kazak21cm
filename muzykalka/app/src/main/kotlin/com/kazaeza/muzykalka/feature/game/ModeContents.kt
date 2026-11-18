@@ -46,6 +46,8 @@ import com.kazaeza.muzykalka.game.RoundPhase
 import com.kazaeza.muzykalka.game.SingTask
 import com.kazaeza.muzykalka.game.StepsTask
 import com.kazaeza.muzykalka.game.TirDriver
+import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.music.ChordVibes
 import com.kazaeza.muzykalka.game.TirKind
 import com.kazaeza.muzykalka.game.TirReview
 import com.kazaeza.muzykalka.game.TirTask
@@ -281,6 +283,17 @@ internal fun TirContent(
                                 Text(DegreeVibes.pathHome(d, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
                                 if (!correct) AnchorHint(ui, d)
                             }
+                        }
+                        // O-58 «Аккорд над тоникой»: what the chord does against the tonic that hums, and what it is made of
+                        if (task.kind == TirKind.CHORD && !task.underNote && ui.variant == Variant.TIR_ON_TONIC) {
+                            val chord = task.chords[0]
+                            val vibe = ChordVibes.of(chord, task.key.mode)
+                            Spacer(Modifier.height(6.dp))
+                            Text(vibe.role, style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(chord.root), textAlign = TextAlign.Center)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                TirDriver.chordTones(chord, task.key.mode).forEach { d -> DegreeChip(DegreeFormatter.degree(d, ui.notation), DegreeColors.of(d)) }
+                            }
+                            Text(vibe.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim, textAlign = TextAlign.Center)
                         }
                         if (shown != null) {
                             Spacer(Modifier.height(6.dp))

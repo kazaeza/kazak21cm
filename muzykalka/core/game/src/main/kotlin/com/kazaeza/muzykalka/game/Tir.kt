@@ -160,6 +160,7 @@ class TirDriver(
         settleReview(context.history)
         if (variant == Variant.TIR_OVER_CHORDS) return overChordTask(context)
         if (variant == Variant.TIR_UNDER_NOTE) return underNoteTask(context)
+        if (variant == Variant.TIR_ON_TONIC) return onTonicTask(context)
         if (variant == Variant.TIR_DUEL) return duelTask(context)
         if (variant == Variant.TIR_SIMON) return simonTask(context)
         val level = context.level.coerceIn(1, Levels.TIR.size)
@@ -426,6 +427,36 @@ class TirDriver(
         )
     }
 
+    /**
+     * O-58 «Аккорд над тоникой» (ADR-057): the link between a degree over the tonic and the chords of a song. The tonic
+     * hums all through the question (a new key is set by its scale first), and a triad of the key is played over it —
+     * which step is it? Answered by the step (I, IV, V…), never by a name; after the answer the chord's job is told.
+     */
+    private fun onTonicTask(context: DriverContext): TirTask {
+        val level = context.level.coerceIn(1, Levels.TIR_ON_TONIC.size)
+        val r = context.random
+        val blockId = ON_TONIC_BLOCK + level
+        val kept = blockKey?.takeIf { blockLeft > 0 && blockLevel == blockId }
+        val key = kept ?: keyPicker.next(if (r.nextDouble() < MINOR_SHARE) Mode.MINOR else Mode.MAJOR)
+        val newKey = kept == null
+        if (newKey) {
+            blockKey = key
+            blockLevel = blockId
+            blockLeft = KEY_BLOCK
+        }
+        blockLeft--
+        val pad = onTonicPad(key.mode, level)
+        val prefix = "tir:ontonic:L$level:"
+        val chord = ItemWeights.pick(r, pad) { ItemWeights.weight(prefix + ChordParser.formatRoman(it), context.history) }
+        val question = arranger.chords(listOf(chord), key, beatsEach = ON_TONIC_CHORD_BEATS, tempoBpm = TEMPO)
+        return TirTask(
+            itemKey = prefix + ChordParser.formatRoman(chord), prompt = Prompt(title = "?", audio = question, key = key),
+            kind = TirKind.CHORD, level = level, key = key, tonic = key.tonicAtOrAbove(MidiNote(55)), notes = emptyList(),
+            chords = listOf(chord), noteChoices = emptyList(), chordChoices = pad, question = question, drone = arranger.drone(key),
+            intro = if (newKey) orientation(key) else null,
+        )
+    }
+
     private fun melodyTask(c: Context, r: Random): TirTask {
         val key = c.key
         val tonic = c.tonic
@@ -600,6 +631,7 @@ class TirDriver(
         val CHORD_STEPS_L2 = listOf(0, 1, 2, 3, 4, 5)
         private const val OVER_CHORDS_BLOCK = 100
         private const val UNDER_NOTE_BLOCK = 200
+        private const val ON_TONIC_BLOCK = 400
         private const val DUEL_BLOCK = 300
 
         /** O-46: a chain begins with this many notes and is won at [SIMON_MAX]. */
@@ -628,6 +660,15 @@ class TirDriver(
 
         /** O-40: how long the asked chord is held (beats at [TEMPO]). */
         const val UNDER_NOTE_CHORD_BEATS = 2.0
+
+        /** «Аккорд над тоникой»: the chord rings this long over the hum. */
+        const val ON_TONIC_CHORD_BEATS = 2.0
+
+        /** «Аккорд над тоникой»: the steps (0 = I) asked on [level]: I IV V, then vi, then ii and iii, then all seven. */
+        val ON_TONIC_STEPS = listOf(listOf(0, 3, 4), listOf(0, 3, 4, 5), listOf(0, 1, 2, 3, 4, 5), (0..6).toList())
+
+        fun onTonicPad(mode: Mode, level: Int): List<ChordDegree> =
+            ON_TONIC_STEPS[level.coerceIn(1, ON_TONIC_STEPS.size) - 1].map { Harmony.diatonicChord(mode, it) }
 
         /** «Под нотой»: the chords that can be under the note on [level] (vii° never). */
         fun underNotePad(mode: Mode, level: Int): List<ChordDegree> =
@@ -683,6 +724,9 @@ class TirDriver(
 
         /** «Под нотой»: a chord takes a moment longer to place than a single note. */
         const val UNDER_NOTE_TARGET_MS = 3_500L
+
+        /** «Аккорд над тоникой»: a step of the key named in four seconds. */
+        const val ON_TONIC_TARGET_MS = 4_000L
 
         /** Median-latency targets for promotion, per level (ROADMAP G-02). */
         const val MINOR_SHARE = 0.3

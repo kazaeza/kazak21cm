@@ -84,10 +84,11 @@ enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, va
     ),
     SONGS(
         "Песни в голове",
-        "узнать ход, угадать следующий аккорд, вспомнить формулу",
+        "аккорд над тоникой, узнать ход, угадать следующий аккорд, вспомнить формулу",
         GuitarNeed.NONE,
         listOf(
-            SetSegment(Variant.TIR_SONG, 4.0),
+            SetSegment(Variant.TIR_ON_TONIC, 2.0),
+            SetSegment(Variant.TIR_SONG, 3.0),
             SetSegment(Variant.TIR_NEXT, 3.0),
             SetSegment(Variant.FORMULA_ALOUD, 4.0),
         ),

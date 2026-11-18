@@ -44,6 +44,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_OVER_CHORDS(ModeId.TIR, "Над аккордами", GuitarNeed.NONE, "0.1"),
     /** O-15: the reverse — the note is shown, the chord droning under it is asked (ADR-029). */
     TIR_UNDER_NOTE(ModeId.TIR, "Под нотой", GuitarNeed.NONE, "0.1"),
+    /** O-58: the tonic hums, a chord of the key is played over it — which step is it (ADR-057). The link before «Куда пойдёт?». */
+    TIR_ON_TONIC(ModeId.TIR, "Аккорд над тоникой", GuitarNeed.NONE, "0.1"),
     /** S-03: the two degrees taken for each other most often, until ten in a row are right (ADR-043). */
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.1"),
     /** O-50: a chord on a pitch of chance — which quality is it (ADR-048). */
@@ -98,6 +100,14 @@ object Levels {
     val TIR_CHORDS = listOf(
         "над I · IV · V · vi",
         "над всеми аккордами лада",
+    )
+
+    /** «Аккорд над тоникой» (O-58): the three chords everything starts with, then the rest of the key one by one. */
+    val TIR_ON_TONIC = listOf(
+        "I · IV · V",
+        "+ vi",
+        "+ ii · iii",
+        "все аккорды лада",
     )
 
     /** «Под нотой» (O-15): which chord of the key is under the shown note. */
