@@ -136,4 +136,30 @@ class HarmonyLabFlowTest {
         choose("минор")
         rule.waitUntil(5_000) { held() == listOf(0, 12, 15, 19) }
     }
+
+    /** O-60: the chord is on three visible tracks; a preset sets all voices; a puzzle hums unnamed until it is opened. */
+    @Test
+    fun theChordIsOnTracksWithPresetsAndAPuzzleToBuildByEar() {
+        open()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Аккорд").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Аккорд").performClick()
+        rule.waitForIdle()
+        scrollTo("корень — звучит всегда")
+        scrollTo("квинта")
+        scrollTo("Загадай аккорд")
+        rule.onNodeWithText("Загадай аккорд").assertExists()
+        choose("минор") // a preset: the minor triad in one press
+        rule.waitUntil(5_000) { audio.drones.lastOrNull() != null }
+        assertEquals("the bass, its octave and the minor triad", listOf(0, 12, 15, 19), held())
+        choose("доминантсептаккорд")
+        rule.waitUntil(5_000) { held() == listOf(0, 16, 19, 22) } // the dominant: bass, third, fifth, seventh
+        val before = audio.drones.size
+        choose("Загадай аккорд")
+        rule.waitUntil(5_000) { audio.drones.size > before }
+        assertTrue("the puzzle hums, and has no name yet", !rule.onAllNodesWithText("Это был", substring = true).fetchSemanticsNodes().isNotEmpty())
+        choose("Открыть")
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("Это был", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        choose("Хватит")
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("Загадай аккорд").fetchSemanticsNodes().isNotEmpty() }
+    }
 }

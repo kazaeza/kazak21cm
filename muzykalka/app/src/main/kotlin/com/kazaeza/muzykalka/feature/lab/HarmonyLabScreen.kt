@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -43,6 +44,7 @@ import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.Dyads
 import com.kazaeza.muzykalka.music.Harmony
 import com.kazaeza.muzykalka.music.LabChord
+import com.kazaeza.muzykalka.music.LabPresets
 import com.kazaeza.muzykalka.music.LabFifth
 import com.kazaeza.muzykalka.music.LabSound
 import com.kazaeza.muzykalka.music.LabThird
@@ -96,6 +98,15 @@ data class LabUi(
     val notation: DegreeNotation = DegreeNotation.ARABIC,
     /** O-57: the interval's card names a song that has it, or only describes how it feels. */
     val hintStyle: HintStyle = HintStyle.FEEL,
+    /**
+     * O-60 «Собери на слух»: a chord that hums without a name, to be built by ear on the tracks. The lab judges nothing
+     * (the engine does that): [puzzleOpen] shows what it was, and the two are compared by eye and ear.
+     */
+    val puzzle: LabChord? = null,
+    val puzzleOpen: Boolean = false,
+    /** What hums now is the puzzle, not the chord on the tracks. */
+    val puzzleHeard: Boolean = false,
+    val puzzleRound: Int = 0,
 ) {
     /** Semitones of the picked interval: the «1» of the dial is the octave — a unison is one sound, nothing to hear. */
     val semitones: Int? get() = picked?.let { if (it.semitones == 0) Dyads.OCTAVE else it.semitones }
@@ -136,10 +147,10 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
         val notes = notes(s)
         if (notes == null) {
             graph.audioOutput.drone(null)
-            state.update { it.copy(sounding = false, pulled = false) }
+            state.update { it.copy(sounding = false, pulled = false, puzzleHeard = false) }
         } else {
             graph.audioOutput.drone(notes)
-            state.update { it.copy(sounding = true, pulled = false) }
+            state.update { it.copy(sounding = true, pulled = false, puzzleHeard = false) }
         }
     }
 
@@ -173,6 +184,37 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
             delay(SONG_SETTLE_MS)
             sound()
         }
+    }
+
+    /** O-60: a named chord in one press: all three voices go where it has them. */
+    fun setChord(chord: LabChord) = change { chord }
+
+    /** O-60 «Собери на слух»: an unnamed chord hums; the user builds the same one on the tracks. */
+    fun newPuzzle() {
+        val s = state.value
+        val pool = LabPresets.puzzlePool(s.puzzleRound / PUZZLE_STEP + 1).filter { it != s.puzzle }
+        val target = pool[random.nextInt(pool.size)]
+        state.update { it.copy(puzzle = target, puzzleOpen = false, puzzleRound = it.puzzleRound + 1) }
+        playPuzzle()
+    }
+
+    /** The puzzle again (the chord on the tracks has its own «►»). */
+    fun playPuzzle() {
+        val p = state.value.puzzle ?: return
+        job?.cancel()
+        graph.audioOutput.drone(LabSound.chord(root, p.intervals))
+        state.update { it.copy(sounding = true, pulled = false, puzzleHeard = true) }
+    }
+
+    /** What it was: named and shown, and heard once more. */
+    fun openPuzzle() {
+        state.update { it.copy(puzzleOpen = true) }
+        playPuzzle()
+    }
+
+    fun closePuzzle() {
+        state.update { it.copy(puzzle = null, puzzleOpen = false, puzzleHeard = false) }
+        if (state.value.sounding) sound()
     }
 
     fun setThird(third: LabThird) = change { it.copy(third = third) }
@@ -259,13 +301,16 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
         job?.cancel()
         job = null
         graph.audioOutput.stop()
-        state.update { it.copy(sounding = false, pulled = false) }
+        state.update { it.copy(sounding = false, pulled = false, puzzleHeard = false) }
     }
 
     override fun onCleared() = stop()
 
     companion object {
         /** The root is a pitch between A2 and G♯3: the bass of a chord, and an octave below the interval's lower sound. */
+        /** O-60: every this many puzzles the pool of chords grows by a step. */
+        const val PUZZLE_STEP = 3
+
         /** O-57: the hum of the lower sound before the tune, and the breath after it. */
         const val SONG_SETTLE_MS = 900L
 
@@ -387,13 +432,21 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
                         figure = RingFigure(shown.map { hourOf(it.semitones) }, shown.map { DegreeColors.of(it) }, home = 0.takeIf { ui.pulled }),
                     )
                 }
-                item(key = "hint") {
-                    Text(
-                        "Аккорд — фигура на круге. Нажми ступень, и голос встанет на неё: ${fmt(Degree(2))} ${fmt(LabThird.MINOR.degree!!)} ${fmt(Degree(3))} ${fmt(Degree(4))} — терция, " +
-                            "${fmt(LabFifth.DIMINISHED.degree)} ${fmt(Degree(5))} ${fmt(LabFifth.AUGMENTED.degree)} — квинта, ${fmt(Degree(6))} ${fmt(LabTop.MINOR7.degree!!)} ${fmt(Degree(7))} — верх. Ещё раз — убрать.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Juicy.TextDim,
-                    )
+                item(key = "presets") {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SectionLabel("готовые аккорды", color = Juicy.TextDim)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            LabPresets.ALL.forEach { p ->
+                                DegreeChip(p.ru, Juicy.Cyan, selected = chord == p.chord, onClick = { vm.setChord(p.chord) }, onClickLabel = "Собрать «${p.ru}»")
+                            }
+                        }
+                    }
+                }
+                item(key = "tracks") {
+                    ChordTracks(chord, fmt, vm::setThird, vm::setFifth, vm::setTop)
+                }
+                item(key = "puzzle") {
+                    PuzzleCard(ui, fmt, onNew = vm::newPuzzle, onPlay = vm::playPuzzle, onOpen = vm::openPuzzle, onClose = vm::closePuzzle)
                 }
                 item(key = "chord") {
                     GlassCard(Modifier.fillMaxWidth(), accent = Accents.Tir) {
@@ -495,6 +548,92 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
 }
 
 /** A dot of the ladder's colour and what it stands for. */
+/**
+ * O-60: the chord as three tracks of beads. The «1» is fixed — the root always sounds; the fifth always has one bead,
+ * the third and the top voice may have none. What was a hidden nest on the dial is a row of beads that can be seen.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChordTracks(chord: LabChord, fmt: (Degree) -> String, onThird: (LabThird) -> Unit, onFifth: (LabFifth) -> Unit, onTop: (LabTop) -> Unit) {
+    GlassCard(Modifier.fillMaxWidth(), accent = Accents.Tir) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            DegreeChip(fmt(Degree.ONE), DegreeColors.of(Degree.ONE), large = true, selected = true)
+            Text("корень — звучит всегда", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+        }
+        Spacer(Modifier.height(10.dp))
+        Track("терция", "одна из четырёх — или без неё") {
+            LabThird.entries.forEach { v ->
+                DegreeChip(v.degree?.let(fmt) ?: "нет", v.degree?.let { DegreeColors.of(it) } ?: Juicy.TextDim, selected = chord.third == v, onClick = { onThird(v) }, onClickLabel = "Терция")
+            }
+        }
+        Track("квинта", "всегда одна из трёх") {
+            LabFifth.entries.forEach { v ->
+                DegreeChip(fmt(v.degree), DegreeColors.of(v.degree), selected = chord.fifth == v, onClick = { onFifth(v) }, onClickLabel = "Квинта")
+            }
+        }
+        Track("верх", "шестая, септима — или без неё") {
+            LabTop.entries.forEach { v ->
+                DegreeChip(v.degree?.let(fmt) ?: "нет", v.degree?.let { DegreeColors.of(it) } ?: Juicy.TextDim, selected = chord.top == v, onClick = { onTop(v) }, onClickLabel = "Верхний голос")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Track(label: String, hint: String, beads: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            SectionLabel(label, color = Juicy.TextDim)
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { beads() }
+    }
+}
+
+/**
+ * O-60 «Собери на слух»: the chord hums without a name; build the same on the tracks (its «►» is the one above), then
+ * «Открыть». The lab says nothing about right or wrong — the figures are put side by side and the ear compares.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PuzzleCard(ui: LabUi, fmt: (Degree) -> String, onNew: () -> Unit, onPlay: () -> Unit, onOpen: () -> Unit, onClose: () -> Unit) {
+    val puzzle = ui.puzzle
+    GlassCard(Modifier.fillMaxWidth(), accent = if (puzzle != null) Accents.Taper else null) {
+        SectionLabel("собери на слух", color = Juicy.TextDim)
+        Spacer(Modifier.height(4.dp))
+        if (puzzle == null) {
+            Text("Звучит аккорд без имени. Подбери такой же на дорожках, сравни на слух — и открой, что это было.", style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+            Spacer(Modifier.height(10.dp))
+            GhostButton("Загадай аккорд", onClick = onNew, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "?")
+        } else {
+            Text(
+                if (ui.puzzleOpen) "Это был " + (LabPresets.nameOf(puzzle) ?: "аккорд без имени") else if (ui.puzzleHeard) "Слушаешь загадку…" else "Слушаешь свой — загадка ждёт.",
+                style = MaterialTheme.typography.titleMedium,
+                color = Juicy.Text,
+            )
+            if (ui.puzzleOpen) {
+                Spacer(Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                    puzzle.tones.forEachIndexed { i, d ->
+                        if (i > 0) Text(RuNames.intervalShort(puzzle.stack[i - 1]), style = MaterialTheme.typography.labelLarge, color = Juicy.TextDim)
+                        DegreeChip(fmt(d), DegreeColors.of(d), large = true)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text("Сверь со своим на дорожках: где голос стоит иначе?", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton("Загадка", onClick = onPlay, colors = Accents.Taper, leading = "►")
+                if (!ui.puzzleOpen) GhostButton("Открыть", onClick = onOpen, colors = Accents.Taper, leading = "◉")
+                GhostButton(if (ui.puzzleOpen) "Новая" else "Другая", onClick = onNew, colors = Accents.Taper, leading = "⇄")
+                GhostButton("Хватит", onClick = onClose, colors = Accents.Calm)
+            }
+        }
+    }
+}
+
 @Composable
 private fun Legend(color: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {

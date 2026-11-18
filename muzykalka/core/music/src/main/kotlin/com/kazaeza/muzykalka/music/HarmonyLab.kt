@@ -159,6 +159,30 @@ data class LabChord(val third: LabThird = LabThird.MAJOR, val fifth: LabFifth = 
         }
 }
 
+/** O-60: a chord of the lab with the name a musician gives it — one press puts all three voices in place. */
+data class LabPreset(val ru: String, val chord: LabChord)
+
+/** O-60: the chords the lab knows by name — the presets, and what a puzzle is made of. */
+object LabPresets {
+    val ALL: List<LabPreset> = listOf(
+        LabPreset("мажор", LabChord(LabThird.MAJOR, LabFifth.PERFECT, LabTop.NONE)),
+        LabPreset("минор", LabChord(LabThird.MINOR, LabFifth.PERFECT, LabTop.NONE)),
+        LabPreset("sus4", LabChord(LabThird.SUS4, LabFifth.PERFECT, LabTop.NONE)),
+        LabPreset("sus2", LabChord(LabThird.SUS2, LabFifth.PERFECT, LabTop.NONE)),
+        LabPreset("доминантсептаккорд", LabChord(LabThird.MAJOR, LabFifth.PERFECT, LabTop.MINOR7)),
+        LabPreset("минорный септ", LabChord(LabThird.MINOR, LabFifth.PERFECT, LabTop.MINOR7)),
+        LabPreset("мажорный септ", LabChord(LabThird.MAJOR, LabFifth.PERFECT, LabTop.MAJOR7)),
+        LabPreset("уменьшённый", LabChord(LabThird.MINOR, LabFifth.DIMINISHED, LabTop.NONE)),
+        LabPreset("увеличенный", LabChord(LabThird.MAJOR, LabFifth.AUGMENTED, LabTop.NONE)),
+    )
+
+    /** The name of [chord] if it is one of the presets. */
+    fun nameOf(chord: LabChord): String? = ALL.firstOrNull { it.chord == chord }?.ru
+
+    /** The chords a puzzle can ask: the first of the list first, so that a beginner meets the plain ones. */
+    fun puzzlePool(level: Int): List<LabChord> = ALL.take(if (level <= 1) 2 else if (level == 2) 5 else ALL.size).map { it.chord }
+}
+
 /** O-48: how the lab's sounds are laid out for the drone bank (at most four notes, low to high). */
 object LabSound {
     /** The two sounds of an interval of [semitones] (0..12) above [lower]; a unison is one sound. */

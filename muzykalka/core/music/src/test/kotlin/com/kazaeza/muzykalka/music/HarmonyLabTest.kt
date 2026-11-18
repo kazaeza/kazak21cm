@@ -168,4 +168,23 @@ class HarmonyLabTest {
         assertTrue(calm < major && major < dominant, "fifth $calm, major $major, dominant $dominant")
         assertTrue(diminished > major, "a diminished triad is more restless than a major one")
     }
+
+    @Test
+    fun `every preset is a chord the lab can hold and the name finds it back`() {
+        for (p in LabPresets.ALL) {
+            assertTrue(p.chord.intervals.size <= 4, "${p.ru}: the drone bank holds four")
+            assertEquals(p.ru, LabPresets.nameOf(p.chord))
+        }
+        assertEquals(LabPresets.ALL.size, LabPresets.ALL.map { it.chord }.toSet().size, "no two names for one chord")
+        assertEquals(null, LabPresets.nameOf(LabChord(LabThird.SUS2, LabFifth.AUGMENTED, LabTop.MAJOR7)))
+    }
+
+    @Test
+    fun `the puzzles begin with the plain chords and grow`() {
+        val pools = (1..3).map { LabPresets.puzzlePool(it) }
+        assertEquals(listOf(LabChord(), LabChord(LabThird.MINOR)), pools[0], "major and minor first")
+        assertTrue(pools[0].size < pools[1].size && pools[1].size < pools[2].size)
+        assertEquals(LabPresets.ALL.size, pools[2].size)
+        assertTrue(pools[2].all { LabSound.chord(MidiNote(45), it.intervals).size >= 3 })
+    }
 }
