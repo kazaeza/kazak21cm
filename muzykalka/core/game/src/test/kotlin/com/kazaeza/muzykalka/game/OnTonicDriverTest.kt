@@ -71,3 +71,40 @@ class OnTonicDriverTest {
         }
     }
 }
+
+/** O-63 (ADR-062): where the user chose songs, a single note is answered by a song instead of a walk along the scale. */
+class TuneDriverTest {
+    private val tune = { d: com.kazaeza.muzykalka.music.Degree, key: com.kazaeza.muzykalka.music.Key ->
+        com.kazaeza.muzykalka.music.SongHint.forDegree(d)?.score(key)
+    }
+
+    private fun task(driver: TirDriver, seed: Int = 1) = driver.nextTask(DriverContext(Random(seed), 1, emptyList()))
+
+    @Test
+    fun `with a tune a right answer is rewarded by the song, a wrong one hears the note and then the song`() {
+        val d = TirDriver(KeyPicker(Random(2)), tune = tune)
+        var checked = 0
+        repeat(30) {
+            val t = task(d, it)
+            val degree = t.notes.single().degree
+            val song = com.kazaeza.muzykalka.music.SongHint.forDegree(degree)?.score(t.key) ?: return@repeat
+            checked++
+            assertEquals(song, d.evaluate(t, Answer.DegreeChoice(degree)).confirmation)
+            val wrong = d.evaluate(t, Answer.Pass)
+            val correction = requireNotNull(wrong.correction)
+            assertEquals(t.question.notes.size + song.notes.size, correction.notes.size, "the note again, then the song")
+            assertTrue(correction.lengthBeats > t.question.lengthBeats + song.lengthBeats * 0.9)
+        }
+        assertTrue(checked > 10)
+    }
+
+    @Test
+    fun `without a tune the walk home stays, and a degree with no song keeps it too`() {
+        val plain = TirDriver(KeyPicker(Random(2)))
+        val t = task(plain)
+        assertTrue(requireNotNull(plain.evaluate(t, Answer.DegreeChoice(t.notes.single().degree)).confirmation).notes.size >= 2)
+        val silent = TirDriver(KeyPicker(Random(2)), tune = { _, _ -> null })
+        val u = task(silent)
+        assertEquals(plain.evaluate(t, Answer.Pass).correction?.notes?.size, silent.evaluate(u, Answer.Pass).correction?.notes?.size)
+    }
+}

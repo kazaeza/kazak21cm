@@ -206,9 +206,6 @@ private val PULSE_TONIC_FLOOR = MidiNote(48)
 /** The drone holds a moment after an anchor's last note, so it lands home. */
 private const val ANCHOR_TAIL_MS = 600L
 
-/** O-57: a breath between the correction and the song that hangs it on a tune. */
-private const val SONG_HINT_GAP_MS = 500L
-
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(
@@ -331,6 +328,8 @@ object Drills {
         songs: List<GuessSong> = emptyList(),
         /** S-03: the user's own duels, the worst first. */
         duelPairs: List<Pair<Degree, Degree>> = emptyList(),
+        /** O-63: the tune of a degree, where the user chose songs for the hints. */
+        tune: (Degree, Key) -> Score? = { _, _ -> null },
     ): RoundEngine<*> {
         val config = when {
             spec.exam -> RoundConfig.exam(spec.examTasks)
@@ -348,7 +347,7 @@ object Drills {
             Variant.FORMULA_ALOUD -> RoundEngine(FormulaDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_RADIO ->
-                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs), config, random, level, history, epochOffsetMs)
+                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs, tune = tune), config, random, level, history, epochOffsetMs)
             // Without headphones the drone would leak into the microphone (ADR-021).
             Variant.KAMERTON_SING, Variant.KAMERTON_SEARCH ->
                 RoundEngine(SingDriver(KeyPicker(random), settings.degreeNotation, withDrone = headphones, variant = spec.variant), config, random, level, history, epochOffsetMs)
@@ -458,6 +457,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         engine = Drills.engine(
             spec, level, settings, history, System.currentTimeMillis() - now(), review = review(), headphones = wearsHeadphones,
             songs = if (spec.variant.isSongQuiz() || spec.variant == Variant.FORMULA_ALOUD) guessSongs() else emptyList(),
+            tune = ::hintTune,
             duelPairs = if (spec.variant == Variant.TIR_DUEL) Drills.duelPairs(graph.practice.recentAttempts(Variant.TIR_CLASSIC, Drills.DUEL_LOOKBACK)) else emptyList(),
         )
         sessionId = spec.sessionId ?: graph.practice.startSession(SessionKind.FREE, graph.today(settings)).also { ownSession = true }
@@ -591,19 +591,11 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 val ev = s.lastEvaluation ?: return
                 lastFeedback = FeedbackEvent(++feedbackSerial, ev.correct, s.lastPoints, ev.expectedText, ev.givenText, ev.centsError)
                 val sound = if (ev.correct) ev.confirmation else ev.correction
-                // O-57: after the engine's correction, a miss hangs the sound on a tune — only when the user chose songs
-                val song = if (ev.correct) null else songHintScore(s.task)
-                if (sound != null || song != null) {
+                // O-63: where the user chose songs, the driver's confirmation / correction already holds the tune
+                if (sound != null) {
                     feedbackAudio = viewModelScope.launch {
-                        if (sound != null) {
-                            playPulsing(sound, PulseKind.REVEAL, tonicOf(s.task))
-                            delay(120)
-                        }
-                        if (song != null) {
-                            delay(SONG_HINT_GAP_MS)
-                            playPulsing(song, PulseKind.REVEAL, tonicOf(s.task))
-                            delay(120)
-                        }
+                        playPulsing(sound, PulseKind.REVEAL, tonicOf(s.task))
+                        delay(120)
                     }
                 }
             }
@@ -617,9 +609,14 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
      */
     private fun songHintScore(task: Task?): Score? {
         val t = task as? TirTask ?: return null
-        if (state.value.settings.hintStyle != HintStyle.SONGS || t.kind != TirKind.NOTE || t.underNote) return null
-        val d = t.notes.single().degree
-        return state.value.anchors[d.semitones]?.score(t.key, arranger) ?: SongHint.forDegree(d)?.score(t.key, arranger)
+        if (t.kind != TirKind.NOTE || t.underNote) return null
+        return hintTune(t.notes.single().degree, t.key)
+    }
+
+    /** O-63: the tune of [d] in [key] — the user's own anchor first, else the song of [SongHint]; null while the feel is chosen. */
+    private fun hintTune(d: Degree, key: Key): Score? {
+        if (state.value.settings.hintStyle != HintStyle.SONGS) return null
+        return state.value.anchors[d.semitones]?.score(key, arranger) ?: SongHint.forDegree(d)?.score(key, arranger)
     }
 
     /** O-57: «▶» by the song of the hint — again, over the drone that still hums. */

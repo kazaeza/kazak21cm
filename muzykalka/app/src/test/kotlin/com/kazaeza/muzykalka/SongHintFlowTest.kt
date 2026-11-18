@@ -79,7 +79,7 @@ class SongHintFlowTest {
         rule.waitUntil(5_000) { !has("как в «") }
     }
 
-    /** A miss in the Tir, where songs are chosen: after the engine's correction a few notes of a song play (rule 5 stays). */
+    /** A miss in the Tir, where songs are chosen: the correction is the note again and then a few notes of a song (rule 5 stays: it is the driver's). */
     @Test
     fun aMissInTheTirIsFollowedByASong() {
         val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
@@ -101,9 +101,10 @@ class SongHintFlowTest {
                 if (has("→")) {
                     missed = true
                     org.robolectric.shadows.ShadowLooper.idleMainLooper(3, java.util.concurrent.TimeUnit.SECONDS)
-                    rule.waitUntil(10_000) { audio.played.size >= before + 2 }
-                    val song = audio.played.last()
-                    assertTrue("a few notes of a song after the correction: ${song.notes.size}", song.notes.size in 3..4)
+                    rule.waitUntil(10_000) { audio.played.size >= before + 1 }
+                    val correction = audio.played.last()
+                    // O-63: the note again, then the song (3–4 notes) — not a walk home along the scale
+                    assertTrue("the note and a few notes of a song: ${correction.notes.size}", correction.notes.size in 4..5)
                     assertTrue("and its line on the screen", has("как в «"))
                     break
                 }

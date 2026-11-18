@@ -109,6 +109,12 @@ class TirDriver(
     review: List<SpacedReview.Item> = emptyList(),
     /** S-03: the user's own confusions, the worst first; the usual suspects ([DUEL_DEFAULTS]) follow them. */
     duelPairs: List<Pair<Degree, Degree>> = emptyList(),
+    /**
+     * O-63 (ADR-062): the tune that hangs a degree on a song — the notes of the song in the key, or null where the user
+     * keeps the feel. Asked at the answer, so a switch of the hints counts at once. With a tune, a single note is answered
+     * by the song (right: it is the reward; wrong: the note again, then the song) instead of a walk home along the scale.
+     */
+    private val tune: (Degree, Key) -> Score? = { _, _ -> null },
 ) : ModeDriver<TirTask> {
 
     /** S-03: the duels of this round in order — every pair once, whichever way round it was given. */
@@ -647,10 +653,15 @@ class TirDriver(
 
     /** Correct answer: the musical reward — the last note walks home to the tonic. */
     private fun confirmation(task: TirTask): Score = when {
+        songTune(task) != null -> requireNotNull(songTune(task))
         // «Под нотой»: the chord that was played over the humming note goes home.
         task.underNote -> arranger.chords(listOf(task.chords[0], Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.0, tempoBpm = TEMPO)
         else -> plainConfirmation(task)
     }
+
+    /** O-63: the tune of the asked degree, for a single note answered over the drone (not a chain, not a note over a chord). */
+    private fun songTune(task: TirTask): Score? =
+        if (task.kind == TirKind.NOTE && !task.underNote && task.simon == null) tune(task.notes.single().degree, task.key) else null
 
     private fun plainConfirmation(task: TirTask): Score = when (task.kind) {
         TirKind.NOTE, TirKind.MELODY -> {
@@ -663,6 +674,8 @@ class TirDriver(
 
     /** Wrong answer (rule 5): hear the question again, then where it resolves. */
     private fun correction(task: TirTask): Score = when {
+        // O-63 (ADR-062): the note again, then the tune it leans on — the correction is still the driver's (rule 5)
+        songTune(task) != null -> task.question.then(requireNotNull(songTune(task)), gapBeats = 0.6)
         // «Под нотой»: the chord again over its note, then it goes home.
         task.underNote -> task.question.then(
             arranger.chords(listOf(Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.5, tempoBpm = TEMPO),
