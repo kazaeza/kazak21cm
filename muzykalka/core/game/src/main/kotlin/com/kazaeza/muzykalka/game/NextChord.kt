@@ -72,7 +72,10 @@ class NextChordDriver(
         val level = context.level.coerceIn(1, Levels.TIR_NEXT.size)
         val r = context.random
         val prefix = "next:L$level:"
-        val asked = ItemWeights.pick(r, entries, avoid = entries.firstOrNull { it.source.id == lastId }) { e ->
+        // O-62: the first rounds are lighter — songs in a major key, two chords to choose from (not four); it widens by itself
+        val gentle = level == 1 && context.history.count { it.level == 1 } < GENTLE_ATTEMPTS
+        val pool = if (gentle) entries.filter { !it.source.song.mode.hasMinorThird }.takeIf { it.size >= MIN_SONGS } ?: entries else entries
+        val asked = ItemWeights.pick(r, pool, avoid = pool.firstOrNull { it.source.id == lastId }) { e ->
             // the songs in learning are the ones worth hearing ahead: twice as often
             ItemWeights.weight(prefix + e.source.id, context.history) * if (e.source.learning) LEARNING_BONUS else 1.0
         }
@@ -83,7 +86,7 @@ class NextChordDriver(
         val pad = pad(song.mode, answer)
         val choices = if (level == 1) {
             // the chord that has just sounded cannot be the next change: it is not offered
-            val others = pad.filter { !SongOpenings.sameChord(it, answer) && !SongOpenings.sameChord(it, shown.last()) }.shuffled(r).take(OPTIONS - 1)
+            val others = pad.filter { !SongOpenings.sameChord(it, answer) && !SongOpenings.sameChord(it, shown.last()) }.shuffled(r).take((if (gentle) GENTLE_OPTIONS else OPTIONS) - 1)
             (others + answer).sortedBy { c -> pad.indexOfFirst { SongOpenings.sameChord(it, c) } }
         } else {
             pad
@@ -138,6 +141,10 @@ class NextChordDriver(
         /** Changes after the answer that a right answer hears on. */
         const val GOES_ON = 2
         const val OPTIONS = 4
+
+        /** O-62: until this many answers on level 1 the choice is [GENTLE_OPTIONS] chords of a major song, then [OPTIONS]. */
+        const val GENTLE_ATTEMPTS = 10
+        const val GENTLE_OPTIONS = 2
         const val MIN_SONGS = 3
         const val LEARNING_BONUS = 2.0
         const val PROMOTION_TARGET_MS = 8_000L

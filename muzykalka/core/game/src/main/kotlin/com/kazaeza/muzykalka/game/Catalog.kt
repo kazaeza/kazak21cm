@@ -46,6 +46,10 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_UNDER_NOTE(ModeId.TIR, "Под нотой", GuitarNeed.NONE, "0.1"),
     /** O-58: the tonic hums, a chord of the key is played over it — which step is it (ADR-057). The link before «Куда пойдёт?». */
     TIR_ON_TONIC(ModeId.TIR, "Аккорд над тоникой", GuitarNeed.NONE, "0.1"),
+    /** O-62: only the bass of a chord is heard over the humming tonic — which chord is it (ADR-061). */
+    TIR_BASS(ModeId.TIR, "Бас", GuitarNeed.NONE, "0.1"),
+    /** O-62: a chord is given, the next one is asked — the smallest step of «Куда пойдёт?» (ADR-061). */
+    TIR_TWO_CHORDS(ModeId.TIR, "Два аккорда", GuitarNeed.NONE, "0.1"),
     /** S-03: the two degrees taken for each other most often, until ten in a row are right (ADR-043). */
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.1"),
     /** O-50: a chord on a pitch of chance — which quality is it (ADR-048). */
@@ -108,6 +112,17 @@ object Levels {
         "+ vi",
         "+ ii · iii",
         "все аккорды лада",
+    )
+
+    /** «Бас» (O-62): the same widening as over the tonic — the bass of a chord names it. */
+    val TIR_BASS = TIR_ON_TONIC
+
+    /** «Два аккорда» (O-62): from the tonic to the two main chords, then to any, then between the main ones, then all. */
+    val TIR_TWO_CHORDS = listOf(
+        "из I: к IV или V",
+        "из I: к любому",
+        "между I · IV · V · vi",
+        "любой — в любой",
     )
 
     /** «Под нотой» (O-15): which chord of the key is under the shown note. */

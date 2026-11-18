@@ -55,6 +55,10 @@ data class TirTask(
     val duel: TirDuel? = null,
     /** O-46 «Саймон»: how the chain stands. */
     val simon: TirSimon? = null,
+    /** O-62 «Два аккорда»: the chord that is given (shown and played first); [chords] holds the one that is asked. */
+    val from: ChordDegree? = null,
+    /** O-62 «Бас»: only the bass of the asked chord is heard — the chord itself is the reward. */
+    val bassOnly: Boolean = false,
 ) : DroneTask {
     override val replay: Score get() = question
 
@@ -161,6 +165,8 @@ class TirDriver(
         if (variant == Variant.TIR_OVER_CHORDS) return overChordTask(context)
         if (variant == Variant.TIR_UNDER_NOTE) return underNoteTask(context)
         if (variant == Variant.TIR_ON_TONIC) return onTonicTask(context)
+        if (variant == Variant.TIR_BASS) return bassTask(context)
+        if (variant == Variant.TIR_TWO_CHORDS) return twoChordsTask(context)
         if (variant == Variant.TIR_DUEL) return duelTask(context)
         if (variant == Variant.TIR_SIMON) return simonTask(context)
         val level = context.level.coerceIn(1, Levels.TIR.size)
@@ -442,16 +448,7 @@ class TirDriver(
     private fun onTonicTask(context: DriverContext): TirTask {
         val level = context.level.coerceIn(1, Levels.TIR_ON_TONIC.size)
         val r = context.random
-        val blockId = ON_TONIC_BLOCK + level
-        val kept = blockKey?.takeIf { blockLeft > 0 && blockLevel == blockId }
-        val key = kept ?: keyPicker.next(if (r.nextDouble() < MINOR_SHARE) Mode.MINOR else Mode.MAJOR)
-        val newKey = kept == null
-        if (newKey) {
-            blockKey = key
-            blockLevel = blockId
-            blockLeft = KEY_BLOCK
-        }
-        blockLeft--
+        val (key, newKey) = blockKeyFor(r, ON_TONIC_BLOCK + level)
         val pad = onTonicPad(key.mode, level)
         val prefix = "tir:ontonic:L$level:"
         val chord = ItemWeights.pick(r, pad) { ItemWeights.weight(prefix + ChordParser.formatRoman(it), context.history) }
@@ -461,6 +458,71 @@ class TirDriver(
             kind = TirKind.CHORD, level = level, key = key, tonic = key.tonicAtOrAbove(MidiNote(55)), notes = emptyList(),
             chords = listOf(chord), noteChoices = emptyList(), chordChoices = pad, question = question, drone = arranger.drone(key),
             intro = if (newKey) orientation(key) else null,
+        )
+    }
+
+    /** The key of the block this question belongs to: kept for [KEY_BLOCK] questions, then a new one (the flag says so). */
+    private fun blockKeyFor(r: Random, blockId: Int): Pair<Key, Boolean> {
+        val kept = blockKey?.takeIf { blockLeft > 0 && blockLevel == blockId }
+        val key = kept ?: keyPicker.next(if (r.nextDouble() < MINOR_SHARE) Mode.MINOR else Mode.MAJOR)
+        if (kept == null) {
+            blockKey = key
+            blockLevel = blockId
+            blockLeft = KEY_BLOCK
+        }
+        blockLeft--
+        return key to (kept == null)
+    }
+
+    /**
+     * O-62 «Бас» (ADR-061): the tonic hums, and of a chord of the key only its bass is heard — low, in two octaves so that
+     * a phone speaker has it. Which chord is it? The same pad as over the tonic; the chord itself is the reward after the
+     * answer. The bass is what a chord is called by, and what a bassist plays.
+     */
+    private fun bassTask(context: DriverContext): TirTask {
+        val level = context.level.coerceIn(1, Levels.TIR_BASS.size)
+        val r = context.random
+        val (key, newKey) = blockKeyFor(r, BASS_BLOCK + level)
+        val pad = onTonicPad(key.mode, level)
+        val prefix = "tir:bass:L$level:"
+        val chord = ItemWeights.pick(r, pad) { ItemWeights.weight(prefix + ChordParser.formatRoman(it), context.history) }
+        val low = arranger.bassNote(chord, key) + 12
+        val question = Score(
+            TEMPO,
+            listOf(
+                ScoreNote(0.0, BASS_BEATS, Voice.BASS, low, 0.9f),
+                ScoreNote(0.0, BASS_BEATS, Voice.BASS, low + 12, 0.55f),
+            ),
+        )
+        return TirTask(
+            itemKey = prefix + ChordParser.formatRoman(chord), prompt = Prompt(title = "?", audio = question, key = key),
+            kind = TirKind.CHORD, level = level, key = key, tonic = key.tonicAtOrAbove(MidiNote(55)), notes = emptyList(),
+            chords = listOf(chord), noteChoices = emptyList(), chordChoices = pad, question = question, drone = arranger.drone(key),
+            intro = if (newKey) orientation(key) else null, bassOnly = true,
+        )
+    }
+
+    /**
+     * O-62 «Два аккорда» (ADR-061): a chord is given — named on the screen and played — and the next one follows; which
+     * step is it? The smallest piece of «Куда пойдёт?»: one move instead of a song. The tonic hums throughout.
+     */
+    private fun twoChordsTask(context: DriverContext): TirTask {
+        val level = context.level.coerceIn(1, Levels.TIR_TWO_CHORDS.size)
+        val r = context.random
+        val (key, newKey) = blockKeyFor(r, TWO_BLOCK + level)
+        val steps = TWO_STEPS[level - 1]
+        val pad = steps.map { Harmony.diatonicChord(key.mode, it) }
+        val starts = TWO_FROM[level - 1].map { Harmony.diatonicChord(key.mode, it) }
+        val prefix = "tir:two:L$level:"
+        val pairs = starts.flatMap { f -> pad.filter { !sameChord(it, f) }.map { f to it } }
+        fun id(p: Pair<ChordDegree, ChordDegree>) = prefix + ChordParser.formatRoman(p.first) + ">" + ChordParser.formatRoman(p.second)
+        val pair = ItemWeights.pick(r, pairs) { ItemWeights.weight(id(it), context.history) }
+        val question = arranger.chords(listOf(pair.first, pair.second), key, beatsEach = ON_TONIC_CHORD_BEATS, tempoBpm = TEMPO)
+        return TirTask(
+            itemKey = id(pair), prompt = Prompt(title = "?", audio = question, key = key),
+            kind = TirKind.CHORD, level = level, key = key, tonic = key.tonicAtOrAbove(MidiNote(55)), notes = emptyList(),
+            chords = listOf(pair.second), noteChoices = emptyList(), chordChoices = pad, question = question, drone = arranger.drone(key),
+            intro = if (newKey) orientation(key) else null, from = pair.first,
         )
     }
 
@@ -606,6 +668,11 @@ class TirDriver(
             arranger.chords(listOf(Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.5, tempoBpm = TEMPO),
             gapBeats = 0.25,
         )
+        // O-62 «Бас»: the bass again, then the whole chord on it, then home
+        task.bassOnly -> task.question.then(
+            arranger.chords(listOf(task.chords[0], Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.4, tempoBpm = TEMPO),
+            gapBeats = 0.5,
+        )
         // O-59 «Саймон»: the chain again, slowly — which note it was is what has to be heard
         task.simon != null -> {
             val last = task.notes.last()
@@ -646,6 +713,8 @@ class TirDriver(
         private const val OVER_CHORDS_BLOCK = 100
         private const val UNDER_NOTE_BLOCK = 200
         private const val ON_TONIC_BLOCK = 400
+        private const val BASS_BLOCK = 500
+        private const val TWO_BLOCK = 600
         private const val DUEL_BLOCK = 300
 
         /** O-46: a chain begins with this many notes and is won at [SIMON_MAX]. */
@@ -701,6 +770,13 @@ class TirDriver(
 
         /** «Аккорд над тоникой»: the steps (0 = I) asked on [level]: I IV V, then vi, then ii and iii, then all seven. */
         val ON_TONIC_STEPS = listOf(listOf(0, 3, 4), listOf(0, 3, 4, 5), listOf(0, 1, 2, 3, 4, 5), (0..6).toList())
+
+        /** «Бас»: how long the bass is held (beats at [TEMPO]). */
+        const val BASS_BEATS = 2.5
+
+        /** «Два аккорда»: the steps (0 = I) a move may lead to on [level], and those it may start from. */
+        val TWO_STEPS = listOf(listOf(3, 4), listOf(3, 4, 5, 1), listOf(0, 3, 4, 5), (0..6).toList())
+        val TWO_FROM = listOf(listOf(0), listOf(0), listOf(0, 3, 4, 5), (0..6).toList())
 
         fun onTonicPad(mode: Mode, level: Int): List<ChordDegree> =
             ON_TONIC_STEPS[level.coerceIn(1, ON_TONIC_STEPS.size) - 1].map { Harmony.diatonicChord(mode, it) }
@@ -759,6 +835,10 @@ class TirDriver(
 
         /** «Под нотой»: a chord takes a moment longer to place than a single note. */
         const val UNDER_NOTE_TARGET_MS = 3_500L
+
+        /** «Бас» and «Два аккорда»: as long as a chord over the tonic. */
+        const val BASS_TARGET_MS = 4_000L
+        const val TWO_CHORDS_TARGET_MS = 4_500L
 
         /** «Аккорд над тоникой»: a step of the key named in four seconds. */
         const val ON_TONIC_TARGET_MS = 4_000L

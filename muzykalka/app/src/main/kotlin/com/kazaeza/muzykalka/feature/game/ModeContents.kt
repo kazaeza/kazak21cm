@@ -255,6 +255,17 @@ internal fun TirContent(
                 // O-15 «Под нотой» (turned round in O-40): the note is given and hums, the chord played over it is the question.
                 val shown = if (task.underNote) task.notes.single().degree else null
                 when {
+                    // O-62 «Два аккорда»: the first chord is given — it is on the screen from the first moment
+                    task.from != null && !feedback -> {
+                        val from = task.from!!
+                        Text("первый аккорд", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+                        GradientText(DegreeFormatter.chord(from, ui.notation), MaterialTheme.typography.displayLarge, DegreeColors.gradient(DegreeColors.of(from.root)), Modifier)
+                        Text(
+                            if (ui.phase == RoundPhase.PROMPTING) "Слушай…" else "Какой второй?",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Juicy.TextDim,
+                        )
+                    }
                     ui.phase == RoundPhase.PROMPTING && shown == null -> {
                         Text("Слушай…", style = MaterialTheme.typography.headlineSmall, color = Juicy.TextDim)
                     }
@@ -302,7 +313,7 @@ internal fun TirContent(
                             }
                         }
                         // O-58 «Аккорд над тоникой»: what the chord does against the tonic that hums, and what it is made of
-                        if (task.kind == TirKind.CHORD && !task.underNote && ui.variant == Variant.TIR_ON_TONIC) {
+                        if (task.kind == TirKind.CHORD && !task.underNote && ui.variant in CHORD_OVER_TONIC) {
                             val chord = task.chords[0]
                             val vibe = ChordVibes.of(chord, task.key.mode)
                             Spacer(Modifier.height(6.dp))
@@ -332,7 +343,7 @@ internal fun TirContent(
                             when (task.kind) {
                                 TirKind.NOTE -> "Какая ступень?"
                                 TirKind.MELODY -> "Мелодия · ${task.notes.size} нот"
-                                TirKind.CHORD -> "Какой аккорд?"
+                                TirKind.CHORD -> if (task.bassOnly) "Какой аккорд? Слышен только бас" else "Какой аккорд?"
                                 TirKind.PROGRESSION -> "Ход: аккорды 2–4"
                             },
                             style = MaterialTheme.typography.titleMedium,
@@ -934,3 +945,6 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
         Spacer(Modifier.height(6.dp))
     }
 }
+
+/** O-58, O-62: the variants whose chord is named over the humming tonic — after the answer its job in the key is told. */
+private val CHORD_OVER_TONIC = setOf(Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS)

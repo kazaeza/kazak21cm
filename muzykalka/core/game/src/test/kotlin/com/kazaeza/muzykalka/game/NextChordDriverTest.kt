@@ -53,13 +53,33 @@ class NextChordDriverTest {
         }
     }
 
+    private val seasoned = List(NextChordDriver.GENTLE_ATTEMPTS) { AttemptRecord(Variant.TIR_NEXT, 1, "next:L1:x", "I", "I", true, 3000, null, 0, null, 0) }
+
+    private fun seasonedTasks(level: Int, n: Int): List<NextChordTask> {
+        val d = NextChordDriver(book, KeyPicker(Random(5)))
+        return List(n) { d.nextTask(DriverContext(Random(it), level, seasoned)) }
+    }
+
     @Test
     fun `level 1 offers four chords and never the one that has just sounded, level 2 the whole pad`() {
-        tasks(1, 120).forEach { t ->
+        seasonedTasks(1, 120).forEach { t ->
             assertEquals(NextChordDriver.OPTIONS, t.choices.size)
             assertFalse(has(t.choices, t.shown.last()), "a change is a change")
         }
         tasks(2, 120).forEach { t -> assertTrue(t.choices.size >= 7, "every chord of the mode: ${t.choices.size}") }
+    }
+
+    @Test
+    fun `the first rounds are gentle - two chords to choose from, a major song - and widen by themselves (O-62)`() {
+        tasks(1, 120).forEach { t ->
+            assertEquals(NextChordDriver.GENTLE_OPTIONS, t.choices.size)
+            assertTrue(has(t.choices, t.answer), "the answer is one of the two")
+            assertFalse(has(t.choices, t.shown.last()))
+            assertTrue(!t.key.mode.hasMinorThird, "a major song")
+        }
+        assertTrue(seasonedTasks(1, 120).any { it.key.mode.hasMinorThird }, "after the first rounds minor songs come too")
+        // level 2 was never gentle
+        assertTrue(tasks(2, 60).all { it.choices.size >= 7 })
     }
 
     @Test
