@@ -40,6 +40,7 @@ import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.NoteName
 import com.kazaeza.muzykalka.music.NoteNaming
+import com.kazaeza.muzykalka.music.HintStyle
 import com.kazaeza.muzykalka.music.OrbBody
 import com.kazaeza.muzykalka.music.PulseKind
 import com.kazaeza.muzykalka.music.SoundPulse
@@ -172,6 +173,23 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
                     { id -> if (id == null) "по умолчанию" else inputs.first { it.id == id }.let { d -> d.label + (d.warning?.let { w -> " ($w)" } ?: "") } },
                     { id -> update { it.copy(inputDeviceId = id) } },
                     colors = Accents.Kamerton,
+                )
+            }
+        }
+        item(key = "hints") {
+            Column {
+                SectionLabel("подсказки после ошибки")
+                Spacer(Modifier.height(6.dp))
+                ChoiceRow(HintStyle.entries, settings.hintStyle, { it.ru }, { h -> update { it.copy(hintStyle = h) } }, colors = Accents.Tir)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    if (settings.hintStyle == HintStyle.SONGS) {
+                        "После промаха — «как в «С днём рождения»» и три-четыре ноты песни над дроном. Свои якоря идут первыми."
+                    } else {
+                        "После промаха — слово о том, как ступень звучит против дома: опора, тяга, свет."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Juicy.TextDim,
                 )
             }
         }

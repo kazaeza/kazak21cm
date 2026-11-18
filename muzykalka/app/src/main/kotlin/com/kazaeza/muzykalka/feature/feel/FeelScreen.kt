@@ -47,6 +47,10 @@ import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNote
 import com.kazaeza.muzykalka.music.DegreeVibes
+import com.kazaeza.muzykalka.music.HintStyle
+import com.kazaeza.muzykalka.music.SongHint
+import com.kazaeza.muzykalka.feature.common.HintStyleSwitch
+import com.kazaeza.muzykalka.feature.common.melodyText
 import com.kazaeza.muzykalka.music.Harmony
 import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.KeyPicker
@@ -255,6 +259,15 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
         state.update { it.copy(scope = scope, key = if (scope.mode != it.scope.mode) keys.next(scope.mode) else it.key) }
     }
 
+    /** O-57: the cards speak of the feel in words, or of a song that has the sound. */
+    fun setHintStyle(style: HintStyle) {
+        state.update { it.copy(settings = it.settings.copy(hintStyle = style)) }
+        viewModelScope.launch { graph.settings.update { it.copy(hintStyle = style) } }
+    }
+
+    /** O-57: the notes of the song that has this sound, over the drone of the key on screen. */
+    fun playSongHint(song: SongHint) = playAnchor(DegreeAnchor(song.degree, song.title, song.melody))
+
     /** Same degree, another chord under it (RESEARCH §4 D): «5 над I — опора, 5 над IV — тянет вниз». */
     fun setContext(step: Int) {
         state.update { it.copy(context = step) }
@@ -348,6 +361,7 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit, onOpenSong: (String) -> Un
         item(key = "controls") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ChoiceRow(FeelScope.entries, ui.scope, { it.ru }, vm::setScope, colors = Accents.Tir)
+                HintStyleSwitch(ui.settings.hintStyle, vm::setHintStyle)
                 SectionLabel("под ступенью")
                 ChoiceRow(
                     FEEL_CONTEXTS,
@@ -373,6 +387,8 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit, onOpenSong: (String) -> Un
                             onAnchor = { a -> if (a != null) vm.playAnchor(a) else vm.pickSong(d) },
                             onEditAnchor = { vm.editAnchor(d) },
                             onSongs = { vm.pickSong(d) },
+                            song = if (ui.settings.hintStyle == HintStyle.SONGS) SongHint.forDegree(d) else null,
+                            onSongHint = vm::playSongHint,
                             modifier = Modifier.weight(1f),
                         ) { vm.play(d) }
                     }
@@ -562,6 +578,8 @@ private fun VibeCard(
     onAnchor: (DegreeAnchor?) -> Unit,
     onEditAnchor: () -> Unit,
     onSongs: () -> Unit,
+    song: SongHint? = null,
+    onSongHint: (SongHint) -> Unit = {},
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -587,15 +605,31 @@ private fun VibeCard(
             Spacer(Modifier.width(8.dp))
             Text(if (playing) "♪" else "►", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
         }
-        Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
-        Spacer(Modifier.height(4.dp))
-        Text(vibe.line, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
-        if (over != null) {
+        if (song != null) {
+            // O-57: a tune takes the place of the words; a sound without one keeps them
+            Text(song.line, style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
             Spacer(Modifier.height(4.dp))
-            Text(DegreeVibes.overChord(degree, over, mode, notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+            Text(melodyText(song, notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+            Text(
+                "► мотив",
+                style = MaterialTheme.typography.labelLarge,
+                color = color,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(onClickLabel = "Послушать мотив") { onSongHint(song) }
+                    .padding(vertical = 6.dp),
+            )
+        } else {
+            Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
+            Spacer(Modifier.height(4.dp))
+            Text(vibe.line, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+            if (over != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(DegreeVibes.overChord(degree, over, mode, notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+            }
+            Spacer(Modifier.height(6.dp))
+            SectionLabel(DegreeVibes.pathHome(degree, mode, notation), color = color.copy(alpha = 0.9f))
         }
-        Spacer(Modifier.height(6.dp))
-        SectionLabel(DegreeVibes.pathHome(degree, mode, notation), color = color.copy(alpha = 0.9f))
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(

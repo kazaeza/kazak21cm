@@ -64,6 +64,12 @@ import com.kazaeza.muzykalka.ui.orb.OrbAnswer
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
+import com.kazaeza.muzykalka.feature.common.HintStyleSwitch
+import com.kazaeza.muzykalka.feature.common.SongHintLine
+import com.kazaeza.muzykalka.music.HintStyle
+import com.kazaeza.muzykalka.music.KeyCatalog
+import com.kazaeza.muzykalka.music.PitchClass
+import com.kazaeza.muzykalka.music.SongHint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,6 +94,8 @@ data class LabUi(
     /** The chord the built one pulls to is sounding instead of it. */
     val pulled: Boolean = false,
     val notation: DegreeNotation = DegreeNotation.ARABIC,
+    /** O-57: the interval's card names a song that has it, or only describes how it feels. */
+    val hintStyle: HintStyle = HintStyle.FEEL,
 ) {
     /** Semitones of the picked interval: the «1» of the dial is the octave — a unison is one sound, nothing to hear. */
     val semitones: Int? get() = picked?.let { if (it.semitones == 0) Dyads.OCTAVE else it.semitones }
@@ -109,7 +117,7 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
         viewModelScope.launch {
             val settings = graph.settings.settings.first()
             graph.audioOutput.a4Hz = settings.a4Hz
-            state.update { it.copy(notation = settings.degreeNotation) }
+            state.update { it.copy(notation = settings.degreeNotation, hintStyle = settings.hintStyle) }
         }
     }
 
@@ -145,6 +153,26 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
     fun pick(degree: Degree) {
         state.update { it.copy(picked = degree) }
         sound()
+    }
+
+    /** O-57: the switch of the hints, kept for every mode. */
+    fun setHintStyle(style: HintStyle) {
+        state.update { it.copy(hintStyle = style) }
+        viewModelScope.launch { graph.settings.update { it.copy(hintStyle = style) } }
+    }
+
+    /** O-57: the tune that has the picked interval, over a hum of the lower sound; the interval comes back after it. */
+    fun playSongHint(song: SongHint) {
+        job?.cancel()
+        val key = KeyCatalog.practical(PitchClass.of(root.value), Mode.MAJOR)
+        graph.audioOutput.drone(listOf(root))
+        state.update { it.copy(sounding = true, pulled = false) }
+        job = viewModelScope.launch {
+            delay(SONG_SETTLE_MS)
+            graph.audioOutput.play(song.score(key))
+            delay(SONG_SETTLE_MS)
+            sound()
+        }
     }
 
     fun setThird(third: LabThird) = change { it.copy(third = third) }
@@ -238,6 +266,9 @@ class HarmonyLabViewModel(private val graph: AppGraph) : ViewModel() {
 
     companion object {
         /** The root is a pitch between A2 and G♯3: the bass of a chord, and an octave below the interval's lower sound. */
+        /** O-57: the hum of the lower sound before the tune, and the breath after it. */
+        const val SONG_SETTLE_MS = 900L
+
         const val ROOT_FROM = 45
         const val ROOT_SPAN = 12
         const val PULL_HOLD_MS = 2_400L
@@ -295,6 +326,7 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
                         figure = picked?.takeIf { it.semitones != 0 }?.let { RingFigure(listOf(0, hourOf(it.semitones)), listOf(home, DegreeColors.of(it)), closed = false) },
                     )
                 }
+                item(key = "hints") { HintStyleSwitch(ui.hintStyle, vm::setHintStyle) }
                 item(key = "dyad") {
                     if (picked == null || semitones == null) {
                         Text(
@@ -315,6 +347,12 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(vibe.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
+                            // O-57: the interval hung on a tune everyone knows (the first one is from the tonic up, as the dial has it)
+                            val song = if (ui.hintStyle == HintStyle.SONGS) SongHint.forSemitone(picked.semitones).firstOrNull() else null
+                            if (song != null) {
+                                Spacer(Modifier.height(10.dp))
+                                SongHintLine(picked, song, ui.notation, onPlay = { vm.playSongHint(song) })
+                            }
                             Spacer(Modifier.height(12.dp))
                             // the two sounds as two combs of harmonics: where the teeth meet it is smooth, where they miss it rubs
                             HarmonicLadder(vibe.ratio, vibe.meetings(), vibe.rubs(), lower = home, upper = color, modifier = Modifier.fillMaxWidth().height(86.dp))

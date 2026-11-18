@@ -36,6 +36,9 @@ import com.kazaeza.muzykalka.feature.common.ChordCaption
 import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.feature.common.rememberChordAudition
 import com.kazaeza.muzykalka.game.Answer
+import com.kazaeza.muzykalka.music.HintStyle
+import com.kazaeza.muzykalka.music.SongHint
+import com.kazaeza.muzykalka.feature.common.SongHintLine
 import com.kazaeza.muzykalka.game.HuntDriver
 import com.kazaeza.muzykalka.game.HuntKind
 import com.kazaeza.muzykalka.game.HuntTask
@@ -130,6 +133,8 @@ internal fun TirContent(
     onReplay: () -> Unit,
     pulses: PulseBoard,
     haptics: Haptics,
+    onSongHint: () -> Unit = {},
+    onHintStyle: (HintStyle) -> Unit = {},
 ) {
     val enteredNotes = remember(task.itemKey, ui.taskSerial) { mutableStateListOf<Degree>() }
     val enteredChords = remember(task.itemKey, ui.taskSerial) { mutableStateListOf<ChordDegree>() }
@@ -189,6 +194,17 @@ internal fun TirContent(
                         DegreeChip("над " + DegreeFormatter.chord(chord, ui.notation), DegreeColors.of(chord.root))
                     }
                     ReplayKey("Повторить вопрос", onReplay, enabled = listening)
+                    // O-57: what a hint after a miss is made of — the feel of the sound, or a song that has it
+                    if (task.kind == TirKind.NOTE && !task.underNote) {
+                        Spacer(Modifier.width(8.dp))
+                        val songs = ui.settings.hintStyle == HintStyle.SONGS
+                        DegreeChip(
+                            if (songs) "♫ подсказки-песни" else "подсказки: ощущения",
+                            Juicy.Cyan,
+                            onClick = { onHintStyle(if (songs) HintStyle.FEEL else HintStyle.SONGS) },
+                            selected = songs,
+                        )
+                    }
                 }
                 // S-03 «Дуэль»: who fights whom and how the count stands (it moves with the answer, not with the next question)
                 task.duel?.let { duel ->
@@ -246,14 +262,25 @@ internal fun TirContent(
                         // The feeling to hang the sound on, while its resolution is playing.
                         if (task.kind == TirKind.NOTE) {
                             val d = task.notes.single().degree
-                            val vibe = DegreeVibes.of(d)
+                            // O-57: where the user chose songs, a tune takes the place of the words (a sound without one keeps them)
+                            val song = if (ui.settings.hintStyle == HintStyle.SONGS && !task.underNote) SongHint.forDegree(d) else null
+                            val own = ui.anchors[d.semitones]
                             Spacer(Modifier.height(6.dp))
-                            Text(vibe.word, style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(d))
-                            task.over?.let { chord ->
-                                Text(DegreeVibes.overChord(d, chord, task.key.mode, ui.notation), style = MaterialTheme.typography.titleMedium, color = Juicy.Text, textAlign = TextAlign.Center)
+                            if (song != null || (own != null && ui.settings.hintStyle == HintStyle.SONGS)) {
+                                if (own != null) {
+                                    AnchorHint(ui, d)
+                                } else if (song != null) {
+                                    SongHintLine(d, song, ui.notation, onPlay = if (correct) null else onSongHint)
+                                }
+                            } else {
+                                val vibe = DegreeVibes.of(d)
+                                Text(vibe.word, style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(d))
+                                task.over?.let { chord ->
+                                    Text(DegreeVibes.overChord(d, chord, task.key.mode, ui.notation), style = MaterialTheme.typography.titleMedium, color = Juicy.Text, textAlign = TextAlign.Center)
+                                }
+                                Text(DegreeVibes.pathHome(d, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                                if (!correct) AnchorHint(ui, d)
                             }
-                            Text(DegreeVibes.pathHome(d, task.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
-                            if (!correct) AnchorHint(ui, d)
                         }
                         if (shown != null) {
                             Spacer(Modifier.height(6.dp))

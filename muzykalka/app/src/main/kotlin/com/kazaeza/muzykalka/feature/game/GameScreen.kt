@@ -205,7 +205,7 @@ private fun GameHost(
                         },
                 ) {
                     when (val task = ui.task) {
-                        is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay, pulses = pulses, haptics = haptics)
+                        is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay, pulses = pulses, haptics = haptics, onSongHint = vm::playSongHint, onHintStyle = vm::setHintStyle)
                         is SingTask -> if (ui.variant == Variant.KAMERTON_SEARCH) {
                             SearchContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
                         } else {

@@ -39,6 +39,10 @@ import com.kazaeza.muzykalka.game.ListenScope
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.DegreeVibes
+import com.kazaeza.muzykalka.music.HintStyle
+import com.kazaeza.muzykalka.music.SongHint
+import com.kazaeza.muzykalka.feature.common.HintStyleSwitch
+import com.kazaeza.muzykalka.feature.common.SongHintLine
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.RuNames
@@ -84,6 +88,8 @@ data class ListenUi(
     val notation: DegreeNotation = DegreeNotation.ARABIC,
     /** false = the phone has no Russian TTS voice: the answer is only on the screen. */
     val voiceAvailable: Boolean? = null,
+    /** O-57: the answer is followed by the feel of the sound in words, or by a song that has it. */
+    val hintStyle: HintStyle = HintStyle.FEEL,
 )
 
 /**
@@ -102,7 +108,7 @@ class ListenViewModel(private val graph: AppGraph) : ViewModel() {
         viewModelScope.launch {
             val settings = graph.settings.settings.first()
             graph.audioOutput.a4Hz = settings.a4Hz
-            state.update { it.copy(notation = settings.degreeNotation) }
+            state.update { it.copy(notation = settings.degreeNotation, hintStyle = settings.hintStyle) }
         }
         viewModelScope.launch { graph.announcer.available.collect { a -> state.update { it.copy(voiceAvailable = a) } } }
     }
@@ -118,6 +124,12 @@ class ListenViewModel(private val graph: AppGraph) : ViewModel() {
     fun setDelay(ms: Long) = state.update { it.copy(delayMs = ms) }
 
     fun setVoice(on: Boolean) = state.update { it.copy(voice = on) }
+
+    /** O-57: takes effect from the next answer. */
+    fun setHintStyle(style: HintStyle) {
+        state.update { it.copy(hintStyle = style) }
+        viewModelScope.launch { graph.settings.update { it.copy(hintStyle = style) } }
+    }
 
     fun toggle() = if (state.value.running) stop() else start()
 
@@ -141,6 +153,13 @@ class ListenViewModel(private val graph: AppGraph) : ViewModel() {
                 state.update { it.copy(phase = ListenPhase.ANSWER) }
                 if (state.value.voice) graph.announcer.say(item.spoken)
                 graph.audioOutput.play(item.answer)
+                // O-57: after the walk home, the tune that has this sound (over the tonic drone only: a chord would muddy it)
+                if (state.value.hintStyle == HintStyle.SONGS && item.over == null) {
+                    SongHint.forDegree(item.degree)?.let { song ->
+                        delay(SONG_GAP_MS)
+                        graph.audioOutput.play(song.score(item.key))
+                    }
+                }
                 delay(AFTER_ANSWER_MS)
                 state.update { it.copy(heard = it.heard + 1) }
             }
@@ -162,6 +181,9 @@ class ListenViewModel(private val graph: AppGraph) : ViewModel() {
 
         /** The walk home lands before the next question. */
         const val AFTER_ANSWER_MS = 900L
+
+        /** O-57: a breath between the walk home and the tune. */
+        const val SONG_GAP_MS = 400L
     }
 }
 
@@ -171,7 +193,7 @@ fun ListenScreen(onBack: () -> Unit) {
     val vm: ListenViewModel = viewModel { ListenViewModel(graph) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     if (ui.running) KeepScreenOn()
-    ListenContent(ui, onBack = onBack, onToggle = vm::toggle, onScope = vm::setScope, onDelay = vm::setDelay, onVoice = vm::setVoice)
+    ListenContent(ui, onBack = onBack, onToggle = vm::toggle, onScope = vm::setScope, onDelay = vm::setDelay, onVoice = vm::setVoice, onHintStyle = vm::setHintStyle)
 }
 
 @Composable
@@ -182,6 +204,7 @@ fun ListenContent(
     onScope: (ListenScope) -> Unit,
     onDelay: (Long) -> Unit,
     onVoice: (Boolean) -> Unit,
+    onHintStyle: (HintStyle) -> Unit = {},
 ) {
     ScreenFrame(title = "Угадай про себя", subtitle = "звук → пауза → ответ, без кнопок", accent = Accents.Tir, onBack = onBack) {
         item(key = "stage") { Stage(ui) }
@@ -205,6 +228,7 @@ fun ListenContent(
                 ChoiceRow(ListenDeck.DELAYS_MS, ui.delayMs, { "${it / 1000} с" }, onDelay, colors = Accents.Tir)
                 SectionLabel("ответ")
                 ChoiceRow(listOf(true, false), ui.voice, { if (it) "вслух" else "только на экране" }, onVoice, colors = Accents.Tir)
+                HintStyleSwitch(ui.hintStyle, onHintStyle)
                 if (ui.voice && ui.voiceAvailable == false) {
                     Text(
                         "На телефоне нет русского голоса для озвучки — ответ будет только на экране. Голос ставится в настройках Android: «Синтез речи».",
@@ -280,11 +304,17 @@ private fun Answer(ui: ListenUi, item: ListenItem) {
     val d = item.degree
     val c = DegreeColors.of(d)
     GradientText(DegreeFormatter.degree(d, ui.notation), MaterialTheme.typography.displayLarge, DegreeColors.gradient(c), Modifier.pop(ui.serial, 0.3f))
-    Text(DegreeVibes.of(d).word, style = MaterialTheme.typography.headlineSmall, color = c)
-    item.over?.let { chord ->
-        Text(DegreeVibes.overChord(d, chord, item.key.mode, ui.notation), style = MaterialTheme.typography.titleMedium, color = Juicy.Text, textAlign = TextAlign.Center)
+    // O-57: where the user chose songs, a tune takes the place of the words (a sound without one keeps them)
+    val song = if (ui.hintStyle == HintStyle.SONGS) SongHint.forDegree(d) else null
+    if (song != null) {
+        SongHintLine(d, song, ui.notation, onPlay = null)
+    } else {
+        Text(DegreeVibes.of(d).word, style = MaterialTheme.typography.headlineSmall, color = c)
+        item.over?.let { chord ->
+            Text(DegreeVibes.overChord(d, chord, item.key.mode, ui.notation), style = MaterialTheme.typography.titleMedium, color = Juicy.Text, textAlign = TextAlign.Center)
+        }
+        Text(DegreeVibes.pathHome(d, item.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
     }
-    Text(DegreeVibes.pathHome(d, item.key.mode, ui.notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
 }
 
 /** The pause running out, left to right. */

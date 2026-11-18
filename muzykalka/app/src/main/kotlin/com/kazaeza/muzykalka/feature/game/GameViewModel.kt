@@ -12,6 +12,9 @@ import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.DegreeAnchor
 import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.HintStyle
+import com.kazaeza.muzykalka.music.SongHint
+import com.kazaeza.muzykalka.game.TirKind
 import com.kazaeza.muzykalka.game.TirTask
 import com.kazaeza.muzykalka.game.SingTask
 import com.kazaeza.muzykalka.game.AnchorHints
@@ -202,6 +205,9 @@ private val PULSE_TONIC_FLOOR = MidiNote(48)
 
 /** The drone holds a moment after an anchor's last note, so it lands home. */
 private const val ANCHOR_TAIL_MS = 600L
+
+/** O-57: a breath between the correction and the song that hangs it on a tune. */
+private const val SONG_HINT_GAP_MS = 500L
 
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
@@ -576,15 +582,52 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 val ev = s.lastEvaluation ?: return
                 lastFeedback = FeedbackEvent(++feedbackSerial, ev.correct, s.lastPoints, ev.expectedText, ev.givenText, ev.centsError)
                 val sound = if (ev.correct) ev.confirmation else ev.correction
-                if (sound != null) {
+                // O-57: after the engine's correction, a miss hangs the sound on a tune — only when the user chose songs
+                val song = if (ev.correct) null else songHintScore(s.task)
+                if (sound != null || song != null) {
                     feedbackAudio = viewModelScope.launch {
-                        playPulsing(sound, PulseKind.REVEAL, tonicOf(s.task))
-                        delay(120)
+                        if (sound != null) {
+                            playPulsing(sound, PulseKind.REVEAL, tonicOf(s.task))
+                            delay(120)
+                        }
+                        if (song != null) {
+                            delay(SONG_HINT_GAP_MS)
+                            playPulsing(song, PulseKind.REVEAL, tonicOf(s.task))
+                            delay(120)
+                        }
                     }
                 }
             }
             else -> Unit
         }
+    }
+
+    /**
+     * O-57 (ADR-056): the notes of the hint for the degree asked — the user's own anchor if there is one, else the
+     * song of [SongHint] — in the key of the task; null where the user chose the feel, or the question is no single degree.
+     */
+    private fun songHintScore(task: Task?): Score? {
+        val t = task as? TirTask ?: return null
+        if (state.value.settings.hintStyle != HintStyle.SONGS || t.kind != TirKind.NOTE || t.underNote) return null
+        val d = t.notes.single().degree
+        return state.value.anchors[d.semitones]?.score(t.key, arranger) ?: SongHint.forDegree(d)?.score(t.key, arranger)
+    }
+
+    /** O-57: «▶» by the song of the hint — again, over the drone that still hums. */
+    fun playSongHint() {
+        if (feedbackAudio?.isActive == true) return
+        val task = state.value.task as? TirTask
+        val score = songHintScore(task) ?: return
+        feedbackAudio = viewModelScope.launch {
+            playPulsing(score, PulseKind.REVEAL, tonicOf(task))
+            delay(120)
+        }
+    }
+
+    /** O-57: the switch of the hints, kept for every mode. */
+    fun setHintStyle(style: HintStyle) {
+        state.update { it.copy(settings = it.settings.copy(hintStyle = style)) }
+        viewModelScope.launch { graph.settings.update { it.copy(hintStyle = style) } }
     }
 
     private fun publish(e: RoundEngine<*>) {

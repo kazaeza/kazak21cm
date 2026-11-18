@@ -3,6 +3,7 @@ package com.kazaeza.muzykalka.data
 import androidx.test.core.app.ApplicationProvider
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.data.settings.SettingsRepository
+import com.kazaeza.muzykalka.music.HintStyle
 import com.kazaeza.muzykalka.music.OrbBody
 import com.kazaeza.muzykalka.music.ToneTimbre
 import kotlinx.coroutines.flow.first
@@ -42,5 +43,18 @@ class SettingsRepositoryTest {
         repo.update { it.copy(orbBody = OrbBody.INK, a4Hz = 441.0) } // writes every key; the choice stays
         assertEquals(OrbBody.INK, repo.settings.first().orbBody)
         repo.update { it.copy(orbBody = OrbBody.THREAD, a4Hz = 440.0) }
+    }
+
+    @Test
+    fun `hints speak of the feel by default, and a song choice is kept`() = runBlocking {
+        assertEquals(HintStyle.FEEL, Settings().hintStyle)
+        val repo = SettingsRepository(context)
+        for (h in HintStyle.entries) {
+            repo.update { it.copy(hintStyle = h) }
+            assertEquals(h, repo.settings.first().hintStyle)
+        }
+        repo.update { it.copy(hintStyle = HintStyle.SONGS, a4Hz = 441.0) } // writes every key; the choice stays
+        assertEquals(HintStyle.SONGS, repo.settings.first().hintStyle)
+        repo.update { it.copy(hintStyle = HintStyle.FEEL, a4Hz = 440.0) }
     }
 }
