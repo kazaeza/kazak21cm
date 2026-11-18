@@ -38,6 +38,7 @@ import com.kazaeza.muzykalka.feature.common.rememberChordAudition
 import com.kazaeza.muzykalka.game.Answer
 import com.kazaeza.muzykalka.music.HintStyle
 import com.kazaeza.muzykalka.music.SongHint
+import com.kazaeza.muzykalka.music.Dyads
 import com.kazaeza.muzykalka.feature.common.SongHintLine
 import com.kazaeza.muzykalka.game.HuntDriver
 import com.kazaeza.muzykalka.game.HuntKind
@@ -290,7 +291,21 @@ internal fun TirContent(
                             Text("→ " + (f?.expected ?: ""), style = MaterialTheme.typography.displaySmall, color = Juicy.Good, textAlign = TextAlign.Center)
                         }
                         // The feeling to hang the sound on, while its resolution is playing.
-                        if (task.kind == TirKind.NOTE) {
+                        // O-65 «Созвучие»: the pair has a colour and a name, not a pull home
+                        if (task.dyad) {
+                            val d = task.notes.single().degree
+                            val vibe = Dyads.of(if (d.semitones == 0) Dyads.OCTAVE else d.semitones)
+                            Spacer(Modifier.height(6.dp))
+                            Text(vibe.word, style = MaterialTheme.typography.headlineSmall, color = DegreeColors.of(d), textAlign = TextAlign.Center)
+                            Text(
+                                if (d.semitones == 0) "октава" else RuNames.interval(d),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Juicy.Text,
+                            )
+                            Text(vibe.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim, textAlign = TextAlign.Center)
+                            val song = if (ui.settings.hintStyle == HintStyle.SONGS) SongHint.forDegree(d) else null
+                            if (song != null && !correct) SongHintLine(d, song, ui.notation, onPlay = onSongHint)
+                        } else if (task.kind == TirKind.NOTE) {
                             val d = task.notes.single().degree
                             // O-57: where the user chose songs, a tune takes the place of the words (a sound without one keeps them)
                             val song = if (ui.settings.hintStyle == HintStyle.SONGS && !task.underNote) SongHint.forDegree(d) else null
@@ -341,7 +356,7 @@ internal fun TirContent(
                         GradientText("?", MaterialTheme.typography.displayLarge, accent, Modifier.breathe())
                         Text(
                             when (task.kind) {
-                                TirKind.NOTE -> "Какая ступень?"
+                                TirKind.NOTE -> if (task.dyad) "Какое созвучие? Верхний от нижнего" else "Какая ступень?"
                                 TirKind.MELODY -> "Мелодия · ${task.notes.size} нот"
                                 TirKind.CHORD -> if (task.bassOnly) "Какой аккорд? Слышен только бас" else "Какой аккорд?"
                                 TirKind.PROGRESSION -> "Ход: аккорды 2–4"

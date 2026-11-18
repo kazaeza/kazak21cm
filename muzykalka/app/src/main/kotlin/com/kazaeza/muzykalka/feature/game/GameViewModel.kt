@@ -209,7 +209,7 @@ private const val ANCHOR_TAIL_MS = 600L
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(
-        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_COLOR, Variant.TIR_MODE, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
+        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_COLOR, Variant.TIR_MODE, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
         Variant.TAPER_STEPS, Variant.FORMULA_ALOUD, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING, Variant.PARROT_ECHO,
     )
 
@@ -222,6 +222,7 @@ object Drills {
         Variant.TIR_UNDER_NOTE -> Levels.TIR_UNDER.size
         Variant.TIR_ON_TONIC -> Levels.TIR_ON_TONIC.size
         Variant.TIR_BASS -> Levels.TIR_BASS.size
+        Variant.TIR_DYAD -> Levels.TIR_DYAD.size
         Variant.TIR_TWO_CHORDS -> Levels.TIR_TWO_CHORDS.size
         Variant.TIR_SONG -> Levels.TIR_SONG.size
         Variant.TIR_SIMON -> Levels.TIR_SIMON.size
@@ -279,6 +280,7 @@ object Drills {
             Variant.TIR_UNDER_NOTE -> Levels.TIR_UNDER
             Variant.TIR_ON_TONIC -> Levels.TIR_ON_TONIC
             Variant.TIR_BASS -> Levels.TIR_BASS
+            Variant.TIR_DYAD -> Levels.TIR_DYAD
             Variant.TIR_TWO_CHORDS -> Levels.TIR_TWO_CHORDS
             Variant.TIR_SONG -> Levels.TIR_SONG
             Variant.TIR_NEXT -> Levels.TIR_NEXT
@@ -303,6 +305,7 @@ object Drills {
             Variant.TIR_UNDER_NOTE -> TirDriver.UNDER_NOTE_TARGET_MS
             Variant.TIR_ON_TONIC -> TirDriver.ON_TONIC_TARGET_MS
             Variant.TIR_BASS -> TirDriver.BASS_TARGET_MS
+            Variant.TIR_DYAD -> TirDriver.DYAD_TARGET_MS
             Variant.TIR_TWO_CHORDS -> TirDriver.TWO_CHORDS_TARGET_MS
             Variant.TIR_SONG -> SongGuessDriver.PROMOTION_TARGET_MS
             Variant.TIR_NEXT -> NextChordDriver.PROMOTION_TARGET_MS
@@ -346,7 +349,7 @@ object Drills {
             Variant.TIR_COLOR -> RoundEngine(ColorDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.FORMULA_ALOUD -> RoundEngine(FormulaDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
-            Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_RADIO ->
+            Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_RADIO ->
                 RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs, tune = tune), config, random, level, history, epochOffsetMs)
             // Without headphones the drone would leak into the microphone (ADR-021).
             Variant.KAMERTON_SING, Variant.KAMERTON_SEARCH ->

@@ -50,6 +50,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_BASS(ModeId.TIR, "Бас", GuitarNeed.NONE, "0.1"),
     /** O-62: a chord is given, the next one is asked — the smallest step of «Куда пойдёт?» (ADR-061). */
     TIR_TWO_CHORDS(ModeId.TIR, "Два аккорда", GuitarNeed.NONE, "0.1"),
+    /** O-65: two sounds struck together — what is the upper one from the lower (ADR-064). No drone: the pair is the whole question. */
+    TIR_DYAD(ModeId.TIR, "Созвучие", GuitarNeed.NONE, "0.1"),
     /** S-03: the two degrees taken for each other most often, until ten in a row are right (ADR-043). */
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.1"),
     /** O-50: a chord on a pitch of chance — which quality is it (ADR-048). */
@@ -123,6 +125,14 @@ object Levels {
         "из I: к любому",
         "между I · IV · V · vi",
         "любой — в любой",
+    )
+
+    /** «Созвучие» (O-65): the clearest pairs first, then the fourth and the sixths, then all; then all in any register. */
+    val TIR_DYAD = listOf(
+        "терции, квинта, октава",
+        "+ кварта и сексты",
+        "все созвучия",
+        "все, в любом регистре",
     )
 
     /** «Под нотой» (O-15): which chord of the key is under the shown note. */

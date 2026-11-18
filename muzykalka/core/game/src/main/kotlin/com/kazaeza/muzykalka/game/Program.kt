@@ -72,10 +72,11 @@ enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, va
     ),
     EAR(
         "Слух",
-        "ступени, аккорды и лады на слух — в наушниках",
+        "ступени, созвучия, аккорды и лады на слух — в наушниках",
         GuitarNeed.NONE,
         listOf(
             SetSegment(Variant.TIR_CLASSIC, 3.0),
+            SetSegment(Variant.TIR_DYAD, 2.0),
             SetSegment(Variant.TIR_OVER_CHORDS, 3.0),
             SetSegment(Variant.TIR_COLOR, 3.0),
             SetSegment(Variant.TIR_BASS, 2.0),

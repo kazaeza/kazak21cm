@@ -59,6 +59,11 @@ data class TirTask(
     val from: ChordDegree? = null,
     /** O-62 «Бас»: only the bass of the asked chord is heard — the chord itself is the reward. */
     val bassOnly: Boolean = false,
+    /**
+     * O-65 «Созвучие»: the two sounds are struck together; [tonic] is the lower one and [notes] the upper, as a degree of a
+     * key on the lower one (the answer); no drone and no scale — the pair is the whole question.
+     */
+    val dyad: Boolean = false,
 ) : DroneTask {
     override val replay: Score get() = question
 
@@ -173,6 +178,7 @@ class TirDriver(
         if (variant == Variant.TIR_ON_TONIC) return onTonicTask(context)
         if (variant == Variant.TIR_BASS) return bassTask(context)
         if (variant == Variant.TIR_TWO_CHORDS) return twoChordsTask(context)
+        if (variant == Variant.TIR_DYAD) return dyadTask(context)
         if (variant == Variant.TIR_DUEL) return duelTask(context)
         if (variant == Variant.TIR_SIMON) return simonTask(context)
         val level = context.level.coerceIn(1, Levels.TIR.size)
@@ -532,6 +538,40 @@ class TirDriver(
         )
     }
 
+    /**
+     * O-65 «Созвучие» (ADR-064): two sounds struck together, on a lower sound of chance every time (rule 2) — what is the
+     * upper one, counted from the lower? Answered as a degree (5 — a fifth up, 1 — the octave), on the same pad as the
+     * Tir. Heard together, an interval is one colour, not a step: that is what is trained here.
+     */
+    private fun dyadTask(context: DriverContext): TirTask {
+        val level = context.level.coerceIn(1, Levels.TIR_DYAD.size)
+        val r = context.random
+        val key = keyPicker.next(Mode.MAJOR)
+        val pad = DYAD_STEPS[level - 1].map { if (it == 0) Degree.ONE else Degree.canonical(it) }
+        val prefix = "tir:dyad:L$level:"
+        val degree = ItemWeights.pick(r, pad) { ItemWeights.weight(prefix + it, context.history) }
+        val floor = if (level >= 4) MidiNote(DYAD_WIDE_LOW + r.nextInt(DYAD_WIDE_SPAN)) else MidiNote(DYAD_LOW)
+        val low = key.tonicAtOrAbove(floor)
+        val note = DegreeNote(degree, if (degree.semitones == 0) 1 else 0)
+        val question = dyadTogether(low, key.midiOf(note, low), DYAD_BEATS)
+        return TirTask(
+            itemKey = prefix + degree, prompt = Prompt(title = "?", audio = question, key = key), kind = TirKind.NOTE, level = level,
+            key = key, tonic = low, notes = listOf(note), chords = emptyList(), noteChoices = pad, chordChoices = emptyList(),
+            question = question, drone = null, dyad = true,
+        )
+    }
+
+    private fun dyadTogether(low: MidiNote, high: MidiNote, beats: Double) =
+        Score(TEMPO, listOf(ScoreNote(0.0, beats, Voice.PIANO, low, 0.8f), ScoreNote(0.0, beats, Voice.PIANO, high, 0.8f)))
+
+    /** O-65: the pair taken apart — the lower, the upper — and struck together again: one step and one colour. */
+    private fun dyadApart(task: TirTask, beatsEach: Double): Score {
+        val low = task.tonic
+        val high = task.key.midiOf(task.notes.single(), low)
+        val apart = Score(TEMPO, listOf(ScoreNote(0.0, beatsEach * 0.95, Voice.PIANO, low, 0.7f), ScoreNote(beatsEach, beatsEach * 0.95, Voice.PIANO, high, 0.7f)))
+        return apart.then(dyadTogether(low, high, DYAD_BEATS), gapBeats = 0.4)
+    }
+
     private fun melodyTask(c: Context, r: Random): TirTask {
         val key = c.key
         val tonic = c.tonic
@@ -653,6 +693,7 @@ class TirDriver(
 
     /** Correct answer: the musical reward — the last note walks home to the tonic. */
     private fun confirmation(task: TirTask): Score = when {
+        task.dyad -> dyadApart(task, 0.6)
         songTune(task) != null -> requireNotNull(songTune(task))
         // «Под нотой»: the chord that was played over the humming note goes home.
         task.underNote -> arranger.chords(listOf(task.chords[0], Harmony.diatonicChord(task.key.mode, 0)), task.key, beatsEach = 1.0, tempoBpm = TEMPO)
@@ -661,7 +702,7 @@ class TirDriver(
 
     /** O-63: the tune of the asked degree, for a single note answered over the drone (not a chain, not a note over a chord). */
     private fun songTune(task: TirTask): Score? =
-        if (task.kind == TirKind.NOTE && !task.underNote && task.simon == null) tune(task.notes.single().degree, task.key) else null
+        if (task.kind == TirKind.NOTE && !task.underNote && task.simon == null && !task.dyad) tune(task.notes.single().degree, task.key) else null
 
     private fun plainConfirmation(task: TirTask): Score = when (task.kind) {
         TirKind.NOTE, TirKind.MELODY -> {
@@ -674,6 +715,10 @@ class TirDriver(
 
     /** Wrong answer (rule 5): hear the question again, then where it resolves. */
     private fun correction(task: TirTask): Score = when {
+        // O-65: together again, then apart and together — and the tune of the upper sound, where the user chose songs
+        task.dyad -> task.question.then(dyadApart(task, 1.0), gapBeats = 0.6).let { s ->
+            tune(task.notes.single().degree, task.key)?.let { s.then(it, gapBeats = 0.8) } ?: s
+        }
         // O-63 (ADR-062): the note again, then the tune it leans on — the correction is still the driver's (rule 5)
         songTune(task) != null -> task.question.then(requireNotNull(songTune(task)), gapBeats = 0.6)
         // «Под нотой»: the chord again over its note, then it goes home.
@@ -783,6 +828,14 @@ class TirDriver(
 
         /** «Аккорд над тоникой»: the steps (0 = I) asked on [level]: I IV V, then vi, then ii and iii, then all seven. */
         val ON_TONIC_STEPS = listOf(listOf(0, 3, 4), listOf(0, 3, 4, 5), listOf(0, 1, 2, 3, 4, 5), (0..6).toList())
+
+        /** «Созвучие»: the intervals (semitones; 0 — the octave) asked on each level. */
+        val DYAD_STEPS = listOf(listOf(0, 3, 4, 7), listOf(0, 3, 4, 5, 7, 8, 9), (0..11).toList(), (0..11).toList())
+        private const val DYAD_LOW = 52
+        private const val DYAD_WIDE_LOW = 45
+        private const val DYAD_WIDE_SPAN = 16
+        const val DYAD_BEATS = 2.5
+        const val DYAD_TARGET_MS = 3_500L
 
         /** «Бас»: how long the bass is held (beats at [TEMPO]). */
         const val BASS_BEATS = 2.5
