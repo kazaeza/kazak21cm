@@ -4,6 +4,7 @@ import com.kazaeza.muzykalka.music.Arranger
 import com.kazaeza.muzykalka.music.ChordParser
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.Mode
+import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.Voice
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -33,8 +34,9 @@ class UnderNoteDriverTest {
                 assertEquals(TirKind.CHORD, t.kind)
                 assertEquals(pad, t.chordChoices)
                 assertTrue(chord in pad)
-                assertEquals(Arranger().noteDrone(t.key, t.notes.single().degree), t.drone, "the note hums, not the chord")
-                assertEquals(setOf(t.key.pitchClassOf(note).value), t.drone!!.map { it.pitchClass.value }.toSet(), "one pitch class, held low")
+                // O-68: the tonic hums under the note all the time — the note is a step of the key, never a new home
+                assertEquals(Arranger().drone(t.key), t.drone!!.take(2), "the tonic hums")
+                assertEquals(setOf(t.key.pitchClassOf(Degree.ONE).value, t.key.pitchClassOf(note).value), t.drone.map { it.pitchClass.value }.toSet(), "and the note over it")
                 assertTrue(t.drone.all { it.value >= Arranger.DRONE_FLOOR.value }, "audible on a phone")
                 val played = t.question.notes.filter { it.voice == Voice.PIANO }.map { it.note!!.pitchClass.value }.toSet()
                 assertEquals(chord.quality.intervals.map { (t.key.pitchClassOf(chord.root) + it).value }.toSet(), played, "the question is the chord")
@@ -48,14 +50,14 @@ class UnderNoteDriverTest {
     }
 
     @Test
-    fun `a new key is set over the tonic, then the drone moves to the note`() {
+    fun `a new key is set over the tonic, then the note joins it`() {
         val d = driver(5)
         val tasks = List(TirDriver.KEY_BLOCK + 1) { d.nextTask(DriverContext(Random(it), 2, emptyList())) }
         val first = tasks.first()
         assertNotNull(first.intro, "the scale opens the block")
         assertEquals(Arranger().drone(first.key), first.introDrone)
         assertEquals(first.question, first.prompt.audio, "the prompt is the chord alone")
-        assertEquals(Arranger().noteDrone(first.key, first.notes.single().degree), first.drone, "then the drone moves from the tonic to the shown note")
+        assertTrue(first.drone!!.map { it.pitchClass }.contains(first.key.pitchClassOf(first.notes.single().degree)), "then the shown note joins the tonic")
         tasks.drop(1).take(TirDriver.KEY_BLOCK - 1).forEach { assertNull(it.intro) }
         assertNotNull(tasks.last().intro, "the next block opens with its scale again")
         // Over many blocks the first chord is not always I.

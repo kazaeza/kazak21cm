@@ -3,6 +3,7 @@ package com.kazaeza.muzykalka.game
 import com.kazaeza.muzykalka.music.Arranger
 import com.kazaeza.muzykalka.music.ChordParser
 import com.kazaeza.muzykalka.music.Harmony
+import com.kazaeza.muzykalka.music.Voice
 import com.kazaeza.muzykalka.music.KeyPicker
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -20,18 +21,23 @@ class OverChordsDriverTest {
         val tasks = List(TirDriver.KEY_BLOCK) { d.nextTask(DriverContext(Random(it), 1, emptyList())) }
         val first = tasks.first()
         assertEquals(Harmony.diatonicChord(first.key.mode, 0), first.over)
-        assertTrue(requireNotNull(first.prompt.audio).notes.size > 1, "the scale opens the block")
+        assertTrue(requireNotNull(first.prompt.audio).notes.size > first.question.notes.size, "the scale opens the block")
         assertTrue(tasks.all { it.key == first.key })
         val allowed = TirDriver.CHORD_STEPS_L1.map { Harmony.diatonicChord(first.key.mode, it) }
         tasks.forEach { t ->
             val chord = requireNotNull(t.over)
             assertTrue(chord in allowed, "$chord is one of I IV V vi")
-            assertEquals(Arranger().chordDrone(chord, t.key), t.drone)
+            // O-68: the tonic hums all the time; the chord is played over it, and the note comes on top, above the chord
+            assertEquals(Arranger().drone(t.key), t.drone)
+            val played = t.question.notes.filter { it.voice == Voice.PIANO }
+            assertEquals(chord.quality.intervals.map { (t.key.pitchClassOf(chord.root) + it).value }.toSet(), played.map { it.note!!.pitchClass.value }.toSet())
+            val tone = t.question.notes.single { it.voice == Voice.TONE }
+            assertTrue(tone.startBeat > 0.0 && tone.note!!.value >= played.maxOf { it.note!!.value } - 5, "the note enters after the chord, on top")
             assertEquals(t.key.mode.degrees, t.noteChoices)
             assertTrue(t.itemKey.startsWith("tir:chords:L1:" + ChordParser.formatRoman(chord) + ":"))
         }
         assertTrue(tasks.drop(1).any { it.over != first.over }, "the harmony moves")
-        tasks.drop(1).forEach { assertNull(it.prompt.audio?.takeIf { a -> a.notes.size > 1 }, "no scale inside the block") }
+        tasks.drop(1).forEach { assertEquals(it.question, it.prompt.audio, "no scale inside the block") }
     }
 
     @Test

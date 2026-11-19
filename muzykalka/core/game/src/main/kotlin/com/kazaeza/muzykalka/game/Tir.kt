@@ -402,13 +402,14 @@ class TirDriver(
         val pad = key.mode.degrees
         val prefix = "tir:chords:L$level:${ChordParser.formatRoman(chord)}:"
         val degree = ItemWeights.pick(r, pad) { ItemWeights.weight(prefix + it, context.history) }
-        val octaves = listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in 55..79 }
+        // O-68: the note sits above the chord, so the two never blur into one sound
+        val octaves = listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in OVER_NOTE_RANGE }
         val note = DegreeNote(degree, octaves[r.nextInt(octaves.size)])
-        val question = arranger.line(listOf(note), key, Voice.TONE, beatsEach = 2.0, tempoBpm = TEMPO, tonicFloor = tonic)
+        val question = overChord(chord, key, arranger.line(listOf(note), key, Voice.TONE, beatsEach = 2.0, tempoBpm = TEMPO, tonicFloor = tonic))
         return TirTask(
             itemKey = prefix + degree, prompt = prompt(key, if (newKey) orientation(key) else null, question), kind = TirKind.NOTE,
             level = level, key = key, tonic = tonic, notes = listOf(note), chords = emptyList(), noteChoices = pad,
-            chordChoices = emptyList(), question = question, drone = arranger.chordDrone(chord, key), over = chord,
+            chordChoices = emptyList(), question = question, drone = arranger.drone(key), over = chord,
         )
     }
 
@@ -420,6 +421,16 @@ class TirDriver(
      * its scale over the tonic drone ([TirTask.intro]); then the drone moves to the note, which hums
      * all through the question, and the chord is played over it (O-40; before it was the other way round).
      */
+    /**
+     * O-68 (ADR-066): a chord of the key played (not held as the drone) over the tonic that keeps humming, and [over]
+     * entering on top of it a beat later. A chord held alone becomes home to the ear within a breath — then every note
+     * over it is heard from the wrong tonic; against the humming tonic the chord stays a step away from home.
+     */
+    private fun overChord(chord: ChordDegree, key: Key, over: Score): Score {
+        val played = arranger.chords(listOf(chord), key, beatsEach = OVER_CHORD_BEATS, tempoBpm = TEMPO)
+        return played.copy(notes = played.notes + over.notes.map { it.copy(startBeat = it.startBeat + OVER_NOTE_DELAY_BEATS) })
+    }
+
     private fun underNoteTask(context: DriverContext): TirTask {
         val level = context.level.coerceIn(1, Levels.TIR_UNDER.size)
         val r = context.random
@@ -439,13 +450,17 @@ class TirDriver(
         val shared = chordTones(chord, key.mode).filter { d -> pad.count { holds(it, d) } >= 2 }
         val degree = shared[r.nextInt(shared.size)]
         val tonic = key.tonicAtOrAbove(MidiNote(55))
-        // O-40: the note hums (its register does not matter, it is a pitch class held low) and the chord is played over it
+        // O-40: the note hums and the chord is played over it; O-68: the tonic hums under the note all the time, so the
+        // note is heard as a step of the key and the chord as a chord of the key, not the note as a new home
         val note = DegreeNote(degree)
         val question = arranger.chords(listOf(chord), key, beatsEach = UNDER_NOTE_CHORD_BEATS, tempoBpm = TEMPO)
+        val home = arranger.drone(key)
+        val hum = home.first() + 12 + (key.pitchClassOf(degree) - home.first().pitchClass)
         return TirTask(
             itemKey = prefix + ChordParser.formatRoman(chord), prompt = Prompt(title = "?", audio = question, key = key),
             kind = TirKind.CHORD, level = level, key = key, tonic = tonic, notes = listOf(note), chords = listOf(chord),
-            noteChoices = emptyList(), chordChoices = pad, question = question, drone = arranger.noteDrone(key, degree),
+            noteChoices = emptyList(), chordChoices = pad, question = question,
+            drone = if (degree.semitones == 0) home else home + hum,
             underNote = true,
             intro = if (newKey) orientation(key) else null,
             introDrone = if (newKey) arranger.drone(key) else null,
@@ -822,6 +837,11 @@ class TirDriver(
 
         /** O-40: how long the asked chord is held (beats at [TEMPO]). */
         const val UNDER_NOTE_CHORD_BEATS = 2.0
+
+        /** O-68: the chord of «Над аккордами» rings this long, the note joins it this much later, above it. */
+        const val OVER_CHORD_BEATS = 3.0
+        const val OVER_NOTE_DELAY_BEATS = 1.0
+        val OVER_NOTE_RANGE = 62..81
 
         /** «Аккорд над тоникой»: the chord rings this long over the hum. */
         const val ON_TONIC_CHORD_BEATS = 2.0

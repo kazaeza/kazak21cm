@@ -41,7 +41,7 @@ class ListenDeckTest {
         items.forEach { i ->
             val chord = requireNotNull(i.over)
             assertTrue(chord in allowed)
-            assertEquals(Arranger().chordDrone(chord, i.key), i.drone)
+            assertEquals(Arranger().drone(i.key), i.drone, "O-68: the tonic hums, the chord is played over it")
         }
         assertTrue(items.map { it.over }.distinct().size > 1, "the harmony moves")
         val all = List(40) { deck(ListenScope.ALL_CHORDS, 9).next() }

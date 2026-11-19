@@ -64,7 +64,7 @@ class ListenFlowTest {
         rule.onNode(hasScrollAction()).performScrollToIndex(0) // back to the stage
         rule.waitUntil(10_000) { has("Назови про себя") }
         assertTrue("nothing is said before the pause", voice.said.isEmpty())
-        assertTrue("the chord drone is on", audio.drones.lastOrNull()?.size == 4)
+        assertTrue("the tonic hums under the chords (O-68)", audio.drones.lastOrNull()?.size == 2)
 
         rule.waitUntil(10_000) {
             has("Назови") // keeps the main looper (and the pause's delay) moving

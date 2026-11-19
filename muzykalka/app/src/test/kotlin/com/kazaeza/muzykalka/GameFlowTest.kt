@@ -125,7 +125,7 @@ class GameFlowTest {
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Какой аккорд сыграли?").fetchSemanticsNodes().isNotEmpty() }
         val drones = audio.drones.filterNotNull()
         assertTrue("the tonic drone under the scale first", drones.first().size == 2)
-        assertTrue("then the note, held low with its octave", drones.last().size == 2)
+        assertTrue("then the note joins the tonic (O-68)", drones.last().size == 3 || drones.last().size == 2)
         assertTrue("scale, then the chord", audio.played.size >= 2)
         val before = audio.played.size
         rule.onAllNodesWithText("iv", ignoreCase = true).onFirst().performClick() // IV in major, iv in minor
