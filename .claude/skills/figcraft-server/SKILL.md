@@ -1,6 +1,6 @@
 ---
 name: figcraft-server
-description: "Работа с файлами FigCraft через сервер (figcraft-server, публичный collab.craftapps.dev): зайти в файл по коду (K7M-2QX-9TD) или ссылке (figcraft://join…, wss://…?file=…&token=…) и править его вживую, пока человек смотрит в своём приложении; выложить файл на сервер и отдать ссылку; поднять свой сервер для больших файлов. Use when the user gives a FigCraft join code or share link, wants an agent (especially in a cloud session) to work on a FigCraft file that lives on their own computer, asks to share/publish a FigCraft file online, or to set up figcraft-server."
+description: "Работа с файлами FigCraft (.figcraft) через сервер и в облачной сессии: зайти в файл по коду (K7M-2QX-9TD) или ссылке (figcraft://join…, wss://…?file=…&token=…) и править его вживую; выложить файл на сервер (figcraft-server, публичный collab.craftapps.dev) и отдать ссылку; поднять свой сервер; завезти, хранить и обрабатывать большие файлы (лимиты, ужатие картинок, устройство архива .figcraft); веб-версия FigCraft в браузере. Use when the user gives a FigCraft join code or share link, wants an agent (especially in a cloud session) to work on a .figcraft file from their computer, asks to upload/share/publish/shrink/inspect a FigCraft file, hits FigCraft size limits, or asks about figcraft-server or the FigCraft web build."
 ---
 
 # FigCraft через сервер
@@ -15,7 +15,15 @@ FigCraft у человека ──(Share ▸ Online)──► сервер ◄�
 
 Команды макета (слои, свойства, экспорт) описаны в скилле `figcraft`
 (`.claude/skills/figcraft/references/commands.md` и `node-properties.md`). Этот скилл про
-подключение, синхронизацию и сервер.
+подключение, синхронизацию, сервер и сами файлы.
+
+| Справочник | Что там |
+|---|---|
+| `references/own-server.md` | Свой `figcraft-server`: установка, TLS, хранение на диске, срок жизни файлов, команды админа, что происходит при публикации |
+| `references/big-files.md` | Ресурсы облачной сессии, каналы переноса файла (что проверено, что нет), порядок для больших файлов, прямая работа без сервера |
+| `references/file-format.md` | Устройство `.figcraft` (zip, `document.json`, `images/<sha256>`), команды `info`/`render`/`export`/`convert`/`run`, картинки, скорость, эмодзи |
+| `references/web-build.md` | Веб-версия в headless Chromium: запуск, управление по координатам, эмодзи, сохранение и экспорт загрузкой |
+| `NOTES.md` | Что и на какой версии проверено |
 
 ## Что выбрать
 
@@ -123,6 +131,14 @@ FIGCRAFT_CA_FILE=/root/.ccr/ca-bundle.crt python3 ${CLAUDE_SKILL_DIR}/scripts/fi
 - **Имена слоёв.** `edit.findReplace` меняет текст, но не имя слоя. Слой, названный по своему
   тексту, сохранит старое имя. Переименование: `set_properties {ids, props: {name}}`.
 
+Забрать файл с сервера себе (HTTP-скачивания у сервера нет, только так):
+
+```json
+[{"join": "<ссылка>", "timeout": 900},
+ {"tool": "save_file", "args": {"path": "/abs/work/menu.figcraft"}, "timeout": 900},
+ {"leave": true}]
+```
+
 Почему не получается войти (`join failed: …`):
 
 | Причина | Что делать |
@@ -216,4 +232,5 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/shrink_figcraft.py --cli "$FIGCRAFT_CLI" \
 
 Веб-сборка FigCraft тоже заходит в файлы на сервере (File ▸ Join live session…), но управляется
 только мышью по canvas, поэтому это медленно и хрупко. Используй её только как запасной путь и
-скажи об этом человеку.
+скажи об этом человеку. Как поднять её в headless Chromium, включить цветные эмодзи и забрать
+файл, описано в `references/web-build.md`.
