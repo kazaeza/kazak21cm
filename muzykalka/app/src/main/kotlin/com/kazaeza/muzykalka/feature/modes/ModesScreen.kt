@@ -84,7 +84,7 @@ sealed interface ModeEntry {
  */
 object ModesCatalog {
     /** Sections in screen order: the ear first, the guitar after. */
-    val SECTIONS: List<ModeId> = listOf(ModeId.TIR, ModeId.KAMERTON, ModeId.PARROT, ModeId.TAPER, ModeId.HUNT)
+    val SECTIONS: List<ModeId> = listOf(ModeId.TIR, ModeId.KAMERTON, ModeId.TAPER, ModeId.HUNT) // O-69: no «Попугай» for now
 
     fun entries(mode: ModeId): List<ModeEntry> {
         val drills = Variant.entries

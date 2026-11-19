@@ -214,7 +214,8 @@ object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(
         Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_COLOR, Variant.TIR_MODE, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
-        Variant.TAPER_STEPS, Variant.FORMULA_ALOUD, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING, Variant.PARROT_ECHO,
+        Variant.TAPER_STEPS, Variant.FORMULA_ALOUD, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING,
+        // O-69 (ADR-067): «Попугай» is off the list until it becomes something worth playing; its driver stays
     )
 
     fun maxLevel(v: Variant): Int = when (v) {

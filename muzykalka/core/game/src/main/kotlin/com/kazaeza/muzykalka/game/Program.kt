@@ -54,7 +54,7 @@ enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, va
             SetSegment(Variant.HUNT_FIND, 2.0),
             SetSegment(Variant.TIR_CLASSIC, 4.0),
             SetSegment(Variant.KAMERTON_SING, 3.0),
-            SetSegment(Variant.PARROT_ECHO, 3.0),
+            SetSegment(Variant.HUNT_ALL_OCTAVES, 3.0),
             SetSegment(Variant.TAPER_STEPS, 3.0),
             SetSegment(Variant.TAPER_ORDER, 5.0),
         ),
@@ -65,7 +65,7 @@ enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, va
         GuitarNeed.REQUIRED,
         listOf(
             SetSegment(Variant.HUNT_FIND, 3.0),
-            SetSegment(Variant.PARROT_ECHO, 3.0),
+            SetSegment(Variant.HUNT_ALL_OCTAVES, 3.0),
             SetSegment(Variant.TAPER_STEPS, 4.0),
             SetSegment(Variant.TAPER_ORDER, 6.0),
         ),
