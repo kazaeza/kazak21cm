@@ -42,6 +42,10 @@ class RoundEngine<T : Task>(
     private var listeningSince = 0L
     private var feedbackUntil = 0L
 
+    /** O-67: when the feedback that waits for «Дальше» began, and how long the reading has taken in all. */
+    private var heldSince: Long? = null
+    private var heldMs = 0L
+
     var state: RoundState<T> = RoundState(
         phase = RoundPhase.FINISHED, task = null, level = level, score = 0, streak = 0, multiplier = 1,
         livesLeft = config.lives, remainingMs = config.durationMs, lastEvaluation = null, attempts = emptyList(),
@@ -101,7 +105,12 @@ class RoundEngine<T : Task>(
         val multiplier = min(4, 1 + streak / config.comboStep)
         val points = if (evaluation.correct) Scoring.points(latency, multiplier) else 0
         val lives = state.livesLeft?.let { if (evaluation.correct) it else it - 1 }
-        feedbackUntil = nowMs + config.feedbackMs
+        val read = config.readMs
+        feedbackUntil = when {
+            read == null -> nowMs + config.feedbackMs
+            evaluation.correct -> nowMs + read
+            else -> Long.MAX_VALUE.also { heldSince = nowMs }
+        }
         state = state.copy(
             phase = RoundPhase.FEEDBACK, score = state.score + points, streak = streak, multiplier = multiplier,
             livesLeft = lives, lastEvaluation = evaluation, attempts = state.attempts + record, remainingMs = remaining(nowMs),
@@ -134,6 +143,21 @@ class RoundEngine<T : Task>(
         return state
     }
 
+    /**
+     * O-67: «Дальше» — the feedback is over, the next question comes (or the round ends). The time a held miss was
+     * read is given back to the round clock. Ignored outside FEEDBACK.
+     */
+    fun proceed(nowMs: Long): RoundState<T> {
+        if (state.phase != RoundPhase.FEEDBACK) return state
+        heldSince?.let { heldMs += max(0L, nowMs - it) }
+        heldSince = null
+        feedbackUntil = nowMs
+        return tick(nowMs)
+    }
+
+    /** O-67: true while the feedback waits for [proceed] instead of running out by itself. */
+    val waitsForNext: Boolean get() = state.phase == RoundPhase.FEEDBACK && feedbackUntil == Long.MAX_VALUE
+
     fun tick(nowMs: Long): RoundState<T> {
         if (state.phase == RoundPhase.FINISHED) return state
         val remaining = remaining(nowMs)
@@ -158,7 +182,10 @@ class RoundEngine<T : Task>(
         return state
     }
 
-    private fun remaining(nowMs: Long) = max(0L, config.durationMs - (nowMs - startedAt))
+    private fun remaining(nowMs: Long): Long {
+        val reading = heldMs + (heldSince?.let { max(0L, nowMs - it) } ?: 0L)
+        return max(0L, config.durationMs - (nowMs - startedAt - reading))
+    }
 }
 
 /** Points: 100 base + up to 50 for speed (full bonus under 0.5 s, none after 2.5 s), × combo. */

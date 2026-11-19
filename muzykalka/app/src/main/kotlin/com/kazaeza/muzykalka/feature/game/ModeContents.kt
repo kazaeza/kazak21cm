@@ -48,6 +48,7 @@ import com.kazaeza.muzykalka.game.SingTask
 import com.kazaeza.muzykalka.game.StepsTask
 import com.kazaeza.muzykalka.game.TirDriver
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.music.ChordFunction
 import com.kazaeza.muzykalka.music.ChordVibes
 import com.kazaeza.muzykalka.game.TirKind
 import com.kazaeza.muzykalka.game.TirReview
@@ -55,10 +56,12 @@ import com.kazaeza.muzykalka.game.TirTask
 import com.kazaeza.muzykalka.music.ChordDegree
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
+import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.DegreeNote
 import com.kazaeza.muzykalka.music.DegreeVibes
 import com.kazaeza.muzykalka.music.FretPosition
 import com.kazaeza.muzykalka.music.Fretboard
+import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.NoteName
 import com.kazaeza.muzykalka.music.NoteNaming
 import com.kazaeza.muzykalka.music.RuNames
@@ -337,6 +340,9 @@ internal fun TirContent(
                                 TirDriver.chordTones(chord, task.key.mode).forEach { d -> DegreeChip(DegreeFormatter.degree(d, ui.notation), DegreeColors.of(d)) }
                             }
                             Text(vibe.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim, textAlign = TextAlign.Center)
+                            // O-67: the meaning before the name — home, a step away, or wanting back, and where to
+                            Spacer(Modifier.height(8.dp))
+                            FunctionBar(chord, task.key.mode, ui.notation)
                         }
                         if (shown != null) {
                             Spacer(Modifier.height(6.dp))
@@ -963,3 +969,32 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
 
 /** O-58, O-62: the variants whose chord is named over the humming tonic — after the answer its job in the key is told. */
 private val CHORD_OVER_TONIC = setOf(Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS)
+
+/**
+ * O-67 (ADR-065): the three jobs of a chord in a row — «Дом · Уход · Напряжение» — with the job of [chord] lit, its
+ * meaning in words and the chord it pulls to. The same three every time, so the ear files each chord under one of them.
+ */
+@Composable
+internal fun FunctionBar(chord: ChordDegree, mode: Mode, notation: DegreeNotation) {
+    val job = ChordFunction.of(chord, mode)
+    val color = DegreeColors.of(chord.root)
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChordFunction.entries.forEach { f ->
+                val on = f == job
+                DegreeChip(f.ru, if (on) color else Juicy.TextFaint, selected = on)
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(job.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text, textAlign = TextAlign.Center)
+        val to = ChordFunction.pullsTo(chord, mode)
+        if (to.isNotEmpty()) {
+            Text(
+                "тянется в " + to.joinToString(" или ") { DegreeFormatter.chord(it, notation) },
+                style = MaterialTheme.typography.titleMedium,
+                color = color,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}

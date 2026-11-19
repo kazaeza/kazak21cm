@@ -46,6 +46,45 @@ class RoundEngineTest {
         RoundEngine(driver, RoundConfig(durationMs = 60_000, lives = lives), Random(42), level = 1)
 
     @Test
+    fun `O-67 - with read time a hit stays on screen, a miss waits for proceed and its reading does not cost the clock`() {
+        val e = RoundEngine(FakeDriver(withAudio = false), RoundConfig(durationMs = 60_000, lives = 3, readMs = 3_000), Random(42), level = 1)
+        e.start(0)
+        val right = (e.state.task as FakeTask).degree
+        e.answer(Answer.DegreeChoice(right), 1_000)
+        assertEquals(RoundPhase.FEEDBACK, e.tick(3_500).phase) // the default 900 ms would have moved on
+        assertTrue(!e.waitsForNext)
+        assertEquals(RoundPhase.LISTENING, e.tick(4_000).phase)
+
+        val wrong = Degree.NATURALS.first { it != (e.state.task as FakeTask).degree }
+        e.answer(Answer.DegreeChoice(wrong), 5_000)
+        assertTrue(e.waitsForNext)
+        assertEquals(RoundPhase.FEEDBACK, e.tick(50_000).phase) // a miss is read as long as it takes
+        assertEquals(55_000, e.state.remainingMs) // the 45 s of reading are not taken from the round
+        val s = e.proceed(50_000)
+        assertEquals(RoundPhase.LISTENING, s.phase)
+        assertEquals(55_000, s.remainingMs)
+        assertTrue(!e.waitsForNext)
+        assertEquals(RoundPhase.FINISHED, e.tick(105_001).phase)
+    }
+
+    @Test
+    fun `O-67 - proceed cuts a hit short and is ignored outside feedback`() {
+        val e = RoundEngine(FakeDriver(withAudio = false), RoundConfig(durationMs = 60_000, lives = 3, readMs = 3_000), Random(42), level = 1)
+        e.start(0)
+        assertEquals(RoundPhase.LISTENING, e.proceed(100).phase)
+        assertEquals(1, e.state.taskSerial)
+        e.answer(Answer.DegreeChoice((e.state.task as FakeTask).degree), 500)
+        val s = e.proceed(600)
+        assertEquals(RoundPhase.LISTENING, s.phase)
+        assertEquals(2, s.taskSerial)
+    }
+
+    @Test
+    fun `O-67 - read time is never shorter than the feedback`() {
+        assertThrows<IllegalArgumentException> { RoundConfig(readMs = 500) }
+    }
+
+    @Test
     fun `answers during the prompt are ignored, only the first answer counts (rule 4)`() {
         val e = engine()
         var s = e.start(0)

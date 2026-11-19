@@ -176,6 +176,9 @@ data class GameUi(
     val lastTry: TryEvent? = null,
     /** The anchor that is sounding in the summary. */
     val playingAnchor: DegreeAnchor? = null,
+    /** O-67: the answer screen can be left with «Дальше» (a teaching variant), and a miss waits for it. */
+    val canProceed: Boolean = false,
+    val waitsForNext: Boolean = false,
 )
 
 fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || this == Variant.PARROT_ECHO || isSung()
@@ -320,6 +323,18 @@ object Drills {
         else -> HuntDriver.promotionTargetMs(level)
     }
 
+    /**
+     * O-67 (ADR-065): the variants whose answer screen teaches (what the chord does, where it pulls, what the pair is):
+     * a hit stays [READ_MS], a miss waits for «Дальше». Exams keep their pace.
+     */
+    val TEACHING: Set<Variant> = setOf(
+        Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD,
+        Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_COLOR,
+    )
+    const val READ_MS = 2_600L
+
+    private fun readMs(v: Variant): Long? = if (v in TEACHING) READ_MS else null
+
     fun engine(
         spec: RoundSpec,
         level: Int,
@@ -337,9 +352,9 @@ object Drills {
     ): RoundEngine<*> {
         val config = when {
             spec.exam -> RoundConfig.exam(spec.examTasks)
-            noLives(spec.variant) -> RoundConfig(durationMs = 90_000, lives = null)
-            longRound(spec.variant) -> RoundConfig(durationMs = 90_000, lives = 3)
-            else -> RoundConfig(durationMs = spec.durationMs, lives = 3)
+            noLives(spec.variant) -> RoundConfig(durationMs = 90_000, lives = null, readMs = readMs(spec.variant))
+            longRound(spec.variant) -> RoundConfig(durationMs = 90_000, lives = 3, readMs = readMs(spec.variant))
+            else -> RoundConfig(durationMs = spec.durationMs, lives = 3, readMs = readMs(spec.variant))
         }
         val random = Random(System.nanoTime())
         return when (spec.variant) {
@@ -654,6 +669,8 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 multiplier = s.multiplier, lives = s.livesLeft, remainingMs = s.remainingMs, answered = s.attempts.size,
                 taskFraction = fraction, feedback = lastFeedback, micLevelDb = micLevel, heard = heard,
                 tries = s.tries, lastTry = lastTry,
+                canProceed = s.phase == RoundPhase.FEEDBACK && !spec.exam && spec.variant in Drills.TEACHING,
+                waitsForNext = e.waitsForNext,
             )
         }
     }
@@ -664,6 +681,16 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         if (paused) return
         replayJob?.cancel() // O-66: a replay still sounding stops at the answer
         e.answer(answer, now())
+        react(e)
+    }
+
+    /** O-67 «Дальше»: the answer has been read — what still sounds of it stops, the next question comes. */
+    fun next() {
+        val e = engine ?: return
+        if (paused || e.state.phase != RoundPhase.FEEDBACK) return
+        feedbackAudio?.cancel()
+        hintJob?.cancel()
+        e.proceed(now())
         react(e)
     }
 

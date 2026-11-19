@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -225,6 +226,20 @@ private fun GameHost(
                         else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             ModeOrb(spec.variant.mode, size = 96.dp)
                         }
+                    }
+                }
+                // O-67: a teaching answer is read at leisure — «Дальше» in a slot of its own, so nothing jumps when it shows
+                if (!ui.exam && spec.variant in Drills.TEACHING) {
+                    Spacer(Modifier.height(8.dp))
+                    Box(Modifier.fillMaxWidth().height(GameTouchTarget).alpha(if (ui.canProceed) 1f else 0f)) {
+                        JuicyButton(
+                            if (ui.waitsForNext) "Понял — дальше ›" else "Дальше ›",
+                            onClick = vm::next,
+                            modifier = Modifier.fillMaxSize(),
+                            colors = accent,
+                            enabled = ui.canProceed,
+                            height = GameTouchTarget,
+                        )
                     }
                 }
             }

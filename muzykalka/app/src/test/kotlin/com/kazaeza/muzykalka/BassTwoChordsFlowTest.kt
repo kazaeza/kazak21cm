@@ -62,4 +62,17 @@ class BassTwoChordsFlowTest {
         rule.waitUntil(10_000) { audio.played.size > before }
         rule.waitUntil(10_000) { has("+") || has("→") }
     }
+
+    /** O-67 (ADR-065): a miss stays on screen with what the chord does, until «Дальше». */
+    @Test
+    fun aMissWaitsForNextAndShowsWhatTheChordDoes() {
+        start(Variant.TIR_BASS)
+        rule.waitUntil(15_000) { has("Слышен только бас") }
+        rule.onAllNodesWithText("не знаю").onFirst().performClick()
+        rule.waitUntil(10_000) { has("Понял — дальше") }
+        assertTrue("the three jobs are shown", has("Дом") && has("Уход") && has("Напряжение"))
+        rule.waitUntil(10_000) { has("Понял — дальше") } // still there: nothing moves on by itself
+        rule.onAllNodesWithText("Понял — дальше", substring = true).onFirst().performClick()
+        rule.waitUntil(15_000) { has("Слышен только бас") }
+    }
 }

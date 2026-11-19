@@ -142,12 +142,18 @@ data class RoundConfig(
     val feedbackMs: Long = 900,
     /** Exams only: the round ends after this many judged answers instead of after [durationMs]. */
     val taskLimit: Int? = null,
+    /**
+     * O-67 (ADR-065): an answer that comes with a lesson. When set, a right answer stays on screen this long, and a
+     * miss stays until [RoundEngine.proceed] («Дальше»); the time a miss is read does not count against the round.
+     */
+    val readMs: Long? = null,
 ) {
     init {
         require(taskLimit != null || durationMs in 60_000..90_000) { "Rule 6: a round lasts 60–90 s, got $durationMs ms" }
         require(taskLimit == null || taskLimit > 0)
         require(lives == null || lives > 0)
         require(comboStep > 0)
+        require(readMs == null || readMs >= feedbackMs)
     }
 
     companion object {
