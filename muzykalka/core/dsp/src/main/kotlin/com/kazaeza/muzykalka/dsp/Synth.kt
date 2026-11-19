@@ -8,6 +8,7 @@ import com.kazaeza.muzykalka.music.Voice
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.max
@@ -402,6 +403,13 @@ private class SynthVoice(private val sr: Int) {
     private var lpState = 0.0
     private var lpCoef = 1.0
 
+    // --- O-70: the guitar's wood — a second pole on the way out, the body's two lowest resonances, a soft onset
+    private var lp2State = 0.0
+    private var woodCoef = 1.0
+    private val air = Resonance()
+    private val top = Resonance()
+    private var onsetLeft = 0
+
     // --- FM / oscillators
     private var hz = 440.0
     private var phase = 0.0
@@ -453,7 +461,7 @@ private class SynthVoice(private val sr: Int) {
         lpState = 0.0
         noiseState = (now.toInt() * 1103515245 + 12345) or 1
         when (voice) {
-            Voice.GUITAR -> startString(t60 = (4.5 - 3.0 * min(1.0, hz / 700.0)), brightness = 0.85, outputLp = 1.0)
+            Voice.GUITAR -> startGuitar()
             Voice.BASS -> startString(t60 = 3.5, brightness = 0.35, outputLp = 0.12)
             Voice.TONE -> startTone(frequency, vel, pad, tuning)
             else -> Unit
@@ -499,7 +507,24 @@ private class SynthVoice(private val sr: Int) {
         glassVoice.fastRelease()
     }
 
-    private fun startString(t60: Double, brightness: Double, outputLp: Double) {
+    /**
+     * O-70 (ADR-068): a plucked steel string that sounds like wood, not like a buzzer. The pluck is a soft finger, not a
+     * spike of white noise (two poles over the noise, brighter when played harder), the sound leaves through the wood
+     * (a gentle two-pole low-pass that follows the pitch) and the body adds its air and top resonances. Before, a third
+     * of a strum's energy lay above 4 kHz — the fizz heard as «midi» and as strange overtones; now it is a few per cent.
+     */
+    private fun startGuitar() {
+        val t60 = 4.5 - 3.0 * min(1.0, hz / 700.0)
+        startString(t60 = t60, brightness = 0.3 + 0.3 * velocity, outputLp = 1.0, poles = 2, level = GUITAR_LEVEL)
+        val fc = (hz * 12.0).coerceIn(2_400.0, 5_500.0)
+        woodCoef = 1.0 - exp(-2 * PI * fc / sr)
+        lp2State = 0.0
+        air.set(sr, 102.0, 3.0)
+        top.set(sr, 205.0, 4.0)
+        onsetLeft = (sr * 0.0015).toInt()
+    }
+
+    private fun startString(t60: Double, brightness: Double, outputLp: Double, poles: Int = 1, level: Double = 0.9) {
         val loop = sr / hz - 0.5 // the 2-point average adds half a sample
         var n = floor(loop).toInt()
         var frac = loop - n
@@ -516,13 +541,16 @@ private class SynthVoice(private val sr: Int) {
         loopGain = 0.001.pow(1.0 / (hz * t60))
         releaseGain = 0.001.pow(1.0 / (hz * 0.12))
         lpCoef = outputLp
-        // Excitation: noise, low-passed by [brightness], DC removed, plucked ~1/7 along the string.
+        // Excitation: noise, low-passed by [brightness] ([poles] times), DC removed, plucked ~1/7 along the string.
         var lp = 0.0
+        var lp2 = 0.0
         var mean = 0.0
         for (i in 0 until dLen) {
             lp += brightness * (nextNoise() - lp)
-            delay[i] = lp.toFloat()
-            mean += lp
+            lp2 += brightness * (lp - lp2)
+            val x = if (poles >= 2) lp2 else lp
+            delay[i] = x.toFloat()
+            mean += x
         }
         mean /= dLen
         val pick = max(1, dLen / 7)
@@ -531,7 +559,7 @@ private class SynthVoice(private val sr: Int) {
             delay[i] = (delay[i] - mean - (delay[i - pick] - mean)).toFloat()
         }
         for (i in 0 until dLen) peak = max(peak, kotlin.math.abs(delay[i].toDouble()))
-        val scale = (0.9 * velocity / peak).toFloat()
+        val scale = (level * velocity / peak).toFloat()
         for (i in 0 until dLen) delay[i] *= scale
     }
 
@@ -555,7 +583,8 @@ private class SynthVoice(private val sr: Int) {
             bank.next()
         } else {
             when (kind) {
-                Voice.GUITAR, Voice.BASS -> string()
+                Voice.GUITAR -> guitar()
+                Voice.BASS -> string()
                 Voice.PIANO -> ePiano(t, now)
                 Voice.TONE -> when (timbre) {
                     ToneTimbre.CLASSIC -> tone(t, now)
@@ -599,6 +628,19 @@ private class SynthVoice(private val sr: Int) {
         if (dIdx >= dLen) dIdx = 0
         lpState += lpCoef * (out - lpState)
         return lpState * (if (lpCoef < 1.0) 1.8 else 1.0)
+    }
+
+    /** O-70: the string through the wood and the body. */
+    private fun guitar(): Double {
+        val raw = string()
+        lp2State += woodCoef * (raw - lp2State)
+        val body = AIR_MIX * air.next(lp2State) + TOP_MIX * top.next(lp2State)
+        var y = lp2State + body
+        if (onsetLeft > 0) {
+            y *= 1.0 - onsetLeft.toDouble() / (sr * 0.0015)
+            onsetLeft--
+        }
+        return y
     }
 
     private fun ePiano(t: Double, now: Long): Double {
@@ -753,3 +795,42 @@ internal class DroneBank(private val sr: Int) {
         }
     }
 }
+
+/** O-70: the level of one guitar string (the bass keeps 0.9) and how much of the body is heard. */
+private const val GUITAR_LEVEL = 0.85
+private const val AIR_MIX = 0.9
+private const val TOP_MIX = 0.6
+
+/** O-70: one resonance of a guitar body — a band-pass biquad (0 dB at its peak), preallocated, no allocation per sample. */
+private class Resonance {
+    private var b0 = 0.0
+    private var a1 = 0.0
+    private var a2 = 0.0
+    private var x1 = 0.0
+    private var x2 = 0.0
+    private var y1 = 0.0
+    private var y2 = 0.0
+
+    fun set(sr: Int, hz: Double, q: Double) {
+        val w = 2 * PI * hz / sr
+        val alpha = sin(w) / (2 * q)
+        val a0 = 1 + alpha
+        b0 = alpha / a0
+        a1 = -2 * cos(w) / a0
+        a2 = (1 - alpha) / a0
+        x1 = 0.0
+        x2 = 0.0
+        y1 = 0.0
+        y2 = 0.0
+    }
+
+    fun next(x: Double): Double {
+        val y = b0 * x - b0 * x2 - a1 * y1 - a2 * y2
+        x2 = x1
+        x1 = x
+        y2 = y1
+        y1 = y
+        return y
+    }
+}
+

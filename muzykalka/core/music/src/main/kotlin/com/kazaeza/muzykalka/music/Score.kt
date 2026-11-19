@@ -65,6 +65,12 @@ class Arranger(
 
         /** Gap between the strings of one strum, in beats: a quick downstroke, not a cluster. */
         const val STRUM_STAGGER_BEATS = 0.06
+
+        /** O-70: how each gap of a strum differs from [STRUM_STAGGER_BEATS] — a hand's unevenness, fixed. */
+        private val STRUM_FEEL = doubleArrayOf(1.0, 0.8, 1.25, 0.9, 1.1)
+        private const val STRUM_VELOCITY = 0.8f
+        private const val STRUM_TAPER = 0.05f
+        private const val STRUM_VELOCITY_MIN = 0.55f
     }
 
     /** Close voicing of [chord] in [key]: root-position bass + upper structure nearest to [pianoCenter]. */
@@ -100,9 +106,16 @@ class Arranger(
         val root = bass + (key.pitchClassOf(chord.root) - bass.pitchClass)
         val tones = chord.quality.intervals.map { root + it }
         val strings = if (root == bass) tones else listOf(bass) + tones
+        // O-70 (ADR-068): a hand, not a machine — the gaps between the strings breathe a little, the bass string is
+        // struck firmest and the stroke lightens towards the thin strings; the pattern is fixed, so a chord is the
+        // same each time it is tapped
+        var at = 0.0
         return Score(
             tempoBpm,
-            strings.mapIndexed { i, n -> ScoreNote(i * STRUM_STAGGER_BEATS, 2.5, Voice.GUITAR, n, 0.75f) },
+            strings.mapIndexed { i, n ->
+                if (i > 0) at += STRUM_STAGGER_BEATS * STRUM_FEEL[(i - 1) % STRUM_FEEL.size]
+                ScoreNote(at, 2.5, Voice.GUITAR, n, (STRUM_VELOCITY - STRUM_TAPER * i).coerceAtLeast(STRUM_VELOCITY_MIN))
+            },
         )
     }
 
