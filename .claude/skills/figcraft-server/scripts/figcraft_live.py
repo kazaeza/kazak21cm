@@ -14,6 +14,8 @@ steps.json is a JSON array. Each step is one of:
         collab.join, then poll collab.peers until "live" (fails with the server's reason)
     {"command": "node.set", "params": {...}}       run_command (any of FigCraft's commands)
     {"tool": "inspect_document", "args": {...}}    any MCP tool (save_file, screenshot, export…)
+    {"wait_live": 120}                             poll collab.peers until "live" (after
+                                                   collab.publish / collab.share)
     {"sync": 5}                                    keep calling collab.peers for N seconds, so
                                                    edits go out and others' changes come in
     {"leave": true}                                collab.leave {} (the document stays open)
@@ -176,15 +178,19 @@ class Runner:
 
     def step(self, step):
         if "join" in step:
-            started = self.command("collab.join", {"link": step["join"]})
+            self.command("collab.join", {"link": step["join"]})
             state = self.wait_live(float(step.get("timeout", 180)))
-            return "join", {"started": started, "session": {k: state.get(k) for k in (
+            return "join", {"session": {k: state.get(k) for k in (
                 "status", "role", "access", "readOnly", "fileName", "pages", "hosting")}}
         if "command" in step:
             return "command", self.command(step["command"], step.get("params"))
         if "tool" in step:
             return "tool", self.tool(step["tool"], step.get("args") or {},
                                      float(step.get("timeout", 600)))
+        if "wait_live" in step:
+            state = self.wait_live(float(step["wait_live"]))
+            return "wait_live", {k: state.get(k) for k in (
+                "status", "role", "access", "readOnly", "fileName", "published", "code", "share")}
         if "sync" in step:
             return "sync", self.sync(float(step["sync"]))
         if step.get("leave"):
