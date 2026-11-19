@@ -348,6 +348,9 @@ class FeelViewModel(private val graph: AppGraph) : ViewModel() {
 fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit, onOpenSong: (String) -> Unit = {}) {
     val graph = LocalAppGraph.current
     val vm: FeelViewModel = viewModel { FeelViewModel(graph) }
+
+    // O-66: the app leaves the screen (another app, the lock) — the sound stops, it does not hum on in the pocket
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { vm.stop() }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val notation = ui.settings.degreeNotation
     val key = ui.key

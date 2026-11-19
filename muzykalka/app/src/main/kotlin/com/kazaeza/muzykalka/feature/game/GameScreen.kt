@@ -135,6 +135,9 @@ private fun GameHost(
     // O-27: a newly opened level taken on the summary — «Ещё раунд» plays it even when the level came with the spec
     var takenLevel by remember { mutableStateOf<Int?>(null) }
     val vm: GameViewModel = viewModel(key = "$vmKey-$round") { GameViewModel(graph, takenLevel?.let { spec.copy(level = it) } ?: spec) }
+
+    // O-66: the app leaves the screen (another app, the lock) — the sound stops, it does not hum on in the pocket
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { vm.pause() }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val accent = ModeVisuals.accent(spec.variant)
     val particles = rememberParticleState()

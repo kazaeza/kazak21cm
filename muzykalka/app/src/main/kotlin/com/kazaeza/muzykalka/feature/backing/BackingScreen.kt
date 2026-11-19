@@ -169,6 +169,9 @@ class BackingViewModel(private val graph: AppGraph, private val id: String) : Vi
 fun BackingScreen(id: String, onBack: () -> Unit) {
     val graph = LocalAppGraph.current
     val vm: BackingViewModel = viewModel(key = "backing-$id") { BackingViewModel(graph, id) }
+
+    // O-66: the app leaves the screen (another app, the lock) — the sound stops, it does not hum on in the pocket
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { vm.stop() }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val key = ui.key
     val chord = { step: BackingStep -> DegreeFormatter.chord(step.chord, ui.notation) }

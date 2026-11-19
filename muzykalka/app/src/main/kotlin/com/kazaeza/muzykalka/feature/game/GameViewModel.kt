@@ -53,6 +53,7 @@ import com.kazaeza.muzykalka.music.Score
 import com.kazaeza.muzykalka.music.SoundPulse
 import com.kazaeza.muzykalka.music.NoteNaming
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -594,9 +595,12 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 val ev = s.lastEvaluation ?: return
                 lastFeedback = FeedbackEvent(++feedbackSerial, ev.correct, s.lastPoints, ev.expectedText, ev.givenText, ev.centsError)
                 val sound = if (ev.correct) ev.confirmation else ev.correction
-                // O-63: where the user chose songs, the driver's confirmation / correction already holds the tune
-                if (sound != null) {
-                    feedbackAudio = viewModelScope.launch {
+                // O-63: where the user chose songs, the driver's confirmation / correction already holds the tune.
+                // O-66: whatever still sounds (a replay, a hint) is cut first — the answer is never heard on top of it
+                val before = listOfNotNull(replayJob, hintJob, feedbackAudio)
+                feedbackAudio = viewModelScope.launch {
+                    before.forEach { it.cancelAndJoin() }
+                    if (sound != null) {
                         playPulsing(sound, PulseKind.REVEAL, tonicOf(s.task))
                         delay(120)
                     }
@@ -625,6 +629,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     /** O-57: «▶» by the song of the hint — again, over the drone that still hums. */
     fun playSongHint() {
         if (feedbackAudio?.isActive == true) return
+        replayJob?.cancel()
         val task = state.value.task as? TirTask
         val score = songHintScore(task) ?: return
         feedbackAudio = viewModelScope.launch {
@@ -657,6 +662,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     fun answer(answer: Answer) {
         val e = engine ?: return
         if (paused) return
+        replayJob?.cancel() // O-66: a replay still sounding stops at the answer
         e.answer(answer, now())
         react(e)
     }
@@ -674,6 +680,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         if (paused || finished || engine == null) return
         pausedAtMs = realNow()
         replayJob?.cancel()
+        feedbackAudio?.cancel()
         graph.audioOutput.stop()
         currentDrone = null
         state.update { it.copy(paused = true) }

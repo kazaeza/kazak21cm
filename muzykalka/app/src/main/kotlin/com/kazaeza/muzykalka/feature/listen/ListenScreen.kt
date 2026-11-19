@@ -191,6 +191,9 @@ class ListenViewModel(private val graph: AppGraph) : ViewModel() {
 fun ListenScreen(onBack: () -> Unit) {
     val graph = LocalAppGraph.current
     val vm: ListenViewModel = viewModel { ListenViewModel(graph) }
+
+    // O-66: the app leaves the screen (another app, the lock) — the sound stops, it does not hum on in the pocket
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { vm.stop() }
     val ui by vm.ui.collectAsStateWithLifecycle()
     if (ui.running) KeepScreenOn()
     ListenContent(ui, onBack = onBack, onToggle = vm::toggle, onScope = vm::setScope, onDelay = vm::setDelay, onVoice = vm::setVoice, onHintStyle = vm::setHintStyle)

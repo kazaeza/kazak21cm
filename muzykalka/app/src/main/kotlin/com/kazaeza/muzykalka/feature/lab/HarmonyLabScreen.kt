@@ -341,6 +341,9 @@ private fun hourOf(semitones: Int) = Math.floorMod(semitones, 12)
 fun HarmonyLabScreen(onBack: () -> Unit) {
     val graph = LocalAppGraph.current
     val vm: HarmonyLabViewModel = viewModel { HarmonyLabViewModel(graph) }
+
+    // O-66: the app leaves the screen (another app, the lock) — the sound stops, it does not hum on in the pocket
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { vm.stop() }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val fmt = { d: Degree -> DegreeFormatter.degree(d, ui.notation) }
     val home = DegreeColors.of(Degree.ONE)

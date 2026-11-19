@@ -119,6 +119,9 @@ class LoopsViewModel(private val graph: AppGraph) : ViewModel() {
 fun LoopsScreen(onBack: () -> Unit, onOpenSong: (String) -> Unit) {
     val graph = LocalAppGraph.current
     val vm: LoopsViewModel = viewModel { LoopsViewModel(graph) }
+
+    // O-66: the app leaves the screen (another app, the lock) — the sound stops, it does not hum on in the pocket
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { vm.stop() }
     val ui by vm.ui.collectAsStateWithLifecycle()
     ScreenFrame(
         title = "Коллекция ходов",

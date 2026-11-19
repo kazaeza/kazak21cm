@@ -25,6 +25,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         (application as MuzykalkaApp).graph.setOnScreen(false)
+        // O-66: nothing sounds while the app is away; the screens that hold a drone stop (or pause) themselves too
+        (application as MuzykalkaApp).graph.audioOutput.stop()
         super.onStop()
     }
 
