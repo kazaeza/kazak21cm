@@ -67,10 +67,7 @@ import com.kazaeza.muzykalka.music.NoteNaming
 import com.kazaeza.muzykalka.music.RuNames
 import com.kazaeza.muzykalka.music.PulseKind
 import com.kazaeza.muzykalka.music.SoundPulse
-import com.kazaeza.muzykalka.ui.Haptics
 import com.kazaeza.muzykalka.ui.effect.PulseBoard
-import com.kazaeza.muzykalka.ui.effect.WaveReveal
-import com.kazaeza.muzykalka.ui.effect.strum
 import com.kazaeza.muzykalka.ui.orb.OrbAnswer
 import com.kazaeza.muzykalka.ui.component.DegreeChip
 import kotlinx.coroutines.delay
@@ -138,7 +135,6 @@ internal fun TirContent(
     onAnswer: (Answer) -> Unit,
     onReplay: () -> Unit,
     pulses: PulseBoard,
-    haptics: Haptics,
     onSongHint: () -> Unit = {},
     onHintStyle: (HintStyle) -> Unit = {},
 ) {
@@ -152,8 +148,9 @@ internal fun TirContent(
 
     val scope = rememberCoroutineScope()
 
-    // O-35: after the answer the strings and the sphere show how the degree stands against the tonic. A wrong
-    // choice first creeps in red against the tonic, then — as the correction sounds — flows into the right one.
+    // O-35: after the answer the sphere shows how the degree stands against the tonic. A wrong choice first creeps in
+    // red against the tonic, then — as the correction sounds — flows into the right one. (O-79: the strings that drew
+    // the same thing along the lower edge of the question are gone — they only repeated the sphere's pluck.)
     val single = if (task.kind == TirKind.NOTE && !task.underNote) task.notes.single().degree else null
     var resolved by remember(ui.taskSerial) { mutableStateOf(false) }
     LaunchedEffect(ui.taskSerial, feedback, correct) {
@@ -164,12 +161,7 @@ internal fun TirContent(
     }
     val chosen = lastTapDegree
     val wrongPhase = feedback && !correct && chosen != null && !resolved
-    val reveal = when {
-        single == null || !feedback -> null
-        wrongPhase -> WaveReveal.of(chosen!!.semitones, Juicy.Bad)
-        else -> WaveReveal.of(single.semitones, DegreeColors.of(single))
-    }
-    // O-38: the bodies drawn by OpenGL show the same: the wrong choice in red first, then the right degree in its colour
+    // O-38: the wrong choice in red first, then the right degree in its colour
     val orbAnswer = when {
         single == null || !feedback -> null
         wrongPhase -> OrbAnswer(Math.floorMod(chosen!!.semitones, 12), Juicy.Bad)
@@ -181,17 +173,14 @@ internal fun TirContent(
     val ringSide = min(maxWidth, maxHeight * 0.56f)
     val ring = ringSide >= degreeRingMinSide()
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        // O-26: the sound itself runs along the lower edge of the question — loud while it plays, calm while you think
+        // O-26: how loud the sphere is — loud while the sound plays, calm while you think
         val loud = when (ui.phase) {
             RoundPhase.PROMPTING -> 1f
             RoundPhase.FEEDBACK -> 0.8f
             RoundPhase.LISTENING -> 0.45f
             else -> 0.2f
         }
-        // O-35: the string at the lower edge can be strummed by a finger that starts anywhere on the question and
-        // crosses it; the strum only watches (it takes no touch), so the replay key under it still gets its taps
-        Box(Modifier.weight(1f).fillMaxWidth().strum(onPluck = { pulses.add(it) }, onTick = haptics::tick)) {
-        PromptCard(ui, accent, Modifier.fillMaxSize(), fill = true) {
+        PromptCard(ui, accent, Modifier.weight(1f).fillMaxWidth(), fill = true) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DegreeChip(RuNames.key(task.key), Juicy.Gold)
@@ -379,14 +368,6 @@ internal fun TirContent(
                     }
                 }
             }
-        }
-        HarmonicWaves(
-            accent,
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(44.dp).offset(y = 22.dp),
-            energy = loud,
-            pulses = pulses,
-            reveal = reveal,
-        )
         }
 
         if (task.answerLength > 1) {

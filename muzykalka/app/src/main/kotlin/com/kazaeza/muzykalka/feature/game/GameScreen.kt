@@ -1,6 +1,7 @@
 package com.kazaeza.muzykalka.feature.game
 
 import com.kazaeza.muzykalka.ui.component.LocalTapSound
+import com.kazaeza.muzykalka.ui.component.fitHeight
 import com.kazaeza.muzykalka.ui.component.TapOnPress
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.CompositionLocalProvider
@@ -17,6 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -212,7 +214,7 @@ private fun GameHost(
                         },
                 ) {
                     when (val task = ui.task) {
-                        is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay, pulses = pulses, haptics = haptics, onSongHint = vm::playSongHint, onHintStyle = vm::setHintStyle)
+                        is TirTask -> TirContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay, pulses = pulses, onSongHint = vm::playSongHint, onHintStyle = vm::setHintStyle)
                         is SingTask -> if (ui.variant == Variant.KAMERTON_SEARCH) {
                             SearchContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
                         } else {
@@ -360,16 +362,16 @@ internal fun PromptCard(
         shown.animateTo(1f, tween(Motion.MEDIUM))
     }
     GlassCard(modifier.fillMaxWidth(), accent = accent, contentPadding = 20.dp) {
-        Box(
-            (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
-                .graphicsLayer { alpha = shown.value },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (fill) {
-                Box(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) { content() }
-            } else {
-                content()
+        if (fill) {
+            // O-79: an answer longer than the card is drawn smaller to stand in it (down to 0.6), and only then scrolls
+            BoxWithConstraints(Modifier.fillMaxSize().graphicsLayer { alpha = shown.value }, contentAlignment = Alignment.Center) {
+                val room = if (constraints.hasBoundedHeight) constraints.maxHeight else Int.MAX_VALUE
+                Box(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
+                    Box(Modifier.fillMaxWidth().fitHeight(room), contentAlignment = Alignment.Center) { content() }
+                }
             }
+        } else {
+            Box(Modifier.fillMaxWidth().graphicsLayer { alpha = shown.value }, contentAlignment = Alignment.Center) { content() }
         }
     }
 }
