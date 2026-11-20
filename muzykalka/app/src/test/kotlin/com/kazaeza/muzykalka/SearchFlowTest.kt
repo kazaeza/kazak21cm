@@ -148,7 +148,7 @@ class SearchFlowTest {
         val before = audio.played.size
         line.forEach { mic.sing(it) }
         rule.waitUntil(5_000) { audio.played.size > before } // the band (the right line), or the bass and the band (a miss)
-        assertTrue("the band has a guitar", audio.played.last().notes.any { it.voice == com.kazaeza.muzykalka.music.Voice.GUITAR })
+        assertTrue("the band has a piano (O-82: the default), a bass and drums", audio.played.last().notes.let { n -> n.any { it.voice == com.kazaeza.muzykalka.music.Voice.PIANO } && n.any { it.voice == com.kazaeza.muzykalka.music.Voice.KICK } })
         assertTrue("a right line is rewarded, a wrong one corrected", has("+") || has("→"))
     }
 }

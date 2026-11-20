@@ -99,42 +99,48 @@ class TaperFlowTest {
         val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
             override val audioOutput: AudioOutput = audio
         }
-        val id = runBlocking { graph.library.addFromBook(SongBook.byId("stand-by-me")!!) } // I I vi vi IV V I I
-        rule.setContent {
-            CompositionLocalProvider(LocalAppGraph provides graph) {
-                MuzykalkaTheme { TaperScreen(TaperSpec(onlyItemId = id), onExit = {}) }
+        // O-82: the piano is the default; this test is about the hand's grip, so the guitar is chosen
+        runBlocking { graph.settings.update { it.copy(chordInstrument = com.kazaeza.muzykalka.music.ChordInstrument.GUITAR) } }
+        try {
+            val id = runBlocking { graph.library.addFromBook(SongBook.byId("stand-by-me")!!) } // I I vi vi IV V I I
+            rule.setContent {
+                CompositionLocalProvider(LocalAppGraph provides graph) {
+                    MuzykalkaTheme { TaperScreen(TaperSpec(onlyItemId = id), onExit = {}) }
+                }
             }
+            rule.waitUntil(10_000) { has("СЫГРАЙ") }
+            assertEquals(true, has("Нажми на аккорд"))
+            assertEquals(0, audio.played.size)
+
+            rule.onAllNodes(hasClickLabel("Послушать аккорд")).assertCountEquals(8)
+            rule.onAllNodesWithText("V", substring = false)[0].performScrollTo().performClick()
+            rule.waitUntil(5_000) { has("V — доминанта") }
+            rule.onRoot().captureToImage()
+            assertEquals(1, audio.played.size)
+            val dominant = audio.played.single()
+            assertTrue(dominant.notes.all { it.voice == Voice.GUITAR })
+            // O-73: the chord is held the way a hand holds it - a major triad's tones over four to six strings (D is four, the key is chance)
+            assertEquals(setOf(0, 4, 7), dominant.notes.map { Math.floorMod(it.note!!.value - dominant.notes.first().note!!.value, 12) }.toSet())
+            assertTrue(dominant.notes.size >= 4)
+
+            rule.onAllNodesWithText("vi", substring = false)[0].performScrollTo().performClick()
+            rule.waitUntil(5_000) { has("vi — параллельный минор") }
+            assertEquals(2, audio.played.size)
+            assertEquals(false, has("V — доминанта"))
+            val relative = audio.played.last()
+            // vi is a tone and a half... two semitones above V's root, in the same key
+            assertEquals(2, Math.floorMod(relative.notes.first().note!!.value - dominant.notes.first().note!!.value, 12))
+
+            // Hearing is not a hint: the order is graded as before and the ladder does not move.
+            rule.onNodeWithText("Сыграл").performScrollTo().performClick()
+            rule.waitUntil(5_000) { has("Как прошло?") }
+            assertEquals(false, has("параллельный минор"))
+            rule.onNodeWithText("С ходу").performScrollTo().performClick()
+            rule.waitUntil(5_000) { has("Снова попрошу") }
+            assertEquals(true, has("В следующий раз начнём с подсказки «${HintStep.FIRST_CHORD.ru}»"))
+            assertEquals(HintStep.DEGREES to SelfGrade.CLEAN, runBlocking { graph.practice.lastOrders()[id] })
+        } finally {
+            runBlocking { graph.settings.update { it.copy(chordInstrument = com.kazaeza.muzykalka.music.ChordInstrument.PIANO) } }
         }
-        rule.waitUntil(10_000) { has("СЫГРАЙ") }
-        assertEquals(true, has("Нажми на аккорд"))
-        assertEquals(0, audio.played.size)
-
-        rule.onAllNodes(hasClickLabel("Послушать аккорд")).assertCountEquals(8)
-        rule.onAllNodesWithText("V", substring = false)[0].performScrollTo().performClick()
-        rule.waitUntil(5_000) { has("V — доминанта") }
-        rule.onRoot().captureToImage()
-        assertEquals(1, audio.played.size)
-        val dominant = audio.played.single()
-        assertTrue(dominant.notes.all { it.voice == Voice.GUITAR })
-        // O-73: the chord is held the way a hand holds it - a major triad's tones over five or six strings
-        assertEquals(setOf(0, 4, 7), dominant.notes.map { Math.floorMod(it.note!!.value - dominant.notes.first().note!!.value, 12) }.toSet())
-        assertTrue(dominant.notes.size >= 5)
-
-        rule.onAllNodesWithText("vi", substring = false)[0].performScrollTo().performClick()
-        rule.waitUntil(5_000) { has("vi — параллельный минор") }
-        assertEquals(2, audio.played.size)
-        assertEquals(false, has("V — доминанта"))
-        val relative = audio.played.last()
-        // vi is a tone and a half... two semitones above V's root, in the same key
-        assertEquals(2, Math.floorMod(relative.notes.first().note!!.value - dominant.notes.first().note!!.value, 12))
-
-        // Hearing is not a hint: the order is graded as before and the ladder does not move.
-        rule.onNodeWithText("Сыграл").performScrollTo().performClick()
-        rule.waitUntil(5_000) { has("Как прошло?") }
-        assertEquals(false, has("параллельный минор"))
-        rule.onNodeWithText("С ходу").performScrollTo().performClick()
-        rule.waitUntil(5_000) { has("Снова попрошу") }
-        assertEquals(true, has("В следующий раз начнём с подсказки «${HintStep.FIRST_CHORD.ru}»"))
-        assertEquals(HintStep.DEGREES to SelfGrade.CLEAN, runBlocking { graph.practice.lastOrders()[id] })
     }
 }

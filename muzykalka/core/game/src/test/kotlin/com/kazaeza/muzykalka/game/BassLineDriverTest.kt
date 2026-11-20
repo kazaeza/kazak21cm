@@ -1,5 +1,7 @@
 package com.kazaeza.muzykalka.game
 
+import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.ChordInstrument
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.Mode
@@ -14,7 +16,8 @@ import kotlin.random.Random
 
 /** O-77 «Бас-линия» (ADR-075): the bass alone, played on the guitar; then the band; then the bass again; then another key. */
 class BassLineDriverTest {
-    private fun driver(seed: Int = 1) = BassLineDriver(KeyPicker(Random(seed)))
+    private fun driver(seed: Int = 1, instrument: ChordInstrument = ChordInstrument.GUITAR) =
+        BassLineDriver(KeyPicker(Random(seed)), arranger = Arranger(chordInstrument = instrument))
 
     private fun tasks(level: Int, n: Int, seed: Int = 1): List<BassLineTask> {
         val d = driver(seed)
@@ -91,6 +94,18 @@ class BassLineDriverTest {
         assertEquals(t.loop.size, wrong.expectedText.split(' ').size)
         assertNotNull(d.evaluate(t, Answer.Pass).correction)
         assertFalse(d.evaluate(t, Answer.Pass).correct)
+    }
+
+    @Test
+    fun `O-82 - the band that answers is on the piano when that is the chosen instrument`() {
+        val d = driver(3, ChordInstrument.PIANO)
+        val t = d.nextTask(DriverContext(Random(300), 1, emptyList()))
+        val voices = t.heard.notes.map { it.voice }.toSet()
+        assertTrue(Voice.PIANO in voices && Voice.BASS in voices && Voice.KICK in voices)
+        assertTrue(Voice.GUITAR !in voices)
+        val fix = requireNotNull(d.evaluate(t, Answer.Phrase(emptyList())).correction)
+        assertTrue(fix.notes.take(t.question.notes.size).all { it.voice == Voice.BASS }, "the bass first, still")
+        assertTrue(fix.notes.any { it.voice == Voice.PIANO } && fix.notes.none { it.voice == Voice.GUITAR })
     }
 
     @Test

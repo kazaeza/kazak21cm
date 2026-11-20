@@ -19,6 +19,7 @@ import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.audio.AudioOutput
 import com.kazaeza.muzykalka.music.Arranger
 import com.kazaeza.muzykalka.music.ChordDegree
+import com.kazaeza.muzykalka.music.ChordInstrument
 import com.kazaeza.muzykalka.music.ChordVibes
 import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.Key
@@ -33,7 +34,7 @@ import kotlinx.coroutines.launch
 data class HeardChord(val id: String, val chord: ChordDegree, val key: Key)
 
 /**
- * O-17 (ADR-031): a tap on a chord of a sheet makes it sound, in the key of the order, so
+ * O-17 (ADR-031): a tap on a chord of a sheet makes it sound (O-82: on the piano or the guitar, as chosen), in the key of the order, so
  * «где доминанта, где девятка, где минорный» can be settled by ear. Latest tap wins — the previous
  * strum is cut. Hearing a chord names nothing, so it is NOT a hint: grade, stars and the hint
  * ladder are untouched.
@@ -43,7 +44,8 @@ class ChordAudition internal constructor(
     private val output: AudioOutput,
     private val scope: CoroutineScope,
     private val a4Hz: () -> Double,
-    private val arranger: Arranger = Arranger(),
+    /** O-82: what strikes the chord — the piano, or the guitar where the user chose it. */
+    private val instrument: () -> ChordInstrument = { ChordInstrument.PIANO },
 ) {
     /** The last tapped tile — it keeps its ring and its caption until the next tap or [clear]. */
     var heard: HeardChord? by mutableStateOf(null)
@@ -55,7 +57,8 @@ class ChordAudition internal constructor(
         job?.cancel()
         output.a4Hz = a4Hz()
         heard = HeardChord(id, chord, key)
-        job = scope.launch { output.play(arranger.strum(chord, key)) }
+        val arranger = Arranger(chordInstrument = instrument())
+        job = scope.launch { output.play(arranger.hit(chord, key)) }
     }
 
     /** True for the tile [id] that was tapped last: it wears the ring while its caption is shown. */
@@ -69,11 +72,12 @@ class ChordAudition internal constructor(
 }
 
 @Composable
-fun rememberChordAudition(a4Hz: Double): ChordAudition {
+fun rememberChordAudition(a4Hz: Double, instrument: ChordInstrument = ChordInstrument.PIANO): ChordAudition {
     val graph = LocalAppGraph.current
     val scope = rememberCoroutineScope()
     val hz by rememberUpdatedState(a4Hz)
-    return remember(graph, scope) { ChordAudition(graph.audioOutput, scope, { hz }) }
+    val chords by rememberUpdatedState(instrument)
+    return remember(graph, scope) { ChordAudition(graph.audioOutput, scope, { hz }, { chords }) }
 }
 
 /**

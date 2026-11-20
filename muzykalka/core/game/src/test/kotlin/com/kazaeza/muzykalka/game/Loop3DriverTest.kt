@@ -2,6 +2,8 @@ package com.kazaeza.muzykalka.game
 
 import com.kazaeza.muzykalka.music.ChordParser
 import com.kazaeza.muzykalka.music.Mode
+import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.Voice
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -59,7 +61,10 @@ class Loop3DriverTest {
         assertNotNull(t.introDrone)
         assertTrue(t.drone!!.isNotEmpty())
         assertEquals(t.question, t.prompt.audio)
-        assertTrue(t.question.notes.any { it.voice == Voice.BASS }, "the tonic is held under the chords")
+        val pedals = t.question.notes.filter { it.velocity == Arranger.PEDAL_VELOCITY }
+        assertEquals(2 * t.loop.size, pedals.size, "the tonic is struck under every chord of both rounds")
+        assertTrue(pedals.all { it.voice == Voice.PIANO && it.note!!.pitchClass == t.key.pitchClassOf(Degree.ONE) })
+        assertTrue(t.question.notes.none { it.voice == Voice.BASS || it.voice == Voice.GUITAR }, "no plucked string doubles the piano (O-82)")
         assertEquals(2 * t.loop.size * Loop3Driver.LOOP_BEATS, t.question.lengthBeats, 1.0, "the loop twice")
         assertNotNull(t.key)
     }

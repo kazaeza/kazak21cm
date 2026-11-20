@@ -851,7 +851,7 @@ internal fun StepsContent(task: StepsTask, ui: GameUi, accent: List<Color>, onAn
     val correct = feedback && ui.feedback?.correct == true
     // O-17 (ADR-031): a tap on a chord plays it. Only while the engine is silent (LISTENING):
     // cutting a strum stops everything, and the correction in FEEDBACK must not be cut.
-    val audition = rememberChordAudition(settings.a4Hz)
+    val audition = rememberChordAudition(settings.a4Hz, settings.chordInstrument)
     LaunchedEffect(ui.taskSerial) { audition.clear() }
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {

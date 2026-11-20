@@ -98,7 +98,7 @@ fun TaperScreen(
     val ui by vm.ui.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(ui.settings.haptics)
     val particles = rememberParticleState()
-    val audition = rememberChordAudition(ui.settings.a4Hz)
+    val audition = rememberChordAudition(ui.settings.a4Hz, ui.settings.chordInstrument)
     KeepScreenOn()
     var asking by remember { mutableStateOf(false) }
     BackHandler(enabled = !asking) { asking = true }

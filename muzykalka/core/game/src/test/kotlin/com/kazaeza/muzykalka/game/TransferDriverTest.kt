@@ -1,5 +1,7 @@
 package com.kazaeza.muzykalka.game
 
+import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.ChordInstrument
 import com.kazaeza.muzykalka.music.Voice
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -11,8 +13,10 @@ import kotlin.random.Random
 
 /** O-78 «Проверка переноса» (ADR-074): two textures alternate, nothing of it is planned or reviewed. */
 class TransferDriverTest {
-    private fun tasks(n: Int, seed: Int = 1): List<LoopTask> {
-        val d = TransferDriver()
+    private val guitar = Arranger(chordInstrument = ChordInstrument.GUITAR)
+
+    private fun tasks(n: Int, seed: Int = 1, arranger: Arranger = guitar): List<LoopTask> {
+        val d = TransferDriver(arranger = arranger)
         return List(n) { d.nextTask(DriverContext(Random(seed * 100 + it), 1, emptyList())) }
     }
 
@@ -50,6 +54,17 @@ class TransferDriverTest {
     }
 
     @Test
+    fun `O-82 - with the piano chosen the band comps on the piano, the bass and the drums stay`() {
+        val t = tasks(6, arranger = Arranger(chordInstrument = ChordInstrument.PIANO)).first { it.texture == Texture.REAL }
+        val voices = t.question.notes.map { it.voice }.toSet()
+        assertTrue(Voice.PIANO in voices && Voice.BASS in voices && Voice.KICK in voices && Voice.SNARE in voices && Voice.HAT in voices)
+        assertTrue(Voice.GUITAR !in voices && Voice.TONE !in voices)
+        assertNull(t.drone, "still no hum")
+        val intro = requireNotNull(t.intro)
+        assertTrue(intro.notes.any { it.voice == Voice.PIANO } && intro.notes.none { it.voice == Voice.GUITAR }, "the cadence is in the same texture")
+    }
+
+    @Test
     fun `a new key every question, loops the other modes do not train, the asked place is not the first`() {
         val ts = tasks(24)
         ts.zipWithNext().forEach { (a, b) -> assertTrue(a.key.tonic.pitchClass != b.key.tonic.pitchClass) }
@@ -60,7 +75,7 @@ class TransferDriverTest {
 
     @Test
     fun `answers are judged as in the loops, a miss hears the loop in the same texture, and it is not planned or reviewed`() {
-        val d = TransferDriver()
+        val d = TransferDriver(arranger = guitar)
         repeat(8) { seed ->
             val t = d.nextTask(DriverContext(Random(seed), 1, emptyList()))
             assertTrue(d.evaluate(t, Answer.ChordChoice(t.answer)).correct)

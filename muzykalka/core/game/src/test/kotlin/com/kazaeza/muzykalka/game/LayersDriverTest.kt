@@ -5,6 +5,8 @@ import com.kazaeza.muzykalka.music.ChordParser
 import com.kazaeza.muzykalka.music.ChordQuality
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.Mode
+import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.Voice
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -68,7 +70,8 @@ class LayersDriverTest {
         assertNotNull(ts.last().intro, "the next block opens with its scale")
         ts.forEach { t ->
             assertTrue(t.drone.isNotEmpty())
-            assertTrue(t.question.notes.any { it.voice == Voice.BASS }, "the tonic is held under the chord (O-71)")
+            assertTrue(t.question.notes.any { it.velocity == Arranger.PEDAL_VELOCITY && it.note!!.pitchClass == t.key.pitchClassOf(Degree.ONE) }, "the tonic is struck under the chord (O-71, O-82)")
+            assertTrue(t.question.notes.none { it.voice == Voice.BASS || it.voice == Voice.GUITAR }, "on the piano only")
             assertEquals(t.question, t.prompt.audio)
         }
     }

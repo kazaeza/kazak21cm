@@ -32,20 +32,21 @@ class OverChordTest {
     }
 
     @Test
-    fun `O-71 - chords over the tonic carry no bass of their own and the tonic is held under all of them`() {
+    fun `O-71, O-82 - chords over the tonic carry no bass of their own, the tonic is struck under each of them, on the piano`() {
         for (step in listOf(0, 3, 4, 5)) {
             val chord = Harmony.diatonicChord(Mode.MAJOR, step)
             val score = Arranger().chordsOverTonic(listOf(chord), c, beatsEach = 2.0)
-            val bass = score.notes.filter { it.voice == Voice.BASS }
-            assertEquals(1, bass.size, "only the pedal is a bass")
-            assertEquals(c.pitchClassOf(Degree.ONE), bass.single().note!!.pitchClass, "and it is the tonic")
-            assertTrue(bass.single().endBeat >= score.lengthBeats * 0.95, "held through the whole chord")
-            val upper = score.notes.filter { it.voice == Voice.PIANO }.map { it.note!!.pitchClass.value }.toSet()
-            assertEquals(chord.quality.intervals.map { (c.pitchClassOf(chord.root) + it).value }.toSet(), upper, "the chord itself is above")
+            assertTrue(score.notes.none { it.voice == Voice.BASS || it.voice == Voice.GUITAR }, "no plucked string: the guitar doubled the piano on the first chord")
+            val pedal = score.notes.filter { it.velocity == Arranger.PEDAL_VELOCITY }
+            assertEquals(1, pedal.size, "one tonic under the chord")
+            assertEquals(Voice.PIANO, pedal.single().voice)
+            assertEquals(c.pitchClassOf(Degree.ONE), pedal.single().note!!.pitchClass, "and it is the tonic")
+            assertTrue(pedal.single().endBeat >= score.lengthBeats * 0.95, "ringing as long as the chord")
+            val upper = score.notes.filter { it.velocity != Arranger.PEDAL_VELOCITY }
+            assertTrue(upper.all { it.note!! > pedal.single().note!! }, "the tonic is the lowest sound")
+            assertEquals(chord.quality.intervals.map { (c.pitchClassOf(chord.root) + it).value }.toSet(), upper.map { it.note!!.pitchClass.value }.toSet(), "the chord itself is above")
         }
         val two = Arranger().chordsOverTonic(listOf(iv, Harmony.diatonicChord(Mode.MAJOR, 4)), c, beatsEach = 2.0)
-        assertEquals(1, two.notes.count { it.voice == Voice.BASS }, "one pedal under both chords")
-        assertTrue(two.notes.first { it.voice == Voice.BASS }.durationBeats > 3.5)
+        assertEquals(listOf(0.0, 2.0), two.notes.filter { it.velocity == Arranger.PEDAL_VELOCITY }.map { it.startBeat }, "the tonic comes again with each chord")
     }
 }
-

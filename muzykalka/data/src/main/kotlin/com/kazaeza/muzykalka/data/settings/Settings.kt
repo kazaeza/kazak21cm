@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.kazaeza.muzykalka.music.ChordInstrument
 import com.kazaeza.muzykalka.music.DEFAULT_A4_HZ
 import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.HintStyle
@@ -56,6 +57,8 @@ data class Settings(
     val orbBody: OrbBody = OrbBody.THREAD,
     /** O-57: what a hint after a miss is made of — the feel of the sound in words, or a song everyone knows. */
     val hintStyle: HintStyle = HintStyle.FEEL,
+    /** O-82: what strikes a chord the app plays by itself (a tap on a chord, the band of the loops) — the piano was the user's pick. */
+    val chordInstrument: ChordInstrument = ChordInstrument.PIANO,
 ) {
     val tuning: Tuning get() = Tuning.byId(tuningId) ?: Tuning.STANDARD
 }
@@ -88,6 +91,7 @@ class SettingsRepository(context: Context) {
         val ROOM = booleanPreferencesKey("room")
         val ORB = stringPreferencesKey("orb_body")
         val HINTS = stringPreferencesKey("hint_style")
+        val CHORDS = stringPreferencesKey("chord_instrument")
     }
 
     private companion object {
@@ -119,6 +123,7 @@ class SettingsRepository(context: Context) {
             p[K.ROOM] = next.room
             p[K.ORB] = next.orbBody.name
             p[K.HINTS] = next.hintStyle.name
+            p[K.CHORDS] = next.chordInstrument.name
         }
     }
 
@@ -147,6 +152,7 @@ class SettingsRepository(context: Context) {
             room = p[K.ROOM] ?: d.room,
             orbBody = p[K.ORB]?.let { runCatching { OrbBody.valueOf(it) }.getOrNull() } ?: d.orbBody,
             hintStyle = p[K.HINTS]?.let { runCatching { HintStyle.valueOf(it) }.getOrNull() } ?: d.hintStyle,
+            chordInstrument = p[K.CHORDS]?.let { runCatching { ChordInstrument.valueOf(it) }.getOrNull() } ?: d.chordInstrument,
         )
     }
 

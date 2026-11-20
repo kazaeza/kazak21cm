@@ -29,7 +29,8 @@ class OverChordsDriverTest {
             assertTrue(chord in allowed, "$chord is one of I IV V vi")
             // O-68: the tonic hums all the time; the chord is played over it, and the note comes on top, above the chord
             assertEquals(Arranger().drone(t.key), t.drone)
-            val played = t.question.notes.filter { it.voice == Voice.PIANO }
+            // O-82: the tonic struck under the chord is a piano key too (the pedal): the chord itself is what is above it
+            val played = t.question.notes.filter { it.voice == Voice.PIANO && it.velocity != Arranger.PEDAL_VELOCITY }
             assertEquals(chord.quality.intervals.map { (t.key.pitchClassOf(chord.root) + it).value }.toSet(), played.map { it.note!!.pitchClass.value }.toSet())
             val tone = t.question.notes.single { it.voice == Voice.TONE }
             assertTrue(tone.startBeat > 0.0 && tone.note!!.value >= played.maxOf { it.note!!.value } - 5, "the note enters after the chord, on top")

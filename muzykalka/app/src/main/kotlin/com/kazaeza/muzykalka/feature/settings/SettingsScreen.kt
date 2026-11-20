@@ -40,6 +40,7 @@ import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.NoteName
 import com.kazaeza.muzykalka.music.NoteNaming
+import com.kazaeza.muzykalka.music.ChordInstrument
 import com.kazaeza.muzykalka.music.HintStyle
 import com.kazaeza.muzykalka.music.OrbBody
 import com.kazaeza.muzykalka.music.PulseKind
@@ -188,6 +189,20 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
                     } else {
                         "После промаха — слово о том, как ступень звучит против дома: опора, тяга, свет."
                     },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Juicy.TextDim,
+                )
+            }
+        }
+        item(key = "chords") {
+            Column {
+                SectionLabel("аккорды играет")
+                Spacer(Modifier.height(6.dp))
+                ChoiceRow(ChordInstrument.entries, settings.chordInstrument, { it.ru }, { c -> update { it.copy(chordInstrument = c) } }, colors = Accents.Taper)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Нажал на аккорд в листе песни, на карте позиции, в шагах — он прозвучит так. Группа в «Проверке переноса» и «Бас-линии» — тоже. " +
+                        "Петли над тоникой всегда на пианино: так аккорд не уводит тональность.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Juicy.TextDim,
                 )

@@ -412,7 +412,7 @@ class GameFlowTest {
         val before = audio.played.size
         rule.onAllNodes(hasClickLabel("Послушать аккорд")).onFirst().performClick()
         rule.waitUntil(5_000) { audio.played.size > before }
-        assertTrue(audio.played.last().notes.all { it.voice == Voice.GUITAR })
+        assertTrue("O-82: the piano by default", audio.played.last().notes.all { it.voice == Voice.PIANO })
         rule.onRoot().captureToImage() // the caption is drawn for real
     }
 }

@@ -89,7 +89,7 @@ class BlindFlowTest {
         assertEquals(0, audio.played.size)
         rule.onAllNodes(hasClickLabel("Послушать аккорд"))[0].performScrollTo().performClick()
         rule.waitUntil(5_000) { audio.played.isNotEmpty() }
-        assertTrue(audio.played.single().notes.all { it.voice == Voice.GUITAR })
+        assertTrue("O-82: the piano by default", audio.played.single().notes.all { it.voice == Voice.PIANO })
         val qualities = ChordQuality.entries.map { ChordVibes.of(ChordDegree(Degree.parse("1"), it), Mode.MAJOR).quality }
         rule.waitUntil(5_000) { qualities.any { q -> rule.onAllNodesWithText(q).fetchSemanticsNodes().isNotEmpty() } } // the caption
         rule.onRoot().captureToImage() // drawn for real

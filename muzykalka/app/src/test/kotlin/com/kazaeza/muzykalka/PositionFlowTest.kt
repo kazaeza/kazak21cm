@@ -59,7 +59,7 @@ class PositionFlowTest {
         scrollTo("аккорды лада")
         rule.onAllNodes(hasClickAction() and hasText("V")).onFirst().performClick()
         rule.waitUntil(5_000) { audio.played.isNotEmpty() }
-        assertTrue("strummed on the guitar", audio.played.single().notes.all { it.voice == Voice.GUITAR })
+        assertTrue("O-82: struck on the piano by default", audio.played.single().notes.all { it.voice == Voice.PIANO })
         scrollTo("Корень:")
         assertTrue("its job in the key", has("доминанта"))
         assertTrue("its tones as degrees of the key", has("ноты в ладу"))

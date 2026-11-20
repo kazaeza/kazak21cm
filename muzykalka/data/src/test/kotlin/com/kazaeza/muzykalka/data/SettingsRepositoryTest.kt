@@ -3,6 +3,7 @@ package com.kazaeza.muzykalka.data
 import androidx.test.core.app.ApplicationProvider
 import com.kazaeza.muzykalka.data.settings.Settings
 import com.kazaeza.muzykalka.data.settings.SettingsRepository
+import com.kazaeza.muzykalka.music.ChordInstrument
 import com.kazaeza.muzykalka.music.HintStyle
 import com.kazaeza.muzykalka.music.OrbBody
 import com.kazaeza.muzykalka.music.ToneTimbre
@@ -43,6 +44,20 @@ class SettingsRepositoryTest {
         repo.update { it.copy(orbBody = OrbBody.INK, a4Hz = 441.0) } // writes every key; the choice stays
         assertEquals(OrbBody.INK, repo.settings.first().orbBody)
         repo.update { it.copy(orbBody = OrbBody.THREAD, a4Hz = 440.0) }
+    }
+
+    @Test
+    fun `chords are played on the piano by default, and the guitar choice is kept`() = runBlocking {
+        assertEquals(ChordInstrument.PIANO, Settings().chordInstrument)
+        val repo = SettingsRepository(context)
+        assertEquals(ChordInstrument.PIANO, repo.settings.first().chordInstrument)
+        for (c in ChordInstrument.entries) {
+            repo.update { it.copy(chordInstrument = c) }
+            assertEquals(c, repo.settings.first().chordInstrument)
+        }
+        repo.update { it.copy(chordInstrument = ChordInstrument.GUITAR, a4Hz = 441.0) } // writes every key; the choice stays
+        assertEquals(ChordInstrument.GUITAR, repo.settings.first().chordInstrument)
+        repo.update { it.copy(chordInstrument = ChordInstrument.PIANO, a4Hz = 440.0) }
     }
 
     @Test

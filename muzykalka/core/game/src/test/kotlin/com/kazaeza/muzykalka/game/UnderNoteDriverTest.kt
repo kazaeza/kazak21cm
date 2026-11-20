@@ -38,7 +38,7 @@ class UnderNoteDriverTest {
                 assertEquals(Arranger().drone(t.key), t.drone!!.take(2), "the tonic hums")
                 assertEquals(setOf(t.key.pitchClassOf(Degree.ONE).value, t.key.pitchClassOf(note).value), t.drone.map { it.pitchClass.value }.toSet(), "and the note over it")
                 assertTrue(t.drone.all { it.value >= Arranger.DRONE_FLOOR.value }, "audible on a phone")
-                val played = t.question.notes.filter { it.voice == Voice.PIANO }.map { it.note!!.pitchClass.value }.toSet()
+                val played = t.question.notes.filter { it.voice == Voice.PIANO && it.velocity != Arranger.PEDAL_VELOCITY }.map { it.note!!.pitchClass.value }.toSet()
                 assertEquals(chord.quality.intervals.map { (t.key.pitchClassOf(chord.root) + it).value }.toSet(), played, "the question is the chord")
                 assertTrue(t.question.notes.none { it.voice == Voice.TONE }, "the soft voice is the drone's, not the question's")
                 assertTrue(TirDriver.holds(chord, note), "$note is a tone of $chord")

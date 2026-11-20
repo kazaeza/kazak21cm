@@ -55,6 +55,8 @@ data class Score(val tempoBpm: Double, val notes: List<ScoreNote>) {
 class Arranger(
     private val pianoCenter: MidiNote = MidiNote(60),
     private val bassFloor: MidiNote = MidiNote(36),
+    /** O-82: what strikes the chords of [hit] and of the band of [groove]; the loops of [chordsOverTonic] are the piano's always. */
+    val chordInstrument: ChordInstrument = ChordInstrument.PIANO,
 ) {
     companion object {
         /** A2: the lowest drone tonic. Phone speakers barely reproduce anything lower. */
@@ -63,8 +65,12 @@ class Arranger(
         /** O-17: the lowest note of a strummed chord (G2): the bass string, still audible on a phone. */
         val STRUM_FLOOR = MidiNote(43)
 
-        /** O-71: the held tonic under chords — as firm as the bass of a chord, so that it is never lost under them. */
-        const val PEDAL_VELOCITY = 0.9f
+        /** O-71: the tonic under chords — as firm as the bass of a chord, so that it is never lost under them. */
+        const val PEDAL_VELOCITY = 0.85f
+
+        /** O-82: how long a struck piano chord rings, in beats, and the pause between its lowest and highest key, in seconds. */
+        private const val PIANO_HIT_BEATS = 3.5
+        private const val PIANO_ROLL_SECONDS = 0.012
 
         /** O-73: the mean gap between two strings of a downstroke, in seconds: a hand, not a harp (it was ~36 ms, now ~16). */
         const val STRUM_GAP_SECONDS = 0.016
@@ -103,17 +109,41 @@ class Arranger(
 
     /**
      * O-71 (ADR-069): [chords] of [key], one per [beatsEach] beats, played OVER the tonic: the chords are only their upper
-     * structure (the root position triad or seventh, no bass voice of their own) and the tonic is held below them,
-     * as a bass, through all of it. A chord with its own bass root is heard as a new home, and the ear loses the key;
-     * with the tonic held underneath it stays a chord of the key.
+     * structure (the root position triad or seventh, no bass voice of their own) and the tonic is struck below them with each
+     * chord. A chord with its own bass root is heard as a new home, and the ear loses the key; with the tonic underneath it
+     * stays a chord of the key. O-82 (ADR-078): the tonic is a piano key like the chord above it — the held string of the
+     * bass guitar was heard on the first chord alone, as a guitar doubling the piano.
      */
     fun chordsOverTonic(chords: List<ChordDegree>, key: Key, beatsEach: Double = 2.0, tempoBpm: Double = 90.0): Score {
-        val tonicChord = ChordDegree(Degree.ONE, ChordQuality.MAJOR)
-        val pedal = ScoreNote(0.0, chords.size * beatsEach * 0.97, Voice.BASS, bassNote(tonicChord, key), PEDAL_VELOCITY)
-        val upper = chords.flatMapIndexed { i, c ->
-            voicing(c, key).map { ScoreNote(i * beatsEach, beatsEach * 0.95, Voice.PIANO, it, 0.7f) }
+        val tonic = bassNote(ChordDegree(Degree.ONE, ChordQuality.MAJOR), key)
+        val notes = chords.flatMapIndexed { i, c ->
+            val start = i * beatsEach
+            listOf(ScoreNote(start, beatsEach * 0.97, Voice.PIANO, tonic, PEDAL_VELOCITY)) +
+                voicing(c, key).map { ScoreNote(start, beatsEach * 0.95, Voice.PIANO, it, 0.7f) }
         }
-        return Score(tempoBpm, listOf(pedal) + upper)
+        return Score(tempoBpm, notes)
+    }
+
+    /**
+     * O-82 (ADR-078): [chord] of [key] struck once on the instrument the user chose for chords ([chordInstrument]): the strum of
+     * [strum] on the guitar, or [pianoChord]. What a tap on a chord plays.
+     */
+    fun hit(chord: ChordDegree, key: Key, tempoBpm: Double = 100.0): Score = when (chordInstrument) {
+        ChordInstrument.GUITAR -> strum(chord, key, tempoBpm)
+        ChordInstrument.PIANO -> pianoChord(chord, key, tempoBpm)
+    }
+
+    /**
+     * O-82: [chord] on the piano — its bass note low, the triad or seventh above it in the close position of [voicing],
+     * rolled from the bottom up in a few milliseconds (a hand is never exactly together) and left to ring.
+     */
+    fun pianoChord(chord: ChordDegree, key: Key, tempoBpm: Double = 100.0): Score {
+        val rollBeats = PIANO_ROLL_SECONDS * tempoBpm / 60.0
+        val keys = listOf(bassNote(chord, key)) + voicing(chord, key)
+        return Score(
+            tempoBpm,
+            keys.mapIndexed { i, n -> ScoreNote(i * rollBeats, PIANO_HIT_BEATS, Voice.PIANO, n, if (i == 0) 0.8f else 0.7f) },
+        )
     }
 
     /**
@@ -139,8 +169,9 @@ class Arranger(
     }
 
     /**
-     * O-78 (ADR-074): [chords] as a small band plays them, not as a synthesizer pad holds them — the guitar strikes each
-     * chord (a down-stroke on the first beat, a short up-stroke on the «and» of the second), the bass walks from the root to
+     * O-78 (ADR-074): [chords] as a small band plays them, not as a synthesizer pad holds them — the chord is struck
+     * (on the guitar a down-stroke on the first beat and a short up-stroke on the «and» of the second; O-82: the piano strikes it
+     * the same way when it is the chosen [chordInstrument]), the bass walks from the root to
      * the fifth, and a kick, a snare and a hat keep time. The chord has [beatsEach] beats. No drone and no held tonic: the
      * key is in the music, as it is in a song. Used for the transfer check, where the same loop is heard in this texture and
      * over the drone.
@@ -150,14 +181,21 @@ class Arranger(
         val half = beatsEach / 2.0
         chords.forEachIndexed { i, chord ->
             val t = i * beatsEach
-            val strum = strum(chord, key, tempoBpm)
-            // down-stroke: the whole chord, bass string first, until the up-stroke
-            strum.notes.forEach { n -> notes += n.copy(startBeat = t + n.startBeat, durationBeats = (half * 1.45 - n.startBeat).coerceAtLeast(0.1)) }
-            // up-stroke on the half-beat after the second: the thin strings, quieter, top string first
-            val upper = strum.notes.takeLast(4).reversed()
-            val gap = STRUM_GAP_SECONDS * tempoBpm / 60.0
-            upper.forEachIndexed { k, n ->
-                notes += n.copy(startBeat = t + half * 1.5 + k * gap, durationBeats = half * 0.5, velocity = (n.velocity * 0.6f).coerceAtLeast(0.3f))
+            if (chordInstrument == ChordInstrument.GUITAR) {
+                val strum = strum(chord, key, tempoBpm)
+                // down-stroke: the whole chord, bass string first, until the up-stroke
+                strum.notes.forEach { n -> notes += n.copy(startBeat = t + n.startBeat, durationBeats = (half * 1.45 - n.startBeat).coerceAtLeast(0.1)) }
+                // up-stroke on the half-beat after the second: the thin strings, quieter, top string first
+                val upper = strum.notes.takeLast(4).reversed()
+                val gap = STRUM_GAP_SECONDS * tempoBpm / 60.0
+                upper.forEachIndexed { k, n ->
+                    notes += n.copy(startBeat = t + half * 1.5 + k * gap, durationBeats = half * 0.5, velocity = (n.velocity * 0.6f).coerceAtLeast(0.3f))
+                }
+            } else {
+                // O-82: the same two strikes on the piano — the chord on the first beat, its upper three keys again, softer, on the «and»
+                val keys = voicing(chord, key)
+                keys.forEach { n -> notes += ScoreNote(t, half * 1.45, Voice.PIANO, n, 0.75f) }
+                keys.takeLast(3).forEach { n -> notes += ScoreNote(t + half * 1.5, half * 0.5, Voice.PIANO, n, 0.45f) }
             }
             val root = bassNote(chord, key)
             val hasFifth = 7 in chord.quality.intervals

@@ -69,6 +69,13 @@ class ChordAuditionTest {
     }
 
     @Test
+    fun `a triad is held on four strings at the least in every key, so it is more than a bare triad`() {
+        for (key in KeyCatalog.practical(Mode.MAJOR)) for (c in listOf("I", "IV", "V", "vi", "ii", "iii").map(ChordParser::parse)) {
+            assertTrue(arranger.strum(c, key).notes.size >= 4, "$c in $key")
+        }
+    }
+
+    @Test
     fun `every chord quality has words and every root in every mode has a job`() {
         ChordQuality.entries.forEach { q ->
             val v = ChordVibes.of(ChordDegree(Degree.parse("1"), q), Mode.MAJOR)

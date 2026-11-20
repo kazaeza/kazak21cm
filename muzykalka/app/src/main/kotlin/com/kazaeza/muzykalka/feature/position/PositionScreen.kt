@@ -110,7 +110,6 @@ data class PositionUi(
 class PositionViewModel(private val graph: AppGraph) : ViewModel() {
     private val random = Random(System.nanoTime())
     private val keys = KeyPicker(random)
-    private val arranger = Arranger()
     private val state = MutableStateFlow(PositionUi())
     val ui: StateFlow<PositionUi> = state.asStateFlow()
     private var board = Fretboard(Settings().tuning, Settings().fretCount)
@@ -193,14 +192,15 @@ class PositionViewModel(private val graph: AppGraph) : ViewModel() {
         state.value.roots.firstOrNull { it.place == place }?.let { pick(it.step) }
     }
 
-    /** A chord of the key: its tones light up across the zone, and it is strummed. */
+    /** A chord of the key: its tones light up across the zone, and it sounds on the instrument chosen for chords (O-82). */
     fun pick(step: Int) {
         val s = state.value
         val key = s.key ?: return
         show(key, s.start, step)
         val chord = s.roots.first { it.step == step }.chord
         job?.cancel()
-        job = viewModelScope.launch { graph.audioOutput.play(arranger.strum(chord, key)) }
+        val sound = Arranger(chordInstrument = s.settings.chordInstrument).hit(chord, key)
+        job = viewModelScope.launch { graph.audioOutput.play(sound) }
     }
 
     override fun onCleared() {
