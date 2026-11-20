@@ -67,6 +67,7 @@ import com.kazaeza.muzykalka.game.NextChordTask
 import com.kazaeza.muzykalka.game.FormulaTask
 import com.kazaeza.muzykalka.game.ColorTask
 import com.kazaeza.muzykalka.game.LayersTask
+import com.kazaeza.muzykalka.game.LoopTask
 import com.kazaeza.muzykalka.game.ModeQuizTask
 import com.kazaeza.muzykalka.game.EchoTask
 import com.kazaeza.muzykalka.game.Variant
@@ -222,6 +223,7 @@ private fun GameHost(
                         is NextChordTask -> NextChordContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
                         is FormulaTask -> FormulaContent(task, ui, accent, onAnswer = vm::answer)
                         is ColorTask -> ColorContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
+                        is LoopTask -> LoopContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
                         is LayersTask -> LayersContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
                         is ModeQuizTask -> ModeQuizContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)
                         is EchoTask -> EchoContent(task, ui, accent, onAnswer = vm::answer, onReplay = vm::replay)

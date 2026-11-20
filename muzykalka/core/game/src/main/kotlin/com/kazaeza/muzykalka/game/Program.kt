@@ -91,6 +91,7 @@ enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, va
         GuitarNeed.NONE,
         listOf(
             SetSegment(Variant.TIR_ON_TONIC, 2.0),
+            SetSegment(Variant.TIR_LOOP3, 2.0),
             SetSegment(Variant.TIR_TWO_CHORDS, 2.0),
             SetSegment(Variant.TIR_SONG, 2.0),
             SetSegment(Variant.TIR_NEXT, 3.0),

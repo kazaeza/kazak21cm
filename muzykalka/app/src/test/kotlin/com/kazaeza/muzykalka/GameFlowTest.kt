@@ -327,6 +327,27 @@ class GameFlowTest {
         rule.waitUntil(5_000) { audio.played.size > before } // what the job does (after the chord again, if it was a miss)
     }
 
+    /** O-76 (ADR-073): a loop twice over the hum, a chord of it named by its step; the next scene is the same loop in another key. */
+    @Test
+    fun loopComesBackInAnotherKeyWithTheSameQuestion() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_LOOP3, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("сцена 1 из 3", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the tonic hums under the loop", audio.drones.lastOrNull()?.size == 2)
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("-го аккорда?", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the places of the loop are numbered", rule.onAllNodesWithText("4").fetchSemanticsNodes().isNotEmpty())
+        val before = audio.played.size
+        rule.onAllNodesWithText("I").onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > before } // the loop again (the right one, or the chosen and then the right)
+    }
+
     /** O-51 (ADR-049): a scale runs over the tonic drone, the key is not named, the mode is picked. */
     @Test
     fun modeQuizRunsAScaleOverTheDroneAndDoesNotNameTheKey() {

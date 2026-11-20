@@ -56,6 +56,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.1"),
     /** O-50: a chord on a pitch of chance — which quality is it (ADR-048). */
     TIR_COLOR(ModeId.TIR, "Цвет аккорда", GuitarNeed.NONE, "0.1"),
+    /** O-76: one loop of chords in three keys in a row, the same chord of it asked each time — the degree does not move, the key does (ADR-073). */
+    TIR_LOOP3(ModeId.TIR, "Петля в трёх тональностях", GuitarNeed.NONE, "0.1"),
     /** O-75: a chord over the tonic — what does it DO (home, away, tension), and then what is it made of (ADR-072). */
     TIR_LAYERS(ModeId.TIR, "Слои аккорда", GuitarNeed.NONE, "0.1"),
     /** O-51: a scale over the drone — which mode is it (ADR-049). */
@@ -152,6 +154,9 @@ object Levels {
 
     /** «Цвет аккорда» (O-50): the two colours first, then the other triads, the sevenths, and all of them. */
     val TIR_COLOR = listOf("мажор или минор", "все трезвучия", "септаккорды", "всё вместе")
+
+    /** «Петля в трёх тональностях» (O-76): the four open keys and five chords, then any key, then minor loops and the whole key. */
+    val TIR_LOOP3 = listOf("открытые тональности: C G D A", "любые тональности", "минор и все аккорды")
 
     /** «Слои аккорда» (O-75): the job first, on triads of a major key; then sevenths and minor; then the job and the colour of one chord. */
     val TIR_LAYERS = listOf("что делает: дом, уход, напряжение", "+ септаккорды и минор", "два слоя: что делает, потом из чего")
