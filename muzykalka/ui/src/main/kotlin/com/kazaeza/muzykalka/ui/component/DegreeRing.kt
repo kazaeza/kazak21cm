@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
+import com.kazaeza.muzykalka.music.PulseKind
 import com.kazaeza.muzykalka.ui.orb.OrbAnswer
 import com.kazaeza.muzykalka.ui.orb.OrbSphere
 import com.kazaeza.muzykalka.ui.effect.PulseBoard
@@ -66,6 +67,29 @@ private const val TICKS = 120
 
 /** A degree lights the ticks of its hour: this many on each side of the middle one. */
 private const val ARC = 3
+
+/** O-81: a heard note's glow on the dial fades out in this many seconds. */
+private const val HEARD_SECONDS = 1.0f
+
+/**
+ * O-81: how brightly the hour [hour] of the dial glows because a note of it has just sounded — 0 for none, up to 1. Only the
+ * sounds that may name their pitch count: the scale of a new key ([PulseKind.HOME]) and what is played after the answer
+ * ([PulseKind.REVEAL]: the correction, a hint, the confirmation). A question never lights anything (ADR-015: the picture
+ * must not give the answer away) and a finger has its own reaction. The newest note is the brightest, the glow fades
+ * quadratically, so a run of notes leaves a short soft trail.
+ */
+fun heardGlow(pulses: PulseBoard?, hour: Int): Float {
+    if (pulses == null) return 0f
+    var glow = 0f
+    for (live in pulses.live()) {
+        val pitch = live.pulse.pitch ?: continue
+        if (live.kind != PulseKind.HOME && live.kind != PulseKind.REVEAL) continue
+        if (Math.floorMod(pitch, 12) != hour) continue
+        val k = 1f - live.age / HEARD_SECONDS
+        if (k > 0f) glow = max(glow, live.strength * k * k)
+    }
+    return glow.coerceIn(0f, 1f)
+}
 
 /**
  * O-52: a figure inscribed in the dial — the sounds that are held, joined by lines. An interval is a chord of the
@@ -207,6 +231,7 @@ fun DegreeRing(
                 // with a figure on the dial the corners say where the sounds are: no hands from the sphere
                 handTo = if (figure != null) rOrb + 4.dp else r - 24.dp,
                 arc = slot == 0,
+                heard = { heardGlow(pulses, hour) },
                 onPressed = { down ->
                     if (down) {
                         pressedHour = hour
@@ -238,6 +263,8 @@ private fun RingKey(
     handFrom: Dp,
     handTo: Dp,
     arc: Boolean,
+    /** O-81: how brightly a note of this hour has just sounded, 0…1 (read while drawing, so only the drawing is redone). */
+    heard: () -> Float,
     onPressed: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -276,6 +303,12 @@ private fun RingKey(
             .drawBehind {
                 val dial = center - Offset(at.first.toPx(), at.second.toPx())
                 val a0 = hour * 30.0 - 90.0
+                val sounding = heard()
+                if (sounding > 0f) {
+                    // O-81: gently, in the degree's own colour — the note that sounds is lit on the dial
+                    val r = size.minDimension * 0.75f
+                    drawCircle(Brush.radialGradient(listOf(color.copy(alpha = 0.26f * sounding), Color.Transparent), center, r), r, center)
+                }
                 if (lit > 0f) {
                     val r = size.minDimension * 0.8f
                     drawCircle(Brush.radialGradient(listOf(tick.copy(alpha = 0.32f * lit), Color.Transparent), center, r), r, center)
@@ -285,12 +318,12 @@ private fun RingKey(
                     for (j in -ARC..ARC) {
                         val a = Math.toRadians(a0 + j * 360.0 / TICKS)
                         val taper = 1f - abs(j) / (ARC + 1f)
-                        val len = 8.dp.toPx() + (5.dp.toPx() + 3.dp.toPx() * press + 5.dp.toPx() * lit) * taper
+                        val len = 8.dp.toPx() + (5.dp.toPx() + 3.dp.toPx() * press + 5.dp.toPx() * lit + 5.dp.toPx() * sounding) * taper
                         val p0 = polar(dial, out - len, a)
                         val p1 = polar(dial, out, a)
-                        if (lit > 0f) drawLine(tick.copy(alpha = 0.22f * lit), p0, p1, 5.dp.toPx(), StrokeCap.Round)
+                        if (lit > 0f || sounding > 0f) drawLine(tick.copy(alpha = 0.22f * max(lit, sounding)), p0, p1, 5.dp.toPx(), StrokeCap.Round)
                         drawLine(
-                            tick.copy(alpha = presence * (0.8f + 0.2f * max(lit, press))),
+                            tick.copy(alpha = presence * (0.8f + 0.2f * max(max(lit, press), sounding))),
                             p0,
                             p1,
                             (1.5f + 0.5f * lit).dp.toPx(),
@@ -317,7 +350,7 @@ private fun RingKey(
             softWrap = false,
             style = TextStyle(fontFamily = Manrope, fontWeight = FontWeight.SemiBold, shadow = Shadow(tick.copy(alpha = 0.6f), blurRadius = glow)),
             modifier = Modifier.graphicsLayer {
-                val s = 1f - 0.1f * press + 0.16f * lit
+                val s = 1f - 0.1f * press + 0.16f * lit + 0.1f * heard()
                 scaleX = s
                 scaleY = s
                 alpha = presence

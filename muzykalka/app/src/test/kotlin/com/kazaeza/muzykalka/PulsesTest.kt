@@ -17,6 +17,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazaeza.muzykalka.music.Overtones
 import com.kazaeza.muzykalka.music.PulseKind
 import com.kazaeza.muzykalka.music.SoundPulse
+import com.kazaeza.muzykalka.ui.component.heardGlow
 import com.kazaeza.muzykalka.ui.effect.PulseBoard
 import com.kazaeza.muzykalka.ui.effect.rememberPulses
 import com.kazaeza.muzykalka.ui.effect.strum
@@ -45,6 +46,42 @@ class PulsesTest {
         assertEquals(0.1f, live[1].age, 1e-4f)
         assertTrue(board.active)
         assertFalse(PulseBoard.frozen().active)
+    }
+
+    /** O-81: the dial lights the hour of a note that has just sounded — but never of a question (ADR-015). */
+    @Test
+    fun aHeardNoteLightsItsHourOfTheDialAndFadesAway() {
+        fun board(kind: PulseKind, pitch: Int?, age: Float = 0.05f, strength: Float = 1f) = PulseBoard.frozen(age to SoundPulse(kind, 0L, strength, pitch, 0.5f))
+        // the scale of a new key and what is played after the answer name their pitch, so they light it
+        for (kind in listOf(PulseKind.HOME, PulseKind.REVEAL)) {
+            val b = board(kind, 7)
+            assertTrue("$kind lights the fifth", heardGlow(b, 7) > 0.8f)
+            assertEquals("and no other hour", 0f, heardGlow(b, 6), 0f)
+            assertEquals(0f, heardGlow(b, 0), 0f)
+        }
+        // a question must not give the answer away; a finger has its own reaction
+        assertEquals(0f, heardGlow(board(PulseKind.QUESTION, null), 7), 0f)
+        assertEquals(0f, heardGlow(board(PulseKind.TOUCH, null), 7), 0f)
+        assertEquals("a pitch on a pluck that is no question or finger-less kind only", 0f, heardGlow(board(PulseKind.TOUCH, 7), 7), 0f)
+        assertEquals(0f, heardGlow(null, 7), 0f)
+        assertEquals(0f, heardGlow(PulseBoard.frozen(), 7), 0f)
+        // it fades: brighter when new, gone after a second
+        val young = heardGlow(board(PulseKind.REVEAL, 4, age = 0.1f), 4)
+        val old = heardGlow(board(PulseKind.REVEAL, 4, age = 0.7f), 4)
+        assertTrue("young $young, old $old", young > old && old > 0f)
+        assertEquals(0f, heardGlow(board(PulseKind.REVEAL, 4, age = 1.2f), 4), 0f)
+        // softer plucks glow less; the glow never passes 1
+        assertTrue(heardGlow(board(PulseKind.REVEAL, 4, age = 0.1f, strength = 0.4f), 4) < young)
+        assertTrue(heardGlow(board(PulseKind.REVEAL, 4, age = 0.0f), 4) <= 1f)
+    }
+
+    @Test
+    fun aRunOfNotesLeavesASoftTrailTheNewestBrightest() {
+        val p = { pitch: Int -> SoundPulse(PulseKind.HOME, 0L, 0.7f, pitch, 0.5f) }
+        val board = PulseBoard.frozen(0.6f to p(0), 0.4f to p(2), 0.2f to p(4), 0.05f to p(5))
+        val glow = listOf(0, 2, 4, 5).map { heardGlow(board, it) }
+        assertTrue("the newest is the brightest: $glow", glow.zipWithNext().all { (a, b) -> a < b })
+        assertTrue(glow.all { it > 0f })
     }
 
     @Test

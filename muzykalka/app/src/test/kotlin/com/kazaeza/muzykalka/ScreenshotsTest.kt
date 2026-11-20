@@ -335,6 +335,28 @@ class ScreenshotsTest {
         }
     })
 
+    /** O-80, O-81: the round hint keys (a tune, a stair) and the dial with notes that have just sounded lit on it. */
+    @Test
+    fun hintKeysAndTheGlowOfHeardNotes() = shot("14-hint-keys-glow", {
+        val d = com.kazaeza.muzykalka.music.Degree
+        val degrees = listOf(d.ONE, d.TWO, d.THREE, d.FOUR, d.FIVE, d.SIX, d.SEVEN)
+        fun p(age: Float, pitch: Int) = age to SoundPulse(PulseKind.REVEAL, 0L, 0.85f, pitch, 0.31f)
+        Column(Modifier.fillMaxSize().background(Juicy.Ink).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                com.kazaeza.muzykalka.ui.component.HintKey(com.kazaeza.muzykalka.ui.component.HintGlyph.STAIRS, "ощущения", {})
+                com.kazaeza.muzykalka.ui.component.HintKey(com.kazaeza.muzykalka.ui.component.HintGlyph.SONG, "песни", {})
+                com.kazaeza.muzykalka.ui.component.ReplayKey("ещё раз", {})
+            }
+            com.kazaeza.muzykalka.ui.component.DegreeRing(
+                degrees = degrees,
+                notation = com.kazaeza.muzykalka.music.DegreeNotation.ARABIC,
+                onDegree = {},
+                modifier = Modifier.fillMaxWidth().height(380.dp),
+                pulses = PulseBoard.frozen(p(0.9f, 0), p(0.5f, 4), p(0.15f, 7), p(0.02f, 9)),
+            )
+        }
+    })
+
     @Test
     fun reverseHunt() = shot("05-reverse-hunt", { GameScreen(RoundSpec(Variant.HUNT_REVERSE, level = 1), onExit = {}) }, "лад")
 
