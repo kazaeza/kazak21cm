@@ -104,8 +104,9 @@ class SongHintFlowTest {
                     org.robolectric.shadows.ShadowLooper.idleMainLooper(3, java.util.concurrent.TimeUnit.SECONDS)
                     rule.waitUntil(10_000) { audio.played.size >= before + 1 }
                     val correction = audio.played.last()
-                    // O-63: the note again, then the song (3–4 notes) — not a walk home along the scale
-                    assertTrue("the note, the tune and its echo: ${correction.notes.size}", correction.notes.size in 5..10)
+                    // O-63: the note again, then the song (3–4 notes) — not a walk home along the scale.
+                    // O-74: and before them what was chosen («1») and its way home, so up to a handful of notes more.
+                    assertTrue("the chosen note, the note, the tune and its echo: ${correction.notes.size}", correction.notes.size in 5..16)
                     assertTrue("where the sound is in the tune", has("запомни"))
                     assertTrue("and its line on the screen", has("как в «"))
                     break

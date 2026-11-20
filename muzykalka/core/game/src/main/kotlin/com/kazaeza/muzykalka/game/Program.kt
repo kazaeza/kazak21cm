@@ -79,6 +79,7 @@ enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, va
             SetSegment(Variant.TIR_DYAD, 2.0),
             SetSegment(Variant.TIR_OVER_CHORDS, 3.0),
             SetSegment(Variant.TIR_COLOR, 3.0),
+            SetSegment(Variant.TIR_LAYERS, 2.0),
             SetSegment(Variant.TIR_BASS, 2.0),
             SetSegment(Variant.TIR_MODE, 2.0),
             SetSegment(Variant.TIR_SIMON, 3.0),

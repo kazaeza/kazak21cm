@@ -43,6 +43,9 @@ sealed interface Answer {
     /** O-50 «Цвет аккорда»: the quality of the chord that sounded. */
     data class QualityChoice(val quality: com.kazaeza.muzykalka.music.ChordQuality) : Answer
 
+    /** O-75 «Слои аккорда»: what the chord DOES — home, away or tension — apart from what it is made of. */
+    data class FunctionChoice(val function: com.kazaeza.muzykalka.music.ChordFunction) : Answer
+
     /** O-43 «Чья гармония?»: one of the offered songs, by its library id. */
     data class SongChoice(val id: String) : Answer
 

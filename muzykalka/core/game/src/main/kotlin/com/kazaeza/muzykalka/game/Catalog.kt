@@ -56,6 +56,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_DUEL(ModeId.TIR, "Дуэль", GuitarNeed.NONE, "0.1"),
     /** O-50: a chord on a pitch of chance — which quality is it (ADR-048). */
     TIR_COLOR(ModeId.TIR, "Цвет аккорда", GuitarNeed.NONE, "0.1"),
+    /** O-75: a chord over the tonic — what does it DO (home, away, tension), and then what is it made of (ADR-072). */
+    TIR_LAYERS(ModeId.TIR, "Слои аккорда", GuitarNeed.NONE, "0.1"),
     /** O-51: a scale over the drone — which mode is it (ADR-049). */
     TIR_MODE(ModeId.TIR, "Какой лад?", GuitarNeed.NONE, "0.1"),
     /** O-46: a chain of notes over the drone that grows by one with every right answer (ADR-045). */
@@ -150,6 +152,9 @@ object Levels {
 
     /** «Цвет аккорда» (O-50): the two colours first, then the other triads, the sevenths, and all of them. */
     val TIR_COLOR = listOf("мажор или минор", "все трезвучия", "септаккорды", "всё вместе")
+
+    /** «Слои аккорда» (O-75): the job first, on triads of a major key; then sevenths and minor; then the job and the colour of one chord. */
+    val TIR_LAYERS = listOf("что делает: дом, уход, напряжение", "+ септаккорды и минор", "два слоя: что делает, потом из чего")
 
     /** «Какой лад?» (O-51): the two colours, then the modes that differ from them by one degree. */
     val TIR_MODE = listOf("мажор или минор", "+ дорийский, миксолидийский", "+ фригийский, лидийский", "+ гармонический минор")

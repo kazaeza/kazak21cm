@@ -306,6 +306,27 @@ class GameFlowTest {
         assertTrue("the tones are single notes", audio.played.last().notes.any { n -> audio.played.last().notes.count { it.startBeat == n.startBeat } == 1 })
     }
 
+    /** O-75 (ADR-072): a chord over the humming tonic, its job is picked (not its colour), the job is then heard. */
+    @Test
+    fun chordLayersAskTheJobFirstAndHearItAfter() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_LAYERS, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Что он делает: дом, уход или напряжение?").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("the tonic hums under the chord", audio.drones.lastOrNull()?.size == 2)
+        assertTrue("the layer is named", rule.onAllNodesWithText("Слой 1 · что аккорд делает").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("three jobs, no colours", rule.onAllNodesWithText("Дом").fetchSemanticsNodes().size == 1 && rule.onAllNodesWithText("Напряжение").fetchSemanticsNodes().size == 1)
+        val before = audio.played.size
+        rule.onAllNodesWithText("Уход").onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > before } // what the job does (after the chord again, if it was a miss)
+    }
+
     /** O-51 (ADR-049): a scale runs over the tonic drone, the key is not named, the mode is picked. */
     @Test
     fun modeQuizRunsAScaleOverTheDroneAndDoesNotNameTheKey() {

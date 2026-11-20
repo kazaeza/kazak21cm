@@ -39,6 +39,7 @@ import com.kazaeza.muzykalka.game.SongGuessDriver
 import com.kazaeza.muzykalka.game.NextChordDriver
 import com.kazaeza.muzykalka.game.FormulaDriver
 import com.kazaeza.muzykalka.game.ColorDriver
+import com.kazaeza.muzykalka.game.LayersDriver
 import com.kazaeza.muzykalka.game.ModeQuizDriver
 import com.kazaeza.muzykalka.game.EchoDriver
 import com.kazaeza.muzykalka.music.SongBook
@@ -215,7 +216,7 @@ private const val ANCHOR_TAIL_MS = 600L
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(
-        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_COLOR, Variant.TIR_MODE, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
+        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_COLOR, Variant.TIR_LAYERS, Variant.TIR_MODE, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
         Variant.TAPER_STEPS, Variant.FORMULA_ALOUD, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING,
         // O-69 (ADR-067): «Попугай» is off the list until it becomes something worth playing; its driver stays
     )
@@ -235,6 +236,7 @@ object Drills {
         Variant.TIR_SIMON -> Levels.TIR_SIMON.size
         Variant.TIR_COLOR -> Levels.TIR_COLOR.size
         Variant.TIR_MODE -> Levels.TIR_MODE.size
+        Variant.TIR_LAYERS -> Levels.TIR_LAYERS.size
         Variant.PARROT_ECHO -> Levels.ECHO.size
         Variant.TIR_NEXT -> Levels.TIR_NEXT.size
         Variant.TAPER_STEPS -> Levels.STEPS.size
@@ -294,6 +296,7 @@ object Drills {
             Variant.TIR_SIMON -> Levels.TIR_SIMON
             Variant.TIR_COLOR -> Levels.TIR_COLOR
             Variant.TIR_MODE -> Levels.TIR_MODE
+            Variant.TIR_LAYERS -> Levels.TIR_LAYERS
             Variant.TIR_DUEL -> listOf("две ступени, ${TirDriver.DUEL_GOAL} подряд")
             else -> Levels.TIR
         }.getOrElse(level - 1) { "" }
@@ -318,6 +321,7 @@ object Drills {
             Variant.TIR_NEXT -> NextChordDriver.PROMOTION_TARGET_MS
             Variant.TIR_COLOR -> ColorDriver.PROMOTION_TARGET_MS
             Variant.TIR_MODE -> ModeQuizDriver.PROMOTION_TARGET_MS
+            Variant.TIR_LAYERS -> LayersDriver.PROMOTION_TARGET_MS
             else -> TirDriver.promotionTargetMs(level)
         }
         ModeId.TAPER -> StepsDriver.PROMOTION_TARGET_MS
@@ -332,7 +336,7 @@ object Drills {
      */
     val TEACHING: Set<Variant> = setOf(
         Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD,
-        Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_COLOR,
+        Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_COLOR, Variant.TIR_LAYERS,
     )
     const val READ_MS = 2_600L
 
@@ -365,6 +369,7 @@ object Drills {
             Variant.TIR_NEXT -> RoundEngine(NextChordDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.PARROT_ECHO -> RoundEngine(EchoDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_MODE -> RoundEngine(ModeQuizDriver(KeyPicker(random)), config, random, level, history, epochOffsetMs)
+            Variant.TIR_LAYERS -> RoundEngine(LayersDriver(KeyPicker(random)), config, random, level, history, epochOffsetMs)
             Variant.TIR_COLOR -> RoundEngine(ColorDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.FORMULA_ALOUD -> RoundEngine(FormulaDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
