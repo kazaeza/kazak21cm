@@ -6,7 +6,9 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -20,10 +22,12 @@ import com.kazaeza.muzykalka.music.HintStyle
 import com.kazaeza.muzykalka.feature.lab.HarmonyLabScreen
 import com.kazaeza.muzykalka.feature.lab.HarmonyLabViewModel
 import com.kazaeza.muzykalka.ui.theme.MuzykalkaTheme
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlinx.coroutines.flow.first
 import org.robolectric.annotation.Config
 
 /** O-57 (ADR-056): the switch of the hints — a feel in words, or a song that has the sound — and the song heard. */
@@ -114,6 +118,35 @@ class SongHintFlowTest {
                 org.robolectric.shadows.ShadowLooper.idleMainLooper(3, java.util.concurrent.TimeUnit.SECONDS)
             }
             assertTrue("a miss came within eight rounds of answering «1»", missed)
+        } finally {
+            kotlinx.coroutines.runBlocking { graph.settings.update { it.copy(hintStyle = HintStyle.FEEL) } }
+        }
+    }
+
+    /** O-80: the long chip is a small round key — a stair for the feel, a tune for the songs — and it switches the hints for every mode. */
+    @Test
+    fun theRoundKeyOfTheTirSwitchesTheHintsFromTheFeelToSongsAndBack() {
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        val feel = "Подсказки после ошибки: ощущения"
+        val songs = "Подсказки после ошибки: песни"
+        fun hintStyle() = kotlinx.coroutines.runBlocking { graph.settings.settings.first().hintStyle }
+        try {
+            rule.setContent {
+                CompositionLocalProvider(LocalAppGraph provides graph) {
+                    MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 1), onExit = {}) }
+                }
+            }
+            rule.waitUntil(15_000) { has("Какая ступень?") }
+            assertTrue("a fresh install speaks of the feel", rule.onAllNodesWithContentDescription(feel).fetchSemanticsNodes().isNotEmpty())
+            assertTrue("the long chip is gone", !has("подсказки: ощущения") && !has("подсказки-песни"))
+            rule.onNodeWithContentDescription(feel).performClick()
+            rule.waitUntil(5_000) { rule.onAllNodesWithContentDescription(songs).fetchSemanticsNodes().isNotEmpty() }
+            rule.waitUntil(5_000) { hintStyle() == HintStyle.SONGS } // saved a moment after the key turns
+            rule.onNodeWithContentDescription(songs).performClick()
+            rule.waitUntil(5_000) { rule.onAllNodesWithContentDescription(feel).fetchSemanticsNodes().isNotEmpty() }
+            rule.waitUntil(5_000) { hintStyle() == HintStyle.FEEL }
         } finally {
             kotlinx.coroutines.runBlocking { graph.settings.update { it.copy(hintStyle = HintStyle.FEEL) } }
         }

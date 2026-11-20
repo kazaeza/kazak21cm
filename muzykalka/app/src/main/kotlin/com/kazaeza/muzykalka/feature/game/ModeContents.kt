@@ -82,11 +82,11 @@ import com.kazaeza.muzykalka.ui.component.DegreeRing
 import com.kazaeza.muzykalka.ui.component.PitchRuler
 import com.kazaeza.muzykalka.ui.component.ReplayKey
 import com.kazaeza.muzykalka.ui.component.degreeRingMinSide
-import com.kazaeza.muzykalka.ui.effect.HarmonicWaves
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.unit.min
 import com.kazaeza.muzykalka.ui.component.GradientText
+import com.kazaeza.muzykalka.ui.component.HintGlyph
+import com.kazaeza.muzykalka.ui.component.HintKey
 import com.kazaeza.muzykalka.ui.component.JuicyKey
 import com.kazaeza.muzykalka.ui.component.KeyHighlight
 import com.kazaeza.muzykalka.ui.component.MicPulse
@@ -189,15 +189,14 @@ internal fun TirContent(
                         DegreeChip("над " + DegreeFormatter.chord(chord, ui.notation), DegreeColors.of(chord.root))
                     }
                     ReplayKey("Повторить вопрос", onReplay, enabled = listening)
-                    // O-57: what a hint after a miss is made of — the feel of the sound, or a song that has it
+                    // O-57: what a hint after a miss is made of — a song that has the step, or the feel of it in words.
+                    // O-80: a small round key with a symbol (a tune / a stair) instead of the long chip
                     if (task.kind == TirKind.NOTE && !task.underNote) {
-                        Spacer(Modifier.width(8.dp))
                         val songs = ui.settings.hintStyle == HintStyle.SONGS
-                        DegreeChip(
-                            if (songs) "♫ подсказки-песни" else "подсказки: ощущения",
-                            Juicy.Cyan,
+                        HintKey(
+                            glyph = if (songs) HintGlyph.SONG else HintGlyph.STAIRS,
+                            label = if (songs) "Подсказки после ошибки: песни" else "Подсказки после ошибки: ощущения",
                             onClick = { onHintStyle(if (songs) HintStyle.FEEL else HintStyle.SONGS) },
-                            selected = songs,
                         )
                     }
                 }
