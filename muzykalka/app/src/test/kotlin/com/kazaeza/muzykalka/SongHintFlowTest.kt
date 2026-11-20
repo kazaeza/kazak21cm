@@ -131,7 +131,14 @@ class SongHintFlowTest {
         }
         val feel = "Подсказки после ошибки: ощущения"
         val songs = "Подсказки после ошибки: песни"
-        fun hintStyle() = kotlinx.coroutines.runBlocking { graph.settings.settings.first().hintStyle }
+        // DataStore is read and written on a thread of its own: the test thread is the looper of the screen, and blocking it
+        // on a coroutine (runBlocking) while the screen's own coroutines wait for that looper could hang the whole run
+        fun hintStyle(): HintStyle? {
+            var read: HintStyle? = null
+            val t = kotlin.concurrent.thread { read = kotlinx.coroutines.runBlocking { graph.settings.settings.first().hintStyle } }
+            t.join(5_000)
+            return read
+        }
         try {
             rule.setContent {
                 CompositionLocalProvider(LocalAppGraph provides graph) {
@@ -148,7 +155,7 @@ class SongHintFlowTest {
             rule.waitUntil(5_000) { rule.onAllNodesWithContentDescription(feel).fetchSemanticsNodes().isNotEmpty() }
             rule.waitUntil(5_000) { hintStyle() == HintStyle.FEEL }
         } finally {
-            kotlinx.coroutines.runBlocking { graph.settings.update { it.copy(hintStyle = HintStyle.FEEL) } }
+            kotlin.concurrent.thread { kotlinx.coroutines.runBlocking { graph.settings.update { it.copy(hintStyle = HintStyle.FEEL) } } }.join(15_000)
         }
     }
 }
