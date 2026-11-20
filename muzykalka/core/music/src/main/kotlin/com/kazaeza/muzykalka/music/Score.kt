@@ -66,14 +66,17 @@ class Arranger(
         /** O-71: the held tonic under chords — as firm as the bass of a chord, so that it is never lost under them. */
         const val PEDAL_VELOCITY = 0.9f
 
-        /** Gap between the strings of one strum, in beats: a quick downstroke, not a cluster. */
-        const val STRUM_STAGGER_BEATS = 0.06
+        /** O-73: the mean gap between two strings of a downstroke, in seconds: a hand, not a harp (it was ~36 ms, now ~16). */
+        const val STRUM_GAP_SECONDS = 0.016
 
-        /** O-70: how each gap of a strum differs from [STRUM_STAGGER_BEATS] — a hand's unevenness, fixed. */
+        /** O-70: how each gap of a strum differs from the mean — a hand's unevenness, fixed. */
         private val STRUM_FEEL = doubleArrayOf(1.0, 0.8, 1.25, 0.9, 1.1)
-        private const val STRUM_VELOCITY = 0.8f
-        private const val STRUM_TAPER = 0.05f
+        private const val STRUM_VELOCITY = 0.9f
+        private const val STRUM_TAPER = 0.045f
         private const val STRUM_VELOCITY_MIN = 0.55f
+
+        /** How long a strummed chord is held, in beats: it rings, then lets go. */
+        private const val STRUM_BEATS = 3.5
     }
 
     /** Close voicing of [chord] in [key]: root-position bass + upper structure nearest to [pianoCenter]. */
@@ -115,26 +118,33 @@ class Arranger(
 
     /**
      * O-17: [chord] of [key] strummed once on the guitar — what a tap on a tile of the song sheet
-     * plays, so «где доминанта, где девятка, где минорный» can be settled by ear. Root position (the
-     * slash bass, if any, goes below), the strings stagger upward like a downstroke and ring out.
+     * plays, so «где доминанта, где девятка, где минорный» can be settled by ear. O-73 (ADR-070): the chord is held the way
+     * a guitarist holds it ([GuitarVoicings]) — five or six strings over two octaves, the open strings ringing — and
+     * struck as a downstroke, bass string first; where no hand holds it the old stack from [STRUM_FLOOR] is played.
      */
     fun strum(chord: ChordDegree, key: Key, tempoBpm: Double = 100.0): Score {
-        val bassPc = key.pitchClassOf(chord.bass ?: chord.root)
-        val bass = STRUM_FLOOR + (bassPc - STRUM_FLOOR.pitchClass)
-        val root = bass + (key.pitchClassOf(chord.root) - bass.pitchClass)
-        val tones = chord.quality.intervals.map { root + it }
-        val strings = if (root == bass) tones else listOf(bass) + tones
+        val strings = GuitarVoicings.shape(chord, key)?.notes(Tuning.STANDARD) ?: stackedStrum(chord, key)
         // O-70 (ADR-068): a hand, not a machine — the gaps between the strings breathe a little, the bass string is
         // struck firmest and the stroke lightens towards the thin strings; the pattern is fixed, so a chord is the
         // same each time it is tapped
+        val gapBeats = STRUM_GAP_SECONDS * tempoBpm / 60.0
         var at = 0.0
         return Score(
             tempoBpm,
             strings.mapIndexed { i, n ->
-                if (i > 0) at += STRUM_STAGGER_BEATS * STRUM_FEEL[(i - 1) % STRUM_FEEL.size]
-                ScoreNote(at, 2.5, Voice.GUITAR, n, (STRUM_VELOCITY - STRUM_TAPER * i).coerceAtLeast(STRUM_VELOCITY_MIN))
+                if (i > 0) at += gapBeats * STRUM_FEEL[(i - 1) % STRUM_FEEL.size]
+                ScoreNote(at, STRUM_BEATS, Voice.GUITAR, n, (STRUM_VELOCITY - STRUM_TAPER * i).coerceAtLeast(STRUM_VELOCITY_MIN))
             },
         )
+    }
+
+    /** The chord as a stack of its tones from [STRUM_FLOOR], root position (the slash bass, if any, below it). */
+    private fun stackedStrum(chord: ChordDegree, key: Key): List<MidiNote> {
+        val bassPc = key.pitchClassOf(chord.bass ?: chord.root)
+        val bass = STRUM_FLOOR + (bassPc - STRUM_FLOOR.pitchClass)
+        val root = bass + (key.pitchClassOf(chord.root) - bass.pitchClass)
+        val tones = chord.quality.intervals.map { root + it }
+        return if (root == bass) tones else listOf(bass) + tones
     }
 
     /**

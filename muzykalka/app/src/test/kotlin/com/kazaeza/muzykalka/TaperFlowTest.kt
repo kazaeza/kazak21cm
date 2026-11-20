@@ -116,7 +116,9 @@ class TaperFlowTest {
         assertEquals(1, audio.played.size)
         val dominant = audio.played.single()
         assertTrue(dominant.notes.all { it.voice == Voice.GUITAR })
-        assertEquals(listOf(0, 4, 7), dominant.notes.map { it.note!!.value - dominant.notes.first().note!!.value })
+        // O-73: the chord is held the way a hand holds it - a major triad's tones over five or six strings
+        assertEquals(setOf(0, 4, 7), dominant.notes.map { Math.floorMod(it.note!!.value - dominant.notes.first().note!!.value, 12) }.toSet())
+        assertTrue(dominant.notes.size >= 5)
 
         rule.onAllNodesWithText("vi", substring = false)[0].performScrollTo().performClick()
         rule.waitUntil(5_000) { has("vi — параллельный минор") }

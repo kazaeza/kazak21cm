@@ -16,22 +16,32 @@ class GuitarTest {
 
     private fun strum(chord: String): FloatArray = DefaultSynth().renderOffline(Arranger().strum(ChordDegree.parse(chord), key))
 
-    /** Share of the energy of the first [seconds] above [hz]. */
-    private fun highShare(audio: FloatArray, hz: Double, seconds: Double = 0.4): Double {
-        val n = 16_384
+    /** Share of the energy of the first [seconds] from [from] up to [to] Hz. */
+    private fun share(audio: FloatArray, from: Double, to: Double = SAMPLE_RATE / 2.0, seconds: Double = 0.5): Double {
+        val n = 32_768
         val frames = (SAMPLE_RATE * seconds).toInt().coerceAtMost(n)
-        val re = DoubleArray(n) { if (it < frames) audio[it].toDouble() else 0.0 }
+        val re = DoubleArray(n) { if (it < frames) audio[it].toDouble() * (0.5 - 0.5 * kotlin.math.cos(2 * Math.PI * it / frames)) else 0.0 }
         val im = DoubleArray(n)
         Fft(n).forward(re, im)
-        val cut = (hz * n / SAMPLE_RATE).toInt()
-        var high = 0.0
+        var band = 0.0
         var all = 0.0
         for (k in 1 until n / 2) {
             val e = hypot(re[k], im[k]).let { it * it }
+            val hz = k.toDouble() * SAMPLE_RATE / n
             all += e
-            if (k >= cut) high += e
+            if (hz in from..to) band += e
         }
-        return high / all
+        return band / all
+    }
+
+    private fun highShare(audio: FloatArray, hz: Double) = share(audio, hz)
+
+    private fun rms(audio: FloatArray, fromSeconds: Double, toSeconds: Double): Double {
+        val a = (fromSeconds * SAMPLE_RATE).toInt()
+        val b = minOf(audio.size, (toSeconds * SAMPLE_RATE).toInt())
+        var sum = 0.0
+        for (i in a until b) sum += audio[i].toDouble() * audio[i]
+        return kotlin.math.sqrt(sum / (b - a))
     }
 
     @Test
@@ -49,5 +59,33 @@ class GuitarTest {
             val share = highShare(strum(c), 4_000.0)
             assertTrue(share < 0.06, "$c: ${"%.4f".format(share)} of the energy is fizz")
         }
+    }
+
+    @Test
+    fun `O-73 - the body is in it - most of the energy low, no wall of nasal mid-range (it was half before)`() {
+        for (c in listOf("I", "IV", "V7", "vi", "ii")) {
+            val audio = strum(c)
+            val mid = share(audio, 600.0, 4_800.0)
+            val low = share(audio, 0.0, 600.0)
+            assertTrue(mid < 0.30, "$c: ${"%.2f".format(mid)} of the energy sits in the nasal 0.6-4.8 kHz band")
+            assertTrue(low > 0.65, "$c: only ${"%.2f".format(low)} of the energy is below 600 Hz: thin")
+        }
+    }
+
+    @Test
+    fun `O-73 - a chord rings for seconds, and a stopped one is silent at once (O-66 stops sounds from layering)`() {
+        val audio = strum("I")
+        assertTrue(rms(audio, 1.0, 1.25) > 0.15 * rms(audio, 0.0, 0.25), "a chord does not die in a second")
+
+        val synth = DefaultSynth()
+        synth.schedule(Arranger().strum(ChordDegree.parse("I"), key), synth.framePosition)
+        val out = FloatArray(SAMPLE_RATE)
+        synth.render(out, SAMPLE_RATE / 3)
+        val before = rms(out, 0.2, 0.33)
+        synth.stopAll()
+        val after = FloatArray(SAMPLE_RATE / 3)
+        synth.render(after, after.size)
+        assertTrue(before > 0.02, "it was sounding: $before")
+        assertTrue(rms(after, 0.15, 0.33) < 0.02 * before, "and then it was not")
     }
 }

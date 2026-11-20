@@ -16,7 +16,7 @@ class ChordAuditionTest {
         chord.quality.intervals.map { key.pitchClassOf(chord.root) + it }.toSet()
 
     @Test
-    fun `a strummed chord is the chord of the key, on the guitar, from low to high`() {
+    fun `a strummed chord is the chord of the key, on the guitar, a downstroke from the bass string up`() {
         ChordQuality.entries.forEach { q ->
             listOf(cMajor, aMinor).forEach { key ->
                 Degree.parse("5").let { root ->
@@ -24,13 +24,22 @@ class ChordAuditionTest {
                     val score = arranger.strum(chord, key)
                     assertEquals(expected(chord, key), pitchClasses(score), "$q in $key")
                     assertTrue(score.notes.all { it.voice == Voice.GUITAR }, "one voice: the guitar")
-                    val midi = score.notes.map { it.note!!.value }
-                    assertEquals(midi.sorted(), midi, "strings go up")
-                    assertTrue(midi.first() >= Arranger.STRUM_FLOOR.value, "not below the floor")
+                    assertEquals(key.pitchClassOf(chord.root), score.notes.first().note!!.pitchClass, "the root is struck first")
                     assertTrue(score.notes.zipWithNext().all { (a, b) -> b.startBeat > a.startBeat }, "a downstroke, not a cluster")
                 }
             }
         }
+    }
+
+    @Test
+    fun `O-73 - a strum is the shape a hand holds, struck like a hand`() {
+        val score = arranger.strum(ChordParser.parse("I"), cMajor, tempoBpm = 100.0)
+        assertEquals(listOf(48, 52, 55, 60, 64), score.notes.map { it.note!!.value }, "C as x32010: five strings over two octaves")
+        val gaps = score.notes.zipWithNext { a, b -> (b.startBeat - a.startBeat) * 60.0 / score.tempoBpm }
+        assertTrue(gaps.all { it in 0.008..0.03 }, "a gap of ~16 ms between the strings: $gaps")
+        assertTrue(gaps.distinct().size > 1, "uneven, like a hand")
+        assertTrue(score.notes.first().velocity > score.notes.last().velocity, "the bass string firmest")
+        assertEquals(score.notes.first().velocity, arranger.strum(ChordParser.parse("I"), cMajor, tempoBpm = 100.0).notes.first().velocity, "the same each time")
     }
 
     @Test
@@ -42,19 +51,21 @@ class ChordAuditionTest {
         val one3 = ChordParser.parse("I/3")
         val slash = arranger.strum(one3, cMajor).notes.map { it.note!! }
         assertEquals(cMajor.pitchClassOf(Degree.parse("3")), slash.first().pitchClass, "the third is the bass")
-        assertEquals(expected(ChordDegree(one3.root, one3.quality), cMajor) + slash.first().pitchClass, slash.map { it.pitchClass }.toSet())
-        assertEquals(one3.quality.intervals.size + 1, slash.size, "the bass is an extra string")
+        assertEquals(expected(ChordDegree(one3.root, one3.quality), cMajor), slash.map { it.pitchClass }.toSet(), "the third is a tone of the chord already")
+
+        val over = ChordParser.parse("I/2")
+        val low = arranger.strum(over, cMajor).notes.map { it.note!! }
+        assertEquals(cMajor.pitchClassOf(Degree.parse("2")), low.first().pitchClass, "a bass that is not a tone of the chord is still the bass")
+        assertTrue(low.any { it.pitchClass == cMajor.pitchClassOf(Degree.parse("1")) }, "and the chord is above it")
     }
 
     @Test
-    fun `the same chord is the same sound in every key, only moved`() {
+    fun `the same chord is held in every key of the book, within the hand's reach and the guitar's range`() {
         val chord = ChordParser.parse("ii7")
-        val keys = KeyCatalog.practical(Mode.MAJOR)
-        val shapes = keys.map { k ->
-            val m = arranger.strum(chord, k).notes.map { it.note!!.value }
-            m.map { it - m.first() }
+        KeyCatalog.practical(Mode.MAJOR).forEach { k ->
+            val midi = arranger.strum(chord, k).notes.map { it.note!!.value }
+            assertTrue(midi.min() >= 40 && midi.max() <= 40 + 12 + 24 + 4, "$k: $midi")
         }
-        assertEquals(1, shapes.distinct().size)
     }
 
     @Test

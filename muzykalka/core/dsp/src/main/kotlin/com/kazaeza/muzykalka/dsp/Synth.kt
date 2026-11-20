@@ -153,6 +153,11 @@ class DefaultSynth(
     @Volatile
     override var room: Boolean = false
 
+    // --- O-73: the strings of the guitar all sound through one box
+    private val guitarBody = GuitarBody(sampleRate)
+    private val bodyTailFrames = (GuitarBody.TAIL_SECONDS * sampleRate).toInt()
+    private var bodyLeft = 0
+
     private val smallRoom = SmallRoom(sampleRate)
     private val roomTailFrames = (SmallRoom.TAIL_SECONDS * sampleRate).toInt()
     private var roomLeft = 0
@@ -253,6 +258,8 @@ class DefaultSynth(
                 pendingIndex++
             }
             var played = 0.0
+            var strings = 0.0
+            var anyStrings = false
             var anyPlaying = false
             var noteL = 0.0
             var noteR = 0.0
@@ -264,11 +271,20 @@ class DefaultSynth(
                         noteL += y
                         noteR += v.right
                         anyGlass = true
+                    } else if (v.guitar) {
+                        strings += y
+                        anyStrings = true
+                        anyPlaying = true
                     } else {
                         played += y
                         anyPlaying = true
                     }
                 }
+            }
+            if (anyStrings) bodyLeft = bodyTailFrames
+            if (bodyLeft > 0) {
+                played += guitarBody.process(strings)
+                if (!anyStrings && --bodyLeft == 0) guitarBody.reset(sampleRate)
             }
             var left = drone.next() + played
             var right = left
@@ -319,7 +335,7 @@ class DefaultSynth(
         position = base + frames
         var anyActive = false
         for (v in voices) if (v.active) anyActive = true
-        idleFlag = !anyActive && pendingIndex >= pending.size && drone.silent && roomLeft == 0 &&
+        idleFlag = !anyActive && pendingIndex >= pending.size && drone.silent && roomLeft == 0 && bodyLeft == 0 &&
             glassDrone.silent && droneSpaceLeft == 0 && noteSpaceLeft == 0
     }
 
@@ -403,12 +419,8 @@ private class SynthVoice(private val sr: Int) {
     private var lpState = 0.0
     private var lpCoef = 1.0
 
-    // --- O-70: the guitar's wood — a second pole on the way out, the body's two lowest resonances, a soft onset
-    private var lp2State = 0.0
-    private var woodCoef = 1.0
-    private val air = Resonance()
-    private val top = Resonance()
-    private var onsetLeft = 0
+    // --- O-73: the guitar string (two planes, a pick); the box it sounds in is the synth's, one for all strings
+    private val guitarString = GuitarString(sr)
 
     // --- FM / oscillators
     private var hz = 440.0
@@ -432,6 +444,9 @@ private class SynthVoice(private val sr: Int) {
     /** The right ear of the sample [next] has just returned, which is the left; the same as it for every voice but the glass one. */
     var right = 0.0
         private set
+
+    /** O-73: true for a guitar string — it goes to the body of the guitar, not straight to the output. */
+    val guitar: Boolean get() = !isTap && kind == Voice.GUITAR
 
     /** True for a note of the glass instrument: its two ears go to the hall, not to the middle. */
     val glass: Boolean get() = !isTap && kind == Voice.TONE && timbre == ToneTimbre.GLASS
@@ -461,7 +476,7 @@ private class SynthVoice(private val sr: Int) {
         lpState = 0.0
         noiseState = (now.toInt() * 1103515245 + 12345) or 1
         when (voice) {
-            Voice.GUITAR -> startGuitar()
+            Voice.GUITAR -> guitarString.pluck(frequency, vel, noiseState)
             Voice.BASS -> startString(t60 = 3.5, brightness = 0.35, outputLp = 0.12)
             Voice.TONE -> startTone(frequency, vel, pad, tuning)
             else -> Unit
@@ -505,26 +520,10 @@ private class SynthVoice(private val sr: Int) {
         bank.release(fast = true)
         hum.fastRelease()
         glassVoice.fastRelease()
+        if (kind == Voice.GUITAR) guitarString.release(GUITAR_STOP_SECONDS)
     }
 
-    /**
-     * O-70 (ADR-068): a plucked steel string that sounds like wood, not like a buzzer. The pluck is a soft finger, not a
-     * spike of white noise (two poles over the noise, brighter when played harder), the sound leaves through the wood
-     * (a gentle two-pole low-pass that follows the pitch) and the body adds its air and top resonances. Before, a third
-     * of a strum's energy lay above 4 kHz — the fizz heard as «midi» and as strange overtones; now it is a few per cent.
-     */
-    private fun startGuitar() {
-        val t60 = 4.5 - 3.0 * min(1.0, hz / 700.0)
-        startString(t60 = t60, brightness = 0.3 + 0.3 * velocity, outputLp = 1.0, poles = 2, level = GUITAR_LEVEL)
-        val fc = (hz * 12.0).coerceIn(2_400.0, 5_500.0)
-        woodCoef = 1.0 - exp(-2 * PI * fc / sr)
-        lp2State = 0.0
-        air.set(sr, 102.0, 3.0)
-        top.set(sr, 205.0, 4.0)
-        onsetLeft = (sr * 0.0015).toInt()
-    }
-
-    private fun startString(t60: Double, brightness: Double, outputLp: Double, poles: Int = 1, level: Double = 0.9) {
+    private fun startString(t60: Double, brightness: Double, outputLp: Double) {
         val loop = sr / hz - 0.5 // the 2-point average adds half a sample
         var n = floor(loop).toInt()
         var frac = loop - n
@@ -541,16 +540,13 @@ private class SynthVoice(private val sr: Int) {
         loopGain = 0.001.pow(1.0 / (hz * t60))
         releaseGain = 0.001.pow(1.0 / (hz * 0.12))
         lpCoef = outputLp
-        // Excitation: noise, low-passed by [brightness] ([poles] times), DC removed, plucked ~1/7 along the string.
+        // Excitation: noise, low-passed by [brightness], DC removed, plucked ~1/7 along the string.
         var lp = 0.0
-        var lp2 = 0.0
         var mean = 0.0
         for (i in 0 until dLen) {
             lp += brightness * (nextNoise() - lp)
-            lp2 += brightness * (lp - lp2)
-            val x = if (poles >= 2) lp2 else lp
-            delay[i] = x.toFloat()
-            mean += x
+            delay[i] = lp.toFloat()
+            mean += lp
         }
         mean /= dLen
         val pick = max(1, dLen / 7)
@@ -559,7 +555,7 @@ private class SynthVoice(private val sr: Int) {
             delay[i] = (delay[i] - mean - (delay[i - pick] - mean)).toFloat()
         }
         for (i in 0 until dLen) peak = max(peak, kotlin.math.abs(delay[i].toDouble()))
-        val scale = (level * velocity / peak).toFloat()
+        val scale = (0.9 * velocity / peak).toFloat()
         for (i in 0 until dLen) delay[i] *= scale
     }
 
@@ -577,13 +573,14 @@ private class SynthVoice(private val sr: Int) {
             released = true
             releaseStart = now
             bank.release(fast = false)
+            if (kind == Voice.GUITAR) guitarString.release(GUITAR_LET_GO_SECONDS)
         }
         val t = (now - startedAt).toDouble() / sr
         val y = if (isTap) {
             bank.next()
         } else {
             when (kind) {
-                Voice.GUITAR -> guitar()
+                Voice.GUITAR -> guitarString.next()
                 Voice.BASS -> string()
                 Voice.PIANO -> ePiano(t, now)
                 Voice.TONE -> when (timbre) {
@@ -628,19 +625,6 @@ private class SynthVoice(private val sr: Int) {
         if (dIdx >= dLen) dIdx = 0
         lpState += lpCoef * (out - lpState)
         return lpState * (if (lpCoef < 1.0) 1.8 else 1.0)
-    }
-
-    /** O-70: the string through the wood and the body. */
-    private fun guitar(): Double {
-        val raw = string()
-        lp2State += woodCoef * (raw - lp2State)
-        val body = AIR_MIX * air.next(lp2State) + TOP_MIX * top.next(lp2State)
-        var y = lp2State + body
-        if (onsetLeft > 0) {
-            y *= 1.0 - onsetLeft.toDouble() / (sr * 0.0015)
-            onsetLeft--
-        }
-        return y
     }
 
     private fun ePiano(t: Double, now: Long): Double {
@@ -796,41 +780,6 @@ internal class DroneBank(private val sr: Int) {
     }
 }
 
-/** O-70: the level of one guitar string (the bass keeps 0.9) and how much of the body is heard. */
-private const val GUITAR_LEVEL = 0.85
-private const val AIR_MIX = 0.9
-private const val TOP_MIX = 0.6
-
-/** O-70: one resonance of a guitar body — a band-pass biquad (0 dB at its peak), preallocated, no allocation per sample. */
-private class Resonance {
-    private var b0 = 0.0
-    private var a1 = 0.0
-    private var a2 = 0.0
-    private var x1 = 0.0
-    private var x2 = 0.0
-    private var y1 = 0.0
-    private var y2 = 0.0
-
-    fun set(sr: Int, hz: Double, q: Double) {
-        val w = 2 * PI * hz / sr
-        val alpha = sin(w) / (2 * q)
-        val a0 = 1 + alpha
-        b0 = alpha / a0
-        a1 = -2 * cos(w) / a0
-        a2 = (1 - alpha) / a0
-        x1 = 0.0
-        x2 = 0.0
-        y1 = 0.0
-        y2 = 0.0
-    }
-
-    fun next(x: Double): Double {
-        val y = b0 * x - b0 * x2 - a1 * y1 - a2 * y2
-        x2 = x1
-        x1 = x
-        y2 = y1
-        y1 = y
-        return y
-    }
-}
-
+/** O-73: a lifted finger damps a string in about a seventh of a second; a stopped chord (stopAll) in a few hundredths. */
+private const val GUITAR_LET_GO_SECONDS = 0.14
+private const val GUITAR_STOP_SECONDS = 0.02
