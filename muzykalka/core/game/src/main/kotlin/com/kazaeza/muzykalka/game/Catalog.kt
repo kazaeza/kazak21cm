@@ -60,6 +60,8 @@ enum class Variant(val mode: ModeId, val ru: String, val guitar: GuitarNeed, val
     TIR_LOOP3(ModeId.TIR, "Петля в трёх тональностях", GuitarNeed.NONE, "0.1"),
     /** O-78: the weekly control round — the same question over the drone and in a band-like texture, to see the gap between them (ADR-074). */
     TIR_TRANSFER(ModeId.TIR, "Проверка переноса", GuitarNeed.NONE, "0.1"),
+    /** O-77: only the bass of a loop is heard and played on the guitar, then the whole band, then the bass again, then another key (ADR-075). */
+    TIR_BASSLINE(ModeId.TIR, "Бас-линия", GuitarNeed.REQUIRED, "0.1"),
     /** O-75: a chord over the tonic — what does it DO (home, away, tension), and then what is it made of (ADR-072). */
     TIR_LAYERS(ModeId.TIR, "Слои аккорда", GuitarNeed.NONE, "0.1"),
     /** O-51: a scale over the drone — which mode is it (ADR-049). */
@@ -162,6 +164,9 @@ object Levels {
 
     /** «Проверка переноса» (O-78): one level — a control, not a ladder. */
     val TIR_TRANSFER = listOf("раз в неделю: дрон и живая фактура")
+
+    /** «Бас-линия» (O-77): I IV V first, then vi, then ♭VII and minor. */
+    val TIR_BASSLINE = listOf("I · IV · V", "+ vi", "+ ♭VII и минор")
 
     /** «Слои аккорда» (O-75): the job first, on triads of a major key; then sevenths and minor; then the job and the colour of one chord. */
     val TIR_LAYERS = listOf("что делает: дом, уход, напряжение", "+ септаккорды и минор", "два слоя: что делает, потом из чего")

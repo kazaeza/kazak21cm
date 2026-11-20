@@ -40,6 +40,8 @@ import com.kazaeza.muzykalka.game.NextChordDriver
 import com.kazaeza.muzykalka.game.FormulaDriver
 import com.kazaeza.muzykalka.game.ColorDriver
 import com.kazaeza.muzykalka.game.LayersDriver
+import com.kazaeza.muzykalka.game.BassLineDriver
+import com.kazaeza.muzykalka.game.BassLineTask
 import com.kazaeza.muzykalka.game.Loop3Driver
 import com.kazaeza.muzykalka.game.TransferDriver
 import com.kazaeza.muzykalka.game.ModeQuizDriver
@@ -163,6 +165,8 @@ data class GameUi(
     val feedback: FeedbackEvent? = null,
     val micLevelDb: Double = -90.0,
     val heard: MidiNote? = null,
+    /** O-77: the notes of the line played so far on the guitar, in order (cleared with the next task). */
+    val phrase: List<MidiNote> = emptyList(),
     val micError: String? = null,
     val needsMic: Boolean = false,
     val notation: DegreeNotation = DegreeNotation.ARABIC,
@@ -186,7 +190,7 @@ data class GameUi(
     val waitsForNext: Boolean = false,
 )
 
-fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || this == Variant.PARROT_ECHO || isSung()
+fun Variant.needsMic(): Boolean = this == Variant.HUNT_FIND || this == Variant.HUNT_ALL_OCTAVES || this == Variant.PARROT_ECHO || this == Variant.TIR_BASSLINE || isSung()
 
 /** The games on the songs of the library: «Чья гармония?» (O-43) and «Куда пойдёт?» (O-45). */
 fun Variant.isSongQuiz(): Boolean = this == Variant.TIR_SONG || this == Variant.TIR_NEXT
@@ -203,6 +207,9 @@ private fun sungWindowMs(v: Variant): Long = if (v == Variant.KAMERTON_SEARCH) 7
 /** After the drone starts or changes key, before the first sound over it. */
 private const val DRONE_SETTLE_MS = 1_500L
 
+/** O-77: how long the line may stand still before what was played is judged. */
+private const val PHRASE_IDLE_MS = 4_000L
+
 /**
  * O-35: the picture of a note lags the sound by about this much (the speaker's and the screen's delay). A guess:
  * set by eye on a phone.
@@ -218,7 +225,7 @@ private const val ANCHOR_TAIL_MS = 600L
 object Drills {
     /** Variants with a drill driver in this build (library songs have their own Taper screen). */
     val PLAYABLE = setOf(
-        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_COLOR, Variant.TIR_LAYERS, Variant.TIR_LOOP3, Variant.TIR_TRANSFER, Variant.TIR_MODE, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
+        Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_COLOR, Variant.TIR_LAYERS, Variant.TIR_LOOP3, Variant.TIR_TRANSFER, Variant.TIR_BASSLINE, Variant.TIR_MODE, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES, Variant.HUNT_REVERSE,
         Variant.TAPER_STEPS, Variant.FORMULA_ALOUD, Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING,
         // O-69 (ADR-067): «Попугай» is off the list until it becomes something worth playing; its driver stays
     )
@@ -241,6 +248,7 @@ object Drills {
         Variant.TIR_LAYERS -> Levels.TIR_LAYERS.size
         Variant.TIR_LOOP3 -> Levels.TIR_LOOP3.size
         Variant.TIR_TRANSFER -> Levels.TIR_TRANSFER.size
+        Variant.TIR_BASSLINE -> Levels.TIR_BASSLINE.size
         Variant.PARROT_ECHO -> Levels.ECHO.size
         Variant.TIR_NEXT -> Levels.TIR_NEXT.size
         Variant.TAPER_STEPS -> Levels.STEPS.size
@@ -303,6 +311,7 @@ object Drills {
             Variant.TIR_LAYERS -> Levels.TIR_LAYERS
             Variant.TIR_LOOP3 -> Levels.TIR_LOOP3
             Variant.TIR_TRANSFER -> Levels.TIR_TRANSFER
+            Variant.TIR_BASSLINE -> Levels.TIR_BASSLINE
             Variant.TIR_DUEL -> listOf("две ступени, ${TirDriver.DUEL_GOAL} подряд")
             else -> Levels.TIR
         }.getOrElse(level - 1) { "" }
@@ -330,6 +339,7 @@ object Drills {
             Variant.TIR_LAYERS -> LayersDriver.PROMOTION_TARGET_MS
             Variant.TIR_LOOP3 -> Loop3Driver.PROMOTION_TARGET_MS
             Variant.TIR_TRANSFER -> Loop3Driver.PROMOTION_TARGET_MS
+            Variant.TIR_BASSLINE -> BassLineDriver.PROMOTION_TARGET_MS
             else -> TirDriver.promotionTargetMs(level)
         }
         ModeId.TAPER -> StepsDriver.PROMOTION_TARGET_MS
@@ -380,6 +390,7 @@ object Drills {
             Variant.TIR_LAYERS -> RoundEngine(LayersDriver(KeyPicker(random)), config, random, level, history, epochOffsetMs)
             Variant.TIR_LOOP3 -> RoundEngine(Loop3Driver(settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_TRANSFER -> RoundEngine(TransferDriver(settings.degreeNotation), config, random, level, history, epochOffsetMs)
+            Variant.TIR_BASSLINE -> RoundEngine(BassLineDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_COLOR -> RoundEngine(ColorDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.FORMULA_ALOUD -> RoundEngine(FormulaDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
@@ -597,6 +608,11 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     private fun onEnter(e: RoundEngine<*>, s: RoundState<*>) {
         when (s.phase) {
             RoundPhase.PROMPTING -> {
+                if (spec.variant == Variant.TIR_BASSLINE) {
+                    phraseWait?.cancel()
+                    phrase.clear()
+                    state.update { it.copy(phrase = emptyList()) }
+                }
                 val audio = s.task?.prompt?.audio
                 val droneTask = s.task as? DroneTask
                 val drone = droneTask?.drone
@@ -775,6 +791,8 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 if (spec.variant.isSung()) {
                     if (e.state.phase != RoundPhase.LISTENING || sungJob?.isActive == true) return@collect
                     sungJob = viewModelScope.launch { answerSung(e, onset.note, onset.cents, at) }
+                } else if (spec.variant == Variant.TIR_BASSLINE) {
+                    onPhraseNote(e, Answer.NotePlayed(onset.note, onset.cents), at)
                 } else {
                     e.answer(Answer.NotePlayed(onset.note, onset.cents), at)
                     react(e)
@@ -798,6 +816,42 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     }
 
     private var sungJob: Job? = null
+
+    /** O-77: the notes of the line the guitar has played in this task, the time of the first, and the wait for the next. */
+    private val phrase = ArrayList<Answer.NotePlayed>()
+    private var phraseAt = 0L
+    private var phraseWait: Job? = null
+
+    /**
+     * O-77 «Бас-линия»: the line is answered note by note — each onset is one note of it; when there are as many as the line
+     * has the whole is judged at once, and when the player stops short for [PHRASE_IDLE_MS] what there is is judged (a miss).
+     * The time of the answer is the time of its first note (rule 4: the first sound counts).
+     */
+    private fun onPhraseNote(e: RoundEngine<*>, note: Answer.NotePlayed, atMs: Long) {
+        val task = e.state.task as? BassLineTask ?: return
+        if (e.state.phase != RoundPhase.LISTENING) return
+        if (phrase.isEmpty()) phraseAt = atMs
+        phrase += note
+        state.update { it.copy(phrase = phrase.map { p -> p.note }) }
+        phraseWait?.cancel()
+        if (phrase.size >= task.expected) {
+            submitPhrase(e)
+        } else {
+            phraseWait = viewModelScope.launch {
+                delay(PHRASE_IDLE_MS)
+                submitPhrase(e)
+            }
+        }
+    }
+
+    private fun submitPhrase(e: RoundEngine<*>) {
+        phraseWait?.cancel()
+        if (phrase.isEmpty()) return
+        val played = phrase.toList()
+        phrase.clear()
+        e.answer(Answer.Phrase(played), phraseAt)
+        react(e)
+    }
 
     /** K-01: listen to the steady part of the sung note, then answer with its median pitch (time = onset). */
     private suspend fun answerSung(e: RoundEngine<*>, note: MidiNote, cents: Double, atMs: Long) {

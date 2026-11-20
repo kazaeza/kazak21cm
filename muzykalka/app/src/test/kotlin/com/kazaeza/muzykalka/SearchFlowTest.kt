@@ -121,4 +121,34 @@ class SearchFlowTest {
         rule.waitUntil(5_000) { has("нашёл") || has("ты сыграл") }
         rule.waitUntil(5_000) { audio.played.size > before } // the note walks home (rule 5)
     }
+
+    /** O-77 «Бас-линия» (ADR-075): only the bass sounds, the line is played into the microphone note by note, then the band. */
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun theBassLineIsPlayedNoteByNoteAndThenTheBandAnswers() {
+        Shadows.shadowOf(ApplicationProvider.getApplicationContext<Application>()).grantPermissions(Manifest.permission.RECORD_AUDIO)
+        val audio = FakeAudioOutput()
+        val mic = FakePitchInput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+            override val pitchInput: PitchInput = mic
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_BASSLINE, level = 1), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { has("Сыграй этот бас") }
+        assertTrue("the microphone is open", mic.isRunning.value)
+        assertTrue("no drone: it would leak into the microphone", audio.drones.filterNotNull().isEmpty())
+        val question = audio.played.last()
+        assertTrue("only the bass sounds", question.notes.all { it.voice == com.kazaeza.muzykalka.music.Voice.BASS })
+        // the line as a guitar plays it: the loud notes of the question, in order
+        val line = question.notes.filter { it.velocity > 0.8f }.sortedBy { it.startBeat }.map { it.note!! }
+        val before = audio.played.size
+        line.forEach { mic.sing(it) }
+        rule.waitUntil(5_000) { audio.played.size > before } // the band (the right line), or the bass and the band (a miss)
+        assertTrue("the band has a guitar", audio.played.last().notes.any { it.voice == com.kazaeza.muzykalka.music.Voice.GUITAR })
+        assertTrue("a right line is rewarded, a wrong one corrected", has("+") || has("→"))
+    }
 }
