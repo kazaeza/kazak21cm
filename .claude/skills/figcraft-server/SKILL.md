@@ -21,7 +21,7 @@ FigCraft у человека ──(Share ▸ Online)──► сервер ◄�
 |---|---|
 | `references/own-server.md` | Свой `figcraft-server`: установка, TLS, хранение на диске, срок жизни файлов, команды админа, что происходит при публикации |
 | `references/big-files.md` | Ресурсы облачной сессии, каналы переноса файла (что проверено, что нет), порядок для больших файлов, прямая работа без сервера |
-| `references/file-format.md` | Устройство `.figcraft` (zip, `document.json`, `images/<sha256>`), команды `info`/`render`/`export`/`convert`/`run`, картинки, скорость, эмодзи |
+| `references/file-format.md` | Устройство `.figcraft` (zip, `document.json`, `images/<sha256>`, иногда `versions/`), команды `info`/`render`/`export`/`convert`/`run`, картинки, скорость, эмодзи |
 | `references/web-build.md` | Веб-версия в headless Chromium: запуск, управление по координатам, эмодзи, сохранение и экспорт загрузкой |
 | `NOTES.md` | Что и на какой версии проверено |
 
