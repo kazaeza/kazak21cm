@@ -275,7 +275,7 @@ internal fun TirContent(
                     }
                     shown != null && !feedback -> {
                         val c = DegreeColors.of(shown)
-                        Text("гудит нота", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+                        Text("тоника гудит внизу, над ней — нота", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim, textAlign = TextAlign.Center)
                         GradientText(DegreeFormatter.degree(shown, ui.notation), MaterialTheme.typography.displayLarge, DegreeColors.gradient(c), if (listening) Modifier.breathe() else Modifier)
                         Text(DegreeVibes.of(shown).word, style = MaterialTheme.typography.titleLarge, color = c)
                         Text(
@@ -362,7 +362,11 @@ internal fun TirContent(
                         GradientText("?", MaterialTheme.typography.displayLarge, accent, Modifier.breathe())
                         Text(
                             when (task.kind) {
-                                TirKind.NOTE -> if (task.dyad) "Какое созвучие? Верхний от нижнего" else "Какая ступень?"
+                                TirKind.NOTE -> when {
+                                    task.dyad -> "Какое созвучие? Верхний от нижнего"
+                                    task.over != null -> "Какая ступень? Тоника гудит внизу — считай от неё, не от аккорда"
+                                    else -> "Какая ступень?"
+                                }
                                 TirKind.MELODY -> "Мелодия · ${task.notes.size} нот"
                                 TirKind.CHORD -> if (task.bassOnly) "Какой аккорд? Слышен только бас" else "Какой аккорд?"
                                 TirKind.PROGRESSION -> "Ход: аккорды 2–4"

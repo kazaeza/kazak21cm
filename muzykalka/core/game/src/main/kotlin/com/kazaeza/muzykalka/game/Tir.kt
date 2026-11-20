@@ -350,12 +350,9 @@ class TirDriver(
         val notes = simonChain.map { place -> DegreeNote(pad[Math.floorMod(place, pad.size)], Math.floorDiv(place, pad.size)) }
         val tonic = key.tonicAtOrAbove(MidiNote(55))
         val chain = arranger.line(notes, key, Voice.TONE, beatsEach = simonBeats(level), tempoBpm = TEMPO, tonicFloor = tonic)
-        // O-59: «дом» first — the tonic alone, so the first note is heard against it and not against nothing
-        val question = if (simonAnchored(level)) {
-            arranger.line(listOf(DegreeNote(Degree.ONE)), key, Voice.TONE, beatsEach = SIMON_HOME_BEATS, tempoBpm = TEMPO, tonicFloor = tonic).then(chain, gapBeats = SIMON_HOME_GAP)
-        } else {
-            chain
-        }
+        // O-71 (ADR-069): the chain is the whole question — the tonic hums under it all the time, and a tonic played
+        // before it (O-59) read as one more note of the chain: two were drawn, three sounded
+        val question = chain
         val itemKey = "tir:simon:L$level:len${notes.size}"
         simonLastKey = itemKey
         return TirTask(
@@ -427,7 +424,7 @@ class TirDriver(
      * over it is heard from the wrong tonic; against the humming tonic the chord stays a step away from home.
      */
     private fun overChord(chord: ChordDegree, key: Key, over: Score): Score {
-        val played = arranger.chords(listOf(chord), key, beatsEach = OVER_CHORD_BEATS, tempoBpm = TEMPO)
+        val played = arranger.chordsOverTonic(listOf(chord), key, beatsEach = OVER_CHORD_BEATS, tempoBpm = TEMPO)
         return played.copy(notes = played.notes + over.notes.map { it.copy(startBeat = it.startBeat + OVER_NOTE_DELAY_BEATS) })
     }
 
@@ -453,7 +450,7 @@ class TirDriver(
         // O-40: the note hums and the chord is played over it; O-68: the tonic hums under the note all the time, so the
         // note is heard as a step of the key and the chord as a chord of the key, not the note as a new home
         val note = DegreeNote(degree)
-        val question = arranger.chords(listOf(chord), key, beatsEach = UNDER_NOTE_CHORD_BEATS, tempoBpm = TEMPO)
+        val question = arranger.chordsOverTonic(listOf(chord), key, beatsEach = UNDER_NOTE_CHORD_BEATS, tempoBpm = TEMPO)
         val home = arranger.drone(key)
         val hum = home.first() + 12 + (key.pitchClassOf(degree) - home.first().pitchClass)
         return TirTask(
@@ -479,7 +476,7 @@ class TirDriver(
         val pad = onTonicPad(key.mode, level)
         val prefix = "tir:ontonic:L$level:"
         val chord = ItemWeights.pick(r, pad) { ItemWeights.weight(prefix + ChordParser.formatRoman(it), context.history) }
-        val question = arranger.chords(listOf(chord), key, beatsEach = ON_TONIC_CHORD_BEATS, tempoBpm = TEMPO)
+        val question = arranger.chordsOverTonic(listOf(chord), key, beatsEach = ON_TONIC_CHORD_BEATS, tempoBpm = TEMPO)
         return TirTask(
             itemKey = prefix + ChordParser.formatRoman(chord), prompt = Prompt(title = "?", audio = question, key = key),
             kind = TirKind.CHORD, level = level, key = key, tonic = key.tonicAtOrAbove(MidiNote(55)), notes = emptyList(),
@@ -544,7 +541,7 @@ class TirDriver(
         val pairs = starts.flatMap { f -> pad.filter { !sameChord(it, f) }.map { f to it } }
         fun id(p: Pair<ChordDegree, ChordDegree>) = prefix + ChordParser.formatRoman(p.first) + ">" + ChordParser.formatRoman(p.second)
         val pair = ItemWeights.pick(r, pairs) { ItemWeights.weight(id(it), context.history) }
-        val question = arranger.chords(listOf(pair.first, pair.second), key, beatsEach = ON_TONIC_CHORD_BEATS, tempoBpm = TEMPO)
+        val question = arranger.chordsOverTonic(listOf(pair.first, pair.second), key, beatsEach = ON_TONIC_CHORD_BEATS, tempoBpm = TEMPO)
         return TirTask(
             itemKey = id(pair), prompt = Prompt(title = "?", audio = question, key = key),
             kind = TirKind.CHORD, level = level, key = key, tonic = key.tonicAtOrAbove(MidiNote(55)), notes = emptyList(),
@@ -807,13 +804,7 @@ class TirDriver(
             else -> 0.9
         }
 
-        /** O-59: the tonic sounds alone before the chain on levels 1 and 2. */
-        fun simonAnchored(level: Int): Boolean = level <= 2
-
         fun simonMoves(level: Int): List<Int> = if (level <= 1) SIMON_MOVES else SIMON_MOVES_LEAPS
-
-        const val SIMON_HOME_BEATS = 2.0
-        const val SIMON_HOME_GAP = 0.5
 
         /** O-59: after a miss the chain is heard again slowly, a note at a time. */
         const val SIMON_SLOW_BEATS = 1.6

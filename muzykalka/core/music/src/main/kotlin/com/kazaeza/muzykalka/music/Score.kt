@@ -63,6 +63,9 @@ class Arranger(
         /** O-17: the lowest note of a strummed chord (G2): the bass string, still audible on a phone. */
         val STRUM_FLOOR = MidiNote(43)
 
+        /** O-71: the held tonic under chords — as firm as the bass of a chord, so that it is never lost under them. */
+        const val PEDAL_VELOCITY = 0.9f
+
         /** Gap between the strings of one strum, in beats: a quick downstroke, not a cluster. */
         const val STRUM_STAGGER_BEATS = 0.06
 
@@ -93,6 +96,21 @@ class Arranger(
                 ScoreNote(start, beatsEach * 0.95, Voice.BASS, bassNote(c, key), 0.8f)
         }
         return Score(tempoBpm, notes)
+    }
+
+    /**
+     * O-71 (ADR-069): [chords] of [key], one per [beatsEach] beats, played OVER the tonic: the chords are only their upper
+     * structure (the root position triad or seventh, no bass voice of their own) and the tonic is held below them,
+     * as a bass, through all of it. A chord with its own bass root is heard as a new home, and the ear loses the key;
+     * with the tonic held underneath it stays a chord of the key.
+     */
+    fun chordsOverTonic(chords: List<ChordDegree>, key: Key, beatsEach: Double = 2.0, tempoBpm: Double = 90.0): Score {
+        val tonicChord = ChordDegree(Degree.ONE, ChordQuality.MAJOR)
+        val pedal = ScoreNote(0.0, chords.size * beatsEach * 0.97, Voice.BASS, bassNote(tonicChord, key), PEDAL_VELOCITY)
+        val upper = chords.flatMapIndexed { i, c ->
+            voicing(c, key).map { ScoreNote(i * beatsEach, beatsEach * 0.95, Voice.PIANO, it, 0.7f) }
+        }
+        return Score(tempoBpm, listOf(pedal) + upper)
     }
 
     /**

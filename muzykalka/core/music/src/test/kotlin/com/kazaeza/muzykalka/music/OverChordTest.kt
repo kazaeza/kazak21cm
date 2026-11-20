@@ -30,4 +30,22 @@ class OverChordTest {
         // 4 over V (5 7 2): a whole tone under 5, a minor third above 2 — leans up.
         assertEquals("над V — тянет вверх к 5", DegreeVibes.overChord(Degree.FOUR, Harmony.diatonicChord(Mode.MAJOR, 4), Mode.MAJOR, n))
     }
+
+    @Test
+    fun `O-71 - chords over the tonic carry no bass of their own and the tonic is held under all of them`() {
+        for (step in listOf(0, 3, 4, 5)) {
+            val chord = Harmony.diatonicChord(Mode.MAJOR, step)
+            val score = Arranger().chordsOverTonic(listOf(chord), c, beatsEach = 2.0)
+            val bass = score.notes.filter { it.voice == Voice.BASS }
+            assertEquals(1, bass.size, "only the pedal is a bass")
+            assertEquals(c.pitchClassOf(Degree.ONE), bass.single().note!!.pitchClass, "and it is the tonic")
+            assertTrue(bass.single().endBeat >= score.lengthBeats * 0.95, "held through the whole chord")
+            val upper = score.notes.filter { it.voice == Voice.PIANO }.map { it.note!!.pitchClass.value }.toSet()
+            assertEquals(chord.quality.intervals.map { (c.pitchClassOf(chord.root) + it).value }.toSet(), upper, "the chord itself is above")
+        }
+        val two = Arranger().chordsOverTonic(listOf(iv, Harmony.diatonicChord(Mode.MAJOR, 4)), c, beatsEach = 2.0)
+        assertEquals(1, two.notes.count { it.voice == Voice.BASS }, "one pedal under both chords")
+        assertTrue(two.notes.first { it.voice == Voice.BASS }.durationBeats > 3.5)
+    }
 }
+

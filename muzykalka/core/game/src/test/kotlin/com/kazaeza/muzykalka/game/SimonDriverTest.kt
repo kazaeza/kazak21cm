@@ -109,14 +109,12 @@ class SimonDriverTest {
     }
 
     @Test
-    fun `the tonic sounds alone before the chain on the first two levels, not on the third`() {
-        val l1 = play(driver(2), listOf(true, true), level = 1).last()
-        val l3 = play(driver(2), listOf(true, true), level = 3).last()
-        assertEquals(l1.notes.size + 1, l1.question.notes.size, "the tonic and the chain")
-        assertEquals(l3.notes.size, l3.question.notes.size, "no crutch on level 3")
-        val home = l1.question.notes.first()
-        assertEquals(l1.drone!!.first().pitchClass, home.note!!.pitchClass, "the first sound is the tonic")
-        assertTrue(l1.question.notes.drop(1).all { it.startBeat >= home.endBeat }, "the chain begins after the tonic has sounded")
+    fun `O-71 - the question is the chain and nothing else, as many sounds as notes drawn, on every level`() {
+        for (level in 1..3) {
+            val t = play(driver(2), listOf(true, true), level = level).last()
+            assertEquals(t.notes.size, t.question.notes.size, "level $level: no tonic before the chain")
+            assertTrue(t.drone!!.isNotEmpty(), "the tonic hums under it")
+        }
     }
 
     @Test
