@@ -234,6 +234,36 @@ object Metrics {
             StepsLevelStat(level, list.size, list.count { it.correct }.toDouble() / list.size)
         }
 
+    /** O-78: accuracy of one condition of the transfer check, over its last [Metrics.TRANSFER_WINDOW] answers. */
+    data class TransferStat(val attempts: Int, val accuracy: Double)
+
+    /**
+     * O-78 (ADR-074): the transfer check as numbers. [gap] is the accuracy over the drone minus the accuracy in the
+     * band-like texture, in 0..1 (positive: the real texture is harder). [daily] is that gap per day on which both conditions
+     * were asked, oldest first, for a line chart; [lastDay] the latest day of the check. A gap means little on few answers:
+     * [Transfer.trusted] says when there are enough.
+     */
+    data class Transfer(val synth: TransferStat?, val real: TransferStat?, val daily: List<Pair<Int, Double>>, val lastDay: Int?) {
+        val gap: Double? get() = if (synth != null && real != null) synth.accuracy - real.accuracy else null
+        val trusted: Boolean get() = (synth?.attempts ?: 0) >= TRANSFER_TRUSTED && (real?.attempts ?: 0) >= TRANSFER_TRUSTED
+    }
+
+    const val TRANSFER_WINDOW = 60
+    const val TRANSFER_TRUSTED = 10
+
+    /** [dayOf] turns epoch ms into the study day. */
+    fun transfer(attempts: List<AttemptRecord>, dayOf: (Long) -> Int): Transfer {
+        val mine = attempts.filter { it.variant == Variant.TIR_TRANSFER }.sortedBy { it.atEpochMs }
+        fun stat(prefix: String): TransferStat? = mine.filter { it.itemKey.startsWith(prefix) }.takeLast(TRANSFER_WINDOW).takeIf { it.isNotEmpty() }
+            ?.let { TransferStat(it.size, it.count { a -> a.correct }.toDouble() / it.size) }
+        val daily = mine.groupBy { dayOf(it.atEpochMs) }.toSortedMap().mapNotNull { (day, list) ->
+            val synth = list.filter { it.itemKey.startsWith("transfer:synth:") }
+            val real = list.filter { it.itemKey.startsWith("transfer:real:") }
+            if (synth.isEmpty() || real.isEmpty()) null else day to synth.count { it.correct }.toDouble() / synth.size - real.count { it.correct }.toDouble() / real.size
+        }
+        return Transfer(stat("transfer:synth:"), stat("transfer:real:"), daily, mine.lastOrNull()?.let { dayOf(it.atEpochMs) })
+    }
+
     /** One line per variant for the Progress screen. */
     data class VariantStats(val variant: Variant, val attempts: Int, val accuracy: Double, val medianMs: Long?)
 

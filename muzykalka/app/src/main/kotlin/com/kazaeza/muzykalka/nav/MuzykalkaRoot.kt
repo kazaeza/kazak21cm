@@ -148,7 +148,7 @@ fun MuzykalkaRoot(graph: AppGraph) {
                                     onCapture = { kind -> nav.navigate(EditorRoute(kind = kind.name)) },
                                     onOpen = { id -> nav.navigate(ItemRoute(id)) },
                                 )
-                                else -> ProgressScreen(onExam = { nav.navigate(ExamRoute) }, onFeel = { nav.navigate(FeelRoute) })
+                                else -> ProgressScreen(onExam = { nav.navigate(ExamRoute) }, onFeel = { nav.navigate(FeelRoute) }, onTransfer = { nav.navigate(GameRoute(Variant.TIR_TRANSFER.name)) })
                             }
                         }
                     }

@@ -348,6 +348,25 @@ class GameFlowTest {
         rule.waitUntil(5_000) { audio.played.size > before } // the loop again (the right one, or the chosen and then the right)
     }
 
+    /** O-78 (ADR-074): the control round asks the same kind of question in two textures, and shows no scenes. */
+    @Test
+    fun transferCheckAsksALoopQuestionWithoutScenes() {
+        val audio = FakeAudioOutput()
+        val graph = object : AppGraph(ApplicationProvider.getApplicationContext()) {
+            override val audioOutput: AudioOutput = audio
+        }
+        rule.setContent {
+            CompositionLocalProvider(LocalAppGraph provides graph) {
+                MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_TRANSFER), onExit = {}) }
+            }
+        }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("-го аккорда?", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("no scenes in a control round", rule.onAllNodesWithText("сцена", substring = true).fetchSemanticsNodes().isEmpty())
+        val before = audio.played.size
+        rule.onAllNodesWithText("I").onFirst().performClick()
+        rule.waitUntil(5_000) { audio.played.size > before }
+    }
+
     /** O-51 (ADR-049): a scale runs over the tonic drone, the key is not named, the mode is picked. */
     @Test
     fun modeQuizRunsAScaleOverTheDroneAndDoesNotNameTheKey() {

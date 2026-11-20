@@ -57,7 +57,7 @@ class Loop3DriverTest {
         val t = tasks(1, 3).first()
         assertNotNull(t.intro)
         assertNotNull(t.introDrone)
-        assertTrue(t.drone.isNotEmpty())
+        assertTrue(t.drone!!.isNotEmpty())
         assertEquals(t.question, t.prompt.audio)
         assertTrue(t.question.notes.any { it.voice == Voice.BASS }, "the tonic is held under the chords")
         assertEquals(2 * t.loop.size * Loop3Driver.LOOP_BEATS, t.question.lengthBeats, 1.0, "the loop twice")

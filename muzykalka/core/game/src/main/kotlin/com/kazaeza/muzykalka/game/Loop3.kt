@@ -34,11 +34,14 @@ data class LoopTask(
     val scenes: Int,
     val choices: List<ChordDegree>,
     val question: Score,
-    override val drone: List<MidiNote>,
+    /** The tonic hum; null in the transfer check's «real» texture, where there is none. */
+    override val drone: List<MidiNote>?,
     /** The loop once through, at an easy pace — the reward after the answer. */
     val heard: Score,
     override val intro: Score? = null,
     override val introDrone: List<MidiNote>? = null,
+    /** O-78: which texture of the transfer check this is; null in «Петля в трёх тональностях». */
+    val texture: Texture? = null,
 ) : DroneTask {
     override val replay: Score get() = question
 

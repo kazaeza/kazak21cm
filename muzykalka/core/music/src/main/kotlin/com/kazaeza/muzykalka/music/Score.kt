@@ -138,6 +138,38 @@ class Arranger(
         )
     }
 
+    /**
+     * O-78 (ADR-074): [chords] as a small band plays them, not as a synthesizer pad holds them — the guitar strikes each
+     * chord (a down-stroke on the first beat, a short up-stroke on the «and» of the second), the bass walks from the root to
+     * the fifth, and a kick, a snare and a hat keep time. The chord has [beatsEach] beats. No drone and no held tonic: the
+     * key is in the music, as it is in a song. Used for the transfer check, where the same loop is heard in this texture and
+     * over the drone.
+     */
+    fun groove(chords: List<ChordDegree>, key: Key, beatsEach: Double = 2.0, tempoBpm: Double = 100.0): Score {
+        val notes = ArrayList<ScoreNote>()
+        val half = beatsEach / 2.0
+        chords.forEachIndexed { i, chord ->
+            val t = i * beatsEach
+            val strum = strum(chord, key, tempoBpm)
+            // down-stroke: the whole chord, bass string first, until the up-stroke
+            strum.notes.forEach { n -> notes += n.copy(startBeat = t + n.startBeat, durationBeats = (half * 1.45 - n.startBeat).coerceAtLeast(0.1)) }
+            // up-stroke on the half-beat after the second: the thin strings, quieter, top string first
+            val upper = strum.notes.takeLast(4).reversed()
+            val gap = STRUM_GAP_SECONDS * tempoBpm / 60.0
+            upper.forEachIndexed { k, n ->
+                notes += n.copy(startBeat = t + half * 1.5 + k * gap, durationBeats = half * 0.5, velocity = (n.velocity * 0.6f).coerceAtLeast(0.3f))
+            }
+            val root = bassNote(chord, key)
+            val hasFifth = 7 in chord.quality.intervals
+            notes += ScoreNote(t, half * 0.9, Voice.BASS, root, 0.85f)
+            notes += ScoreNote(t + half, half * 0.9, Voice.BASS, if (hasFifth) root + 7 else root, 0.7f)
+            notes += ScoreNote(t, 0.2, Voice.KICK, null, 0.8f)
+            notes += ScoreNote(t + half, 0.2, Voice.SNARE, null, 0.7f)
+            for (k in 0 until 4) notes += ScoreNote(t + k * beatsEach / 4.0, 0.1, Voice.HAT, null, if (k % 2 == 0) 0.3f else 0.45f)
+        }
+        return Score(tempoBpm, notes)
+    }
+
     /** The chord as a stack of its tones from [STRUM_FLOOR], root position (the slash bass, if any, below it). */
     private fun stackedStrum(chord: ChordDegree, key: Key): List<MidiNote> {
         val bassPc = key.pitchClassOf(chord.bass ?: chord.root)

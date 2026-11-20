@@ -41,5 +41,8 @@ class GuitarRender {
         val synth = DefaultSynth()
         val parts = listOf("I", "V", "vi", "IV").map { synth.renderOffline(arranger.strum(ChordDegree.parse(it), key), tailSeconds = 0.0) }
         wav(File(dir, "$tag-progression.wav"), parts.reduce { a, b -> a + b })
+        // O-78: the transfer check's band-like texture: the loop twice, guitar + bass + drums
+        val loop = listOf("I", "V", "vi", "IV").map(ChordDegree::parse)
+        wav(File(dir, "$tag-groove.wav"), DefaultSynth().renderOffline(arranger.groove(loop + loop, key, beatsEach = 2.0, tempoBpm = 100.0), tailSeconds = 1.0))
     }
 }

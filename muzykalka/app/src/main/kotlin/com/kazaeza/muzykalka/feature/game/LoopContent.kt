@@ -53,11 +53,13 @@ internal fun LoopContent(task: LoopTask, ui: GameUi, accent: List<Color>, onAnsw
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     DegreeChip(RuNames.key(task.key), Juicy.Gold)
-                    Text(
-                        "сцена ${task.scene} из ${task.scenes}  " + (1..task.scenes).joinToString(" ") { if (it <= task.scene) "●" else "○" },
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Juicy.TextDim,
-                    )
+                    if (task.scenes > 1) {
+                        Text(
+                            "сцена ${task.scene} из ${task.scenes}  " + (1..task.scenes).joinToString(" ") { if (it <= task.scene) "●" else "○" },
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Juicy.TextDim,
+                        )
+                    }
                 }
                 ReplayKey("Повторить петлю", onReplay, enabled = listening)
                 Spacer(Modifier.height(8.dp))
@@ -77,12 +79,14 @@ internal fun LoopContent(task: LoopTask, ui: GameUi, accent: List<Color>, onAnsw
                         Spacer(Modifier.height(8.dp))
                         LoopLine(task, ui, written = true)
                         Spacer(Modifier.height(4.dp))
-                        Text(
-                            if (task.scene < task.scenes) "Дальше — та же петля в другой тональности. Ступень та же." else "Три тональности — одна и та же ступень.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Juicy.Text,
-                            textAlign = TextAlign.Center,
-                        )
+                        if (task.scenes > 1) {
+                            Text(
+                                if (task.scene < task.scenes) "Дальше — та же петля в другой тональности. Ступень та же." else "Три тональности — одна и та же ступень.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Juicy.Text,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                     else -> {
                         LoopLine(task, ui, written = false)

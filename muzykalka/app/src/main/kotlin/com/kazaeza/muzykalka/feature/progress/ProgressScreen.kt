@@ -81,7 +81,14 @@ data class ProgressUi(
     val guessing: Metrics.Guessing = Metrics.Guessing(0, 0, 0),
     val dayParts: List<Metrics.DayPart> = emptyList(),
     val steps: List<Metrics.StepsLevelStat> = emptyList(),
+    val transfer: Metrics.Transfer = Metrics.Transfer(null, null, emptyList(), null),
+    /** Study days since the last transfer check; null if there has been none. */
+    val transferDaysAgo: Int? = null,
 )
+
+private const val TRANSFER_BIG_GAP = 0.2
+private const val TRANSFER_SMALL_GAP = 0.1
+private const val TRANSFER_WEEK = 7
 
 /** Tickets P-02/P-03: everything the app knows about the practice, as numbers. */
 class ProgressViewModel(graph: AppGraph) : ViewModel() {
@@ -98,6 +105,8 @@ class ProgressViewModel(graph: AppGraph) : ViewModel() {
         val cards = entries.mapNotNull { it.card }
         val scores = Metrics.linkScores(attempts)
         val confusion = Metrics.confusion(attempts)
+        val study = graph.studyDay(settings)
+        val transfer = Metrics.transfer(attempts) { ms -> study.of(Instant.ofEpochMilli(ms)) }
         ProgressUi(
             loading = false,
             settings = settings,
@@ -116,6 +125,8 @@ class ProgressViewModel(graph: AppGraph) : ViewModel() {
             guessing = Metrics.guessing(attempts),
             dayParts = Metrics.byPartOfDay(attempts) { ms -> Instant.ofEpochMilli(ms).atZone(zone).hour },
             steps = Metrics.stepsStats(attempts),
+            transfer = transfer,
+            transferDaysAgo = transfer.lastDay?.let { today - it },
         )
     }
 
@@ -131,7 +142,7 @@ class ProgressViewModel(graph: AppGraph) : ViewModel() {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}) {
+fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -> Unit = {}) {
     val graph = LocalAppGraph.current
     val vm: ProgressViewModel = viewModel { ProgressViewModel(graph) }
     val ui by vm.ui.collectAsStateWithLifecycle()
@@ -163,6 +174,50 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}) {
                     LineChart(ui.playableSeries)
                 }
                 Text("Главное число: сколько песен ты играешь сам, без подсказок, в любой тональности. Если к 4-й неделе не растёт — пересматриваем программу.", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
+            }
+        }
+        item(key = "transfer") {
+            GlassCard(Modifier.fillMaxWidth(), accent = Accents.Calm) {
+                SectionLabel("перенос · синтезатор с дроном и живая фактура")
+                val t = ui.transfer
+                val synth = t.synth
+                val real = t.real
+                if (synth == null || real == null) {
+                    Text("Один контрольный раунд раз в неделю: та же задача над синтезатором и в звуке гитары, баса и ударных. Здесь будет разрыв между ними.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                } else {
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        BigStat("${(synth.accuracy * 100).toInt()}%", "синтезатор\n${synth.attempts} отв.", colors = Accents.Tir)
+                        BigStat("${(real.accuracy * 100).toInt()}%", "живая фактура\n${real.attempts} отв.", colors = Accents.Taper)
+                        BigStat("${((t.gap ?: 0.0) * 100).toInt()}", "разрыв\nп.п.", colors = Accents.Hero)
+                    }
+                    if (t.daily.size >= 2) {
+                        Spacer(Modifier.height(8.dp))
+                        LineChart(t.daily.map { (it.second * 100).toInt().coerceAtLeast(0) })
+                        Text("разрыв по дням проверки, п.п. — чем ниже, тем лучше слух переносится", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
+                    }
+                    val gap = t.gap ?: 0.0
+                    Text(
+                        when {
+                            !t.trusted -> "Пока мало ответов: нужно хотя бы ${Metrics.TRANSFER_TRUSTED} в каждом условии, чтобы разрыву можно было верить."
+                            gap >= TRANSFER_BIG_GAP -> "Живая фактура даётся заметно хуже синтезатора. Послушай ступени там, где музыка настоящая: песни из библиотеки, «Под бэкинг»."
+                            gap <= TRANSFER_SMALL_GAP -> "Разрыв небольшой: то, что слышишь на синтезаторе, слышишь и в живом звуке."
+                            else -> "Живой звук пока чуть труднее синтезатора. Следи, как разрыв меняется от недели к неделе."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (t.trusted && gap >= TRANSFER_BIG_GAP) Juicy.Gold else Juicy.Text,
+                    )
+                }
+                ui.transferDaysAgo?.let { ago ->
+                    Text(
+                        if (ago <= 0) "последняя проверка — сегодня" else "последняя проверка — ${ago} ${plural(ago, "день", "дня", "дней")} назад" + if (ago >= TRANSFER_WEEK) " · пора повторить" else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Juicy.TextFaint,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                JuicyButton(if (ui.transfer.synth == null) "Пройти проверку · 90 с" else "Проверить снова · 90 с", onClick = onTransfer, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leading = "")
+                Text("Это контроль, а не урок: задачи не из тренировок и не повторяются по ошибкам. С одним человеком цифры шумные — смотри на тренд.", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
             }
         }
         item(key = "degrees") {
