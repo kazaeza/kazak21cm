@@ -90,8 +90,9 @@ class UnderNoteDriverTest {
             assertFalse(wrong.correct)
             assertNotNull(wrong.correction, "rule 5")
             val heard = wrong.correction!!
-            assertTrue(t.question.notes.all { q -> heard.notes.any { it.startBeat == q.startBeat && it.note == q.note } }, "the question first, again")
-            assertTrue(heard.lengthBeats > t.question.lengthBeats, "then it goes home")
+            // O-74: what was chosen is heard first, then the right chord over its note (as it was asked), then home
+            assertTrue(t.question.notes.all { q -> heard.notes.any { it.note == q.note } }, "the question is heard again")
+            assertTrue(heard.lengthBeats > t.question.lengthBeats * 2, "the chosen chord, the right one, then home")
             assertNotNull(d.evaluate(t, Answer.Pass).correction)
             assertFalse(d.evaluate(t, Answer.DegreeChoice(t.notes.single().degree)).correct, "naming the note is not the answer")
         }

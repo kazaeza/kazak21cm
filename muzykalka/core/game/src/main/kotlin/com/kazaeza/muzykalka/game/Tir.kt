@@ -3,6 +3,7 @@ package com.kazaeza.muzykalka.game
 import com.kazaeza.muzykalka.music.Arranger
 import com.kazaeza.muzykalka.music.ChordDegree
 import com.kazaeza.muzykalka.music.ChordParser
+import com.kazaeza.muzykalka.music.Contrasts
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
@@ -663,6 +664,7 @@ class TirDriver(
                 expectedCode = task.chords.drop(1).joinToString(" ") { ChordParser.formatRoman(it) }
             }
         }
+        val contrast = contrast(task, answer)
         val (correct, givenText, givenCode) = when (answer) {
             is Answer.DegreeChoice -> Triple(
                 task.kind == TirKind.NOTE && answer.degree sameSoundAs task.notes[0].degree,
@@ -693,12 +695,60 @@ class TirDriver(
             correct = correct,
             expectedText = expectedText,
             givenText = givenText,
-            correction = if (correct) null else correction(task),
+            correction = if (correct) null else contrast?.score ?: correction(task),
             taskHadSound = true,
             confirmation = if (correct) confirmation(task) else null,
             expectedCode = expectedCode,
             givenCode = givenCode,
+            contrast = contrast?.line,
         )
+    }
+
+    /** O-74: what a wrong answer sounded like, then the right one — and the words for the first. */
+    private class Contrast(val score: Score, val line: String)
+
+    /**
+     * O-74 (ADR-071): after a miss the user hears what he CHOSE in the same context, then the right answer, and the
+     * contrast ends on the right one (the wrong sound is never the last). Only for a single degree or a single chord that
+     * was named (not «не знаю»): a chain, a pair or a bass has no single wrong sound to set against.
+     */
+    private fun contrast(task: TirTask, answer: Answer): Contrast? {
+        if (task.dyad || task.simon != null || task.bassOnly) return null
+        val mode = task.key.mode
+        return when {
+            answer is Answer.DegreeChoice && task.kind == TirKind.NOTE && !task.underNote -> {
+                if (answer.degree sameSoundAs task.notes.single().degree) return null
+                val given = DegreeNote(answer.degree, task.notes.single().octave)
+                val line = if (task.over != null) {
+                    Contrasts.degreeOver(answer.degree, task.over, mode, notation)
+                } else {
+                    Contrasts.degree(answer.degree, mode, notation)
+                }
+                val first = if (task.over != null) {
+                    overChord(task.over, task.key, arranger.line(listOf(given), task.key, Voice.TONE, beatsEach = 2.0, tempoBpm = TEMPO, tonicFloor = task.tonic))
+                } else {
+                    arranger.line(listOf(given), task.key, task.voice, beatsEach = 2.0, tempoBpm = TEMPO, tonicFloor = task.tonic)
+                }
+                val walk = arranger.line(listOf(given) + Harmony.resolution(given, mode), task.key, task.voice, beatsEach = 0.5, tempoBpm = TEMPO, tonicFloor = task.tonic)
+                val right = songTune(task)?.let { task.question.then(it, gapBeats = 0.6) } ?: plainCorrection(task)
+                Contrast(first.then(walk, gapBeats = 0.4).then(right, gapBeats = CONTRAST_GAP_BEATS), line)
+            }
+            answer is Answer.ChordChoice && task.kind == TirKind.CHORD -> {
+                if (sameChord(answer.chord, task.chords[0])) return null
+                val first = chordQuestion(task, answer.chord)
+                val home = arranger.chords(listOf(Harmony.diatonicChord(mode, 0)), task.key, beatsEach = 1.0, tempoBpm = TEMPO)
+                Contrast(first.then(task.question, gapBeats = CONTRAST_GAP_BEATS).then(home, gapBeats = 0.25), Contrasts.chord(answer.chord, mode, notation))
+            }
+            else -> null
+        }
+    }
+
+    /** The question of [task] as it would have sounded had [chord] been the asked one. */
+    private fun chordQuestion(task: TirTask, chord: ChordDegree): Score = when {
+        task.underNote -> arranger.chordsOverTonic(listOf(chord), task.key, beatsEach = UNDER_NOTE_CHORD_BEATS, tempoBpm = TEMPO)
+        task.from != null -> arranger.chordsOverTonic(listOf(task.from, chord), task.key, beatsEach = ON_TONIC_CHORD_BEATS, tempoBpm = TEMPO)
+        task.drone != null -> arranger.chordsOverTonic(listOf(chord), task.key, beatsEach = ON_TONIC_CHORD_BEATS, tempoBpm = TEMPO)
+        else -> arranger.chords(listOf(chord), task.key, beatsEach = 2.0, tempoBpm = TEMPO)
     }
 
     private fun sameChord(a: ChordDegree, b: ChordDegree) = a.root sameSoundAs b.root && a.quality == b.quality
@@ -836,6 +886,9 @@ class TirDriver(
 
         /** «Аккорд над тоникой»: the chord rings this long over the hum. */
         const val ON_TONIC_CHORD_BEATS = 2.0
+
+        /** O-74: the pause between what was chosen and the right answer. */
+        const val CONTRAST_GAP_BEATS = 0.8
 
         /** «Аккорд над тоникой»: the steps (0 = I) asked on [level]: I IV V, then vi, then ii and iii, then all seven. */
         val ON_TONIC_STEPS = listOf(listOf(0, 3, 4), listOf(0, 3, 4, 5), listOf(0, 1, 2, 3, 4, 5), (0..6).toList())

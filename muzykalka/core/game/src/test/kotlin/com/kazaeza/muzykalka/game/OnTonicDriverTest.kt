@@ -65,7 +65,10 @@ class OnTonicDriverTest {
             val wrong = d.evaluate(t, Answer.ChordChoice(other))
             assertTrue(!wrong.correct)
             assertNotNull(wrong.correction, "a wrong answer to a sounding task has its correction")
-            assertEquals(t.question.notes.size + Arranger().chords(listOf(Harmony.diatonicChord(t.key.mode, 0)), t.key, beatsEach = 1.0, tempoBpm = TirDriver.TEMPO).notes.size, wrong.correction!!.notes.size)
+            // O-74: the chosen chord over the tonic, then the asked one, then home
+            val home = Arranger().chords(listOf(Harmony.diatonicChord(t.key.mode, 0)), t.key, beatsEach = 1.0, tempoBpm = TirDriver.TEMPO).notes.size
+            assertTrue(wrong.correction!!.notes.size > t.question.notes.size + home, "chosen + asked + home")
+            assertNotNull(wrong.contrast)
             assertEquals(ChordParser.formatRoman(t.chords.single()), wrong.expectedCode)
             assertTrue(d.evaluate(t, Answer.Pass).correction != null)
         }

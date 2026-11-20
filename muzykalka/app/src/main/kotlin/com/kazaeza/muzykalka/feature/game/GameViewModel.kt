@@ -130,6 +130,8 @@ data class FeedbackEvent(
     val given: String,
     /** Sung answers: signed distance to the nearest octave of the asked note (+ = too high); the ruler shows it (O-33). */
     val centsError: Double? = null,
+    /** O-74: what the wrong answer was, in the words of the right ones («6 — тяжесть: тянет вниз к 5»). */
+    val contrast: String? = null,
 )
 
 /**
@@ -609,7 +611,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
             }
             RoundPhase.FEEDBACK -> {
                 val ev = s.lastEvaluation ?: return
-                lastFeedback = FeedbackEvent(++feedbackSerial, ev.correct, s.lastPoints, ev.expectedText, ev.givenText, ev.centsError)
+                lastFeedback = FeedbackEvent(++feedbackSerial, ev.correct, s.lastPoints, ev.expectedText, ev.givenText, ev.centsError, ev.contrast)
                 val sound = if (ev.correct) ev.confirmation else ev.correction
                 // O-63: where the user chose songs, the driver's confirmation / correction already holds the tune.
                 // O-66: whatever still sounds (a replay, a hint) is cut first — the answer is never heard on top of it

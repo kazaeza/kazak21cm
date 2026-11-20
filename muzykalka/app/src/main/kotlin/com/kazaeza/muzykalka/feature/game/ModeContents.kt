@@ -291,6 +291,8 @@ internal fun TirContent(
                             Text("+${f?.points ?: 0}", style = MaterialTheme.typography.headlineMedium, color = Juicy.Gold, modifier = Modifier.pop(ui.taskSerial))
                         } else {
                             Text(f?.given ?: "", style = MaterialTheme.typography.headlineMedium, color = Juicy.Hot)
+                            // O-74: what was chosen is heard first, then the right one — the words go in the same order
+                            f?.contrast?.let { Text("ты выбрал: $it", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim, textAlign = TextAlign.Center) }
                             Text("→ " + (f?.expected ?: ""), style = MaterialTheme.typography.displaySmall, color = Juicy.Good, textAlign = TextAlign.Center)
                         }
                         // The feeling to hang the sound on, while its resolution is playing.

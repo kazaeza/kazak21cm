@@ -70,6 +70,11 @@ data class Evaluation(
     /** Canonical, notation-independent codes stored in [AttemptRecord] for statistics ("♭3", "ii⁷", "F♯3"). */
     val expectedCode: String = expectedText,
     val givenCode: String = givenText,
+    /**
+     * O-74: a wrong answer in the words of the right ones — «6 — тяжесть: тянет вниз к 5». Its sound is the first half of
+     * [correction] (what was chosen, then the right one, ending on it); the screen shows it under the given answer.
+     */
+    val contrast: String? = null,
 ) {
     init {
         require(expectedText.isNotBlank()) { "Rule 5: expected answer text is mandatory" }
