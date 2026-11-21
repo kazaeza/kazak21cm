@@ -102,8 +102,11 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
             runCatching {
-                val json = graph.backup.export()
-                context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val json = graph.backup.export()
+                    val output = context.contentResolver.openOutputStream(uri, "wt") ?: error("Файл недоступен")
+                    output.bufferedWriter(Charsets.UTF_8).use { it.write(json) }
+                }
             }.onSuccess { Toast.makeText(context, "Бэкап сохранён", Toast.LENGTH_SHORT).show() }
                 .onFailure { Toast.makeText(context, "Не удалось сохранить: ${it.message}", Toast.LENGTH_LONG).show() }
         }

@@ -52,12 +52,15 @@ import com.kazaeza.muzykalka.ui.component.SectionLabel
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.math.roundToInt
 
 data class ProgressUi(
     val loading: Boolean = true,
@@ -137,7 +140,7 @@ class ProgressViewModel(graph: AppGraph) : ViewModel() {
             longestStreak = Metrics.longestStreak(days),
             practiceMinutes = ms / 60_000,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProgressUi())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProgressUi())
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -165,6 +168,7 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
                 }
             }
         }
+        item(key = "export") { ExportPracticeButton(ui.settings.dayStartHour) }
         item(key = "playable") {
             GlassCard(Modifier.fillMaxWidth(), accent = Accents.Hero) {
                 SectionLabel("играю с ходу · по дням")
@@ -187,21 +191,22 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
                 } else {
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        BigStat("${(synth.accuracy * 100).toInt()}%", "синтезатор\n${synth.attempts} отв.", colors = Accents.Tir)
-                        BigStat("${(real.accuracy * 100).toInt()}%", "живая фактура\n${real.attempts} отв.", colors = Accents.Taper)
-                        BigStat("${((t.gap ?: 0.0) * 100).toInt()}", "разрыв\nп.п.", colors = Accents.Hero)
+                        BigStat("${(synth.accuracy * 100).roundToInt()}%", "синтезатор\n${synth.attempts} отв.", colors = Accents.Tir)
+                        BigStat("${(real.accuracy * 100).roundToInt()}%", "живая фактура\n${real.attempts} отв.", colors = Accents.Taper)
+                        BigStat("${((t.gap ?: 0.0) * 100).roundToInt()}", "разрыв\nп.п.", colors = Accents.Hero)
                     }
                     if (t.daily.size >= 2) {
                         Spacer(Modifier.height(8.dp))
-                        LineChart(t.daily.map { (it.second * 100).toInt().coerceAtLeast(0) })
-                        Text("разрыв по дням проверки, п.п. — чем ниже, тем лучше слух переносится", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
+                        LineChart(t.daily.map { (it.second * 100).roundToInt() })
+                        Text("разница по дням, п.п. · выше нуля — точнее с дроном, ниже — с группой", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
                     }
                     val gap = t.gap ?: 0.0
                     Text(
                         when {
                             !t.trusted -> "Пока мало ответов: нужно хотя бы ${Metrics.TRANSFER_TRUSTED} в каждом условии, чтобы разрыву можно было верить."
                             gap >= TRANSFER_BIG_GAP -> "Живая фактура даётся заметно хуже синтезатора. Послушай ступени там, где музыка настоящая: песни из библиотеки, «Под бэкинг»."
-                            gap <= TRANSFER_SMALL_GAP -> "Разрыв небольшой: то, что слышишь на синтезаторе, слышишь и в живом звуке."
+                            gap < -TRANSFER_SMALL_GAP -> "С группой точность выше. Сравни обе доли и число ответов."
+                            gap <= TRANSFER_SMALL_GAP -> "В этих попытках точность в двух условиях близка."
                             else -> "Живой звук пока чуть труднее синтезатора. Следи, как разрыв меняется от недели к неделе."
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -231,25 +236,21 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
                         ui.degrees.forEach { d -> DegreeCell(d, notation) }
                     }
                     Spacer(Modifier.height(6.dp))
-                    Text("точность по последним 50 ответам · время верного ответа · сколько раз звучала", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
+                    Text("точность и медиана верных · в расчёте / всего · цвет оценки от 10 ответов", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
                 }
                 val g = ui.guessing
                 val echo = g.echoShare
                 if (echo != null || g.passes > 0) {
                     Spacer(Modifier.height(12.dp))
-                    SectionLabel("угадывание")
+                    SectionLabel("повтор прошлой ступени")
                     Text(
-                        (echo?.let { "${(it * 100).toInt()}% ошибок — повтор ответа на прошлую ноту" } ?: "ошибок пока нет") +
+                        (echo?.let { "${(it * 100).roundToInt()}% сравнимых ошибок — выбрана ступень предыдущего вопроса" } ?: "Пока нет сравнимых ответов") +
                             " · «не знаю»: ${g.passes}",
                         style = MaterialTheme.typography.titleMedium,
                         color = if ((echo ?: 0.0) > GUESSING_ALARM) Juicy.Gold else Juicy.Text,
                     )
                     Text(
-                        if ((echo ?: 0.0) > GUESSING_ALARM) {
-                            "Похоже, мозг отвечает «не как прошлая», а не слушает. Перед раундом послушай вайб ступеней, а когда не уверен — жми «не знаю»."
-                        } else {
-                            "Ниже 30% — значит, ты слушаешь, а не угадываешь по прошлому ответу."
-                        },
+                        "Ошибок с ответом для сравнения: ${g.wrong}. Совпадение само по себе не показывает, угадывал ли ты.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Juicy.TextDim,
                     )
@@ -282,11 +283,11 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
         if (ui.steps.isNotEmpty()) {
             item(key = "steps") {
                 GlassCard(Modifier.fillMaxWidth(), accent = Accents.Taper) {
-                    SectionLabel("ходы на гитаре · Тапёр")
+                    SectionLabel("ходы на гитаре · самооценка")
                     ui.steps.forEach { st ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text("${st.level}. " + Levels.STEPS.getOrElse(st.level - 1) { "" }, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            Text("${(st.accuracy * 100).toInt()}% · ${st.attempts}", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                            Text("${(st.accuracy * 100).roundToInt()}% · ${st.attempts}", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
                         }
                     }
                 }
@@ -295,11 +296,11 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
         if (ui.dayParts.any { it.attempts > 0 }) {
             item(key = "dayparts") {
                 GlassCard(Modifier.fillMaxWidth(), accent = Accents.Calm) {
-                    SectionLabel("когда слух острее · все режимы")
+                    SectionLabel("точность по времени суток · все режимы")
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         ui.dayParts.forEach { p ->
-                            BigStat(p.accuracy?.let { "${(it * 100).toInt()}%" } ?: "—", p.ru + "\n" + p.attempts, colors = Accents.Calm)
+                            BigStat(p.accuracy?.let { "${(it * 100).roundToInt()}%" } ?: "—", p.ru + "\n" + p.attempts, colors = Accents.Calm)
                         }
                     }
                 }
@@ -339,23 +340,25 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
         }
         item(key = "retention") {
             GlassCard(Modifier.fillMaxWidth(), accent = Accents.Good) {
-                SectionLabel("сколько песен вспомнишь")
+                SectionLabel("прогноз FSRS · вероятность вспомнить без повторения")
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    BigStat(ui.retention7?.let { "${(it * 100).toInt()}%" } ?: "—", "через 7 дней", colors = Accents.Good)
-                    BigStat(ui.retention30?.let { "${(it * 100).toInt()}%" } ?: "—", "через 30 дней", colors = Accents.Good)
+                    BigStat(ui.retention7?.let { "${(it * 100).roundToInt()}%" } ?: "—", "через 7 дней", colors = Accents.Good)
+                    BigStat(ui.retention30?.let { "${(it * 100).roundToInt()}%" } ?: "—", "через 30 дней", colors = Accents.Good)
                 }
             }
         }
         if (ui.stats.isNotEmpty()) {
             item(key = "stats") {
                 GlassCard(Modifier.fillMaxWidth()) {
-                    SectionLabel("по режимам · точность · время · ответов")
+                    SectionLabel("последние 100 в каждом режиме · точность и медиана верных")
+                    Text("Ответов в расчёте / всего. На малых выборках процент может резко меняться.", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
                     ui.stats.forEach { s ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(s.variant.ru, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            val selfRated = s.variant in setOf(com.kazaeza.muzykalka.game.Variant.TAPER_STEPS, com.kazaeza.muzykalka.game.Variant.TAPER_BLIND, com.kazaeza.muzykalka.game.Variant.FORMULA_ALOUD)
+                            Text(s.variant.ru + if (selfRated) " · самооценка" else "", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                             Text(
-                                "${(s.accuracy * 100).toInt()}% · ${s.medianMs?.let { String.format(java.util.Locale.US, "%.1f с", it / 1000.0) } ?: "—"} · ${s.attempts}",
+                                "${(s.accuracy * 100).roundToInt()}% · ${s.medianMs?.takeUnless { selfRated }?.let { String.format(java.util.Locale.US, "%.1f с", it / 1000.0) } ?: "—"} · ${minOf(100, s.attempts)}/${s.attempts}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Juicy.TextDim,
                             )
@@ -416,9 +419,9 @@ private fun DegreeCell(d: Metrics.DegreeStat, notation: com.kazaeza.muzykalka.mu
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(DegreeFormatter.degree(degree, notation), style = MaterialTheme.typography.titleLarge, color = color)
-        Text("${(d.accuracy * 100).toInt()}%", style = MaterialTheme.typography.titleMedium, color = if (d.accuracy >= 0.9) Juicy.Good else if (d.accuracy < 0.6) Juicy.Hot else Juicy.Text)
+        Text("${(d.accuracy * 100).roundToInt()}%", style = MaterialTheme.typography.titleMedium, color = if (d.attempts < 10) Juicy.TextDim else if (d.accuracy >= 0.9) Juicy.Good else if (d.accuracy < 0.6) Juicy.Hot else Juicy.Text)
         Text(
-            (d.medianMs?.let { String.format(java.util.Locale.US, "%.1fс", it / 1000.0) } ?: "—") + " · ${d.attempts}",
+            (d.medianMs?.let { String.format(java.util.Locale.US, "%.1fс", it / 1000.0) } ?: "—") + " · ${minOf(50, d.attempts)}/${d.attempts}",
             style = MaterialTheme.typography.labelSmall,
             color = Juicy.TextDim,
         )
@@ -426,7 +429,7 @@ private fun DegreeCell(d: Metrics.DegreeStat, notation: com.kazaeza.muzykalka.mu
 }
 
 private fun formatMeasure(unit: String, v: Double): String = when (unit) {
-    "верно" -> "${(v * 100).toInt()}%"
+    "верно" -> "${(v * 100).roundToInt()}%"
     "с" -> String.format(java.util.Locale.US, "%.1f с", v)
     else -> "${v.toInt()} $unit"
 }

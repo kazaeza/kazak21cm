@@ -103,6 +103,17 @@ class RoundEngineTest {
     }
 
     @Test
+    fun `paused time belongs to the wall timestamp only`() {
+        val e = engine()
+        e.start(0)
+        e.promptFinished(1000)
+        e.addWallPause(65_000)
+        val answer = e.answer(Answer.DegreeChoice(Degree.ONE), 1500).attempts.single()
+        assertEquals(500L, answer.latencyMs)
+        assertEquals(66_500L, answer.atEpochMs)
+    }
+
+    @Test
     fun `wrong answer carries a correction, costs a life and resets the combo (rule 5)`() {
         val e = engine()
         e.start(0); e.promptFinished(0)

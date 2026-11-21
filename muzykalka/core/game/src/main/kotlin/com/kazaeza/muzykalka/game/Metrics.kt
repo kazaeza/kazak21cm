@@ -10,7 +10,13 @@ data class OrderFact(val itemId: String, val studyDay: Int, val playableNow: Boo
 /** Numbers behind «Прогресс» (ticket P-01). Pure functions over attempts, orders and cards. */
 object Metrics {
 
-    fun median(values: List<Long>): Long? = if (values.isEmpty()) null else values.sorted()[values.size / 2]
+    fun median(values: List<Long>): Long? {
+        if (values.isEmpty()) return null
+        val sorted = values.sorted()
+        val lo = sorted[(sorted.size - 1) / 2]
+        val hi = sorted[sorted.size / 2]
+        return lo + (hi - lo) / 2
+    }
 
     /**
      * Streak of consecutive practice days ending today — or yesterday, so the streak is not shown
@@ -208,9 +214,10 @@ object Metrics {
                 passes++
                 return@forEachIndexed
             }
+            val prev = notes.getOrNull(i - 1) ?: return@forEachIndexed
+            if (a.given !in CHROMATIC_LABELS || a.atEpochMs - prev.atEpochMs !in 0L until 60_000L) return@forEachIndexed
             wrong++
-            val prev = notes.getOrNull(i - 1)
-            if (prev != null && a.atEpochMs - prev.atEpochMs < 60_000 && a.given == prev.expected) echoes++
+            if (a.given == prev.expected) echoes++
         }
         return Guessing(wrong, echoes, passes)
     }

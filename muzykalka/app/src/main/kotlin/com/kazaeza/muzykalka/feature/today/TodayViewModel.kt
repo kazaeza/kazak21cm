@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.feature.today
 
+import com.kazaeza.muzykalka.game.EarFocus
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazaeza.muzykalka.AppGraph
@@ -14,6 +15,8 @@ import com.kazaeza.muzykalka.music.DegreeNotation
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.SongOpenings
 import com.kazaeza.muzykalka.game.SetSegment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -34,6 +37,7 @@ data class TodayUi(
     val practicedToday: Boolean = false,
     /** What «Начать сет» will run today, as the set screen will build it. */
     val set: List<SetSegment> = DailySet.available(DailySet.DEFAULT, APP_STAGE),
+    val focus: EarFocus? = null,
     val date: LocalDate = LocalDate.now(),
     /** O-44: one song of the library for today — the same all day. */
     val songOfDay: SongOfDay? = null,
@@ -65,6 +69,7 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
         val orderable = entries.filter { it.orderable && !it.shelved }
         val due = orderable.count { it.card?.isDue(today) ?: true }
         val plan = SingUnlock.plan(DailySet.available(DailySet.DEFAULT, APP_STAGE), singing)
+        val focus = com.kazaeza.muzykalka.game.AdaptiveEar.choose(attempts, today) { studyDay.of(Instant.ofEpochMilli(it)) }
         TodayUi(
             loading = false,
             playableNow = playable,
@@ -74,7 +79,8 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
             weekMinutes = Metrics.weekMinutes(spans, today),
             answersToday = attempts.count { studyDay.of(Instant.ofEpochMilli(it.atEpochMs)) == today },
             practicedToday = today in days,
-            set = if (due == 0) DailySet.withoutSongs(plan) else plan,
+            focus = focus,
+            set = com.kazaeza.muzykalka.game.AdaptiveEar.apply(if (due == 0) DailySet.withoutSongs(plan) else plan, focus),
             date = LocalDate.ofEpochDay(today.toLong()),
             notation = settings.degreeNotation,
             songOfDay = entries.filter { it.song != null && !it.unsupported }.let { songs ->
@@ -85,7 +91,7 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
                 }
             },
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUi())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUi())
 }
 
 /** O-44: how many chord changes of the song of the day are shown. */

@@ -92,10 +92,10 @@ class BackupManager(
             d.clearExams(); d.clearSessions(); d.clearAttempts(); d.clearOrders(); d.clearCards(); d.clearItems()
             d.insertItems(backup.items)
             d.insertCards(backup.cards)
-            d.insertOrders(backup.orders.map { it.copy(id = 0) })
+            d.insertOrders(backup.orders)
             d.insertSessions(backup.sessions)
-            d.insertAttempts(backup.attempts.map { it.copy(id = 0) })
-            d.insertExams(backup.exams.map { it.copy(id = 0) })
+            d.insertAttempts(backup.attempts)
+            d.insertExams(backup.exams)
         }
         backup.settings?.let { settings.replace(it) }
         backup.progressJson?.let { progress.importJson(it) }

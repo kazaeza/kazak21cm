@@ -48,6 +48,21 @@ class RepositoriesTest {
     fun close() = db.close()
 
     @Test
+    fun practiceExportPreservesSessionAndAttemptFacts() = runBlocking {
+        val id = practice.startSession(SessionKind.ADAPTIVE_PROBE, 12)
+        practice.saveAttempts(listOf(AttemptRecord(Variant.TIR_CLASSIC, 2, "tir:L2:4", "4", "5",
+            false, 950, null, 0, "C", 1250)), id)
+        val raw = com.kazaeza.muzykalka.data.backup.exportPractice(db, "test", 4)
+        val parsed = kotlinx.serialization.json.Json.decodeFromString(
+            com.kazaeza.muzykalka.data.backup.PracticeExport.serializer(), raw)
+        assertEquals("muzykalka-practice", parsed.format)
+        assertEquals(parsed.sessions.single().id, parsed.attempts.single().sessionId)
+        assertEquals("ADAPTIVE_PROBE", parsed.sessions.single().kind)
+        assertEquals("5", parsed.attempts.single().given)
+        assertEquals(950L, parsed.attempts.single().latencyMs)
+    }
+
+    @Test
     fun songRoundTripAndOrderUpdatesTheCard() = runBlocking {
         val id = library.addFromBook(SongBook.byId("autumn-leaves")!!)
         val entry = library.get(id)!!

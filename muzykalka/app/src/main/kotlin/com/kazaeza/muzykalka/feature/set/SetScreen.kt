@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.feature.set
 
+import com.kazaeza.muzykalka.game.EarFocus
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,6 +75,8 @@ data class SetUi(
     /** O-55: which set this is; the minimal day keeps [Training.DAILY] here. */
     val training: Training = Training.DAILY,
     val segments: List<SetSegment> = emptyList(),
+    val focus: EarFocus? = null,
+    val ready: Boolean = false,
     val index: Int = 0,
     val round: Int = 0,
     val phase: SetPhase = SetPhase.INTRO,
@@ -96,19 +99,35 @@ class SetViewModel(private val graph: AppGraph, minimal: Boolean, training: Trai
     init {
         // No song is due (or the library is empty): «Ходы» take the songs' minutes.
         viewModelScope.launch {
-            val today = graph.today(graph.settings.settings.first())
+            val settings = graph.settings.settings.first()
+            val today = graph.today(settings)
             val anyDue = graph.library.allOrderable().any { it.card?.isDue(today) ?: true }
             if (!anyDue) state.update { it.copy(segments = DailySet.withoutSongs(it.segments)) }
             // «Спой ступень» is closed until «Пропевка» goes well: its minutes are sung as the search instead.
             val singing = SingUnlock.status(graph.practice.recentAttempts(Variant.KAMERTON_SEARCH, SingUnlock.WINDOW))
-            state.update { it.copy(segments = SingUnlock.plan(it.segments, singing)) }
+            val focus = if (!minimal && training == Training.DAILY) {
+                val day = graph.studyDay(settings)
+                com.kazaeza.muzykalka.game.AdaptiveEar.choose(graph.practice.observeAttempts().first(), today) { day.of(java.time.Instant.ofEpochMilli(it)) }
+            } else null
+            state.update { it.copy(ready = true, focus = focus, segments = com.kazaeza.muzykalka.game.AdaptiveEar.apply(SingUnlock.plan(it.segments, singing), focus)) }
         }
     }
 
+    private var starting = false
+
     fun start() = viewModelScope.launch {
+        if (starting || !state.value.ready || state.value.phase != SetPhase.INTRO) return@launch
+        starting = true
         if (state.value.sessionId == null) {
             val settings = graph.settings.settings.first()
-            val id = graph.practice.startSession(if (state.value.minimal) SessionKind.MINIMAL else SessionKind.SET, graph.today(settings))
+            val kind = when {
+                state.value.minimal -> SessionKind.MINIMAL
+                state.value.focus?.variant == Variant.TIR_DUEL -> SessionKind.ADAPTIVE_DUEL
+                state.value.focus?.variant == Variant.TIR_CLASSIC -> SessionKind.ADAPTIVE_PROBE
+                state.value.focus?.variant == Variant.TIR_OVER_CHORDS -> SessionKind.ADAPTIVE_CONTEXT
+                else -> SessionKind.SET
+            }
+            val id = graph.practice.startSession(kind, graph.today(settings))
             state.update { it.copy(sessionId = id) }
         }
         state.update { it.copy(phase = SetPhase.NEXT_UP) }
@@ -180,7 +199,8 @@ fun SetScreen(minimal: Boolean, onExit: () -> Unit, onLibrary: () -> Unit, train
                 )
             } else {
                 GameScreen(
-                    spec = RoundSpec(seg.variant, sessionId = ui.sessionId, durationMs = ui.roundMsOf(seg)),
+                    spec = RoundSpec(seg.variant, sessionId = ui.sessionId, durationMs = ui.roundMsOf(seg),
+                        focus = ui.focus?.takeIf { ui.segments.indexOfFirst { block -> block.variant == it.variant } == ui.index }),
                     onExit = { vm.endSet() },
                     onFinished = { vm.roundDone(it.answered > 0) },
                     vmKey = "set-${ui.sessionId}-${ui.index}-${ui.round}",
@@ -220,7 +240,8 @@ private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
                 }
             }
         }
-        item(key = "go") { JuicyButton("Поехали", onClick = onStart, modifier = Modifier.fillMaxWidth(), height = 72.dp, leading = "►") }
+        ui.focus?.let { focus -> item(key = "reason") { Text(focus.reason) } }
+        item(key = "go") { JuicyButton("Поехали", enabled = ui.ready, onClick = onStart, modifier = Modifier.fillMaxWidth(), height = 72.dp, leading = "►") }
     }
 }
 

@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-enum class SessionKind { SET, MINIMAL, FREE, ENTRANCE_EXAM, CREDIT }
+enum class SessionKind { SET, MINIMAL, FREE, ENTRANCE_EXAM, CREDIT, ADAPTIVE_DUEL, ADAPTIVE_PROBE, ADAPTIVE_CONTEXT }
 
 data class ExamResult(val sessionId: Long, val skill: Skill, val measured: Double, val passed: Boolean, val atEpochMs: Long)
 

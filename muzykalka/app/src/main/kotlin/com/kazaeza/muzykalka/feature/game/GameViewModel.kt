@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.feature.game
 
+import com.kazaeza.muzykalka.game.EarFocus
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazaeza.muzykalka.AppGraph
@@ -87,6 +88,7 @@ data class RoundSpec(
     /** Set when the round is part of a daily set or an exam. */
     val sessionId: Long? = null,
     val durationMs: Long = 75_000,
+    val focus: EarFocus? = null,
 )
 
 data class RoundSummary(
@@ -395,7 +397,7 @@ object Drills {
             Variant.FORMULA_ALOUD -> RoundEngine(FormulaDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_RADIO ->
-                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs, tune = tune), config, random, level, history, epochOffsetMs)
+                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs, tune = tune, focusDuel = spec.focus != null), config, random, level, history, epochOffsetMs)
             // Without headphones the drone would leak into the microphone (ADR-021).
             Variant.KAMERTON_SING, Variant.KAMERTON_SEARCH ->
                 RoundEngine(SingDriver(KeyPicker(random), settings.degreeNotation, withDrone = headphones, variant = spec.variant), config, random, level, history, epochOffsetMs)
@@ -499,14 +501,18 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         settings = graph.settings.settings.first()
         graph.audioOutput.a4Hz = settings.a4Hz
         val progress = graph.progress.current()
-        level = (spec.level ?: progress.selectedLevel(spec.variant)).coerceIn(1, Drills.maxLevel(spec.variant))
+        level = (spec.focus?.level ?: spec.level ?: progress.selectedLevel(spec.variant)).coerceIn(1, Drills.maxLevel(spec.variant))
         history = graph.practice.recentAttempts(spec.variant, 300)
         val wearsHeadphones = graph.headphones.connected.value || settings.headphones
         engine = Drills.engine(
             spec, level, settings, history, System.currentTimeMillis() - now(), review = review(), headphones = wearsHeadphones,
             songs = if (spec.variant.isSongQuiz() || spec.variant == Variant.FORMULA_ALOUD) guessSongs() else emptyList(),
             tune = ::hintTune,
-            duelPairs = if (spec.variant == Variant.TIR_DUEL) Drills.duelPairs(graph.practice.recentAttempts(Variant.TIR_CLASSIC, Drills.DUEL_LOOKBACK)) else emptyList(),
+            duelPairs = when {
+                spec.variant != Variant.TIR_DUEL -> emptyList()
+                spec.focus != null -> listOf(Degree.parse(spec.focus.pair.first()) to Degree.parse(spec.focus.pair.last()))
+                else -> Drills.duelPairs(graph.practice.recentAttempts(Variant.TIR_CLASSIC, Drills.DUEL_LOOKBACK))
+            },
         )
         sessionId = spec.sessionId ?: graph.practice.startSession(SessionKind.FREE, graph.today(settings)).also { ownSession = true }
         val needsMic = spec.variant.needsMic()
@@ -541,7 +547,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
 
     /** O-06: earlier days' Tir misses come back first (not in exams — they measure, not train). */
     private suspend fun review(): List<SpacedReview.Item> {
-        if (spec.exam || spec.variant != Variant.TIR_CLASSIC) return emptyList()
+        if (spec.exam || spec.focus != null || spec.variant != Variant.TIR_CLASSIC) return emptyList()
         val wallNow = System.currentTimeMillis()
         val since = wallNow - (SpacedReview.LOOKBACK_DAYS + 1) * 86_400_000L
         val studyDay = graph.studyDay(settings)
@@ -750,7 +756,9 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     /** Back to the same question: the drone returns and the question sounds again. */
     fun resume() {
         val at = pausedAtMs ?: return
-        pausedTotalMs += realNow() - at
+        val duration = realNow() - at
+        pausedTotalMs += duration
+        engine?.addWallPause(duration)
         pausedAtMs = null
         state.update { it.copy(paused = false) }
         val e = engine ?: return
@@ -897,7 +905,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
             RoundSummary(
                 variant = spec.variant, level = level, score = s.score, answered = s.attempts.size,
                 correct = s.attempts.count { it.correct },
-                medianMs = s.attempts.filter { it.correct }.map { it.latencyMs }.sorted().let { if (it.isEmpty()) null else it[it.size / 2] },
+                medianMs = Metrics.median(s.attempts.filter { it.correct }.map { it.latencyMs }),
                 bestStreak = s.bestStreak, newRecord = newRecord, unlockedLevel = unlocked, attempts = s.attempts,
                 foundOn = s.foundOn,
             )

@@ -58,7 +58,7 @@ interface OrderLogDao {
     @Query(
         """
         SELECT COUNT(*) FROM order_log o
-        WHERE o.playableNow = 1 AND o.atEpochMs = (SELECT MAX(atEpochMs) FROM order_log WHERE itemId = o.itemId)
+        WHERE o.playableNow = 1 AND o.id = (SELECT id FROM order_log WHERE itemId = o.itemId ORDER BY atEpochMs DESC, id DESC LIMIT 1)
         """,
     )
     fun observePlayableNowCount(): Flow<Int>
@@ -66,7 +66,7 @@ interface OrderLogDao {
     @Query("SELECT * FROM order_log")
     suspend fun all(): List<OrderLogEntity>
 
-    @Query("SELECT * FROM order_log ORDER BY atEpochMs")
+    @Query("SELECT * FROM order_log ORDER BY atEpochMs, id")
     fun observeAll(): Flow<List<OrderLogEntity>>
 
     @Query("SELECT * FROM order_log WHERE sessionId = :sessionId")
@@ -81,7 +81,7 @@ interface AttemptDao {
     @Insert
     suspend fun insertAll(rows: List<AttemptEntity>)
 
-    @Query("SELECT * FROM attempt WHERE variant = :variant ORDER BY atEpochMs DESC LIMIT :limit")
+    @Query("SELECT * FROM attempt WHERE variant = :variant ORDER BY atEpochMs DESC, id DESC LIMIT :limit")
     suspend fun recent(variant: String, limit: Int): List<AttemptEntity>
 
     @Query("SELECT * FROM attempt")
@@ -90,7 +90,7 @@ interface AttemptDao {
     @Query("SELECT * FROM attempt WHERE variant = :variant AND atEpochMs >= :fromEpochMs ORDER BY atEpochMs")
     suspend fun since(variant: String, fromEpochMs: Long): List<AttemptEntity>
 
-    @Query("SELECT * FROM attempt ORDER BY atEpochMs")
+    @Query("SELECT * FROM attempt ORDER BY atEpochMs, id")
     fun observeAll(): Flow<List<AttemptEntity>>
 }
 

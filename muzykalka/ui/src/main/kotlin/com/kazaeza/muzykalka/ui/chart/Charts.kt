@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import com.kazaeza.muzykalka.ui.theme.Manrope
-import kotlin.math.max
+
 
 /** Red → amber → green for a 0..1 score; grey when unknown. */
 fun scoreColor(score: Double?): Color = when {
@@ -92,14 +92,16 @@ fun LineChart(values: List<Int>, modifier: Modifier = Modifier, colors: List<Col
     LaunchedEffect(values) { grow.animateTo(1f, tween(800)) }
     Canvas(modifier.fillMaxWidth().height(height)) {
         if (values.isEmpty()) return@Canvas
-        val maxV = max(1, values.max())
+        val minV = minOf(0, values.min())
+        val maxV = maxOf(if (minV == 0) 1 else 0, values.max())
         val left = 28f
         val w = size.width - left
         val h = size.height - 8f
         val step = if (values.size == 1) w else w / (values.size - 1)
-        fun pt(i: Int) = Offset(left + i * step, h - h * (values[i].toFloat() / maxV) * grow.value)
-        for (g in listOf(0, maxV / 2, maxV).distinct()) {
-            val y = h - h * g / maxV
+        fun ordinate(value: Float) = h * (maxV - value) / (maxV - minV)
+        fun pt(i: Int) = Offset(left + i * step, ordinate(values[i] * grow.value))
+        for (g in listOf(minV, 0, (maxV + minV) / 2, maxV).distinct()) {
+            val y = ordinate(g.toFloat())
             drawLine(Juicy.Line, Offset(left, y), Offset(size.width, y), strokeWidth = 1f)
             val layout = measurer.measure(g.toString(), style)
             drawText(layout, topLeft = Offset(0f, y - layout.size.height / 2))
@@ -110,8 +112,8 @@ fun LineChart(values: List<Int>, modifier: Modifier = Modifier, colors: List<Col
         }
         val area = Path().apply {
             addPath(line)
-            lineTo(pt(values.size - 1).x, h)
-            lineTo(pt(0).x, h)
+            lineTo(pt(values.size - 1).x, ordinate(0f))
+            lineTo(pt(0).x, ordinate(0f))
             close()
         }
         drawPath(area, Brush.verticalGradient(listOf(colors.first().copy(alpha = 0.45f), Color.Transparent)))

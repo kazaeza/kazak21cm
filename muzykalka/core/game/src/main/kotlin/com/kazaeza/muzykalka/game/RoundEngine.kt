@@ -37,6 +37,11 @@ class RoundEngine<T : Task>(
     /** Added to `nowMs` to get wall-clock epoch ms for [AttemptRecord.atEpochMs]. */
     private val epochOffsetMs: Long = 0,
 ) {
+    private var wallPauseMs = 0L
+
+    /** The game clock excludes pauses. Recorded wall timestamps must include them. */
+    fun addWallPause(durationMs: Long) { wallPauseMs += durationMs.coerceAtLeast(0) }
+
     private val history = history.toMutableList()
     private var startedAt = 0L
     private var listeningSince = 0L
@@ -97,7 +102,7 @@ class RoundEngine<T : Task>(
             variant = driver.variant, level = level, itemKey = task.itemKey,
             expected = evaluation.expectedCode, given = evaluation.givenCode, correct = evaluation.correct,
             latencyMs = latency, centsError = evaluation.centsError, hintLevel = 0,
-            keyLabel = task.prompt.key?.toString(), atEpochMs = nowMs + epochOffsetMs,
+            keyLabel = task.prompt.key?.toString(), atEpochMs = nowMs + epochOffsetMs + wallPauseMs,
         )
         if (driver.searches) return search(evaluation, record, latency, nowMs)
         history += record

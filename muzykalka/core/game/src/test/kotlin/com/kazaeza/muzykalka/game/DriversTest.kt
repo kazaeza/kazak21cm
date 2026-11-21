@@ -512,7 +512,7 @@ class MoreMetricsTest {
         val a = listOf(
             tir("3", "3", 0), tir("5", "3", 5_000), tir("6", "5", 10_000), tir("1", "?", 15_000, correct = false), tir("2", "4", 20_000),
         )
-        val g = Metrics.guessing(a)
+        val g = Metrics.guessing(a + tir("5", "4", 120_000) + tir("5", "timeout", 121_000))
         assertEquals(3, g.wrong)
         assertEquals(2, g.echoes)
         assertEquals(1, g.passes)

@@ -121,10 +121,11 @@ class TirDriver(
      * by the song (right: it is the reward; wrong: the note again, then the song) instead of a walk home along the scale.
      */
     private val tune: (Degree, Key) -> Score? = { _, _ -> null },
+    focusDuel: Boolean = false,
 ) : ModeDriver<TirTask> {
 
     /** S-03: the duels of this round in order — every pair once, whichever way round it was given. */
-    private val duelQueue: List<List<Degree>> = (duelPairs + DUEL_DEFAULTS)
+    private val duelQueue: List<List<Degree>> = (if (focusDuel && duelPairs.isNotEmpty()) duelPairs else duelPairs + DUEL_DEFAULTS)
         .filter { !(it.first sameSoundAs it.second) }
         .map { listOf(it.first, it.second).sortedBy { d -> d.semitones } }
         .distinctBy { pair -> pair.map { it.semitones } }

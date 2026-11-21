@@ -109,7 +109,7 @@ fun TodayScreen(
                     leading = "►",
                 )
                 Text(
-                    ui.set.joinToString(" → ") { it.variant.ru.lowercase() } + ". Любую часть можно пропустить.",
+                    listOfNotNull(ui.focus?.reason, ui.set.joinToString(" → ") { it.variant.ru.lowercase() } + ". Любую часть можно пропустить.").joinToString("\n"),
                     style = MaterialTheme.typography.bodySmall,
                     color = Juicy.TextDim,
                     modifier = Modifier.padding(horizontal = 6.dp),
