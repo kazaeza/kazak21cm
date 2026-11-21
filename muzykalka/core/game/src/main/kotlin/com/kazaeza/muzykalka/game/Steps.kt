@@ -66,6 +66,7 @@ class StepsDriver(
     private val keyPicker: KeyPicker,
     private val notation: DegreeNotation = DegreeNotation.ROMAN,
     private val arranger: Arranger = Arranger(),
+    private var firstSong: SongFocus? = null,
 ) : ModeDriver<StepsTask> {
     override val variant: Variant = Variant.TAPER_STEPS
 
@@ -74,11 +75,13 @@ class StepsDriver(
     override fun nextTask(context: DriverContext): StepsTask {
         val level = context.level.coerceIn(1, StepsLadder.LEVELS.size)
         val pool = StepsLadder.LEVELS[level - 1]
-        val pattern = ItemWeights.pick(context.random, pool) { weight(itemKey(level, it), context.history) }
+        val song = firstSong
+        firstSong = null
+        val pattern = song?.opening ?: ItemWeights.pick(context.random, pool) { weight(itemKey(level, it), context.history) }
         val key = keyPicker.next(pattern.mode)
         val sound = arranger.chords(pattern.chords, key, beatsEach = 2.0, tempoBpm = TEMPO)
         return StepsTask(
-            itemKey = itemKey(level, pattern),
+            itemKey = song?.takeIf { it.opening != null }?.guitarKey ?: itemKey(level, pattern),
             prompt = Prompt(title = formula(pattern), subtitle = pattern.like, audio = null, key = key),
             level = level, key = key, pattern = pattern, sound = sound,
         )

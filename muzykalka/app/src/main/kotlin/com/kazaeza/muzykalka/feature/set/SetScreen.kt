@@ -1,5 +1,9 @@
 package com.kazaeza.muzykalka.feature.set
 
+import java.time.Instant
+import com.kazaeza.muzykalka.game.GuessSong
+import com.kazaeza.muzykalka.game.SongFocus
+import com.kazaeza.muzykalka.game.AdaptiveEar
 import com.kazaeza.muzykalka.game.EarFocus
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -76,6 +80,7 @@ data class SetUi(
     val training: Training = Training.DAILY,
     val segments: List<SetSegment> = emptyList(),
     val focus: EarFocus? = null,
+    val songFocus: SongFocus? = null,
     val ready: Boolean = false,
     val index: Int = 0,
     val round: Int = 0,
@@ -86,6 +91,7 @@ data class SetUi(
     /** «Выйти из сета» before the last part (ADR-019). */
     val endedEarly: Boolean = false,
 ) {
+    val focusIndex: Int get() = focus?.let { f -> segments.indexOfFirst { it.variant == f.variant } } ?: -1
     val current: SetSegment? get() = segments.getOrNull(index)
     fun roundsOf(s: SetSegment): Int = if (s.variant == Variant.TAPER_ORDER) 1 else maxOf(1, (s.minutes * 60 / 75).roundToInt())
     fun roundMsOf(s: SetSegment): Long = (s.minutes * 60_000 / roundsOf(s)).toLong().coerceIn(60_000, 90_000)
@@ -101,15 +107,30 @@ class SetViewModel(private val graph: AppGraph, minimal: Boolean, training: Trai
         viewModelScope.launch {
             val settings = graph.settings.settings.first()
             val today = graph.today(settings)
-            val anyDue = graph.library.allOrderable().any { it.card?.isDue(today) ?: true }
+            val library = graph.library.allOrderable()
+            val anyDue = library.any { it.card?.isDue(today) ?: true }
             if (!anyDue) state.update { it.copy(segments = DailySet.withoutSongs(it.segments)) }
             // «Спой ступень» is closed until «Пропевка» goes well: its minutes are sung as the search instead.
             val singing = SingUnlock.status(graph.practice.recentAttempts(Variant.KAMERTON_SEARCH, SingUnlock.WINDOW))
-            val focus = if (!minimal && training == Training.DAILY) {
+            val focus = if (!minimal && training in setOf(Training.DAILY, Training.EAR)) {
                 val day = graph.studyDay(settings)
-                com.kazaeza.muzykalka.game.AdaptiveEar.choose(graph.practice.observeAttempts().first(), today) { day.of(java.time.Instant.ofEpochMilli(it)) }
+                val (attempts, lessons) = graph.practice.observeTrainingHistory().first()
+                AdaptiveEar.choose(attempts, today, lessons) { day.of(Instant.ofEpochMilli(it)) }
             } else null
-            state.update { it.copy(ready = true, focus = focus, segments = com.kazaeza.muzykalka.game.AdaptiveEar.apply(SingUnlock.plan(it.segments, singing), focus)) }
+            val songFocus = if (!minimal && training in setOf(Training.SONGS, Training.ROAD, Training.GUITAR)) {
+                val songs = library.mapNotNull { e -> e.song?.let { GuessSong(e.id, it, !e.shelved) } }
+                val day = graph.studyDay(settings)
+                SongFocus.choose(songs, graph.practice.observeAttempts().first(), today, training == Training.GUITAR) {
+                    day.of(Instant.ofEpochMilli(it))
+                }
+            } else null
+            state.update {
+                val plan = if (songFocus != null && training == Training.ROAD) it.segments.map { block ->
+                    if (block.variant == Variant.TIR_UNDER_NOTE) block.copy(variant = Variant.FORMULA_ALOUD) else block
+                } else it.segments
+                it.copy(ready = true, focus = focus, songFocus = songFocus,
+                    segments = AdaptiveEar.apply(SingUnlock.plan(plan, singing), focus))
+            }
         }
     }
 
@@ -123,11 +144,12 @@ class SetViewModel(private val graph: AppGraph, minimal: Boolean, training: Trai
             val kind = when {
                 state.value.minimal -> SessionKind.MINIMAL
                 state.value.focus?.variant == Variant.TIR_DUEL -> SessionKind.ADAPTIVE_DUEL
+                state.value.focus?.retention == true -> SessionKind.ADAPTIVE_RETENTION
                 state.value.focus?.variant == Variant.TIR_CLASSIC -> SessionKind.ADAPTIVE_PROBE
                 state.value.focus?.variant == Variant.TIR_OVER_CHORDS -> SessionKind.ADAPTIVE_CONTEXT
                 else -> SessionKind.SET
             }
-            val id = graph.practice.startSession(kind, graph.today(settings))
+            val id = graph.practice.startSession(kind, graph.today(settings), state.value.training.takeUnless { state.value.minimal }, state.value.focus, state.value.songFocus?.formulaKey)
             state.update { it.copy(sessionId = id) }
         }
         state.update { it.copy(phase = SetPhase.NEXT_UP) }
@@ -148,11 +170,21 @@ class SetViewModel(private val graph: AppGraph, minimal: Boolean, training: Trai
     }
 
     /** «Пропустить» / «Следующее упражнение»; [didSomething] = the interrupted round had answers. */
-    fun skipSegment(didSomething: Boolean = false) = advance(state.value.activity + if (didSomething) 1 else 0)
+    fun skipSegment(didSomething: Boolean = false) {
+        val s = state.value
+        if (s.index == s.focusIndex && s.phase == SetPhase.NEXT_UP) markSkipped(s)
+        advance(s.activity + if (didSomething) 1 else 0)
+    }
+
+    private fun markSkipped(s: SetUi) {
+        s.sessionId?.let { id -> graph.appScope.launch { graph.practice.skipFocus(id) } }
+    }
 
     /** «Выйти из сета» from the pause: what was done still counts for the streak. */
     fun endSet(didSomething: Boolean = false) {
-        if (state.value.phase == SetPhase.DONE) return
+        val s = state.value
+        if (s.phase == SetPhase.DONE) return
+        if (s.index < s.focusIndex || (s.index == s.focusIndex && s.phase == SetPhase.NEXT_UP)) markSkipped(s)
         state.update { it.copy(endedEarly = true, activity = it.activity + if (didSomething) 1 else 0) }
         finish()
     }
@@ -200,7 +232,10 @@ fun SetScreen(minimal: Boolean, onExit: () -> Unit, onLibrary: () -> Unit, train
             } else {
                 GameScreen(
                     spec = RoundSpec(seg.variant, sessionId = ui.sessionId, durationMs = ui.roundMsOf(seg),
-                        focus = ui.focus?.takeIf { ui.segments.indexOfFirst { block -> block.variant == it.variant } == ui.index }),
+                        songFocus = ui.songFocus?.takeIf { ui.round == 0 && ui.index == ui.segments.indexOfFirst { block ->
+                            block.variant == (if (ui.training == Training.GUITAR) Variant.TAPER_STEPS else Variant.FORMULA_ALOUD)
+                        } },
+                        focus = ui.focus?.takeIf { ui.focusIndex == ui.index }),
                     onExit = { vm.endSet() },
                     onFinished = { vm.roundDone(it.answered > 0) },
                     vmKey = "set-${ui.sessionId}-${ui.index}-${ui.round}",
@@ -240,6 +275,11 @@ private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
                 }
             }
         }
+        ui.songFocus?.let { song -> item(key = "song-reason") {
+            val task = if (ui.training == Training.GUITAR) "Сыграй первый переход этой части в предложенной тональности."
+                else "Попробуй вспомнить её ещё раз."
+            Text("«${song.title}», часть ${song.section} в прошлый раз далась с трудом. $task")
+        } }
         ui.focus?.let { focus -> item(key = "reason") { Text(focus.reason) } }
         item(key = "go") { JuicyButton("Поехали", enabled = ui.ready, onClick = onStart, modifier = Modifier.fillMaxWidth(), height = 72.dp, leading = "►") }
     }

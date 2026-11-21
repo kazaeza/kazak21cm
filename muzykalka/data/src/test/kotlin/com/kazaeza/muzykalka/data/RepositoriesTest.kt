@@ -49,15 +49,24 @@ class RepositoriesTest {
 
     @Test
     fun practiceExportPreservesSessionAndAttemptFacts() = runBlocking {
-        val id = practice.startSession(SessionKind.ADAPTIVE_PROBE, 12)
-        practice.saveAttempts(listOf(AttemptRecord(Variant.TIR_CLASSIC, 2, "tir:L2:4", "4", "5",
-            false, 950, null, 0, "C", 1250)), id)
+        val focus = com.kazaeza.muzykalka.game.EarFocus(Variant.TIR_CLASSIC, listOf("4", "5"), 2, parentId = 42)
+        val id = practice.startSession(SessionKind.ADAPTIVE_PROBE, 12, focus = focus)
+        val answers = listOf(AttemptRecord(Variant.TIR_CLASSIC, 2, "tir:L2:4", "4", "5",
+            false, 950, null, 0, "C", 1250, replayCount = 1))
+        practice.saveFocusRound(answers, id, interrupted = false)
+        practice.saveFocusRound(answers, id, interrupted = false)
+        practice.skipFocus(id)
         val raw = com.kazaeza.muzykalka.data.backup.exportPractice(db, "test", 4)
         val parsed = kotlinx.serialization.json.Json.decodeFromString(
             com.kazaeza.muzykalka.data.backup.PracticeExport.serializer(), raw)
         assertEquals("muzykalka-practice", parsed.format)
         assertEquals(parsed.sessions.single().id, parsed.attempts.single().sessionId)
         assertEquals("ADAPTIVE_PROBE", parsed.sessions.single().kind)
+        assertEquals(2, parsed.version)
+        assertEquals("COMPLETED", parsed.sessions.single().focusStatus)
+        assertEquals(42L, parsed.sessions.single().focusParentId)
+        assertEquals(true, parsed.attempts.single().focusRound)
+        assertEquals(1, parsed.attempts.single().replayCount)
         assertEquals("5", parsed.attempts.single().given)
         assertEquals(950L, parsed.attempts.single().latencyMs)
     }

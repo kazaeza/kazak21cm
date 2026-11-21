@@ -138,6 +138,8 @@ data class AttemptRecord(
     val hintLevel: Int,
     val keyLabel: String?,
     val atEpochMs: Long,
+    val focusSessionId: Long? = null,
+    val replayCount: Int? = null,
 )
 
 /**

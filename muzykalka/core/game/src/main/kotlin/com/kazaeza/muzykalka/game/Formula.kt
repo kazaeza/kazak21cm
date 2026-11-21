@@ -11,6 +11,40 @@ import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.Score
 import com.kazaeza.muzykalka.music.Section
 
+/** One section the learner recently struggled to recall. Its opening change can be played in another key. */
+data class SongFocus(val songId: String, val title: String, val section: String, val opening: StepsPattern?) {
+    val formulaKey get() = "formula:$songId:$section"
+    val guitarKey get() = "song-steps:$songId:$section:${opening?.code}"
+
+    companion object {
+        fun choose(songs: List<GuessSong>, attempts: List<AttemptRecord>, today: Int, guitar: Boolean,
+                   dayOf: (Long) -> Int): SongFocus? {
+            val recent = attempts.filter { dayOf(it.atEpochMs) in today - 13..today }.sortedBy { it.atEpochMs }
+            val sections = songs.filter { it.learning }.flatMap { source ->
+                source.song.sections.map { section ->
+                    val chords = section.bars.flatMap { it.chords }
+                    val first = chords.first()
+                    val next = chords.firstOrNull { it != first }
+                    val move = next?.let { StepsPattern(listOf(first, it), source.song.mode, source.song.title) }
+                    SongFocus(source.id, source.song.title, section.label, move)
+                }
+            }.associateBy { it.formulaKey }
+            val formula = recent.filter { it.variant == Variant.FORMULA_ALOUD }.groupBy { it.itemKey }
+            return formula.mapNotNull { (key, answers) ->
+                val focus = sections[key] ?: return@mapNotNull null
+                val miss = answers.lastOrNull { it.given in setOf(SelfGrade.FAILED.name, SelfGrade.STUMBLED.name) }
+                    ?: return@mapNotNull null
+                if (dayOf(miss.atEpochMs) >= today) return@mapNotNull null
+                if (guitar) {
+                    if (focus.opening == null || recent.any { it.itemKey == focus.guitarKey &&
+                        it.atEpochMs > miss.atEpochMs && (it.given == SelfGrade.CLEAN.name || dayOf(it.atEpochMs) == today) }) return@mapNotNull null
+                } else if (answers.last().given == SelfGrade.CLEAN.name || dayOf(answers.last().atEpochMs) == today) return@mapNotNull null
+                miss.atEpochMs to focus
+            }.maxByOrNull { it.first }?.second
+        }
+    }
+}
+
 /**
  * One question of «Формула вслух»: the song and one of its sections are named; the user says the section's degrees
  * (aloud or silently), opens the answer and says how it went. [sound] is the section in [key], heard after the answer.
@@ -42,6 +76,7 @@ class FormulaDriver(
     private val keyPicker: KeyPicker,
     private val notation: DegreeNotation = DegreeNotation.ROMAN,
     private val arranger: Arranger = Arranger(),
+    private val firstSectionKey: String? = null,
 ) : ModeDriver<FormulaTask> {
     override val variant: Variant = Variant.FORMULA_ALOUD
 
@@ -60,7 +95,8 @@ class FormulaDriver(
     }
 
     override fun nextTask(context: DriverContext): FormulaTask {
-        val item = ItemWeights.pick(context.random, items, avoid = last) { weight(it.key, context.history) }
+        val item = items.firstOrNull { last == null && it.key == firstSectionKey }
+            ?: ItemWeights.pick(context.random, items, avoid = last) { weight(it.key, context.history) }
         last = item
         val song = item.source.song
         val key = keyPicker.next(song.mode)

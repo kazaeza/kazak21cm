@@ -102,6 +102,12 @@ interface SessionDao {
     @Query("UPDATE session SET endedAtEpochMs = :endedAt WHERE id = :id")
     suspend fun finish(id: Long, endedAt: Long)
 
+    @Query("SELECT * FROM session WHERE focusVariant IS NOT NULL ORDER BY id")
+    fun observeFocus(): Flow<List<SessionEntity>>
+
+    @Query("UPDATE session SET focusStatus = :status WHERE id = :id AND focusStatus = 'ASSIGNED'")
+    suspend fun closeFocus(id: Long, status: String): Int
+
     /** Distinct study days with a finished session, newest first — the streak is computed from it. */
     @Query("SELECT DISTINCT studyDay FROM session WHERE endedAtEpochMs IS NOT NULL ORDER BY studyDay DESC")
     fun observePracticeDays(): Flow<List<Int>>

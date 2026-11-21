@@ -96,6 +96,8 @@ data class AttemptEntity(
     val hintLevel: Int,
     val keyLabel: String?,
     val atEpochMs: Long,
+    val focusRound: Boolean? = null,
+    val replayCount: Int? = null,
 )
 
 /** A practice session: daily set, minimal day, free play, exam or credit. Drives the streak. */
@@ -108,6 +110,15 @@ data class SessionEntity(
     val studyDay: Int,
     val startedAtEpochMs: Long,
     val endedAtEpochMs: Long?,
+    val training: String? = null,
+    val songSectionKey: String? = null,
+    val focusVariant: String? = null,
+    val focusPair: String? = null,
+    val focusLevel: Int? = null,
+    val focusReason: String? = null,
+    val focusParentId: Long? = null,
+    val focusChord: String? = null,
+    val focusStatus: String? = null,
 )
 
 /** Result of one skill check inside an exam/credit session (report card «табель»). */

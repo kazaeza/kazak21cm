@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
         SessionEntity::class,
         ExamResultEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class MuzykalkaDatabase : RoomDatabase() {
@@ -30,7 +30,21 @@ abstract class MuzykalkaDatabase : RoomDatabase() {
         const val FILE_NAME = "muzykalka.db"
 
         /** All migrations, in order. Add here; never fall back to destructive migration. */
-        val MIGRATIONS = arrayOf<androidx.room.migration.Migration>()
+        val MIGRATIONS = arrayOf<androidx.room.migration.Migration>(object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE attempt ADD COLUMN focusRound INTEGER")
+                db.execSQL("ALTER TABLE attempt ADD COLUMN replayCount INTEGER")
+                db.execSQL("ALTER TABLE session ADD COLUMN training TEXT")
+                db.execSQL("ALTER TABLE session ADD COLUMN songSectionKey TEXT")
+                db.execSQL("ALTER TABLE session ADD COLUMN focusVariant TEXT")
+                db.execSQL("ALTER TABLE session ADD COLUMN focusPair TEXT")
+                db.execSQL("ALTER TABLE session ADD COLUMN focusLevel INTEGER")
+                db.execSQL("ALTER TABLE session ADD COLUMN focusReason TEXT")
+                db.execSQL("ALTER TABLE session ADD COLUMN focusParentId INTEGER")
+                db.execSQL("ALTER TABLE session ADD COLUMN focusChord TEXT")
+                db.execSQL("ALTER TABLE session ADD COLUMN focusStatus TEXT")
+            }
+        })
 
         fun open(context: Context): MuzykalkaDatabase =
             Room.databaseBuilder(context.applicationContext, MuzykalkaDatabase::class.java, FILE_NAME)

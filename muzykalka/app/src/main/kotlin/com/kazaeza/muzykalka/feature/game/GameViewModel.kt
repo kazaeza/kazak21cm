@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.feature.game
 
+import com.kazaeza.muzykalka.game.SongFocus
 import com.kazaeza.muzykalka.game.EarFocus
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -89,6 +90,7 @@ data class RoundSpec(
     val sessionId: Long? = null,
     val durationMs: Long = 75_000,
     val focus: EarFocus? = null,
+    val songFocus: SongFocus? = null,
 )
 
 data class RoundSummary(
@@ -394,10 +396,11 @@ object Drills {
             Variant.TIR_TRANSFER -> RoundEngine(TransferDriver(settings.degreeNotation, Arranger(chordInstrument = settings.chordInstrument)), config, random, level, history, epochOffsetMs)
             Variant.TIR_BASSLINE -> RoundEngine(BassLineDriver(KeyPicker(random), settings.degreeNotation, Arranger(chordInstrument = settings.chordInstrument)), config, random, level, history, epochOffsetMs)
             Variant.TIR_COLOR -> RoundEngine(ColorDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
-            Variant.FORMULA_ALOUD -> RoundEngine(FormulaDriver(songs, KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
-            Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
+            Variant.FORMULA_ALOUD -> RoundEngine(FormulaDriver(songs, KeyPicker(random), settings.degreeNotation, firstSectionKey = spec.songFocus?.formulaKey), config, random, level, history, epochOffsetMs)
+            Variant.TAPER_STEPS -> RoundEngine(StepsDriver(KeyPicker(random), settings.degreeNotation, firstSong = spec.songFocus), config, random, level, history, epochOffsetMs)
             Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_SIMON, Variant.TIR_RADIO ->
-                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs, tune = tune, focusDuel = spec.focus != null), config, random, level, history, epochOffsetMs)
+                RoundEngine(TirDriver(KeyPicker(random), settings.degreeNotation, spec.variant, review = review, duelPairs = duelPairs, tune = tune, focusDuel = spec.focus != null,
+                    focusChord = spec.focus?.chord, focusDegrees = spec.focus?.takeUnless { it.variant == Variant.TIR_DUEL }?.pair.orEmpty()), config, random, level, history, epochOffsetMs)
             // Without headphones the drone would leak into the microphone (ADR-021).
             Variant.KAMERTON_SING, Variant.KAMERTON_SEARCH ->
                 RoundEngine(SingDriver(KeyPicker(random), settings.degreeNotation, withDrone = headphones, variant = spec.variant), config, random, level, history, epochOffsetMs)
@@ -457,6 +460,8 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     private var settings = Settings()
     private var feedbackAudio: Job? = null
     private var replayJob: Job? = null
+    private val replaysByAnswer = mutableMapOf<Int, Int>()
+    private var interrupted = false
     private val micJobs = mutableListOf<Job>()
     private val arranger = Arranger()
     private val headphones = MutableStateFlow(false)
@@ -739,7 +744,14 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         val e = engine ?: return
         val sound = (e.state.task as? DroneTask)?.replay ?: return
         if (paused || e.state.phase != RoundPhase.LISTENING || replayJob?.isActive == true) return
+        markReplay(e)
         replayJob = viewModelScope.launch { playPulsing(sound, PulseKind.QUESTION, tonicOf(e.state.task)) }
+    }
+
+    private fun markReplay(e: RoundEngine<*>) {
+        if (e.state.tries > 0) return
+        val index = e.state.attempts.size
+        replaysByAnswer[index] = (replaysByAnswer[index] ?: 0) + 1
     }
 
     /** ⏸ or the back gesture: stop the clock and the sound (drone included). */
@@ -771,7 +783,10 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         replayJob = viewModelScope.launch {
             ensureDrone(drone)
             while (e.state.phase == RoundPhase.PROMPTING && e.state.task === task) delay(30)
-            if (sound != null && e.state.phase == RoundPhase.LISTENING && e.state.task === task) playPulsing(sound, PulseKind.QUESTION, tonicOf(task))
+            if (sound != null && e.state.phase == RoundPhase.LISTENING && e.state.task === task) {
+                markReplay(e)
+                playPulsing(sound, PulseKind.QUESTION, tonicOf(task))
+            }
         }
     }
 
@@ -779,6 +794,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     fun quit() {
         val e = engine ?: return
         if (finished) return
+        interrupted = interrupted || e.state.phase != RoundPhase.FINISHED
         e.abort(now())
         graph.appScope.launch { finish(e) }
     }
@@ -890,7 +906,10 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         currentDrone = null
         val s = e.state
         val summary = withContext(NonCancellable) {
-            graph.practice.saveAttempts(s.attempts, sessionId)
+            val records = s.attempts.mapIndexed { i, attempt -> attempt.copy(replayCount = replaysByAnswer[i] ?: 0) }
+            val id = sessionId
+            if (spec.focus != null && id != null) graph.practice.saveFocusRound(records, id, interrupted)
+            else graph.practice.saveAttempts(records, id)
             if (ownSession && s.attempts.isNotEmpty()) sessionId?.let { graph.practice.finishSession(it) }
             val newRecord = !spec.exam && s.score > 0 && graph.progress.submitScore(spec.variant, s.score)
             val levelAttempts = (history + s.attempts).filter { it.level == level }
@@ -963,6 +982,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         graph.audioOutput.stop()
         val e = engine
         if (e != null && !finished) {
+            interrupted = interrupted || e.state.phase != RoundPhase.FINISHED
             e.abort(now())
             graph.appScope.launch { finish(e) }
         }

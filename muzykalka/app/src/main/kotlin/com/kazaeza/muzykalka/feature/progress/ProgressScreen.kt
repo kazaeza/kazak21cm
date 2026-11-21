@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.feature.progress
 
+import com.kazaeza.muzykalka.game.AdaptiveEar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import com.kazaeza.muzykalka.feature.today.TRIANGLE_ORDER
 import com.kazaeza.muzykalka.game.Comparison
 import com.kazaeza.muzykalka.game.Graduation
 import com.kazaeza.muzykalka.game.Levels
+import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.game.Metrics
 import com.kazaeza.muzykalka.music.Degree
 import com.kazaeza.muzykalka.music.DegreeFormatter
@@ -79,6 +81,7 @@ data class ProgressUi(
     val longestStreak: Int = 0,
     val practiceMinutes: Long = 0,
     val answers: Int = 0,
+    val focusReport: List<String> = emptyList(),
     val songsPlayed: Int = 0,
     val degrees: List<Metrics.DegreeStat> = emptyList(),
     val guessing: Metrics.Guessing = Metrics.Guessing(0, 0, 0),
@@ -99,11 +102,11 @@ class ProgressViewModel(graph: AppGraph) : ViewModel() {
 
     private val base = combine(
         graph.settings.settings,
-        graph.practice.observeAttempts(),
+        graph.practice.observeTrainingHistory(),
         graph.practice.observeOrders(),
         graph.library.observeEntries(),
         graph.practice.observeExams(),
-    ) { settings, attempts, orders, entries, exams ->
+    ) { settings, (attempts, lessons), orders, entries, exams ->
         val today = graph.today(settings)
         val cards = entries.mapNotNull { it.card }
         val scores = Metrics.linkScores(attempts)
@@ -113,6 +116,31 @@ class ProgressViewModel(graph: AppGraph) : ViewModel() {
         ProgressUi(
             loading = false,
             settings = settings,
+            focusReport = lessons.lastOrNull()?.let { last ->
+                val state = when (last.status) {
+                    "COMPLETED" -> "завершено"
+                    "INTERRUPTED" -> "прервано"
+                    "SKIPPED" -> "пропущено"
+                    "EMPTY" -> "без ответов"
+                    else -> "назначено"
+                }
+                val duel = if (last.focus.variant == Variant.TIR_DUEL) last else lessons.find { it.id == last.focus.parentId }
+                buildList {
+                    add("${last.focus.variant.ru} · $state")
+                    add(last.focus.reason)
+                    if (duel != null) {
+                        for (retention in listOf(false, true)) {
+                            val sample = AdaptiveEar.firstProbeAnswers(attempts, duel, lessons, retention)
+                            if (sample.isEmpty()) continue
+                            val counts = duel.focus.pair.joinToString(" · ") { d ->
+                                val rows = sample.filter { it.expected == d }
+                                "$d — ${rows.count { it.correct }} из ${rows.size}"
+                            }
+                            add((if (retention) "Через две недели" else "На полном круге") + " · $counts")
+                        }
+                    }
+                }
+            }.orEmpty(),
             links = TRIANGLE_ORDER.map { scores[it] },
             playableSeries = Metrics.playableNowSeries(orders).map { it.second },
             heat = Metrics.fretHeat(attempts),
@@ -166,6 +194,12 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
                     BigStat("${ui.longestStreak}", "лучшая\nсерия", colors = Accents.Tir)
                     BigStat("${ui.songsPlayed}", "песен\nсыграно", colors = Accents.Taper)
                 }
+            }
+        }
+        if (ui.focusReport.isNotEmpty()) item(key = "adaptive-history") {
+            GlassCard(Modifier.fillMaxWidth(), accent = Accents.Tir) {
+                SectionLabel("Последнее слуховое задание")
+                ui.focusReport.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
         }
         item(key = "export") { ExportPracticeButton(ui.settings.dayStartHour) }

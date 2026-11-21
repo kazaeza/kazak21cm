@@ -75,6 +75,26 @@ class FormulaDriverTest {
         assertTrue(again > 300 / leaves.song.sections.size, "asked $again of 300 with ${leaves.song.sections.size} sections")
     }
 
+    @Test fun delayedRecallAndGuitarAreSeparateChecksOfAnActiveSong() {
+        val songs = listOf(leaves.copy(learning = true))
+        val key = "formula:${leaves.id}:${leaves.song.sections.first().label}"
+        val miss = AttemptRecord(Variant.FORMULA_ALOUD, 1, key, "x", "STUMBLED", true, 900, null, 0, null, 10)
+        fun pick(xs: List<AttemptRecord>, guitar: Boolean) = SongFocus.choose(songs, xs, 12, guitar) { it.toInt() }
+        val focus = pick(listOf(miss), false)!!
+        val ctx = DriverContext(Random(1), 1, emptyList())
+        assertEquals(key, FormulaDriver(songs, KeyPicker(Random(3)), firstSectionKey = focus.formulaKey).nextTask(ctx).itemKey)
+        assertNull(SongFocus.choose(listOf(leaves), listOf(miss), 12, false) { it.toInt() })
+        assertNull(pick(listOf(miss.copy(atEpochMs = 12)), false))
+        val recalled = listOf(miss, miss.copy(atEpochMs = 11, given = "CLEAN"))
+        assertNull(pick(recalled, false))
+        val guitar = pick(recalled, true)!!
+        val driver = StepsDriver(KeyPicker(Random(3)), firstSong = guitar)
+        assertEquals(guitar.guitarKey, driver.nextTask(ctx).itemKey)
+        assertTrue(driver.nextTask(ctx).itemKey.startsWith("steps:L"))
+        assertNull(pick(recalled + miss.copy(variant = Variant.TAPER_STEPS, itemKey = guitar.guitarKey,
+            given = "CLEAN", atEpochMs = 11), true))
+    }
+
     @Test
     fun `no song, no game`() {
         assertFalse(FormulaDriver.playable(emptyList()))

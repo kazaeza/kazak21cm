@@ -6,6 +6,9 @@ import com.kazaeza.muzykalka.data.db.ExamResultEntity
 import com.kazaeza.muzykalka.data.db.MuzykalkaDatabase
 import com.kazaeza.muzykalka.data.db.OrderLogEntity
 import com.kazaeza.muzykalka.data.db.SessionEntity
+import com.kazaeza.muzykalka.game.EarFocus
+import com.kazaeza.muzykalka.game.FocusSession
+import com.kazaeza.muzykalka.game.Training
 import com.kazaeza.muzykalka.game.AttemptRecord
 import com.kazaeza.muzykalka.game.HintStep
 import com.kazaeza.muzykalka.game.Metrics
@@ -14,11 +17,12 @@ import com.kazaeza.muzykalka.game.OrderResult
 import com.kazaeza.muzykalka.game.SelfGrade
 import com.kazaeza.muzykalka.game.Skill
 import com.kazaeza.muzykalka.game.Variant
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-enum class SessionKind { SET, MINIMAL, FREE, ENTRANCE_EXAM, CREDIT, ADAPTIVE_DUEL, ADAPTIVE_PROBE, ADAPTIVE_CONTEXT }
+enum class SessionKind { SET, MINIMAL, FREE, ENTRANCE_EXAM, CREDIT, ADAPTIVE_DUEL, ADAPTIVE_PROBE, ADAPTIVE_CONTEXT, ADAPTIVE_RETENTION }
 
 data class ExamResult(val sessionId: Long, val skill: Skill, val measured: Double, val passed: Boolean, val atEpochMs: Long)
 
@@ -41,8 +45,32 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
         const val MAX_SESSION_MS = 2 * 60 * 60_000L
     }
 
-    suspend fun startSession(kind: SessionKind, studyDay: Int): Long =
-        db.sessions().insert(SessionEntity(kind = kind.name, studyDay = studyDay, startedAtEpochMs = clock(), endedAtEpochMs = null))
+    suspend fun startSession(kind: SessionKind, studyDay: Int, training: Training? = null, focus: EarFocus? = null, songSectionKey: String? = null): Long =
+        db.sessions().insert(SessionEntity(kind = kind.name, studyDay = studyDay, startedAtEpochMs = clock(), endedAtEpochMs = null,
+            training = training?.name, songSectionKey = songSectionKey, focusVariant = focus?.variant?.name, focusPair = focus?.pair?.joinToString("~"),
+            focusLevel = focus?.level, focusReason = focus?.reason, focusParentId = focus?.parentId, focusChord = focus?.chord,
+            focusStatus = focus?.let { "ASSIGNED" }))
+
+    fun observeTrainingHistory() = combine(observeAttempts(), db.sessions().observeFocus()) { attempts, sessions ->
+        attempts to sessions.mapNotNull { s ->
+            val variant = Variant.entries.find { it.name == s.focusVariant } ?: return@mapNotNull null
+            val level = s.focusLevel ?: return@mapNotNull null
+            val pair = s.focusPair.orEmpty().split('~').filter { it.isNotEmpty() }
+            if (variant != Variant.TIR_OVER_CHORDS && pair.size != 2) return@mapNotNull null
+            FocusSession(s.id, s.studyDay, EarFocus(variant, pair, level, s.focusParentId, s.focusChord, s.kind == SessionKind.ADAPTIVE_RETENTION.name), s.focusStatus.orEmpty())
+        }
+    }
+
+    suspend fun skipFocus(id: Long) = db.sessions().closeFocus(id, "SKIPPED")
+
+    suspend fun saveFocusRound(records: List<AttemptRecord>, sessionId: Long, interrupted: Boolean) = db.withTransaction {
+        val closed = db.sessions().closeFocus(sessionId, when {
+            interrupted -> "INTERRUPTED"
+            records.isEmpty() -> "EMPTY"
+            else -> "COMPLETED"
+        })
+        if (closed == 1) saveAttempts(records, sessionId, focusRound = true)
+    }
 
     suspend fun finishSession(id: Long) = db.sessions().finish(id, clock())
 
@@ -58,7 +86,7 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
         rows.sumOf { r -> ((r.endedAtEpochMs ?: r.startedAtEpochMs) - r.startedAtEpochMs).coerceIn(0, MAX_SESSION_MS) }
     }
 
-    suspend fun saveAttempts(records: List<AttemptRecord>, sessionId: Long?) {
+    suspend fun saveAttempts(records: List<AttemptRecord>, sessionId: Long?, focusRound: Boolean? = null) {
         if (records.isEmpty()) return
         db.attempts().insertAll(
             records.map {
@@ -66,6 +94,7 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
                     sessionId = sessionId, variant = it.variant.name, level = it.level, itemKey = it.itemKey,
                     expected = it.expected, given = it.given, correct = it.correct, latencyMs = it.latencyMs,
                     centsError = it.centsError, hintLevel = it.hintLevel, keyLabel = it.keyLabel, atEpochMs = it.atEpochMs,
+                    focusRound = focusRound, replayCount = it.replayCount,
                 )
             },
         )
@@ -136,6 +165,7 @@ class PracticeRepository(private val db: MuzykalkaDatabase, private val clock: (
 
     private fun AttemptEntity.toRecord(): AttemptRecord? {
         val v = runCatching { Variant.valueOf(variant) }.getOrNull() ?: return null
-        return AttemptRecord(v, level, itemKey, expected, given, correct, latencyMs, centsError, hintLevel, keyLabel, atEpochMs)
+        return AttemptRecord(v, level, itemKey, expected, given, correct, latencyMs, centsError, hintLevel, keyLabel, atEpochMs,
+            sessionId.takeIf { focusRound == true }, replayCount)
     }
 }

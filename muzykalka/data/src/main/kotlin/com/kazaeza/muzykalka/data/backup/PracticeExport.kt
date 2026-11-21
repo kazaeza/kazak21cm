@@ -10,7 +10,7 @@ import java.time.ZoneId
 @Serializable
 data class PracticeExport(
     val format: String = "muzykalka-practice",
-    val version: Int = 1,
+    val version: Int = 2,
     val exportedAtEpochMs: Long,
     val appVersion: String,
     val exportZone: String,

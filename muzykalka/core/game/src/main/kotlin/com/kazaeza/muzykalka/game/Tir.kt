@@ -122,6 +122,8 @@ class TirDriver(
      */
     private val tune: (Degree, Key) -> Score? = { _, _ -> null },
     focusDuel: Boolean = false,
+    private val focusDegrees: List<String> = emptyList(),
+    private val focusChord: String? = null,
 ) : ModeDriver<TirTask> {
 
     /** S-03: the duels of this round in order — every pair once, whichever way round it was given. */
@@ -129,6 +131,18 @@ class TirDriver(
         .filter { !(it.first sameSoundAs it.second) }
         .map { listOf(it.first, it.second).sortedBy { d -> d.semitones } }
         .distinctBy { pair -> pair.map { it.semitones } }
+    private val focusAsked = mutableMapOf<String, Int>()
+
+    /** Mix the least sampled available target with ordinary questions on the same full keypad. */
+    private fun focusedDegree(pad: List<Degree>, random: Random): Degree? {
+        if (focusDegrees.isEmpty() || random.nextDouble() >= 0.6) return null
+        val targets = pad.filter { it.toString() in focusDegrees }
+        val least = targets.minOfOrNull { focusAsked[it.toString()] ?: 0 } ?: return null
+        val pick = targets.filter { (focusAsked[it.toString()] ?: 0) == least }.random(random)
+        focusAsked[pick.toString()] = least + 1
+        return pick
+    }
+
     private var duelIndex = 0
     private var duelStreak = 0
     private var duelWins = 0
@@ -261,7 +275,7 @@ class TirDriver(
         val guests = pad.filter { d -> pool.none { it sameSoundAs d } }
         val from = if (guests.isNotEmpty() && ctx.random.nextDouble() < GUEST_SHARE) guests else pool
         val review = reviewPick(NOTE_GROUP, ctx.random) { code -> pad.firstOrNull { it.toString() == code } }
-        val degree = review?.first ?: ItemWeights.pick(ctx.random, from) { ItemWeights.weight(prefix + it, ctx.history) }
+        val degree = review?.first ?: focusedDegree(pad, ctx.random) ?: ItemWeights.pick(ctx.random, from) { ItemWeights.weight(prefix + it, ctx.history) }
         val octaves = listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in 50..79 }
         val note = DegreeNote(degree, octaves[ctx.random.nextInt(octaves.size)])
         val question = arranger.line(listOf(note), key, Voice.TONE, beatsEach = 2.0, tempoBpm = TEMPO, tonicFloor = tonic)
@@ -396,11 +410,14 @@ class TirDriver(
         }
         blockLeft--
         val steps = if (level == 1) CHORD_STEPS_L1 else CHORD_STEPS_L2
-        val chord = Harmony.diatonicChord(key.mode, if (newKey) 0 else steps[r.nextInt(steps.size)])
+        val target = if (focusChord == null) null else steps.map { Harmony.diatonicChord(key.mode, it) }
+            .firstOrNull { ChordParser.formatRoman(it) == focusChord }
+        val chord = if (!newKey && target != null && r.nextDouble() < 0.6) target
+            else Harmony.diatonicChord(key.mode, if (newKey) 0 else steps[r.nextInt(steps.size)])
         val tonic = key.tonicAtOrAbove(MidiNote(55))
         val pad = key.mode.degrees
         val prefix = "tir:chords:L$level:${ChordParser.formatRoman(chord)}:"
-        val degree = ItemWeights.pick(r, pad) { ItemWeights.weight(prefix + it, context.history) }
+        val degree = focusedDegree(pad, r) ?: ItemWeights.pick(r, pad) { ItemWeights.weight(prefix + it, context.history) }
         // O-68: the note sits above the chord, so the two never blur into one sound
         val octaves = listOf(-1, 0, 1).filter { (tonic.value + degree.semitones + 12 * it) in OVER_NOTE_RANGE }
         val note = DegreeNote(degree, octaves[r.nextInt(octaves.size)])

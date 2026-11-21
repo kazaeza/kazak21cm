@@ -1,5 +1,6 @@
 package com.kazaeza.muzykalka.feature.today
 
+import com.kazaeza.muzykalka.game.AdaptiveEar
 import com.kazaeza.muzykalka.game.EarFocus
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -59,8 +60,8 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
         graph.practice.observePlayableNow(),
         graph.practice.observePracticeSpans(),
         graph.library.observeEntries(),
-        graph.practice.observeAttempts(),
-    ) { settings, playable, spans, entries, attempts ->
+        graph.practice.observeTrainingHistory(),
+    ) { settings, playable, spans, entries, (attempts, lessons) ->
         val today = graph.today(settings)
         val days = spans.map { it.studyDay }.toSet()
         val singing = SingUnlock.status(attempts)
@@ -69,7 +70,7 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
         val orderable = entries.filter { it.orderable && !it.shelved }
         val due = orderable.count { it.card?.isDue(today) ?: true }
         val plan = SingUnlock.plan(DailySet.available(DailySet.DEFAULT, APP_STAGE), singing)
-        val focus = com.kazaeza.muzykalka.game.AdaptiveEar.choose(attempts, today) { studyDay.of(Instant.ofEpochMilli(it)) }
+        val focus = AdaptiveEar.choose(attempts, today, lessons) { studyDay.of(Instant.ofEpochMilli(it)) }
         TodayUi(
             loading = false,
             playableNow = playable,
@@ -80,7 +81,7 @@ class TodayViewModel(graph: AppGraph) : ViewModel() {
             answersToday = attempts.count { studyDay.of(Instant.ofEpochMilli(it.atEpochMs)) == today },
             practicedToday = today in days,
             focus = focus,
-            set = com.kazaeza.muzykalka.game.AdaptiveEar.apply(if (due == 0) DailySet.withoutSongs(plan) else plan, focus),
+            set = AdaptiveEar.apply(if (due == 0) DailySet.withoutSongs(plan) else plan, focus),
             date = LocalDate.ofEpochDay(today.toLong()),
             notation = settings.degreeNotation,
             songOfDay = entries.filter { it.song != null && !it.unsupported }.let { songs ->
