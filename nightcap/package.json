@@ -1,0 +1,11 @@
+{
+  "name": "nightcap",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:web": "bun run scripts/build-web.ts",
+    "test": "bun test",
+    "build:apk": "./scripts/build-apk.sh"
+  }
+}

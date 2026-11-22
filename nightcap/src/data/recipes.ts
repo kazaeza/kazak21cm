@@ -1,0 +1,46 @@
+import type { GlassType, IceType, MethodType, Recipe, RecipeCategory } from '../types';
+import { RECIPES_PART_1 } from './recipes-part1';
+import { RECIPES_PART_2 } from './recipes-part2';
+
+export const RECIPES: Recipe[] = [...RECIPES_PART_1, ...RECIPES_PART_2];
+
+export const RECIPE_MAP = new Map<string, Recipe>(RECIPES.map((r) => [r.id, r]));
+
+export const METHOD_LABELS: Record<MethodType, string> = {
+  build: 'Билд в бокале',
+  shake: 'Шейк со льдом',
+  stir: 'Стир в стакане',
+  muddle: 'Мадл + билд',
+  layer: 'Слоями',
+  warm: 'Тёплая подача',
+};
+
+export const GLASS_LABELS: Record<GlassType, string> = {
+  coupe: 'Купе',
+  martini: 'Коктейльная рюмка',
+  rocks: 'Рокс / Олд фэшн',
+  highball: 'Хайбол',
+  wine: 'Винный бокал',
+  shot: 'Шот-рюмка',
+  flute: 'Флют',
+  tiki: 'Тики / Харикейн',
+  mug: 'Кружка',
+  pitcher: 'Кувшин',
+};
+
+export const ICE_LABELS: Record<IceType, string> = {
+  none: 'Без льда',
+  cubes: 'Кубики льда',
+  'big-cube': 'Большой куб',
+  crushed: 'Колотый лёд',
+};
+
+export const CATEGORY_LABELS: Record<RecipeCategory, string> = {
+  classic: 'Классика',
+  modern: 'Современный',
+  shot: 'Шот',
+  pitcher: 'Кувшин',
+  hot: 'Тёплый',
+  zero: '0,0%',
+  'beer-wine': 'Вино и пиво',
+};

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#05050b" />
+  <title>nightcap. — Космическая туманность коктейлей</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="cosmos-app">
+    <!-- ==================== TAB 1: COSMOS NEBULA ==================== -->
+    <section id="screen-nebula" class="tab-screen nebula-screen">
+      <canvas id="nebula-canvas" aria-hidden="true"></canvas>
+      <div id="tag-layer" aria-label="Вращающаяся туманность тегов"></div>
+
+      <!-- Floating Top Chrome: Header + Horizontal Lens Rail -->
+      <div id="nebula-top-chrome" class="nebula-top-chrome">
+        <header class="app-header">
+          <div class="brand-mark">
+            <span class="brand-text">nightcap</span>
+            <svg class="brand-spark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="logoSpark" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ffd5b8" />
+                  <stop offset="50%" stop-color="#ff8fb8" />
+                  <stop offset="100%" stop-color="#8cb4ff" />
+                </linearGradient>
+              </defs>
+              <path d="M12 1L14.6 9.4L23 12L14.6 14.6L12 23L9.4 14.6L1 12L9.4 9.4L12 1Z" fill="url(#logoSpark)" />
+            </svg>
+          </div>
+
+          <div class="header-actions">
+            <button id="spin-surprise-btn" type="button" class="glass-pill surprise-btn">
+              <span data-icon="sparkles" data-icon-class="icon-xs text-pink"></span>
+              <span>Удиви меня</span>
+            </button>
+
+            <button id="pause-btn" type="button" class="glass-pill circle-pill-btn" title="Пауза / вращение" aria-label="Пауза вращения">
+              <span id="pause-icon" data-icon="pause" data-icon-class="icon-sm"></span>
+            </button>
+          </div>
+        </header>
+
+        <div id="lens-strip" class="lens-strip" role="tablist" aria-label="Фильтр настроения"></div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: SHELF (ПОЛКА) ==================== -->
+    <section id="screen-shelf" class="tab-screen content-screen hidden"></section>
+
+    <!-- ==================== TAB 3: MENU (КАРТА) ==================== -->
+    <section id="screen-menu" class="tab-screen content-screen hidden"></section>
+
+    <!-- ==================== TAB 4: SAVED (ТАЙНИК) ==================== -->
+    <section id="screen-saved" class="tab-screen content-screen hidden"></section>
+
+    <!-- ==================== FLOATING BOTTOM STACK ==================== -->
+    <div id="bottom-stack" class="bottom-stack">
+      <div id="orbit-hint" class="orbit-hint">
+        Крути туманность пальцем · коснись тегов, чтобы поймать
+      </div>
+
+      <!-- Compact Caught Tags + Custom Input Console (visible on Cosmos tab) -->
+      <div id="cosmos-console" class="cosmos-console glass-chrome">
+        <div class="caught-header">
+          <div id="caught-row" class="caught-row"></div>
+          <div class="caught-controls">
+            <button id="console-shelf-chip" type="button" class="mini-shelf-chip hidden"></button>
+            <button id="clear-btn" type="button" class="clear-tags-btn hidden">Сбросить</button>
+          </div>
+        </div>
+
+        <div class="console-input-row">
+          <form id="word-form" class="word-form">
+            <span data-icon="search" data-icon-class="icon-xs text-muted"></span>
+            <input id="word-input" type="text" maxlength="45" list="word-list" autocomplete="off" placeholder="Джин, маракуйя, 0%…" />
+            <datalist id="word-list"></datalist>
+            <button type="submit" class="word-submit-btn" aria-label="Добавить тег">+</button>
+          </form>
+
+          <button id="mix-btn" type="button" class="mix-cta-btn">
+            <span>Подобрать</span>
+            <span id="mix-count" class="mix-count">114</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Floating Cosmic Navigation Dock -->
+      <nav id="cosmic-dock" aria-label="Навигация" class="cosmic-dock-wrap">
+        <div class="cosmic-dock glass-chrome">
+          <button type="button" data-nav="nebula" class="nav-item active">
+            <span data-icon="orbit" data-icon-class="icon-nav"></span>
+            <span>Космос</span>
+          </button>
+
+          <button type="button" data-nav="shelf" class="nav-item">
+            <span class="nav-icon-wrap">
+              <span data-icon="wine" data-icon-class="icon-nav"></span>
+              <span id="nav-badge-shelf" class="nav-badge hidden"></span>
+            </span>
+            <span>Полка</span>
+          </button>
+
+          <div class="orb-slot">
+            <button id="center-orb-btn" type="button" class="orb-cta" title="Подобрать коктейли">
+              <span data-icon="martini" data-icon-class="icon-orb"></span>
+              <span id="orb-count-label" class="orb-label">Микс</span>
+            </button>
+          </div>
+
+          <button type="button" data-nav="menu" class="nav-item">
+            <span data-icon="book-open" data-icon-class="icon-nav"></span>
+            <span>Карта</span>
+          </button>
+
+          <button type="button" data-nav="saved" class="nav-item">
+            <span class="nav-icon-wrap">
+              <span data-icon="heart" data-icon-class="icon-nav"></span>
+              <span id="nav-badge-saved" class="nav-badge hidden"></span>
+            </span>
+            <span>Тайник</span>
+          </button>
+        </div>
+      </nav>
+    </div>
+
+    <!-- ==================== OVERLAYS ==================== -->
+    <div id="results-sheet" class="sheet-overlay hidden" role="dialog" aria-modal="true" aria-label="Подборка коктейлей"></div>
+    <div id="recipe-modal" class="recipe-overlay hidden" role="dialog" aria-modal="true" aria-label="Рецепт коктейля"></div>
+
+    <!-- Floating Toast -->
+    <div id="toast" class="toast" aria-live="polite">
+      <div class="toast-pill glass-chrome">
+        <span data-icon="sparkles" data-icon-class="icon-xs text-pink"></span>
+        <span id="toast-text"></span>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

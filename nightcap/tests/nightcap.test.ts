@@ -1,0 +1,121 @@
+import { describe, expect, test } from 'bun:test';
+import { RECIPES } from '../src/data/recipes';
+import { TAGS, TAG_MAP, SURPRISES } from '../src/data/tags';
+import { BOTTLES, BOTTLE_MAP } from '../src/data/bottles';
+import { countAvailableForShelf, getShelfStatus, getSimilarRecipes, matchRecipes, recipeMatchesQuery } from '../src/data/matcher';
+import { renderCocktailGlass } from '../src/components/CocktailGlass';
+import type { BottleId } from '../src/types';
+
+describe('Nightcap data integrity', () => {
+  test('has a rich balanced catalog with unique IDs', () => {
+    expect(RECIPES.length).toBeGreaterThanOrEqual(75);
+    const ids = new Set(RECIPES.map((r) => r.id));
+    expect(ids.size).toBe(RECIPES.length);
+  });
+
+  test('every recipe has valid tags, valid bottles, steps, and visual spec', () => {
+    for (const r of RECIPES) {
+      expect(r.name.length).toBeGreaterThan(1);
+      expect(r.nameEn.length).toBeGreaterThan(1);
+      expect(r.why.length).toBeGreaterThan(10);
+      expect(r.ingredients.length).toBeGreaterThanOrEqual(2);
+      expect(r.steps.length).toBeGreaterThanOrEqual(2);
+      expect(r.visual.liquidStops.length).toBeGreaterThanOrEqual(2);
+      for (const tid of r.tags) expect(TAG_MAP.has(tid)).toBe(true);
+      for (const bid of r.bottles) expect(BOTTLE_MAP.has(bid)).toBe(true);
+    }
+  });
+
+  test('all 36 vibe tags have at least 4 matching recipes (zero dead tags)', () => {
+    expect(TAGS.length).toBe(36);
+    for (const tag of TAGS) {
+      const count = RECIPES.filter((r) => r.tags.includes(tag.id)).length;
+      expect(count).toBeGreaterThanOrEqual(4);
+    }
+  });
+
+  test('all surprises reference valid tags and yield matches', () => {
+    for (const s of SURPRISES) {
+      const tags = s.ids.map((id) => TAG_MAP.get(id)!);
+      expect(tags.every(Boolean)).toBe(true);
+      const hits = matchRecipes(tags, new Set(), false);
+      expect(hits.length).toBeGreaterThan(0);
+      expect(hits[0].hits).toBe(tags.length);
+    }
+  });
+
+  test('all shelf bottles are used in at least 2 recipes', () => {
+    for (const b of BOTTLES) {
+      const count = RECIPES.filter((r) => r.bottles.includes(b.id)).length;
+      expect(count).toBeGreaterThanOrEqual(2);
+    }
+  });
+});
+
+describe('Smart matcher & shelf filtering', () => {
+  test('matches Russian synonyms like 0%, виски, просекко, and English names', () => {
+    const zeroHits = RECIPES.filter((r) => recipeMatchesQuery(r, '0%'));
+    expect(zeroHits.length).toBeGreaterThanOrEqual(10);
+    expect(zeroHits.every((r) => r.abv === 0 || r.tags.includes('zero'))).toBe(true);
+
+    const whiskyHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'виски'));
+    expect(whiskyHits.some((r) => r.id === 'gold-rush')).toBe(true);
+
+    const negroniHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'negroni'));
+    expect(negroniHits.some((r) => r.id === 'negroni')).toBe(true);
+
+    const espressoMartiniHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'эспрессо мартини'));
+    expect(espressoMartiniHits.some((r) => r.id === 'espresso-martini')).toBe(true);
+    expect(espressoMartiniHits.length).toBeLessThanOrEqual(3);
+  });
+
+  test('ranks exact multi-tag matches ahead of partial matches', () => {
+    const ginTag = TAG_MAP.get('gin-night')!;
+    const oliveTag = TAG_MAP.get('olive')!;
+    const matches = matchRecipes([ginTag, oliveTag], new Set(), false);
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0].hits).toBe(2);
+    expect(matches[0].recipe.tags).toContain('gin-night');
+    expect(matches[0].recipe.tags).toContain('olive');
+  });
+
+  test('shelf filtering marks 0,0% ready and filters alcohol drinks by bottles', () => {
+    const shelf = new Set<BottleId>(['gin']);
+    const gt = RECIPES.find((r) => r.id === 'gin-tonic')!;
+    const negroni = RECIPES.find((r) => r.id === 'negroni')!;
+    const zero = RECIPES.find((r) => r.id === 'espresso-tonic')!;
+
+    expect(getShelfStatus(gt, shelf).onShelf).toBe(true);
+    expect(getShelfStatus(zero, shelf).onShelf).toBe(true);
+    expect(getShelfStatus(negroni, shelf).onShelf).toBe(false);
+    expect(getShelfStatus(negroni, shelf).missingBottles).toEqual(['campari', 'sweet-vermouth']);
+
+    const avail = countAvailableForShelf(shelf);
+    expect(avail).toBeGreaterThan(15);
+    expect(avail).toBeLessThan(RECIPES.length);
+
+    const filtered = matchRecipes([], shelf, true);
+    expect(filtered.length).toBe(avail);
+    expect(filtered.every((m) => m.onShelf)).toBe(true);
+  });
+
+  test('similar recipes never include the source recipe itself', () => {
+    const negroni = RECIPES.find((r) => r.id === 'negroni')!;
+    const sim = getSimilarRecipes(negroni, 4);
+    expect(sim.length).toBe(4);
+    expect(sim.some((r) => r.id === negroni.id)).toBe(false);
+  });
+});
+
+describe('CocktailGlass visualizer', () => {
+  test('renders valid SVG for every recipe in both hero and mini sizes', () => {
+    for (const r of RECIPES) {
+      const hero = renderCocktailGlass(r, 'hero');
+      const mini = renderCocktailGlass(r, 'mini');
+      expect(hero).toContain('<svg');
+      expect(hero).toContain('</svg>');
+      expect(hero).toContain('cocktail-glass-hero');
+      expect(mini).toContain('cocktail-glass-mini');
+    }
+  });
+});

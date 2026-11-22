@@ -1,0 +1,7 @@
+node_modules/
+dist/
+android/build/
+*.jks
+*.keystore
+*.idsig
+.DS_Store

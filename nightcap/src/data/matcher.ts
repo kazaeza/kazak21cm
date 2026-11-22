@@ -1,0 +1,249 @@
+import type { BottleId, MatchedRecipe, Recipe, VibeTag } from '../types';
+import { BOTTLE_MAP } from './bottles';
+import { RECIPES } from './recipes';
+import { TAGS } from './tags';
+
+const SYNONYM_TAGS: Record<string, string[]> = {
+  '0%': ['zero'],
+  '0,0': ['zero'],
+  '0.0': ['zero'],
+  'трезв': ['zero'],
+  'безалк': ['zero'],
+  'б/а': ['zero'],
+  'виски': ['whisky'],
+  'бурбон': ['whisky'],
+  'скотч': ['whisky', 'smoke'],
+  'джин': ['gin-night'],
+  'ром': ['rum'],
+  'текил': ['tequila'],
+  'мескал': ['smoke'],
+  'дым': ['smoke'],
+  'игрист': ['sparkling'],
+  'просекко': ['sparkling'],
+  'шампан': ['sparkling'],
+  'кава': ['sparkling'],
+  'шприц': ['sparkling', 'italy'],
+  'аперол': ['italy', 'bitter', 'sparkling'],
+  'кампар': ['italy', 'bitter'],
+  'негрони': ['italy', 'bitter', 'strong'],
+  'кисл': ['sour'],
+  'сауэр': ['sour'],
+  'сладк': ['dessert'],
+  'десерт': ['dessert'],
+  'торт': ['dessert'],
+  'сливк': ['dessert'],
+  'кофе': ['coffee'],
+  'эспрессо': ['coffee'],
+  'шот': ['shots', 'one-sip'],
+  'рюмк': ['shots', 'one-sip'],
+  'кувшин': ['pitcher'],
+  'компан': ['pitcher'],
+  'пив': ['beer-party'],
+  'вин': ['wine-night'],
+  'сангри': ['wine-night', 'pitcher'],
+  'остр': ['spicy'],
+  'чили': ['spicy'],
+  'табаско': ['spicy'],
+  'имбир': ['ginger'],
+  'мул': ['ginger'],
+  'мят': ['mint'],
+  'мохито': ['mint', 'rum'],
+  'огурц': ['cucumber'],
+  'огурец': ['cucumber'],
+  'оливк': ['olive'],
+  'мартини': ['olive', 'gin-night'],
+  'ягод': ['berry'],
+  'малин': ['berry'],
+  'клубник': ['berry'],
+  'вишн': ['cherry'],
+  'тропик': ['tropics'],
+  'маракуй': ['tropics'],
+  'ананас': ['tropics'],
+  'кокос': ['tropics'],
+  'грейпфрут': ['sunset'],
+  'закат': ['sunset'],
+  'розмарин': ['forest'],
+  'базилик': ['forest'],
+  'трав': ['forest', 'bitter'],
+  'горьк': ['bitter'],
+  'горчинк': ['bitter'],
+  'чай': ['tea-kombu'],
+  'комбуч': ['tea-kombu'],
+  'маття': ['tea-kombu'],
+  'горяч': ['warm-up'],
+  'тёпл': ['warm-up'],
+  'тепл': ['warm-up'],
+  'глинтвейн': ['warm-up'],
+  'согрет': ['warm-up'],
+  'цвет': ['floral'],
+  'бузин': ['floral'],
+  'шоколад': ['choco-nut'],
+  'орех': ['choco-nut'],
+  'миндал': ['choco-nut'],
+  'амаретто': ['choco-nut'],
+  'крепк': ['strong'],
+  'прост': ['easy'],
+  'быстр': ['easy'],
+  'жарк': ['hot-day'],
+  'томат': ['bloody-mary'],
+  'мэри': ['bloody-mary'],
+};
+
+const recipeSearchHaystack = new Map<string, string>(
+  RECIPES.map((r) => {
+    const bottleNames = r.bottles
+      .map((id) => {
+        const b = BOTTLE_MAP.get(id);
+        return b ? `${b.name} ${b.sub}` : '';
+      })
+      .join(' ');
+    const ingNames = r.ingredients.map((i) => `${i.name} ${i.note || ''}`).join(' ');
+    const tagNames = r.tags
+      .map((tid) => {
+        const t = TAGS.find((x) => x.id === tid);
+        return t ? `${t.label} ${t.sub}` : tid;
+      })
+      .join(' ');
+    const abvTerms =
+      r.abv === 0
+        ? '0% 0,0% 0.0% безалкогольный трезво'
+        : r.abv >= 20
+          ? 'крепкий покрепче'
+          : 'лёгкий легкий полегче';
+    const text = `${r.name} ${r.nameEn} ${r.why} ${r.garnish} ${bottleNames} ${ingNames} ${tagNames} ${abvTerms}`.toLowerCase();
+    return [r.id, text];
+  })
+);
+
+export function getShelfStatus(recipe: Recipe, shelf: Set<BottleId>): { onShelf: boolean; missingBottles: BottleId[] } {
+  if (recipe.bottles.length === 0) {
+    return { onShelf: true, missingBottles: [] };
+  }
+  const missingBottles = recipe.bottles.filter((b) => !shelf.has(b));
+  return {
+    onShelf: missingBottles.length === 0,
+    missingBottles,
+  };
+}
+
+function wordMatchesRecipe(recipe: Recipe, hay: string, word: string): boolean {
+  if (/^0([.,]0)?%?$/.test(word)) {
+    return recipe.abv === 0 || recipe.tags.includes('zero');
+  }
+  if (hay.includes(word)) return true;
+
+  for (const [stem, mappedTags] of Object.entries(SYNONYM_TAGS)) {
+    if ((word.length >= 3 && (word.includes(stem) || stem.startsWith(word))) || word === stem) {
+      if (mappedTags.some((tid) => recipe.tags.includes(tid))) return true;
+      if (mappedTags.includes('zero') && recipe.abv === 0) return true;
+      if (mappedTags.includes('strong') && recipe.abv >= 20) return true;
+    }
+  }
+  return false;
+}
+
+export function recipeMatchesQuery(recipe: Recipe, rawQuery: string): boolean {
+  const q = rawQuery.trim().toLowerCase();
+  if (!q) return true;
+
+  if (/^0([.,]0)?%?$/.test(q)) {
+    return recipe.abv === 0 || recipe.tags.includes('zero');
+  }
+
+  const hay = recipeSearchHaystack.get(recipe.id) || '';
+  if (hay.includes(q)) return true;
+
+  const words = q.split(/\s+/).filter((w) => w.length >= 2);
+  if (words.length === 0) return hay.includes(q);
+  return words.every((w) => wordMatchesRecipe(recipe, hay, w));
+}
+
+export function matchRecipes(
+  selectedTags: VibeTag[],
+  shelf: Set<BottleId>,
+  shelfOnly: boolean
+): MatchedRecipe[] {
+  const results: MatchedRecipe[] = [];
+
+  for (const recipe of RECIPES) {
+    const { onShelf, missingBottles } = getShelfStatus(recipe, shelf);
+    if (shelfOnly && shelf.size > 0 && !onShelf) continue;
+
+    if (selectedTags.length === 0) {
+      results.push({
+        recipe,
+        hits: 0,
+        totalCriteria: 0,
+        matchedTagIds: [],
+        onShelf,
+        missingBottles,
+      });
+      continue;
+    }
+
+    const matchedTagIds: string[] = [];
+    for (const tag of selectedTags) {
+      if (!tag.custom && recipe.tags.includes(tag.id)) {
+        matchedTagIds.push(tag.id);
+      } else if (tag.custom && recipeMatchesQuery(recipe, tag.label)) {
+        matchedTagIds.push(tag.id);
+      } else if (!tag.custom && recipeMatchesQuery(recipe, tag.label)) {
+        matchedTagIds.push(tag.id);
+      }
+    }
+
+    if (matchedTagIds.length > 0) {
+      results.push({
+        recipe,
+        hits: matchedTagIds.length,
+        totalCriteria: selectedTags.length,
+        matchedTagIds,
+        onShelf,
+        missingBottles,
+      });
+    }
+  }
+
+  results.sort((a, b) => {
+    // 1. Highest number of matched tags first
+    if (b.hits !== a.hits) return b.hits - a.hits;
+    // 2. If user set up their shelf, prioritize cocktails ready on shelf
+    if (shelf.size > 0 && a.onShelf !== b.onShelf) return a.onShelf ? -1 : 1;
+    // 3. Fewer missing bottles first
+    if (shelf.size > 0 && a.missingBottles.length !== b.missingBottles.length) {
+      return a.missingBottles.length - b.missingBottles.length;
+    }
+    // 4. Higher tag specificity (closer fit)
+    return a.recipe.tags.length - b.recipe.tags.length;
+  });
+
+  return results;
+}
+
+export function getSimilarRecipes(recipe: Recipe, limit = 4): Recipe[] {
+  const tagSet = new Set(recipe.tags);
+  return RECIPES.filter((r) => r.id !== recipe.id)
+    .map((r) => {
+      let score = 0;
+      for (const t of r.tags) {
+        if (tagSet.has(t)) score += 2;
+      }
+      if (r.category === recipe.category) score += 1;
+      if (r.abv === 0 && recipe.abv === 0) score += 2;
+      if (r.bottles.some((b) => recipe.bottles.includes(b))) score += 1;
+      return { r, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((x) => x.r);
+}
+
+export function countAvailableForShelf(shelf: Set<BottleId>): number {
+  if (shelf.size === 0) return RECIPES.length;
+  let count = 0;
+  for (const r of RECIPES) {
+    if (getShelfStatus(r, shelf).onShelf) count++;
+  }
+  return count;
+}
