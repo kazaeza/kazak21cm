@@ -64,12 +64,14 @@
 
       <!-- Bottom Console: Search when idle -> Single-tag confirm "Заебенить" when selected -->
       <div id="cosmos-console" class="cosmos-console glass-chrome">
+        <!-- Custom compact live suggestions (never uses native Android datalist popup!) -->
+        <div id="word-suggestions" class="word-suggestions hidden" role="listbox" aria-label="Подсказки"></div>
+
         <!-- State A: Nothing selected -> quick custom word search -->
         <div id="console-idle" class="console-idle-row">
-          <form id="word-form" class="word-form">
+          <form id="word-form" class="word-form" novalidate>
             <span data-icon="search" data-icon-class="icon-xs text-muted"></span>
-            <input id="word-input" type="text" maxlength="45" list="word-list" autocomplete="off" placeholder="Или введи слово: джин, маракуйя, 0%…" />
-            <datalist id="word-list"></datalist>
+            <input id="word-input" type="search" enterkeyhint="search" maxlength="45" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Или введи слово: джин, маракуйя, 0%…" />
             <button type="submit" class="word-submit-btn" aria-label="Найти вайб">+</button>
           </form>
           <button id="idle-shelf-chip" type="button" class="mini-shelf-chip hidden"></button>

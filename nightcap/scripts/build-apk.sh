@@ -15,7 +15,7 @@ ZIPALIGN="$BUILD_TOOLS/zipalign"
 APKSIGNER="$BUILD_TOOLS/apksigner"
 
 OUT_DIR="$ROOT_DIR/releases"
-FINAL_APK="$OUT_DIR/nightcap-v1.1.0.apk"
+FINAL_APK="$OUT_DIR/nightcap-v1.1.1.apk"
 KEYSTORE="$ANDROID_DIR/nightcap-signing.jks"
 KEY_ALIAS="nightcap"
 KEY_PASS="nightcap2026"
@@ -24,7 +24,7 @@ echo "==> [1/7] Building offline web bundle with Bun..."
 bun run "$ROOT_DIR/scripts/build-web.ts"
 
 echo "==> [2/7] Generating cosmic Android launcher icons..."
-if [ ! -f "$ANDROID_DIR/res/mipmap-xxxhdpi/ic_launcher_foreground.png" ]; then
+if [ ! -f "$ANDROID_DIR/res/mipmap-xxxhdpi/ic_launcher_background.png" ]; then
   python3 "$ROOT_DIR/scripts/generate-icons.py"
 fi
 
@@ -41,8 +41,8 @@ echo "==> [4/7] Compiling & linking Android resources with aapt2..."
   --manifest "$ANDROID_DIR/AndroidManifest.xml" \
   --min-sdk-version 26 \
   --target-sdk-version 35 \
-  --version-code 2 \
-  --version-name "1.1.0" \
+  --version-code 3 \
+  --version-name "1.1.1" \
   --java "$BUILD_DIR/gen" \
   -A "$BUILD_DIR/assets" \
   -o "$BUILD_DIR/app-unsigned.apk" \

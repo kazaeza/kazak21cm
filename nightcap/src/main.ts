@@ -335,13 +335,6 @@ function initApp(): void {
     el.innerHTML = icon(name, cls);
   });
 
-  // Populate datalist autocomplete
-  const dl = document.getElementById('word-list');
-  if (dl) {
-    const suggestions = [...TAGS.map((t) => t.label), ...RECIPES.map((r) => r.name)];
-    dl.innerHTML = suggestions.map((v) => `<option value="${escapeHtml(v)}"></option>`).join('');
-  }
-
   // Lens clicks
   document.getElementById('lens-strip')!.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-lens]');
@@ -365,21 +358,60 @@ function initApp(): void {
     renderConsole();
   });
 
-  // Custom word input form -> selects it as the single vibe and reveals "Заебенить"
+  // Custom word input form + live inline cosmic suggestions (no native Android datalist!)
   const wordInput = document.getElementById('word-input') as HTMLInputElement;
+  const wordSuggestions = document.getElementById('word-suggestions')!;
   const dockEl = document.getElementById('cosmic-dock')!;
 
-  wordInput.addEventListener('focus', () => {
-    dockEl.classList.add('keyboard-compact');
-  });
-  wordInput.addEventListener('blur', () => {
-    dockEl.classList.remove('keyboard-compact');
-    requestAnimationFrame(() => nebula.measureBounds());
-  });
+  function hideSuggestions(): void {
+    wordSuggestions.classList.add('hidden');
+    wordSuggestions.innerHTML = '';
+  }
 
-  document.getElementById('word-form')!.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const val = wordInput.value.trim();
+  function renderSuggestions(raw: string): void {
+    const q = raw.trim().toLowerCase();
+    if (!q) {
+      hideSuggestions();
+      return;
+    }
+
+    const tagHits = TAGS.filter(
+      (t) => t.label.toLowerCase().includes(q) || t.sub.toLowerCase().includes(q)
+    ).slice(0, 3);
+
+    const recipeHits = RECIPES.filter(
+      (r) => r.name.toLowerCase().includes(q) || r.nameEn.toLowerCase().includes(q)
+    ).slice(0, Math.max(0, 5 - tagHits.length));
+
+    if (!tagHits.length && !recipeHits.length) {
+      wordSuggestions.innerHTML = `
+        <button type="button" class="sugg-chip sugg-custom" data-sugg-custom="${escapeHtml(raw.trim())}">
+          ${icon('search', 'icon-xs')}
+          <span>Искать «${escapeHtml(raw.trim())}»</span>
+        </button>
+      `;
+      wordSuggestions.classList.remove('hidden');
+      return;
+    }
+
+    const parts: string[] = [];
+    for (const t of tagHits) {
+      parts.push(
+        `<button type="button" class="sugg-chip sugg-tag" data-sugg-tag="${escapeHtml(t.id)}">${icon('sparkles', 'icon-xs')}<span>${escapeHtml(t.label)}</span></button>`
+      );
+    }
+    for (const r of recipeHits) {
+      parts.push(
+        `<button type="button" class="sugg-chip sugg-recipe" data-sugg-recipe="${escapeHtml(r.id)}">${icon('martini', 'icon-xs')}<span>${escapeHtml(r.name)}</span></button>`
+      );
+    }
+
+    wordSuggestions.innerHTML = parts.join('');
+    wordSuggestions.classList.remove('hidden');
+  }
+
+  function submitCustomWord(raw: string): void {
+    const val = raw.trim();
     if (!val) return;
     const found = TAGS.find((t) => t.label.toLowerCase() === val.toLowerCase());
     state.selectedTag = found || {
@@ -391,11 +423,68 @@ function initApp(): void {
       custom: true,
     };
     wordInput.value = '';
+    hideSuggestions();
     wordInput.blur();
     haptic('medium');
     nebula.syncSelectionStyles();
     if (found) nebula.focusTag(found.id);
     renderConsole();
+  }
+
+  // Handle suggestion taps on pointerdown so they trigger before input blur hides the tray
+  wordSuggestions.addEventListener('pointerdown', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('.sugg-chip');
+    if (!btn) return;
+    e.preventDefault();
+    if (btn.dataset.suggTag) {
+      const tag = TAG_MAP.get(btn.dataset.suggTag);
+      if (tag) {
+        state.selectedTag = tag;
+        wordInput.value = '';
+        hideSuggestions();
+        wordInput.blur();
+        haptic('medium');
+        nebula.syncSelectionStyles();
+        nebula.focusTag(tag.id);
+        renderConsole();
+      }
+      return;
+    }
+    if (btn.dataset.suggRecipe) {
+      const recipe = RECIPES.find((r) => r.id === btn.dataset.suggRecipe);
+      if (recipe) {
+        wordInput.value = '';
+        hideSuggestions();
+        wordInput.blur();
+        openRecipe(recipe);
+      }
+      return;
+    }
+    if (btn.dataset.suggCustom) {
+      submitCustomWord(btn.dataset.suggCustom);
+    }
+  });
+
+  wordInput.addEventListener('focus', () => {
+    dockEl.classList.add('keyboard-compact');
+    if (wordInput.value.trim()) renderSuggestions(wordInput.value);
+  });
+
+  wordInput.addEventListener('input', () => {
+    renderSuggestions(wordInput.value);
+  });
+
+  wordInput.addEventListener('blur', () => {
+    dockEl.classList.remove('keyboard-compact');
+    setTimeout(() => {
+      if (document.activeElement !== wordInput) hideSuggestions();
+      nebula.measureBounds();
+    }, 120);
+  });
+
+  document.getElementById('word-form')!.addEventListener('submit', (e) => {
+    e.preventDefault();
+    submitCustomWord(wordInput.value);
   });
 
   // Confirm "Заебенить" & Center Orb

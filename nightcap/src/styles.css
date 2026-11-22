@@ -363,6 +363,49 @@ button {
   padding: 10px 12px;
 }
 
+.word-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 2px 9px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sugg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 9999px;
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #f3ecff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+
+.sugg-chip:active { transform: scale(0.95); }
+
+.sugg-tag {
+  background: rgba(199, 155, 255, 0.18);
+  border-color: rgba(215, 175, 255, 0.38);
+  color: #f6e7ff;
+}
+
+.sugg-recipe {
+  background: rgba(104, 186, 255, 0.14);
+  border-color: rgba(135, 184, 255, 0.34);
+  color: #dbeeff;
+}
+
+.sugg-custom {
+  background: rgba(247, 178, 217, 0.16);
+  border-color: rgba(247, 178, 217, 0.38);
+  color: #ffe3f3;
+}
+
 .console-idle-row {
   display: flex;
   align-items: center;

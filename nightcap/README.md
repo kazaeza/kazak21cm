@@ -15,9 +15,9 @@
 
 ## Готовый Android `.apk`
 
-Собранный и подписанный APK лежит в [`releases/nightcap-v1.1.0.apk`](releases/nightcap-v1.1.0.apk).
+Собранный и подписанный APK лежит в [`releases/nightcap-v1.1.1.apk`](releases/nightcap-v1.1.1.apk).
 Чтобы установить на Android:
-1. Скачай `nightcap-v1.1.0.apk` на телефон.
+1. Скачай `nightcap-v1.1.1.apk` на телефон.
 2. Открой файл и при запросе разреши установку из этого источника (Telegram / Файлы / Chrome).
 
 ## Локальная сборка и тесты
@@ -31,6 +31,6 @@ bun test
 # Сборка офлайн веб-бандла (dist/)
 bun run build:web
 
-# Полная сборка подписанного Android APK (releases/nightcap-v1.1.0.apk)
+# Полная сборка подписанного Android APK (releases/nightcap-v1.1.1.apk)
 ./scripts/build-apk.sh
 ```
