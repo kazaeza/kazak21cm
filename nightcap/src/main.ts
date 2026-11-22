@@ -16,7 +16,7 @@ import { escapeHtml } from './utils/html';
 interface AppState {
   tab: TabId;
   lens: LensId;
-  selected: Map<string, VibeTag>;
+  selectedTag: VibeTag | null;
   shelf: Set<BottleId>;
   shelfOnly: boolean;
   saved: Set<string>;
@@ -26,7 +26,7 @@ interface AppState {
 const state: AppState = {
   tab: 'nebula',
   lens: 'all',
-  selected: new Map(),
+  selectedTag: null,
   shelf: loadShelf(),
   shelfOnly: loadShelfOnly(),
   saved: loadSaved(),
@@ -63,7 +63,8 @@ function initApp(): void {
   const resultsRoot = document.getElementById('results-sheet')!;
   const recipeModalRoot = document.getElementById('recipe-modal')!;
 
-  const getCurrentMatches = () => matchRecipes([...state.selected.values()], state.shelf, state.shelfOnly);
+  const getSelectedList = (): VibeTag[] => (state.selectedTag ? [state.selectedTag] : []);
+  const getCurrentMatches = () => matchRecipes(getSelectedList(), state.shelf, state.shelfOnly);
 
   const syncNebulaActive = () => {
     const shouldRun = state.tab === 'nebula' && !recipeModal.isOpen();
@@ -97,11 +98,11 @@ function initApp(): void {
       resultsSheet.close();
       switchTab('nebula');
       state.lens = 'all';
-      state.selected.clear();
-      state.selected.set(tag.id, tag);
+      state.selectedTag = tag;
       renderLenses();
       nebula.rebuildTags('all');
-      renderCaught();
+      nebula.focusTag(tag.id);
+      renderConsole();
       haptic('medium');
       showToast(`Вайб: ${tag.label}`);
     },
@@ -124,15 +125,15 @@ function initApp(): void {
       state.shelfOnly = !state.shelfOnly;
       saveShelfOnly(state.shelfOnly);
       haptic('light');
-      renderCaught();
-      resultsSheet.update(getCurrentMatches(), [...state.selected.values()]);
+      renderConsole();
+      resultsSheet.update(getCurrentMatches(), getSelectedList());
     },
     onToggleSave: toggleSave,
     onOpenRecipe: openRecipe,
     onClearTags: () => {
-      state.selected.clear();
+      state.selectedTag = null;
       nebula.syncSelectionStyles();
-      renderCaught();
+      renderConsole();
     },
     onClose: () => {},
   });
@@ -149,7 +150,7 @@ function initApp(): void {
       saveShelf(state.shelf);
       haptic('light');
       shelfView.render();
-      renderCaught();
+      renderConsole();
       updateDockBadges();
     },
     onApplyPreset: (ids) => {
@@ -157,7 +158,7 @@ function initApp(): void {
       saveShelf(state.shelf);
       haptic('success');
       shelfView.render();
-      renderCaught();
+      renderConsole();
       updateDockBadges();
       showToast('Набор бутылок добавлен на полку');
     },
@@ -168,7 +169,7 @@ function initApp(): void {
       saveShelfOnly(false);
       haptic('light');
       shelfView.render();
-      renderCaught();
+      renderConsole();
       updateDockBadges();
       showToast('Полка очищена');
     },
@@ -201,20 +202,22 @@ function initApp(): void {
     tagLayerEl,
     topObstacleEl,
     bottomObstacleEl,
-    isSelected: (tagId) => state.selected.has(tagId),
-    onToggleTag: (tag) => toggleTag(tag),
+    isSelected: (tagId) => state.selectedTag?.id === tagId,
+    onToggleTag: (tag) => selectSingleTag(tag),
   });
 
-  function toggleTag(tag: VibeTag): void {
-    if (state.selected.has(tag.id)) {
-      state.selected.delete(tag.id);
+  // Always single-tag selection: tapping a new tag immediately replaces the old one,
+  // tapping the already selected tag clears selection.
+  function selectSingleTag(tag: VibeTag): void {
+    if (state.selectedTag?.id === tag.id) {
+      state.selectedTag = null;
       haptic('light');
     } else {
-      state.selected.set(tag.id, tag);
+      state.selectedTag = tag;
       haptic('medium');
     }
     nebula.syncSelectionStyles();
-    renderCaught();
+    renderConsole();
   }
 
   function renderLenses(): void {
@@ -225,44 +228,49 @@ function initApp(): void {
     ).join('');
   }
 
-  function renderCaught(): void {
-    const row = document.getElementById('caught-row')!;
-    const clearBtn = document.getElementById('clear-btn')!;
+  function syncShelfChip(chipEl: HTMLElement): void {
+    if (state.shelf.size > 0) {
+      chipEl.classList.remove('hidden');
+      chipEl.classList.toggle('active', state.shelfOnly);
+      chipEl.innerHTML = `${icon('wine', 'icon-xs')}<span>${state.shelfOnly ? 'С полки' : 'Полка'}</span>`;
+    } else {
+      chipEl.classList.add('hidden');
+    }
+  }
+
+  function renderConsole(): void {
+    const idleEl = document.getElementById('console-idle')!;
+    const confirmEl = document.getElementById('console-confirm')!;
     const hint = document.getElementById('orbit-hint')!;
-    const shelfChip = document.getElementById('console-shelf-chip')!;
+    const idleShelfChip = document.getElementById('idle-shelf-chip')!;
+    const confirmShelfChip = document.getElementById('confirm-shelf-chip')!;
     const mixCountEl = document.getElementById('mix-count')!;
     const orbLabelEl = document.getElementById('orb-count-label')!;
 
     const matches = getCurrentMatches();
     mixCountEl.textContent = String(matches.length);
-    orbLabelEl.textContent =
-      state.selected.size || (state.shelfOnly && state.shelf.size > 0) ? `${matches.length} шт.` : 'Микс';
+    orbLabelEl.textContent = state.selectedTag || (state.shelfOnly && state.shelf.size > 0) ? `${matches.length} шт.` : 'Микс';
 
-    // Shelf toggle chip in bottom console (only visible when user added bottles to shelf)
-    if (state.shelf.size > 0) {
-      shelfChip.classList.remove('hidden');
-      shelfChip.classList.toggle('active', state.shelfOnly);
-      shelfChip.innerHTML = `${icon('wine', 'icon-xs')}<span>${state.shelfOnly ? 'С полки' : 'Полка'}</span>`;
-    } else {
-      shelfChip.classList.add('hidden');
-    }
+    syncShelfChip(idleShelfChip);
+    syncShelfChip(confirmShelfChip);
 
-    if (!state.selected.size) {
-      clearBtn.classList.add('hidden');
+    if (!state.selectedTag) {
+      idleEl.classList.remove('hidden');
+      confirmEl.classList.add('hidden');
       hint.classList.remove('is-hidden');
-      row.innerHTML = '<span class="caught-placeholder">Что хочется поймать из туманности?</span>';
     } else {
-      clearBtn.classList.remove('hidden');
+      idleEl.classList.add('hidden');
+      confirmEl.classList.remove('hidden');
       hint.classList.add('is-hidden');
-      row.innerHTML = [...state.selected.values()]
-        .map(
-          (tag) =>
-            `<button type="button" class="caught-chip" data-remove-tag="${escapeHtml(tag.id)}" style="background:${tag.glow || 'linear-gradient(135deg,#fbc2eb,#a6c1ee)'}"><span>${escapeHtml(tag.label)}</span><span class="caught-x">×</span></button>`
-        )
-        .join('');
+
+      const dotEl = document.getElementById('selected-vibe-dot')!;
+      const titleEl = document.getElementById('selected-vibe-title')!;
+      const subEl = document.getElementById('selected-vibe-sub')!;
+      dotEl.style.background = state.selectedTag.glow || 'linear-gradient(135deg,#f7b2d9,#87b8ff)';
+      titleEl.textContent = state.selectedTag.label;
+      subEl.textContent = state.selectedTag.sub || 'свой запрос';
     }
 
-    // Recalculate vertical bounds after console height changes
     requestAnimationFrame(() => nebula.measureBounds());
   }
 
@@ -298,18 +306,26 @@ function initApp(): void {
     if (next === 'menu') menuView.render();
     if (next === 'saved') savedView.render();
     if (next === 'nebula') {
-      renderCaught();
+      renderConsole();
     }
 
     syncNebulaActive();
   }
 
-  function openResultsFromOrb(): void {
-    haptic('medium');
+  function openResults(): void {
+    haptic('success');
     if (state.tab !== 'nebula') {
       switchTab('nebula');
     }
-    resultsSheet.open(getCurrentMatches(), [...state.selected.values()]);
+    resultsSheet.open(getCurrentMatches(), getSelectedList());
+  }
+
+  function toggleShelfFilter(): void {
+    state.shelfOnly = !state.shelfOnly;
+    saveShelfOnly(state.shelfOnly);
+    haptic('light');
+    renderConsole();
+    showToast(state.shelfOnly ? 'Показываем только с твоей полки' : 'Показываем весь космос');
   }
 
   // Hydrate static icon placeholders
@@ -337,32 +353,19 @@ function initApp(): void {
     nebula.rebuildTags(state.lens);
   });
 
-  // Caught chip removal
-  document.getElementById('caught-row')!.addEventListener('click', (e) => {
-    const chip = (e.target as HTMLElement).closest<HTMLElement>('[data-remove-tag]');
-    if (!chip?.dataset.removeTag) return;
-    const tag = state.selected.get(chip.dataset.removeTag);
-    if (tag) toggleTag(tag);
-  });
+  // Console shelf-only toggles (idle + confirm)
+  document.getElementById('idle-shelf-chip')!.addEventListener('click', toggleShelfFilter);
+  document.getElementById('confirm-shelf-chip')!.addEventListener('click', toggleShelfFilter);
 
-  // Console shelf-only toggle
-  document.getElementById('console-shelf-chip')!.addEventListener('click', () => {
-    state.shelfOnly = !state.shelfOnly;
-    saveShelfOnly(state.shelfOnly);
-    haptic('light');
-    renderCaught();
-    showToast(state.shelfOnly ? 'Показываем только с твоей полки' : 'Показываем весь космос');
-  });
-
-  // Clear caught tags
+  // Clear selected tag
   document.getElementById('clear-btn')!.addEventListener('click', () => {
-    state.selected.clear();
+    state.selectedTag = null;
     haptic('light');
     nebula.syncSelectionStyles();
-    renderCaught();
+    renderConsole();
   });
 
-  // Custom word input form
+  // Custom word input form -> selects it as the single vibe and reveals "Заебенить"
   const wordInput = document.getElementById('word-input') as HTMLInputElement;
   const dockEl = document.getElementById('cosmic-dock')!;
 
@@ -379,7 +382,7 @@ function initApp(): void {
     const val = wordInput.value.trim();
     if (!val) return;
     const found = TAGS.find((t) => t.label.toLowerCase() === val.toLowerCase());
-    const tag: VibeTag = found || {
+    state.selectedTag = found || {
       id: `custom:${val.toLowerCase()}`,
       label: val,
       sub: 'свой запрос',
@@ -387,23 +390,22 @@ function initApp(): void {
       lenses: ['all'],
       custom: true,
     };
-    state.selected.set(tag.id, tag);
     wordInput.value = '';
     wordInput.blur();
     haptic('medium');
     nebula.syncSelectionStyles();
-    renderCaught();
+    if (found) nebula.focusTag(found.id);
+    renderConsole();
   });
 
-  // Open results triggers
-  document.getElementById('mix-btn')!.addEventListener('click', openResultsFromOrb);
-  document.getElementById('center-orb-btn')!.addEventListener('click', openResultsFromOrb);
+  // Confirm "Заебенить" & Center Orb
+  document.getElementById('mix-btn')!.addEventListener('click', openResults);
+  document.getElementById('center-orb-btn')!.addEventListener('click', openResults);
 
-  // Surprise spin button (non-repeating!)
+  // Surprise button: picks ONE vibrant tag and smoothly rotates the nebula right to it!
   document.getElementById('spin-surprise-btn')!.addEventListener('click', () => {
     state.lens = 'all';
     renderLenses();
-    state.selected.clear();
 
     let nextIdx = Math.floor(Math.random() * SURPRISES.length);
     if (nextIdx === state.lastSurpriseIdx && SURPRISES.length > 1) {
@@ -412,18 +414,16 @@ function initApp(): void {
     state.lastSurpriseIdx = nextIdx;
 
     const pick = SURPRISES[nextIdx];
-    for (const id of pick.ids) {
-      const t = TAG_MAP.get(id);
-      if (t) state.selected.set(t.id, t);
-    }
+    const tag = TAG_MAP.get(pick.ids[0]) || TAGS[0];
+    state.selectedTag = tag;
 
     nebula.setPaused(false);
     const pauseEl = document.getElementById('pause-icon');
     if (pauseEl) pauseEl.innerHTML = icon('pause', 'icon-sm');
 
-    nebula.spinImpulse(0.0058, 0.0014);
     nebula.rebuildTags('all');
-    renderCaught();
+    nebula.focusTag(tag.id);
+    renderConsole();
     haptic('success');
     showToast(pick.text);
   });
@@ -463,21 +463,32 @@ function initApp(): void {
       switchTab('nebula');
       return true;
     }
+    if (state.selectedTag) {
+      state.selectedTag = null;
+      nebula.syncSelectionStyles();
+      renderConsole();
+      return true;
+    }
     return false;
   });
 
-  // Escape key support for desktop preview
+  // Escape key support
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (recipeModal.isOpen()) recipeModal.close();
       else if (resultsSheet.isOpen()) resultsSheet.close();
+      else if (state.selectedTag) {
+        state.selectedTag = null;
+        nebula.syncSelectionStyles();
+        renderConsole();
+      }
     }
   });
 
   // Initial render & boot
   renderLenses();
   nebula.rebuildTags('all');
-  renderCaught();
+  renderConsole();
   updateDockBadges();
   nebula.start();
 }

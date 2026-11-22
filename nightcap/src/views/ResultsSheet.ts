@@ -124,8 +124,8 @@ export class ResultsSheet {
           <p class="empty-title">Ничего не совпало</p>
           <p class="empty-sub">${
             shelfOnly && shelf.size > 0
-              ? 'Попробуй отключить фильтр «Только с полки» или сними один из тегов.'
-              : 'Сними один из тегов — и туманность сразу найдёт идеальный вариант.'
+              ? 'Попробуй отключить фильтр «Только с полки» или выбери другой вайб в туманности.'
+              : 'Попробуй выбрать другой вайб или введи другой ингредиент.'
           }</p>
           <div class="empty-actions">
             ${
@@ -133,7 +133,7 @@ export class ResultsSheet {
                 ? `<button type="button" class="btn-secondary" data-sheet-shelf-toggle>Показать всю базу</button>`
                 : ''
             }
-            ${tagCount > 0 ? `<button type="button" class="btn-primary" data-sheet-clear-tags>Сбросить теги</button>` : ''}
+            ${tagCount > 0 ? `<button type="button" class="btn-primary" data-sheet-clear-tags>Выбрать другой вайб</button>` : ''}
           </div>
         </div>
       `;

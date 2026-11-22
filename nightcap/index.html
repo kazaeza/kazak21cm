@@ -59,30 +59,43 @@
     <!-- ==================== FLOATING BOTTOM STACK ==================== -->
     <div id="bottom-stack" class="bottom-stack">
       <div id="orbit-hint" class="orbit-hint">
-        Крути туманность пальцем · коснись тегов, чтобы поймать
+        Крути туманность · тапни на свой вайб
       </div>
 
-      <!-- Compact Caught Tags + Custom Input Console (visible on Cosmos tab) -->
+      <!-- Bottom Console: Search when idle -> Single-tag confirm "Заебенить" when selected -->
       <div id="cosmos-console" class="cosmos-console glass-chrome">
-        <div class="caught-header">
-          <div id="caught-row" class="caught-row"></div>
-          <div class="caught-controls">
-            <button id="console-shelf-chip" type="button" class="mini-shelf-chip hidden"></button>
-            <button id="clear-btn" type="button" class="clear-tags-btn hidden">Сбросить</button>
-          </div>
-        </div>
-
-        <div class="console-input-row">
+        <!-- State A: Nothing selected -> quick custom word search -->
+        <div id="console-idle" class="console-idle-row">
           <form id="word-form" class="word-form">
             <span data-icon="search" data-icon-class="icon-xs text-muted"></span>
-            <input id="word-input" type="text" maxlength="45" list="word-list" autocomplete="off" placeholder="Джин, маракуйя, 0%…" />
+            <input id="word-input" type="text" maxlength="45" list="word-list" autocomplete="off" placeholder="Или введи слово: джин, маракуйя, 0%…" />
             <datalist id="word-list"></datalist>
-            <button type="submit" class="word-submit-btn" aria-label="Добавить тег">+</button>
+            <button type="submit" class="word-submit-btn" aria-label="Найти вайб">+</button>
           </form>
+          <button id="idle-shelf-chip" type="button" class="mini-shelf-chip hidden"></button>
+        </div>
 
-          <button id="mix-btn" type="button" class="mix-cta-btn">
-            <span>Подобрать</span>
-            <span id="mix-count" class="mix-count">114</span>
+        <!-- State B: One vibe selected -> crisp confirmation + big "Заебенить" CTA -->
+        <div id="console-confirm" class="console-confirm hidden">
+          <div class="selected-vibe-bar">
+            <div class="selected-vibe-info">
+              <span id="selected-vibe-dot" class="selected-vibe-dot"></span>
+              <div class="selected-vibe-texts">
+                <div id="selected-vibe-title" class="selected-vibe-title"></div>
+                <div id="selected-vibe-sub" class="selected-vibe-sub"></div>
+              </div>
+            </div>
+            <div class="caught-controls">
+              <button id="confirm-shelf-chip" type="button" class="mini-shelf-chip hidden"></button>
+              <button id="clear-btn" type="button" class="clear-x-btn" aria-label="Снять выбор">
+                <span data-icon="x" data-icon-class="icon-xs"></span>
+              </button>
+            </div>
+          </div>
+
+          <button id="mix-btn" type="button" class="confirm-cta-btn">
+            <span class="confirm-cta-label">Заебенить</span>
+            <span id="mix-count" class="confirm-cta-count">12</span>
           </button>
         </div>
       </div>

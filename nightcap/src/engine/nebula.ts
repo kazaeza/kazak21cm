@@ -6,7 +6,7 @@ interface NebulaPuff {
   y: number;
   z: number;
   radius: number;
-  color: [number, number, number];
+  spriteIdx: number;
   phase: number;
   alpha: number;
 }
@@ -30,9 +30,9 @@ interface TagNode {
   width: number;
   height: number;
   curOpacity: number;
-  blurBucket: number;
-  screenX: number;
-  screenY: number;
+  hidden: boolean;
+  lastPointerAuto: boolean;
+  lastZIndex: number;
 }
 
 const NEBULA_COLORS: [number, number, number][] = [
@@ -46,6 +46,11 @@ const NEBULA_COLORS: [number, number, number][] = [
 
 function escapeHtml(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
+}
+
+function extractPrimaryColor(glow: string): string {
+  const m = glow.match(/#[0-9a-fA-F]{6}/);
+  return m ? m[0] : '#c79bff';
 }
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
@@ -76,9 +81,7 @@ function applyScreenRotation(m: number[], dYaw: number, dPitch: number): void {
   }
 }
 
-// Gram-Schmidt re-orthonormalization to prevent floating-point drift over long sessions
 function orthonormalize(m: number[]): void {
-  // Rows r0, r1, r2
   let r0x = m[0], r0y = m[1], r0z = m[2];
   const n0 = Math.hypot(r0x, r0y, r0z) || 1;
   r0x /= n0; r0y /= n0; r0z /= n0;
@@ -91,7 +94,6 @@ function orthonormalize(m: number[]): void {
   const n1 = Math.hypot(r1x, r1y, r1z) || 1;
   r1x /= n1; r1y /= n1; r1z /= n1;
 
-  // r2 = r0 x r1
   const r2x = r0y * r1z - r0z * r1y;
   const r2y = r0z * r1x - r0x * r1z;
   const r2z = r0x * r1y - r0y * r1x;
@@ -109,18 +111,46 @@ function projectMat(m: number[], x: number, y: number, z: number): [number, numb
   ];
 }
 
-function drawFourPointStar(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = `rgba(255, 240, 255, ${alpha.toFixed(2)})`;
-  ctx.beginPath();
-  ctx.moveTo(0, -r);
-  ctx.quadraticCurveTo(r * 0.16, -r * 0.16, r, 0);
-  ctx.quadraticCurveTo(r * 0.16, r * 0.16, 0, r);
-  ctx.quadraticCurveTo(-r * 0.16, r * 0.16, -r, 0);
-  ctx.quadraticCurveTo(-r * 0.16, -r * 0.16, 0, -r);
-  ctx.fill();
-  ctx.restore();
+// Pre-render soft radial nebula puff sprites ONCE so the rAF loop uses fast GPU drawImage
+function createPuffSprite(color: [number, number, number]): HTMLCanvasElement {
+  const sz = 128;
+  const c = document.createElement('canvas');
+  c.width = sz;
+  c.height = sz;
+  const g = c.getContext('2d');
+  if (g) {
+    const half = sz * 0.5;
+    const grad = g.createRadialGradient(half, half, half * 0.04, half, half, half);
+    grad.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 1)`);
+    grad.addColorStop(0.46, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.38)`);
+    grad.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, sz, sz);
+  }
+  return c;
+}
+
+// Pre-render 4-point star sparkle sprite ONCE
+function createSparkSprite(): HTMLCanvasElement {
+  const sz = 32;
+  const c = document.createElement('canvas');
+  c.width = sz;
+  c.height = sz;
+  const g = c.getContext('2d');
+  if (g) {
+    const h = sz * 0.5;
+    const r = sz * 0.44;
+    g.translate(h, h);
+    g.fillStyle = 'rgba(255, 240, 255, 1)';
+    g.beginPath();
+    g.moveTo(0, -r);
+    g.quadraticCurveTo(r * 0.16, -r * 0.16, r, 0);
+    g.quadraticCurveTo(r * 0.16, r * 0.16, 0, r);
+    g.quadraticCurveTo(-r * 0.16, r * 0.16, -r, 0);
+    g.quadraticCurveTo(-r * 0.16, -r * 0.16, 0, -r);
+    g.fill();
+  }
+  return c;
 }
 
 export interface NebulaOptions {
@@ -144,6 +174,7 @@ export class NebulaEngine {
   private dragMoved = false;
   private dragOrigin: { id: number; x: number; y: number; startX: number; startY: number; t: number } | null = null;
   private hoveredTagId: string | null = null;
+  private focusTargetId: string | null = null;
 
   private paused = false;
   private active = true;
@@ -156,42 +187,48 @@ export class NebulaEngine {
   private safeTop = 124;
   private safeBottom = 560;
 
+  private puffSprites: HTMLCanvasElement[];
+  private sparkSprite: HTMLCanvasElement;
   private nebulaPuffs: NebulaPuff[];
   private stars: Star[];
   private tagNodes: TagNode[] = [];
 
   constructor(opts: NebulaOptions) {
     this.opts = opts;
-    const ctx = opts.canvasEl.getContext('2d');
+    const ctx = opts.canvasEl.getContext('2d', { alpha: true });
     if (!ctx) throw new Error('Could not acquire 2D context for nebula canvas');
     this.ctx = ctx;
 
+    this.puffSprites = NEBULA_COLORS.map((col) => createPuffSprite(col));
+    this.sparkSprite = createSparkSprite();
+
     applyScreenRotation(this.rotM, 0.55, 0.12);
 
-    this.nebulaPuffs = Array.from({ length: 20 }, (_, i) => {
-      const y = 1 - (2 * (i + 0.5)) / 20;
+    // 14 lush pre-rendered nebula puffs — visually identical depth, half the overdraw
+    this.nebulaPuffs = Array.from({ length: 14 }, (_, i) => {
+      const y = 1 - (2 * (i + 0.5)) / 14;
       const r = Math.sqrt(Math.max(0, 1 - y * y));
       const a = i * 2.399963;
-      const dist = 0.35 + (i % 4) * 0.22;
+      const dist = 0.34 + (i % 4) * 0.21;
       return {
         x: r * Math.cos(a) * dist,
         y: y * dist * 0.85,
         z: r * Math.sin(a) * dist,
-        radius: 115 + (i % 5) * 34,
-        color: NEBULA_COLORS[i % NEBULA_COLORS.length],
+        radius: 122 + (i % 5) * 32,
+        spriteIdx: i % NEBULA_COLORS.length,
         phase: (i * 1.13) % (Math.PI * 2),
-        alpha: 0.16 + (i % 3) * 0.05,
+        alpha: 0.19 + (i % 3) * 0.05,
       };
     });
 
-    // Deterministic seeded stars so layout looks balanced every launch
+    // Deterministic starfield (90 crisp stars + sparkles)
     let seed = 4219;
     const rand = () => {
       seed = (seed * 16807) % 2147483647;
       return (seed - 1) / 2147483646;
     };
 
-    this.stars = Array.from({ length: 130 }, () => {
+    this.stars = Array.from({ length: 90 }, () => {
       const theta = rand() * Math.PI * 2;
       const phi = Math.acos(2 * rand() - 1);
       const rad = 0.9 + rand() * 1.1;
@@ -199,10 +236,10 @@ export class NebulaEngine {
         x: rad * Math.sin(phi) * Math.cos(theta),
         y: rad * Math.cos(phi),
         z: rad * Math.sin(phi) * Math.sin(theta),
-        size: 0.6 + rand() * 1.5,
+        size: 0.7 + rand() * 1.4,
         twinkle: rand() * Math.PI * 2,
         speed: 0.001 + rand() * 0.0022,
-        sparkle: rand() < 0.09,
+        sparkle: rand() < 0.11,
       };
     });
 
@@ -237,11 +274,20 @@ export class NebulaEngine {
   }
 
   public spinImpulse(vx: number, vy: number): void {
+    this.focusTargetId = null;
     this.velX = vx;
     this.velY = vy;
   }
 
+  // Smoothly rotates the sphere to bring a specific tag straight to the front center
+  public focusTag(tagId: string): void {
+    this.focusTargetId = tagId;
+    this.velX = 0;
+    this.velY = 0;
+  }
+
   public nudgeRotation(dYaw: number, dPitch: number): void {
+    this.focusTargetId = null;
     applyScreenRotation(this.rotM, dYaw, dPitch);
     applyScreenRotation(this.starM, dYaw * 0.35, dPitch * 0.35);
   }
@@ -270,7 +316,7 @@ export class NebulaEngine {
       btn.type = 'button';
       const isSel = this.opts.isSelected(tag.id);
       btn.className = 'nebula-tag' + (isSel ? ' selected' : '');
-      btn.style.setProperty('--glow', tag.glow);
+      btn.style.setProperty('--glow-c', extractPrimaryColor(tag.glow));
       btn.setAttribute('aria-pressed', isSel ? 'true' : 'false');
       btn.innerHTML = `
         <span class="tag-main">
@@ -303,13 +349,13 @@ export class NebulaEngine {
         width: 130,
         height: 44,
         curOpacity: 0,
-        blurBucket: -1,
-        screenX: 0,
-        screenY: 0,
+        hidden: false,
+        lastPointerAuto: true,
+        lastZIndex: 0,
       };
     });
 
-    // Measure all tag widths/heights in a SINGLE batched layout read — never again inside rAF!
+    // Single batched read — never read offsetWidth/offsetHeight inside rAF
     for (const node of nodes) {
       node.width = node.el.offsetWidth || 130;
       node.height = node.el.offsetHeight || 44;
@@ -327,8 +373,8 @@ export class NebulaEngine {
     const topRect = this.opts.topObstacleEl.getBoundingClientRect();
     const bottomRect = this.opts.bottomObstacleEl.getBoundingClientRect();
 
-    const topLimit = Math.max(108, topRect.bottom - appRect.top + 24);
-    const bottomLimit = Math.min(this.viewportH - 180, bottomRect.top - appRect.top - 26);
+    const topLimit = Math.max(108, topRect.bottom - appRect.top + 22);
+    const bottomLimit = Math.min(this.viewportH - 180, bottomRect.top - appRect.top - 24);
 
     this.safeTop = topLimit;
     this.safeBottom = Math.max(topLimit + 120, bottomLimit);
@@ -361,6 +407,7 @@ export class NebulaEngine {
     layer.addEventListener('pointerdown', (e) => {
       this.isDragging = true;
       this.dragMoved = false;
+      this.focusTargetId = null;
       this.dragOrigin = {
         id: e.pointerId,
         x: e.clientX,
@@ -383,7 +430,7 @@ export class NebulaEngine {
       if (!this.dragMoved) return;
 
       const now = performance.now();
-      const dt = Math.max(8, now - this.dragOrigin.t);
+      const dt = Math.max(4, now - this.dragOrigin.t);
       const dx = e.clientX - this.dragOrigin.x;
       const dy = e.clientY - this.dragOrigin.y;
       const dYaw = dx * 0.0062;
@@ -392,8 +439,11 @@ export class NebulaEngine {
       applyScreenRotation(this.rotM, dYaw, dPitch);
       applyScreenRotation(this.starM, dYaw * 0.35, dPitch * 0.35);
 
-      this.velX = Math.max(-0.0075, Math.min(0.0075, dYaw / dt));
-      this.velY = Math.max(-0.0075, Math.min(0.0075, dPitch / dt));
+      // Exponential smoothing on velocity so 120Hz touch samples feel silky
+      const instX = Math.max(-0.0085, Math.min(0.0085, dYaw / dt));
+      const instY = Math.max(-0.0085, Math.min(0.0085, dPitch / dt));
+      this.velX = this.velX * 0.35 + instX * 0.65;
+      this.velY = this.velY * 0.35 + instY * 0.65;
 
       this.dragOrigin.x = e.clientX;
       this.dragOrigin.y = e.clientY;
@@ -422,12 +472,13 @@ export class NebulaEngine {
     this.rafId = null;
     if (!this.active) return;
 
-    const dt = Math.min(34, now - (this.lastTime || now - 16));
+    const dt = Math.min(34, Math.max(4, now - (this.lastTime || now - 16)));
     this.lastTime = now;
 
     const w = this.viewportW;
     const h = this.viewportH;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Cap canvas DPR at 1.5 — visually indistinguishable for soft nebula/stars, 2x faster on QHD 120Hz phones
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const canvas = this.opts.canvasEl;
     const targetW = Math.round(w * dpr);
     const targetH = Math.round(h * dpr);
@@ -436,14 +487,34 @@ export class NebulaEngine {
       canvas.height = targetH;
     }
 
-    if (!this.isDragging && !this.paused) {
-      const drift = this.hoveredTagId ? 0.000035 : 0.00014;
-      const stepYaw = this.velX * dt + drift * dt;
-      const stepPitch = this.velY * dt;
-      applyScreenRotation(this.rotM, stepYaw, stepPitch);
-      applyScreenRotation(this.starM, stepYaw * 0.35, stepPitch * 0.35);
-      this.velX *= 0.94;
-      this.velY *= 0.94;
+    // Frame-rate independent trackball physics (identical silky feel on 60Hz, 90Hz & 120Hz!)
+    if (!this.isDragging) {
+      if (this.focusTargetId) {
+        const targetNode = this.tagNodes.find((n) => n.tag.id === this.focusTargetId);
+        if (targetNode) {
+          const [tx, ty, tz] = projectMat(this.rotM, targetNode.bx, targetNode.by, targetNode.bz);
+          // Steer target toward (0, 0, +1)
+          const gain = Math.min(0.18, dt * 0.0085);
+          const dYaw = (tz < 0 ? (tx >= 0 ? -1 : 1) * 1.15 : -tx) * gain;
+          const dPitch = -ty * gain;
+          applyScreenRotation(this.rotM, dYaw, dPitch);
+          applyScreenRotation(this.starM, dYaw * 0.35, dPitch * 0.35);
+          if (tz > 0.96 && Math.abs(tx) < 0.05 && Math.abs(ty) < 0.05) {
+            this.focusTargetId = null;
+          }
+        } else {
+          this.focusTargetId = null;
+        }
+      } else if (!this.paused) {
+        const drift = this.hoveredTagId ? 0.000035 : 0.00014;
+        const stepYaw = this.velX * dt + drift * dt;
+        const stepPitch = this.velY * dt;
+        applyScreenRotation(this.rotM, stepYaw, stepPitch);
+        applyScreenRotation(this.starM, stepYaw * 0.35, stepPitch * 0.35);
+        const decay = Math.pow(0.935, dt / 16.667);
+        this.velX *= decay;
+        this.velY *= decay;
+      }
     }
 
     if (++this.frameCounter % 120 === 0) {
@@ -458,54 +529,51 @@ export class NebulaEngine {
     const radiusY = Math.min(usableH * 0.47, 215);
 
     const ctx = this.ctx;
-    ctx.save();
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
-    // 1. Parallax 3D Starfield
+    // 1. Parallax 3D Starfield (using pre-rendered sparkle sprite & fast fillRect dots)
     const starSpan = Math.max(w, h) * 0.46;
-    for (const s of this.stars) {
+    ctx.fillStyle = '#f2ecff';
+    for (let i = 0; i < this.stars.length; i++) {
+      const s = this.stars[i];
       const [xx, yy] = projectMat(this.starM, s.x, s.y, s.z);
       const sxPos = centerX + xx * starSpan;
       const syPos = centerY + yy * starSpan * 0.95;
+      if (sxPos < -12 || sxPos > w + 12 || syPos < -12 || syPos > h + 12) continue;
+
       const tw = 0.25 + 0.65 * (0.5 + 0.5 * Math.sin(now * s.speed + s.twinkle));
       if (s.sparkle) {
-        drawFourPointStar(ctx, sxPos, syPos, s.size * 3.6, tw * 0.85);
+        const dim = s.size * 7.2;
+        ctx.globalAlpha = tw * 0.85;
+        ctx.drawImage(this.sparkSprite, sxPos - dim * 0.5, syPos - dim * 0.5, dim, dim);
       } else {
-        ctx.beginPath();
-        ctx.arc(sxPos, syPos, s.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(242, 236, 255, ${(tw * 0.72).toFixed(2)})`;
-        ctx.fill();
+        const d = s.size * 1.8;
+        ctx.globalAlpha = tw * 0.72;
+        ctx.fillRect(sxPos - d * 0.5, syPos - d * 0.5, d, d);
       }
     }
 
-    // 2. 3D Rotating Nebula Gas Clouds (Screen Blend)
+    // 2. 3D Rotating Nebula Gas Clouds (Pre-rendered GPU sprites + 'lighter' additive blend)
     ctx.save();
-    ctx.globalCompositeOperation = 'screen';
+    ctx.globalCompositeOperation = 'lighter';
     const breath = now * 0.0005;
     const cloudScale = Math.min(w, h) < 480 ? 0.76 : 1.06;
 
-    for (const p of this.nebulaPuffs) {
+    for (let i = 0; i < this.nebulaPuffs.length; i++) {
+      const p = this.nebulaPuffs[i];
       const [xx, yy, depth] = projectMat(this.rotM, p.x, p.y, p.z);
       const px = centerX + xx * radiusX * 1.12;
       const py = centerY + yy * radiusY * 1.15;
       const depthNorm = (depth + 1) * 0.5;
       const r = p.radius * cloudScale * (0.86 + 0.24 * depthNorm) * (0.94 + 0.06 * Math.sin(breath + p.phase));
-      const a = p.alpha * (0.55 + 0.45 * depthNorm);
-
-      const grad = ctx.createRadialGradient(px, py, r * 0.05, px, py, r);
-      grad.addColorStop(0, `rgba(${p.color[0]}, ${p.color[1]}, ${p.color[2]}, ${a.toFixed(3)})`);
-      grad.addColorStop(0.5, `rgba(${p.color[0]}, ${p.color[1]}, ${p.color[2]}, ${(a * 0.38).toFixed(3)})`);
-      grad.addColorStop(1, `rgba(${p.color[0]}, ${p.color[1]}, ${p.color[2]}, 0)`);
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.globalAlpha = p.alpha * (0.52 + 0.48 * depthNorm);
+      ctx.drawImage(this.puffSprites[p.spriteIdx], px - r, py - r, r * 2, r * 2);
     }
     ctx.restore();
+    ctx.globalAlpha = 1;
 
-    // 3. Project 3D Tags (Zero Layout Reflows!)
+    // 3. Project 3D Tags — Pure GPU Transform + Opacity (ZERO blur filter / ZERO backdrop-filter!)
     const projected = this.tagNodes.map((node) => {
       const [xx, yy, depth] = projectMat(this.rotM, node.bx, node.by, node.bz);
       const depthNorm = (depth + 1) * 0.5;
@@ -521,11 +589,12 @@ export class NebulaEngine {
     });
 
     const frontOccupied: { x: number; y: number; w: number; h: number }[] = [];
-    const selectedPoints: { x: number; y: number }[] = [];
-
     projected.sort((a, b) => b.depth - a.depth);
 
-    for (const p of projected) {
+    const lerpK = Math.min(1, 1 - Math.pow(0.88, dt / 16.667));
+
+    for (let i = 0; i < projected.length; i++) {
+      const p = projected[i];
       const node = p.node;
       const el = node.el;
       const isSel = this.opts.isSelected(node.tag.id);
@@ -533,11 +602,10 @@ export class NebulaEngine {
       const ew = node.width * p.scale;
       const eh = node.height * p.scale;
 
-      const px = Math.max(ew / 2 + 12, Math.min(w - ew / 2 - 12, p.x));
+      const px = Math.max(ew * 0.5 + 12, Math.min(w - ew * 0.5 - 12, p.x));
       const py = Math.max(this.safeTop, Math.min(this.safeBottom, p.y));
 
-      let targetOpacity = smoothstep(-0.18, 0.52, p.depth);
-      let targetBlur = (1 - smoothstep(-0.1, 0.55, p.depth)) * 2.4;
+      let targetOpacity = smoothstep(-0.14, 0.52, p.depth);
 
       const tooClose =
         !isSel &&
@@ -545,52 +613,48 @@ export class NebulaEngine {
           (q) => Math.abs(q.x - px) < (q.w + ew) * 0.44 && Math.abs(q.y - py) < (q.h + eh) * 0.56
         );
       if (tooClose) {
-        targetOpacity *= 0.22;
-        targetBlur = Math.max(targetBlur, 1.8);
+        targetOpacity *= 0.16;
       }
 
       if (isSel) {
-        targetOpacity = Math.max(0.78, 0.68 + 0.32 * ((p.depth + 1) * 0.5));
-        targetBlur = 0;
+        targetOpacity = Math.max(0.84, 0.74 + 0.26 * ((p.depth + 1) * 0.5));
       }
 
-      node.curOpacity += (targetOpacity - node.curOpacity) * 0.12;
+      node.curOpacity += (targetOpacity - node.curOpacity) * lerpK;
+
+      if (node.curOpacity < 0.025 && !isSel) {
+        if (!node.hidden) {
+          node.hidden = true;
+          el.style.visibility = 'hidden';
+          el.style.pointerEvents = 'none';
+          node.lastPointerAuto = false;
+        }
+        continue;
+      }
+
+      if (node.hidden) {
+        node.hidden = false;
+        el.style.visibility = 'visible';
+      }
 
       el.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) translate(-50%, -50%) scale(${p.scale.toFixed(3)})`;
       el.style.opacity = node.curOpacity.toFixed(3);
-      el.style.zIndex = String(isSel ? 220 : Math.round((p.depth + 1) * 90));
-      el.style.pointerEvents = node.curOpacity > 0.32 ? 'auto' : 'none';
 
-      // Quantized blur bucket (0 / 1 / 2) to keep Android WebView GPU 60fps without per-frame filter churn
-      const bucket = targetBlur < 0.55 ? 0 : targetBlur < 1.55 ? 1 : 2;
-      if (bucket !== node.blurBucket) {
-        node.blurBucket = bucket;
-        el.style.filter = bucket === 0 ? 'none' : bucket === 1 ? 'blur(1.1px)' : 'blur(2.2px)';
+      const nextZ = isSel ? 220 : Math.round((p.depth + 1) * 90);
+      if (nextZ !== node.lastZIndex) {
+        node.lastZIndex = nextZ;
+        el.style.zIndex = String(nextZ);
       }
 
-      node.screenX = px;
-      node.screenY = py;
+      const nextAuto = node.curOpacity > 0.32;
+      if (nextAuto !== node.lastPointerAuto) {
+        node.lastPointerAuto = nextAuto;
+        el.style.pointerEvents = nextAuto ? 'auto' : 'none';
+      }
 
       if (node.curOpacity > 0.38) frontOccupied.push({ x: px, y: py, w: ew, h: eh });
-      if (isSel) selectedPoints.push({ x: px, y: py });
     }
 
-    // 4. Luminous Constellation Line Connecting Selected Tags
-    if (selectedPoints.length >= 2) {
-      ctx.save();
-      ctx.beginPath();
-      for (let i = 0; i < selectedPoints.length - 1; i++) {
-        ctx.moveTo(selectedPoints[i].x, selectedPoints[i].y);
-        ctx.lineTo(selectedPoints[i + 1].x, selectedPoints[i + 1].y);
-      }
-      ctx.strokeStyle = 'rgba(232, 198, 255, 0.48)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 5]);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    ctx.restore();
     this.scheduleFrame();
   };
 }
