@@ -1,0 +1,2587 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>КАМЕРА</title>
+  <style>
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Roboto', 'Segoe UI', sans-serif;
+      --font-mono: 'SF Mono', 'Roboto Mono', ui-monospace, monospace;
+
+      --safe-top: 0px;
+      --safe-bottom: 0px;
+
+      /* Signature Pastel Palette (from user reference boards) */
+      --ink: #18191C;
+      --ink-soft: #2A2C32;
+      --text-sec: #686662;
+      --text-muted: #98938A;
+
+      --cream-bg: #FAF8F1;
+      --cream-card: #F3EFE4;
+      --cream-warm: #F5E9DC;
+      --white: #FFFFFF;
+
+      --coral: #EA7B72;
+      --coral-deep: #C45249;
+      --apricot: #EE9D68;
+      --apricot-deep: #C8713B;
+      --sage: #8FB184;
+      --sage-deep: #56794C;
+      --teal: #3B7D71;
+      --teal-deep: #295D53;
+      --butter: #F5D547;
+      --butter-soft: #FCF6D8;
+      --mustard: #EDA944;
+      --lavender: #8884E6;
+      --lavender-deep: #5B57B8;
+
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: var(--cream-bg);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    input, select, textarea {
+      user-select: text;
+      font-family: var(--font-sans);
+    }
+
+    .app-root {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--cream-bg);
+    }
+
+    .screen-viewport {
+      flex: 1;
+      width: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(92px + var(--safe-bottom));
+    }
+
+    .screen-viewport::-webkit-scrollbar { width: 0; height: 0; }
+
+    .safe-top-pad {
+      padding-top: calc(14px + var(--safe-top));
+    }
+
+    /* COMMON BUTTONS & PILLS */
+    .circle-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid rgba(24, 25, 28, 0.08);
+      background: var(--white);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.14s var(--ease);
+    }
+    .circle-btn:active { transform: scale(0.92); }
+
+    .circle-btn.on-pastel {
+      background: rgba(255, 255, 255, 0.22);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: var(--white);
+    }
+
+    .btn-butter {
+      border: none;
+      background: var(--butter);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 800;
+      padding: 12px 20px;
+      border-radius: 99px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      box-shadow: 0 6px 18px rgba(245, 213, 71, 0.35);
+      transition: transform 0.14s var(--ease);
+    }
+    .btn-butter:active { transform: scale(0.96); }
+
+    .btn-ink {
+      border: none;
+      background: var(--ink);
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 12px 18px;
+      border-radius: 99px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: transform 0.14s var(--ease);
+    }
+    .btn-ink:active { transform: scale(0.96); }
+
+    /* =====================================================================
+       SCREEN 1: HOME (ПОГРЕБ)
+       ===================================================================== */
+    .home-header {
+      padding: calc(14px + var(--safe-top)) 18px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .avatar-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--butter);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 21px;
+      border: 2.5px solid var(--white);
+      box-shadow: 0 5px 14px rgba(24, 25, 28, 0.08);
+      flex-shrink: 0;
+    }
+
+    .heute-split {
+      margin: 4px 18px 16px;
+      background: var(--white);
+      border-radius: 26px;
+      display: grid;
+      grid-template-columns: 1fr 108px;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(24, 25, 28, 0.05);
+    }
+
+    .heute-left {
+      padding: 16px 15px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .heute-right {
+      background: var(--butter);
+      padding: 15px 11px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .heute-right:active { filter: brightness(0.95); }
+
+    .quick-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 12.5px;
+      cursor: pointer;
+    }
+
+    .quick-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 9px;
+      border-radius: 99px;
+      border: 1px solid rgba(24, 25, 28, 0.13);
+      background: var(--cream-bg);
+      font-size: 11px;
+      font-weight: 800;
+      min-width: 60px;
+      font-family: var(--font-mono);
+    }
+
+    .zone-strip {
+      padding: 0 18px;
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      margin-bottom: 14px;
+    }
+    .zone-strip::-webkit-scrollbar { display: none; }
+
+    .zone-chip {
+      border: none;
+      background: var(--white);
+      color: var(--text-sec);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 99px;
+      white-space: nowrap;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+      transition: all 0.18s var(--ease);
+    }
+    .zone-chip.active {
+      background: var(--ink);
+      color: var(--white);
+    }
+
+    .section-row {
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 11px;
+    }
+
+    .pastel-grid {
+      padding: 0 18px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .pastel-card {
+      border-radius: 26px;
+      padding: 13px 13px 14px;
+      color: var(--white);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 184px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(24, 25, 28, 0.08);
+      transition: transform 0.18s var(--ease);
+    }
+    .pastel-card:active { transform: scale(0.97); }
+
+    .card-ring-mini {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+    }
+
+    .card-art-slot {
+      height: 86px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 2px 0;
+    }
+
+    /* =====================================================================
+       SCREEN 2: FULL-BLEED PASTEL HERO + ARC WEIGH-IN DIAL
+       ===================================================================== */
+    .detail-hero {
+      padding: calc(14px + var(--safe-top)) 18px 28px;
+      color: var(--white);
+      min-height: 325px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: background 0.35s var(--ease);
+      position: relative;
+    }
+
+    .detail-sheet {
+      background: var(--white);
+      border-radius: 30px 30px 0 0;
+      margin-top: -20px;
+      position: relative;
+      z-index: 3;
+      padding: 20px 18px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: calc(100vh - 310px);
+    }
+
+    .stage-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .stage-pill {
+      border: 1.5px solid rgba(24, 25, 28, 0.16);
+      background: transparent;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 13px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: all 0.18s var(--ease);
+    }
+    .stage-pill:active { transform: scale(0.95); }
+    .stage-pill.active-yellow {
+      background: var(--butter);
+      border-color: var(--butter);
+      color: var(--ink);
+      box-shadow: 0 4px 12px rgba(245, 213, 71, 0.4);
+    }
+
+    .meta-duo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(24, 25, 28, 0.06);
+    }
+
+    .meta-cell {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 12px;
+    }
+
+    .meta-ico {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--cream-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .diag-banner {
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: var(--cream-bg);
+      border: 1px solid rgba(24, 25, 28, 0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    /* LAYERED MUSTARD + TEAL ARC DIAL (from image.png top-left) */
+    .arc-dial-card {
+      border-radius: 28px;
+      background: var(--mustard);
+      overflow: hidden;
+      padding-top: 13px;
+      color: var(--white);
+      box-shadow: 0 12px 28px rgba(59, 125, 113, 0.18);
+    }
+
+    .arc-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 14px 10px;
+    }
+
+    .gross-toggle {
+      border: none;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 800;
+      padding: 5px 11px;
+      border-radius: 99px;
+      cursor: pointer;
+    }
+
+    .arc-teal-body {
+      background: var(--teal);
+      border-radius: 50% 50% 0 0 / 40px 40px 0 0;
+      padding: 16px 16px 18px;
+      text-align: center;
+    }
+
+    .weight-inline-input {
+      width: 112px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      border-radius: 14px;
+      color: var(--white);
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 800;
+      text-align: center;
+      padding: 4px 6px;
+      outline: none;
+    }
+    .weight-inline-input:focus {
+      background: rgba(255, 255, 255, 0.24);
+      border-color: var(--butter);
+    }
+
+    .arc-steppers {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .teal-step-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.18);
+      color: var(--white);
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .teal-step-btn:active { background: rgba(255, 255, 255, 0.32); }
+
+    .teal-save-btn {
+      height: 44px;
+      padding: 0 16px;
+      border-radius: 99px;
+      border: 3.5px solid rgba(255, 255, 255, 0.24);
+      background: var(--cream-bg);
+      color: var(--ink);
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+    }
+    .teal-save-btn:active { transform: scale(0.96); }
+
+    /* =====================================================================
+       SCREEN 3: ANALYTICS & WAVE CURVE ("78% LEARNING PLAN" from image.png)
+       ===================================================================== */
+    .analytics-wrap {
+      padding: calc(14px + var(--safe-top)) 18px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .capsules-trio {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .stat-cap {
+      background: var(--cream-card);
+      border-radius: 28px;
+      padding: 12px 8px 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .stat-cap-ico {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .stat-cap-num {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      font-family: var(--font-mono);
+    }
+
+    .stat-cap-lbl {
+      font-size: 11px;
+      color: var(--text-sec);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .giant-pct-block {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 4px;
+    }
+
+    .giant-num {
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 0.94;
+    }
+
+    .wave-card {
+      background: var(--white);
+      border-radius: 26px;
+      padding: 15px 14px 13px;
+      box-shadow: 0 8px 24px rgba(24, 25, 28, 0.045);
+    }
+
+    .month-pills-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 6px;
+      gap: 4px;
+    }
+
+    .m-pill {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-sec);
+      padding: 4px 8px;
+      border-radius: 99px;
+      border: 1.5px solid transparent;
+    }
+    .m-pill.active-ring {
+      border-color: var(--ink);
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .caps-bar-card {
+      background: var(--cream-warm);
+      border-radius: 26px;
+      padding: 16px;
+    }
+
+    .caps-stage {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      align-items: end;
+      height: 116px;
+      padding-top: 8px;
+    }
+
+    .v-bar-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .v-bar-pill {
+      width: 32px;
+      border-radius: 99px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 6px;
+      font-size: 9.5px;
+      font-weight: 800;
+      color: var(--white);
+      transition: height 0.35s var(--ease);
+    }
+
+    .journal-card {
+      background: var(--white);
+      border-radius: 24px;
+      padding: 15px;
+      box-shadow: 0 6px 20px rgba(24, 25, 28, 0.04);
+    }
+
+    .journal-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(24, 25, 28, 0.06);
+      font-size: 12.5px;
+    }
+    .journal-item:last-child { border-bottom: none; }
+
+    /* =====================================================================
+       SCREEN 4: SIMULATOR & SETTINGS
+       ===================================================================== */
+    .sim-card {
+      background: var(--white);
+      border-radius: 26px;
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(24, 25, 28, 0.045);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    input[type="range"].craft-range {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 99px;
+      background: var(--cream-card);
+      outline: none;
+    }
+    input[type="range"].craft-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--ink);
+      border: 3px solid var(--butter);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+
+    /* FLOATING BLACK PILL BOTTOM NAV (from image.png!) */
+    .bottom-dock {
+      position: fixed;
+      bottom: calc(12px + var(--safe-bottom));
+      left: 18px;
+      right: 18px;
+      max-width: 440px;
+      margin: 0 auto;
+      height: 60px;
+      background: var(--ink);
+      border-radius: 99px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 10px;
+      box-shadow: 0 14px 32px rgba(24, 25, 28, 0.28);
+      z-index: 40;
+    }
+
+    .dock-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.52);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      cursor: pointer;
+      transition: all 0.18s var(--ease);
+    }
+    .dock-btn.active {
+      background: rgba(255, 255, 255, 0.16);
+      color: var(--white);
+    }
+
+    .dock-fab {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: var(--butter);
+      color: var(--ink);
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(245, 213, 71, 0.4);
+    }
+    .dock-fab:active { transform: scale(0.92); }
+
+    /* MODAL BOTTOM SHEET */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(24, 25, 28, 0.48);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 100;
+    }
+    .sheet-backdrop.open { display: flex; }
+
+    .sheet-panel {
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--cream-bg);
+      border-radius: 32px 32px 0 0;
+      padding: 22px 20px calc(24px + var(--safe-bottom));
+      animation: slideUp 0.25s var(--ease);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(36px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .f-group { margin-bottom: 12px; }
+    .f-lbl {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sec);
+      margin-bottom: 5px;
+    }
+    .f-inp {
+      width: 100%;
+      padding: 11px 13px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(24, 25, 28, 0.1);
+      background: var(--white);
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
+      outline: none;
+    }
+    .f-inp:focus { border-color: var(--ink); }
+
+    /* TOAST FEEDBACK */
+    .toast-pill {
+      position: fixed;
+      top: calc(16px + var(--safe-top));
+      left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: var(--ink);
+      color: var(--white);
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 10px 18px;
+      border-radius: 99px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+      z-index: 200;
+      transition: transform 0.28s var(--ease);
+      white-space: nowrap;
+    }
+    .toast-pill.show { transform: translateX(-50%) translateY(0); }
+
+    @keyframes floatBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .floating-3d { animation: floatBob 4.2s ease-in-out infinite; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app-root">
+    <div class="screen-viewport" id="viewport"></div>
+
+    <!-- Floating Black Bottom Navigation Pill -->
+    <nav class="bottom-dock">
+      <button class="dock-btn active" id="dock-home" onclick="navigate('home')" aria-label="Погреб">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>
+      </button>
+      <button class="dock-btn" id="dock-detail" onclick="navigate('detail')" aria-label="Кусок и весы">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-2 6h4l-2-6z"/><path d="M19 7l-2 6h4l-2-6z"/></svg>
+      </button>
+      <button class="dock-fab" onclick="openBatchModal(null)" aria-label="Новая закладка">＋</button>
+      <button class="dock-btn" id="dock-analytics" onclick="navigate('analytics')" aria-label="Кривая">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3 0 4-6 7-6s4 4 7-3 4-4 4-4"/><circle cx="17" cy="8" r="2"/></svg>
+      </button>
+      <button class="dock-btn" id="dock-sim" onclick="navigate('sim')" aria-label="Симулятор и настройки">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </nav>
+  </div>
+
+  <!-- MODAL: CREATE / EDIT BATCH -->
+  <div class="sheet-backdrop" id="batch-modal" onclick="if(event.target===this) closeBatchModal()">
+    <div class="sheet-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 id="modal-heading" style="font-size:21px;font-weight:800;">Новая закладка</h3>
+        <button class="circle-btn" style="width:36px;height:36px;" onclick="closeBatchModal()">✕</button>
+      </div>
+
+      <div class="f-group">
+        <label class="f-lbl">Категория</label>
+        <select id="m-cat" class="f-inp" onchange="syncModalCategory()">
+          <option value="meat">🥩 Мясо (посол / вяление / копчение)</option>
+          <option value="pepper">🌶 Острые перцы (ферментация)</option>
+        </select>
+      </div>
+
+      <div class="f-group">
+        <label class="f-lbl">Название партии</label>
+        <input id="m-title" class="f-inp" placeholder="Напр. Коппа #2 (свиная шея) или Habanero + манго" />
+      </div>
+
+      <div id="m-meat-row" style="display:grid;grid-template-columns:1.25fr 0.75fr;gap:10px;">
+        <div class="f-group">
+          <label class="f-lbl">Вид мяса (для расчёта ETA)</label>
+          <select id="m-meat-type" class="f-inp">
+            <option value="pork_marbled">Свинина мраморная (Шея / Коппа)</option>
+            <option value="pork_lean">Свинина постная (Карбонад / Ломо)</option>
+            <option value="beef_lean">Говядина постная (Брезаола)</option>
+            <option value="pork_fat">Грудинка / Панчетта (жирная)</option>
+            <option value="duck">Утиная / куриная грудка</option>
+          </select>
+        </div>
+        <div class="f-group">
+          <label class="f-lbl">Калибр (мм)</label>
+          <input id="m-diam" type="number" value="90" class="f-inp" />
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="f-group">
+          <label class="f-lbl">Стартовый вес нетто (г)</label>
+          <input id="m-weight" type="number" value="1250" class="f-inp" oninput="refreshModalCalc()" />
+        </div>
+        <div class="f-group">
+          <label class="f-lbl" id="m-tare-lbl">Тара: шпагат/оболочка (г)</label>
+          <input id="m-tare" type="number" value="14" class="f-inp" oninput="refreshModalCalc()" />
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:10px;">
+        <div class="f-group">
+          <label class="f-lbl">Этап</label>
+          <select id="m-stage" class="f-inp" onchange="onModalStageChange()"></select>
+        </div>
+        <div class="f-group">
+          <label class="f-lbl" id="m-target-lbl">Цель усушки (%)</label>
+          <input id="m-target" type="number" value="35" class="f-inp" oninput="refreshModalCalc()" />
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:84px 1fr;gap:10px;">
+        <div class="f-group">
+          <label class="f-lbl">Темп. °C</label>
+          <input id="m-temp" type="number" value="3" class="f-inp" />
+        </div>
+        <div class="f-group">
+          <label class="f-lbl">Где лежит / висит</label>
+          <input id="m-loc" type="text" value="Холодильник · полка посола" class="f-inp" />
+        </div>
+      </div>
+
+      <div class="f-group">
+        <label class="f-lbl">Заметки / специи</label>
+        <input id="m-notes" type="text" class="f-inp" placeholder="Нитритка, можжевельник, чёрный перец, чеснок..." />
+      </div>
+
+      <div id="m-calc-box" style="padding:12px 14px;border-radius:18px;background:var(--butter-soft);font-size:12px;font-weight:600;line-height:1.45;margin-bottom:16px;"></div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <button id="m-delete-btn" class="hidden" style="border:none;background:#FADCD9;color:#A63A35;font-weight:800;font-size:12.5px;padding:11px 15px;border-radius:99px;cursor:pointer;" onclick="deleteEditingBatch()">Удалить</button>
+        <div style="display:flex;gap:8px;margin-left:auto;">
+          <button style="border:none;background:var(--cream-card);color:var(--ink);font-weight:700;padding:11px 16px;border-radius:99px;cursor:pointer;" onclick="closeBatchModal()">Отмена</button>
+          <button class="btn-butter" onclick="saveBatchModal()">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast-pill" id="toast"></div>
+
+  <script>
+    // =========================================================================
+    // 1. NATIVE ANDROID BRIDGE WRAPPERS
+    // =========================================================================
+    const hasAndroid = typeof window.AndroidBridge !== 'undefined';
+
+    window.__setAndroidInsets = function(topDp, bottomDp) {
+      document.documentElement.style.setProperty('--safe-top', Math.max(0, topDp) + 'px');
+      document.documentElement.style.setProperty('--safe-bottom', Math.max(0, bottomDp) + 'px');
+    };
+
+    function haptic(kind) {
+      if (hasAndroid && window.AndroidBridge.haptic) {
+        try { window.AndroidBridge.haptic(kind || 'light'); } catch (e) {}
+      }
+    }
+
+    function setStatusBar(hex, darkIcons) {
+      if (hasAndroid && window.AndroidBridge.setStatusBar) {
+        try { window.AndroidBridge.setStatusBar(hex, !!darkIcons); } catch (e) {}
+      }
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    // =========================================================================
+    // 2. DOMAIN DEFINITIONS
+    // =========================================================================
+    const STAGES = {
+      cure_vac: {
+        id: 'cure_vac', short: 'Посол · вакуум', pill: 'Посол (вакуум)',
+        temp: 3, loc: 'Холодильник · 3°C', isDrying: false,
+        hex: '#8884E6', desc: 'Равновесный посол в вакууме. Испарение влаги = 0%.'
+      },
+      smoke: {
+        id: 'smoke', short: 'Копчение', pill: 'Копчение',
+        temp: 20, loc: 'Коптильня · 20°C', isDrying: true, methodF: 1.1,
+        hex: '#EDA944', desc: 'Холодное копчение и подсушка поверхности.'
+      },
+      dry_casing: {
+        id: 'dry_casing', short: 'В оболочке', pill: 'В оболочке',
+        temp: 12, loc: 'Климат-камера · 12°C', isDrying: true, methodF: 0.85,
+        hex: '#EE9D68', desc: 'Коллаген или натуральная оболочка. Ровная усушка.'
+      },
+      dry_naked: {
+        id: 'dry_naked', short: 'Подвес (голый)', pill: 'Без оболочки',
+        temp: 13, loc: 'Климат-камера · 13°C', isDrying: true, methodF: 1.0,
+        hex: '#EA7B72', desc: 'Открытый подвес. Максимальная скорость, следить за закалом.'
+      },
+      dry_membrane: {
+        id: 'dry_membrane', short: 'Мембрана', pill: 'Айцел / пакет',
+        temp: 4, loc: 'Холодильник · 4°C', isDrying: true, methodF: 0.68,
+        hex: '#EE9D68', desc: 'Вяление в мембранном пакете в обычном холодильнике.'
+      },
+      rehydrate_vac: {
+        id: 'rehydrate_vac', short: 'Вакуум · корка', pill: 'Вакуум (корка)',
+        temp: 4, loc: 'Холодильник · 4°C', isDrying: false,
+        hex: '#3B7D71', desc: 'Регидратация подсохшей оболочки в вакууме. Пауза усушки.'
+      },
+      ferm_vac: {
+        id: 'ferm_vac', short: 'Ферм. · вакуум', pill: 'Вакуум (CO₂)',
+        temp: 23, loc: 'Тёплый шкаф · 23°C', isDrying: false,
+        hex: '#EA7B72', desc: 'Перцы с сухой солью в вакуумном пакете. Контроль газа.'
+      },
+      ferm_brine: {
+        id: 'ferm_brine', short: 'Ферм. · рассол', pill: 'Рассол (банка)',
+        temp: 20, loc: 'Полка · 20°C', isDrying: false,
+        hex: '#8FB184', desc: 'Ферментация в рассоле под гнётом и гидрозатвором.'
+      },
+      done: {
+        id: 'done', short: 'Готово', pill: 'Готово',
+        temp: 4, loc: 'Холодильник · хранение', isDrying: false,
+        hex: '#8FB184', desc: 'Продукт готов к нарезке или хранению.'
+      }
+    };
+
+    const MEAT_TYPES = {
+      pork_marbled: { label: 'Свиная шея (мрамор)', factor: 0.78 },
+      pork_lean: { label: 'Карбонад / Ломо', factor: 1.05 },
+      beef_lean: { label: 'Говядина постная', factor: 1.15 },
+      pork_fat: { label: 'Грудинка / Панчетта', factor: 0.65 },
+      duck: { label: 'Утиная грудка', factor: 1.30 }
+    };
+
+    const MONTHS_RU = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+
+    function daysAgoISO(daysAgo) {
+      const d = new Date(Date.now() - daysAgo * 86400000);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function formatShortDate(iso) {
+      if (!iso) return 'Сегодня';
+      const parts = iso.split('-');
+      if (parts.length !== 3) return iso;
+      return `${parseInt(parts[2], 10)} ${MONTHS_RU[parseInt(parts[1], 10) - 1] || ''}`;
+    }
+
+    function diffDays(isoStart, isoEnd) {
+      const a = new Date(isoStart + 'T12:00:00').getTime();
+      const b = new Date((isoEnd || daysAgoISO(0)) + 'T12:00:00').getTime();
+      return Math.max(0, Math.round((b - a) / 86400000));
+    }
+
+    // =========================================================================
+    // 3. DEFAULT SEED DATA + PERSISTENCE
+    // =========================================================================
+    function createDemoData() {
+      return {
+        settings: {
+          lossBase: 'raw' // 'raw' (от сырого до посола) | 'hang' (от навески)
+        },
+        batches: [
+          {
+            id: 'coppa-1',
+            category: 'meat',
+            title: 'Коппа #1',
+            meatType: 'pork_marbled',
+            diameterMm: 95,
+            initialWeight: 1420,
+            hangWeight: 1405,
+            tareWeight: 15,
+            targetLossPct: 34,
+            currentStage: 'rehydrate_vac',
+            tempC: 4,
+            location: 'Холодильник · 4°C',
+            saltPct: 2.7,
+            createdAt: daysAgoISO(43),
+            notes: 'Нитритка 1.35% + морская 1.35%, можжевельник. На 38-й день подсохла оболочка — переложил в вакуум на регидратацию.',
+            stageHistory: [
+              { stage: 'cure_vac', startDate: daysAgoISO(43), endDate: daysAgoISO(29), tempC: 3 },
+              { stage: 'dry_casing', startDate: daysAgoISO(29), endDate: daysAgoISO(5), tempC: 12 },
+              { stage: 'rehydrate_vac', startDate: daysAgoISO(5), endDate: null, tempC: 4 }
+            ],
+            weightLogs: [
+              { date: daysAgoISO(43), netWeight: 1420, stage: 'cure_vac', note: 'Старт посола в вакууме' },
+              { date: daysAgoISO(29), netWeight: 1405, stage: 'dry_casing', note: 'Набивка в коллаген 100 мм' },
+              { date: daysAgoISO(22), netWeight: 1265, stage: 'dry_casing', note: 'Активный старт сушки' },
+              { date: daysAgoISO(14), netWeight: 1142, stage: 'dry_casing', note: 'Ровная потеря влаги' },
+              { date: daysAgoISO(5), netWeight: 1052, stage: 'rehydrate_vac', note: 'Запаял в вакуум (размягчить корку)' },
+              { date: daysAgoISO(0), netWeight: 1050, stage: 'rehydrate_vac', note: 'Оболочка мягкая — можно довяливать' }
+            ]
+          },
+          {
+            id: 'bresaola-2',
+            category: 'meat',
+            title: 'Брезаола',
+            meatType: 'beef_lean',
+            diameterMm: 86,
+            initialWeight: 1180,
+            hangWeight: 1165,
+            tareWeight: 10,
+            targetLossPct: 36,
+            currentStage: 'dry_naked',
+            tempC: 13,
+            location: 'Климат-камера · 13°C',
+            saltPct: 2.6,
+            createdAt: daysAgoISO(25),
+            notes: 'Глазной мускул с красным вином и розмарином. Висит без оболочки на крюке.',
+            stageHistory: [
+              { stage: 'cure_vac', startDate: daysAgoISO(25), endDate: daysAgoISO(13), tempC: 3 },
+              { stage: 'dry_naked', startDate: daysAgoISO(13), endDate: null, tempC: 13 }
+            ],
+            weightLogs: [
+              { date: daysAgoISO(25), netWeight: 1180, stage: 'cure_vac', note: 'Посол в вакууме' },
+              { date: daysAgoISO(13), netWeight: 1165, stage: 'dry_naked', note: 'Открытый подвес без оболочки' },
+              { date: daysAgoISO(8), netWeight: 1016, stage: 'dry_naked', note: 'Быстрый сброс с поверхности' },
+              { date: daysAgoISO(3), netWeight: 896, stage: 'dry_naked', note: 'Корочка плотная' },
+              { date: daysAgoISO(0), netWeight: 848, stage: 'dry_naked', note: 'Контрольный замер' }
+            ]
+          },
+          {
+            id: 'habanero-vac',
+            category: 'pepper',
+            title: 'Habanero',
+            initialWeight: 650,
+            tareWeight: 16,
+            brineWater: 0,
+            targetLossPct: 0,
+            currentStage: 'ferm_vac',
+            tempC: 23,
+            location: 'Тёплый шкаф · 23°C',
+            saltPct: 2.8,
+            puffed: true,
+            degasCount: 1,
+            phValue: 3.7,
+            targetDays: 21,
+            createdAt: daysAgoISO(16),
+            notes: 'Половинки хабанеро + персик + 2.8% соли в вакуумном пакете.',
+            stageHistory: [
+              { stage: 'ferm_vac', startDate: daysAgoISO(16), endDate: null, tempC: 23 }
+            ],
+            weightLogs: [
+              { date: daysAgoISO(16), netWeight: 650, stage: 'ferm_vac', note: 'Вакуумация' }
+            ]
+          },
+          {
+            id: 'jalapeno-brine',
+            category: 'pepper',
+            title: 'Jalapeño',
+            initialWeight: 800,
+            tareWeight: 400,
+            brineWater: 600,
+            targetLossPct: 0,
+            currentStage: 'ferm_brine',
+            tempC: 20,
+            location: 'Кладовка · 20°C',
+            saltPct: 3.5,
+            puffed: false,
+            degasCount: 0,
+            phValue: 3.5,
+            targetDays: 28,
+            createdAt: daysAgoISO(19),
+            notes: 'Халапеньо + чеснок в рассоле 3.5% под гидрозатвором.',
+            stageHistory: [
+              { stage: 'ferm_brine', startDate: daysAgoISO(19), endDate: null, tempC: 20 }
+            ],
+            weightLogs: [
+              { date: daysAgoISO(19), netWeight: 800, stage: 'ferm_brine', note: 'Заливка рассолом' }
+            ]
+          },
+          {
+            id: 'pancetta-3',
+            category: 'meat',
+            title: 'Грудинка',
+            meatType: 'pork_fat',
+            diameterMm: 52,
+            initialWeight: 960,
+            hangWeight: 960,
+            tareWeight: 9,
+            targetLossPct: 28,
+            currentStage: 'cure_vac',
+            tempC: 3,
+            location: 'Холодильник · 3°C',
+            saltPct: 2.5,
+            createdAt: daysAgoISO(9),
+            notes: 'Сухой посол в вакууме с чесноком и тимьяном. Затем копчение и подвес.',
+            stageHistory: [
+              { stage: 'cure_vac', startDate: daysAgoISO(9), endDate: null, tempC: 3 }
+            ],
+            weightLogs: [
+              { date: daysAgoISO(9), netWeight: 960, stage: 'cure_vac', note: 'Закладка в вакуум' },
+              { date: daysAgoISO(0), netWeight: 956, stage: 'cure_vac', note: 'Перевернул пакет' }
+            ]
+          }
+        ]
+      };
+    }
+
+    let store = null;
+
+    function loadStore() {
+      let raw = '';
+      if (hasAndroid && window.AndroidBridge.loadState) {
+        try { raw = window.AndroidBridge.loadState(); } catch (e) {}
+      }
+      if (!raw) {
+        try { raw = localStorage.getItem('kamera_store_v1') || ''; } catch (e) {}
+      }
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.batches)) {
+            store = parsed;
+            if (!store.settings) store.settings = { lossBase: 'raw' };
+            return;
+          }
+        } catch (e) {}
+      }
+      store = createDemoData();
+      persistStore();
+    }
+
+    function persistStore() {
+      const json = JSON.stringify(store);
+      try { localStorage.setItem('kamera_store_v1', json); } catch (e) {}
+      if (hasAndroid && window.AndroidBridge.saveState) {
+        try { window.AndroidBridge.saveState(json); } catch (e) {}
+      }
+    }
+
+    let ui = {
+      screen: 'home', // 'home' | 'detail' | 'analytics' | 'sim'
+      selectedId: null,
+      zoneFilter: 'all',
+      weighMode: 'gross', // 'gross' (с тарой) | 'net' (чистый)
+      draftWeightInput: null, // numeric value currently shown in arc dial (in active weighMode)
+      metricMode: 'readiness', // 'readiness' | 'loss'
+      editingBatchId: null,
+      sim: {
+        meat: 0.78,
+        method: 0.85,
+        weight: 1350,
+        diam: 95,
+        temp: 12,
+        target: 35,
+        vacDays: 7
+      }
+    };
+
+    // =========================================================================
+    // 4. NON-LINEAR FICK'S LAW DRYING ENGINE
+    // =========================================================================
+    function getZoneOfBatch(b) {
+      if (b.currentStage === 'done') return 'done';
+      if (b.category === 'pepper' || b.tempC >= 17) return 'warm';
+      if (b.tempC <= 7) return 'fridge';
+      return 'chamber';
+    }
+
+    function analyze(batch) {
+      const today = daysAgoISO(0);
+      if (batch.category === 'pepper') {
+        const elapsedDays = Math.max(1, diffDays(batch.createdAt, today));
+        const targetDays = batch.targetDays || 21;
+        const readinessPct = Math.min(100, Math.round((elapsedDays / targetDays) * 100));
+        const remDays = Math.max(0, targetDays - elapsedDays);
+        const totalMass = batch.initialWeight + (batch.brineWater || 0);
+        const saltGrams = ((totalMass * (batch.saltPct || 2.8)) / 100).toFixed(1);
+        return {
+          isPepper: true,
+          W0: batch.initialWeight,
+          Wcur: batch.initialWeight,
+          targetWeight: batch.initialWeight,
+          lostGrams: 0,
+          lossPct: 0,
+          readinessPct,
+          remDays,
+          elapsedDays,
+          activeDryingDays: elapsedDays,
+          vacuumDays: batch.currentStage === 'ferm_vac' ? elapsedDays : 0,
+          saltGrams,
+          speedPctDay: 0,
+          k_eff: 0.04,
+          crustDiag: null
+        };
+      }
+
+      const useHang = store.settings.lossBase === 'hang' && batch.hangWeight;
+      const W0 = useHang ? batch.hangWeight : batch.initialWeight;
+      const lastLog = batch.weightLogs[batch.weightLogs.length - 1] || { date: batch.createdAt, netWeight: batch.initialWeight };
+      const Wcur = lastLog.netWeight;
+      const targetWeight = Math.round(W0 * (1 - (batch.targetLossPct || 35) / 100));
+      const lostGrams = Math.max(0, W0 - Wcur);
+      const lossPct = Math.max(0, ((W0 - Wcur) / W0) * 100);
+      const readinessPct = Math.min(100, Math.max(0, Math.round((lossPct / (batch.targetLossPct || 35)) * 100)));
+
+      // Prior Fick diffusion coefficient from meat type, casing, diameter, temp
+      const W_inf = 0.44 * W0;
+      const meatF = (MEAT_TYPES[batch.meatType] || { factor: 1.0 }).factor;
+      const stg = STAGES[batch.currentStage] || STAGES.dry_casing;
+      const methodF = stg.methodF || 0.85;
+      const diamF = Math.pow(75 / Math.max(32, batch.diameterMm || 85), 1.42);
+      const tempF = 0.68 + 0.32 * ((batch.tempC || 12) / 12);
+      const k_prior = 0.034 * meatF * methodF * diamF * tempF;
+
+      let activeDryingDays = 0;
+      let vacuumDays = 0;
+      let cureDays = 0;
+      for (const h of batch.stageHistory) {
+        const dur = Math.max(0, diffDays(h.startDate, h.endDate || today));
+        if (STAGES[h.stage] && STAGES[h.stage].isDrying) activeDryingDays += dur;
+        if (h.stage === 'rehydrate_vac') vacuumDays += dur;
+        if (h.stage === 'cure_vac') cureDays += dur;
+      }
+
+      let k_emp = null;
+      if (activeDryingDays >= 3 && Wcur < W0 && Wcur > W_inf + 10) {
+        const ratio = (Wcur - W_inf) / (W0 - W_inf);
+        if (ratio > 0.05 && ratio < 0.99) {
+          k_emp = -Math.log(ratio) / activeDryingDays;
+        }
+      }
+
+      const empTrust = Math.min(0.85, activeDryingDays / 14);
+      const k_eff = k_emp !== null ? (k_emp * empTrust + k_prior * (1 - empTrust)) : k_prior;
+
+      let remDays = 0;
+      if (Wcur > targetWeight && Wcur > W_inf + 5 && targetWeight > W_inf) {
+        const rNeed = (targetWeight - W_inf) / (Wcur - W_inf);
+        if (rNeed > 0 && rNeed < 1) {
+          remDays = Math.ceil(-Math.log(rNeed) / Math.max(0.004, k_eff));
+        }
+      }
+
+      let speedPctDay = 0;
+      if (batch.weightLogs.length >= 2) {
+        const prev = batch.weightLogs[batch.weightLogs.length - 2];
+        const dt = Math.max(1, diffDays(prev.date, lastLog.date));
+        speedPctDay = Math.max(0, (((prev.netWeight - lastLog.netWeight) / W0) * 100) / dt);
+      }
+
+      let crustDiag = null;
+      if (batch.currentStage === 'rehydrate_vac') {
+        crustDiag = {
+          kind: 'rehyd',
+          title: 'Идёт регидратация оболочки',
+          text: `В вакууме ${vacuumDays} дн. Таймер сушки на паузе — когда корка станет мягкой, верни на подвес.`,
+          cta: 'На довяливание',
+          targetStage: 'dry_casing'
+        };
+      } else if (batch.currentStage === 'dry_naked' && (batch.diameterMm || 85) >= 75 && speedPctDay >= 1.65) {
+        crustDiag = {
+          kind: 'risk',
+          title: 'Риск закала корки!',
+          text: `Высокий темп (${speedPctDay.toFixed(2)}%/сут) без оболочки при Ø${batch.diameterMm}мм. Можно запаять в вакуум на 5–7 дн.`,
+          cta: 'В вакуум',
+          targetStage: 'rehydrate_vac'
+        };
+      }
+
+      return {
+        isPepper: false,
+        W0, Wcur, W_inf, targetWeight, lostGrams,
+        lossPct, readinessPct, remDays,
+        elapsedDays: diffDays(batch.createdAt, today),
+        activeDryingDays, vacuumDays, cureDays,
+        k_eff, speedPctDay, crustDiag
+      };
+    }
+
+    // =========================================================================
+    // 5. FLOATING 3D-STYLE CULINARY SVG ARTWORK (Matches image_2.png aesthetic)
+    // =========================================================================
+    function renderArt(batch, size) {
+      const w = size === 'large' ? 152 : 76;
+      const h = size === 'large' ? 160 : 80;
+      const stg = batch.currentStage;
+
+      if (batch.category === 'pepper' && stg === 'ferm_vac') {
+        const puff = batch.puffed ? 5 : 0;
+        return `
+          <svg viewBox="0 0 140 148" width="${w}" height="${h}" fill="none">
+            <ellipse cx="70" cy="134" rx="36" ry="7" fill="rgba(0,0,0,0.18)"/>
+            <g class="floating-3d">
+              <path d="M28 16 H112 Q${116+puff} 64 112 112 H28 Q${24-puff} 64 28 16 Z" fill="rgba(255,255,255,0.22)" stroke="rgba(255,255,255,0.58)" stroke-width="1.8"/>
+              <line x1="34" y1="24" x2="106" y2="24" stroke="rgba(255,255,255,0.45)" stroke-dasharray="3 3"/>
+              <line x1="34" y1="104" x2="106" y2="104" stroke="rgba(255,255,255,0.45)" stroke-dasharray="3 3"/>
+              <path d="M68 30 C68 22 76 18 80 18" stroke="#4D7C3E" stroke-width="3.5" stroke-linecap="round"/>
+              <path d="M48 48 C46 34 90 34 88 50 C92 72 84 94 68 96 C52 94 44 72 48 48 Z" fill="#FF6B2B"/>
+              <path d="M56 42 C53 60 55 80 63 91" stroke="#FFAA6B" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
+              <circle cx="84" cy="78" r="13" fill="#FFD166"/>
+              <circle cx="46" cy="37" r="4" fill="rgba(255,255,255,0.75)"/>
+              <circle cx="94" cy="44" r="3" fill="rgba(255,255,255,0.65)"/>
+              ${batch.puffed ? `<circle cx="106" cy="22" r="10" fill="#18191C"/><text x="106" y="26" text-anchor="middle" fill="#F5D547" font-size="11" font-weight="800">!</text>` : ''}
+            </g>
+          </svg>
+        `;
+      }
+
+      if (batch.category === 'pepper') {
+        return `
+          <svg viewBox="0 0 140 148" width="${w}" height="${h}" fill="none">
+            <ellipse cx="70" cy="134" rx="34" ry="7" fill="rgba(0,0,0,0.18)"/>
+            <g class="floating-3d">
+              <rect x="46" y="16" width="48" height="11" rx="5" fill="#F5D547"/>
+              <rect x="36" y="27" width="68" height="84" rx="20" fill="rgba(255,255,255,0.26)" stroke="rgba(255,255,255,0.65)" stroke-width="1.8"/>
+              <rect x="40" y="42" width="60" height="65" rx="16" fill="rgba(245,213,71,0.34)"/>
+              <circle cx="58" cy="78" r="12" fill="#3B7D4F" stroke="#70B879" stroke-width="3"/>
+              <circle cx="80" cy="84" r="11" fill="#2E6940" stroke="#70B879" stroke-width="2.5"/>
+              <circle cx="68" cy="60" r="11" fill="#468C5A" stroke="#85CA8E" stroke-width="2.5"/>
+              <circle cx="54" cy="48" r="3" fill="#FFFFFF" opacity="0.82"/>
+              <circle cx="82" cy="52" r="2.2" fill="#FFFFFF" opacity="0.82"/>
+            </g>
+          </svg>
+        `;
+      }
+
+      if (stg === 'cure_vac' || stg === 'rehydrate_vac') {
+        return `
+          <svg viewBox="0 0 140 148" width="${w}" height="${h}" fill="none">
+            <ellipse cx="70" cy="134" rx="38" ry="7" fill="rgba(0,0,0,0.2)"/>
+            <g class="floating-3d">
+              <rect x="26" y="14" width="88" height="98" rx="18" fill="rgba(255,255,255,0.22)" stroke="rgba(255,255,255,0.6)" stroke-width="1.8"/>
+              <line x1="34" y1="22" x2="106" y2="22" stroke="rgba(255,255,255,0.42)" stroke-dasharray="3 3"/>
+              <line x1="34" y1="104" x2="106" y2="104" stroke="rgba(255,255,255,0.42)" stroke-dasharray="3 3"/>
+              <rect x="40" y="28" width="60" height="70" rx="26" fill="#A6342E"/>
+              <path d="M47 46 Q70 38 92 50 M45 64 Q70 74 94 62 M50 82 Q70 76 89 85" stroke="#FADAD2" stroke-width="3.2" stroke-linecap="round" opacity="0.65"/>
+              <path d="M50 35 C46 54 46 72 50 90" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" opacity="0.24"/>
+              <circle cx="36" cy="46" r="3" fill="#FFFFFF" opacity="0.75"/>
+              <circle cx="102" cy="78" r="3.5" fill="#FFFFFF" opacity="0.75"/>
+            </g>
+          </svg>
+        `;
+      }
+
+      const isNaked = stg === 'dry_naked';
+      const bodyColor = stg === 'smoke' ? '#9C481E' : (isNaked ? '#962323' : '#B84339');
+      return `
+        <svg viewBox="0 0 140 148" width="${w}" height="${h}" fill="none">
+          <ellipse cx="70" cy="134" rx="34" ry="7" fill="rgba(0,0,0,0.2)"/>
+          <g class="floating-3d">
+            <path d="M70 10 C77 10 77 22 70 22 C63 22 63 10 70 10 Z" stroke="#FFF5E4" stroke-width="2.5"/>
+            <line x1="70" y1="22" x2="70" y2="30" stroke="#FFF5E4" stroke-width="2.8"/>
+            <path d="M45 40 C45 27 95 27 95 40 C101 62 100 88 92 104 C86 115 54 115 48 104 C40 88 39 62 45 40 Z" fill="${bodyColor}"/>
+            <path d="M53 38 C48 58 48 84 54 102" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" opacity="0.24"/>
+            <path d="M50 52 Q70 45 90 55 M47 72 Q70 81 93 69 M52 91 Q70 86 88 94" stroke="#FFE3D8" stroke-width="2.6" stroke-linecap="round" opacity="0.5"/>
+            ${!isNaked ? `
+              <path d="M44 48 H96 M42 66 H98 M44 84 H96 M49 100 H91" stroke="#FFF5E4" stroke-width="1.9" opacity="0.82"/>
+              <line x1="70" y1="30" x2="70" y2="112" stroke="#FFF5E4" stroke-width="1.8" opacity="0.75"/>
+            ` : `
+              <circle cx="64" cy="58" r="2.2" fill="#231815"/>
+              <circle cx="78" cy="74" r="2.2" fill="#231815"/>
+              <circle cx="62" cy="86" r="2.2" fill="#231815"/>
+            `}
+          </g>
+        </svg>
+      `;
+    }
+
+    // =========================================================================
+    // 6. NAVIGATION & SCREEN RENDERERS
+    // =========================================================================
+    function getSelectedBatch() {
+      if (!store.batches.length) return null;
+      const found = store.batches.find(b => b.id === ui.selectedId);
+      if (found) return found;
+      ui.selectedId = store.batches[0].id;
+      return store.batches[0];
+    }
+
+    function navigate(screen, batchId) {
+      if (batchId) {
+        ui.selectedId = batchId;
+        ui.draftWeightInput = null;
+      }
+      if ((screen === 'detail' || screen === 'analytics') && !store.batches.length) {
+        showToast('Сначала добавь первую партию');
+        openBatchModal(null);
+        return;
+      }
+      ui.screen = screen;
+      haptic('light');
+      render();
+      document.getElementById('viewport').scrollTop = 0;
+    }
+
+    window.handleAndroidBack = function() {
+      if (document.getElementById('batch-modal').classList.contains('open')) {
+        closeBatchModal();
+        return true;
+      }
+      if (ui.screen !== 'home') {
+        navigate('home');
+        return true;
+      }
+      return false;
+    };
+
+    function render() {
+      // Sync bottom dock active state
+      ['home', 'detail', 'analytics', 'sim'].forEach(k => {
+        document.getElementById('dock-' + k).classList.toggle('active', ui.screen === k);
+      });
+
+      const vp = document.getElementById('viewport');
+      if (ui.screen === 'home') {
+        setStatusBar('#FAF8F1', true);
+        vp.innerHTML = buildHomeScreen();
+      } else if (ui.screen === 'detail') {
+        const b = getSelectedBatch();
+        const stg = b ? (STAGES[b.currentStage] || STAGES.dry_casing) : STAGES.dry_casing;
+        setStatusBar(stg.hex, false);
+        vp.innerHTML = buildDetailScreen(b);
+      } else if (ui.screen === 'analytics') {
+        setStatusBar('#FAF8F1', true);
+        vp.innerHTML = buildAnalyticsScreen(getSelectedBatch());
+      } else if (ui.screen === 'sim') {
+        setStatusBar('#FAF8F1', true);
+        vp.innerHTML = buildSimScreen();
+      }
+    }
+
+    // --- SCREEN 1: HOME ---
+    function buildHomeScreen() {
+      const activeCount = store.batches.filter(b => b.currentStage !== 'done').length;
+      const vacHighlight = store.batches.find(b => b.currentStage === 'rehydrate_vac')
+        || store.batches.find(b => b.category === 'pepper' && b.puffed)
+        || store.batches.find(b => b.currentStage === 'cure_vac')
+        || store.batches[0];
+
+      const filtered = store.batches.filter(b => ui.zoneFilter === 'all' || getZoneOfBatch(b) === ui.zoneFilter);
+
+      const quickRows = store.batches.slice(0, 4).map(b => {
+        const an = analyze(b);
+        const stg = STAGES[b.currentStage] || STAGES.dry_casing;
+        const val = an.isPepper ? `${an.elapsedDays} дн` : `-${an.lossPct.toFixed(0)}%`;
+        return `
+          <div class="quick-row" onclick="navigate('detail', '${b.id}')">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span style="width:9px;height:9px;border-radius:50%;background:${stg.hex};flex-shrink:0;"></span>
+              <span style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${b.title}</span>
+            </div>
+            <span class="quick-pill">${val}</span>
+          </div>
+        `;
+      }).join('');
+
+      const zones = [
+        { id: 'all', lbl: 'Все зоны' },
+        { id: 'chamber', lbl: '12°C Камера' },
+        { id: 'fridge', lbl: '4°C Вакуум' },
+        { id: 'warm', lbl: '22°C Перцы' },
+        { id: 'done', lbl: 'Готово' }
+      ];
+
+      const cardsHtml = filtered.length ? filtered.map(b => {
+        const stg = STAGES[b.currentStage] || STAGES.dry_casing;
+        const an = analyze(b);
+        const ring = an.isPepper ? `${an.elapsedDays}д` : `-${an.lossPct.toFixed(0)}%`;
+        const sub = an.isPepper
+          ? `${stg.short} · pH ${b.phValue}`
+          : (b.currentStage === 'cure_vac' ? `${an.Wcur} г · посол` : `${an.Wcur} г · ~${an.remDays}д`);
+        return `
+          <div class="pastel-card" style="background:${stg.hex};" onclick="navigate('detail', '${b.id}')">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:10.5px;font-weight:800;background:rgba(0,0,0,0.14);padding:3px 9px;border-radius:99px;">${b.tempC}°C</span>
+              <div class="card-ring-mini">${ring}</div>
+            </div>
+            <div class="card-art-slot">${renderArt(b, 'small')}</div>
+            <div>
+              <div style="font-size:15px;font-weight:800;letter-spacing:-0.01em;line-height:1.15;">${b.title}</div>
+              <div style="font-size:11px;opacity:0.9;margin-top:2px;font-weight:600;">${sub}</div>
+            </div>
+          </div>
+        `;
+      }).join('') : `
+        <div style="grid-column:1/-1;background:var(--white);border-radius:24px;padding:28px 18px;text-align:center;color:var(--text-sec);">
+          <div style="font-size:28px;margin-bottom:6px;">🥩🌶</div>
+          <div style="font-weight:700;margin-bottom:4px;">В этой зоне пусто</div>
+          <div style="font-size:12px;">Нажми жёлтый «＋» внизу, чтобы заложить партию</div>
+        </div>
+      `;
+
+      const rightLabel = vacHighlight
+        ? (vacHighlight.currentStage === 'rehydrate_vac' ? 'Регидратация' : (vacHighlight.puffed ? 'Стравить CO₂' : 'В вакууме'))
+        : 'Пусто';
+
+      return `
+        <header class="home-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="avatar-badge">🧑‍🍳</div>
+            <div>
+              <div style="font-size:19px;font-weight:800;letter-spacing:-0.02em;">КАМЕРА</div>
+              <div style="font-size:12px;color:var(--text-sec);font-weight:600;">Активных партий: ${activeCount}</div>
+            </div>
+          </div>
+          <button class="circle-btn" onclick="openBatchModal(null)" aria-label="Добавить">＋</button>
+        </header>
+
+        <!-- "Сегодня / В вакууме" Split Card -->
+        <section class="heute-split">
+          <div class="heute-left">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div>
+                <div style="font-size:17px;font-weight:800;">Сегодня</div>
+                <div style="font-size:11px;color:var(--text-muted);font-weight:600;">Быстрый контроль</div>
+              </div>
+              <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;background:var(--cream-card);">${formatShortDate(daysAgoISO(0))}</span>
+            </div>
+            <div>${quickRows || '<div style="font-size:12px;color:var(--text-muted);padding:10px 0;">Нет партий</div>'}</div>
+          </div>
+
+          <div class="heute-right" onclick="${vacHighlight ? `navigate('detail', '${vacHighlight.id}')` : 'openBatchModal(null)'}">
+            <div>
+              <div style="font-size:12.5px;font-weight:800;line-height:1.15;">${rightLabel}</div>
+              <div style="font-size:10px;opacity:0.75;font-weight:700;margin-top:2px;">Вакуум</div>
+            </div>
+            <div style="text-align:center;font-size:24px;margin:6px 0;">🫧</div>
+            <div>
+              <div style="font-size:11.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${vacHighlight ? vacHighlight.title : 'Добавить'}</div>
+              <div style="font-size:10px;opacity:0.8;font-weight:700;">Открыть →</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Zone Filters -->
+        <div class="zone-strip">
+          ${zones.map(z => `
+            <button class="zone-chip ${ui.zoneFilter === z.id ? 'active' : ''}" onclick="setZoneFilter('${z.id}')">${z.lbl}</button>
+          `).join('')}
+        </div>
+
+        <div class="section-row">
+          <span style="font-size:16px;font-weight:800;">Моя камера</span>
+          <span style="font-size:12px;color:var(--text-sec);font-weight:600;">${filtered.length} шт</span>
+        </div>
+
+        <section class="pastel-grid">${cardsHtml}</section>
+      `;
+    }
+
+    // --- SCREEN 2: PRODUCT HERO + STAGE SWITCHER + ARC WEIGH-IN DIAL ---
+    function buildDetailScreen(batch) {
+      if (!batch) return '';
+      const stg = STAGES[batch.currentStage] || STAGES.dry_casing;
+      const an = analyze(batch);
+
+      const r = 20;
+      const c = 2 * Math.PI * r;
+      const off = c * (1 - an.readinessPct / 100);
+
+      const stageList = batch.category === 'pepper'
+        ? ['ferm_vac', 'ferm_brine', 'done']
+        : ['cure_vac', 'smoke', 'dry_casing', 'dry_naked', 'rehydrate_vac', 'done'];
+
+      // Initialize draft weigh-in input value cleanly
+      const tare = batch.tareWeight || 0;
+      if (ui.draftWeightInput === null) {
+        ui.draftWeightInput = ui.weighMode === 'gross' ? (an.Wcur + tare) : an.Wcur;
+      }
+      const previewNet = ui.weighMode === 'gross' ? Math.max(10, ui.draftWeightInput - tare) : Math.max(10, ui.draftWeightInput);
+      const previewLoss = Math.max(0, ((an.W0 - previewNet) / an.W0) * 100).toFixed(1);
+
+      // Semi-circular arc ticks
+      let ticks = '';
+      for (let i = 0; i <= 24; i++) {
+        const angle = Math.PI + (i / 24) * Math.PI;
+        const active = (i / 24) * 100 <= an.readinessPct;
+        const x1 = 130 + Math.cos(angle) * 86;
+        const y1 = 92 + Math.sin(angle) * 86;
+        const x2 = 130 + Math.cos(angle) * 94;
+        const y2 = 92 + Math.sin(angle) * 94;
+        ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${active ? '#FFFFFF' : 'rgba(255,255,255,0.28)'}" stroke-width="2.4" stroke-linecap="round"/>`;
+      }
+      const ka = Math.PI + (Math.min(100, Math.max(0, an.readinessPct)) / 100) * Math.PI;
+      const kx = 130 + Math.cos(ka) * 72;
+      const ky = 92 + Math.sin(ka) * 72;
+
+      return `
+        <div class="detail-hero" style="background:${stg.hex};">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+            <div style="min-width:0;">
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <button class="circle-btn on-pastel" onclick="navigate('home')">←</button>
+                <button class="circle-btn on-pastel" onclick="openBatchModal('${batch.id}')" title="Редактировать">✎</button>
+              </div>
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.09em;opacity:0.86;font-weight:700;">${batch.location}</div>
+              <h1 style="font-size:28px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;margin-top:2px;">${batch.title}</h1>
+            </div>
+
+            <div style="display:flex;flex-direction:column;align-items:center;text-align:center;" onclick="navigate('analytics')">
+              <div style="position:relative;width:52px;height:52px;display:flex;align-items:center;justify-content:center;">
+                <svg width="52" height="52" viewBox="0 0 52 52" style="transform:rotate(-90deg);">
+                  <circle cx="26" cy="26" r="${r}" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="3.4"/>
+                  <circle cx="26" cy="26" r="${r}" fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round"
+                    stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+                </svg>
+                <span style="position:absolute;font-size:11px;font-weight:800;font-family:var(--font-mono);">${an.readinessPct}%</span>
+              </div>
+              <span style="font-size:10px;font-weight:700;opacity:0.92;margin-top:2px;">
+                ${batch.currentStage === 'cure_vac' ? 'Посол' : `~${an.remDays} дн`}
+              </span>
+            </div>
+          </div>
+
+          <div style="height:176px;display:flex;align-items:center;justify-content:center;margin:4px 0;">
+            ${renderArt(batch, 'large')}
+          </div>
+        </div>
+
+        <div class="detail-sheet">
+          <!-- Stage Switcher Pills -->
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:12px;font-weight:800;">Этап (можно возвращать вяление ⇄ вакуум)</span>
+            </div>
+            <div class="stage-pill-row">
+              ${stageList.map(sId => {
+                const sObj = STAGES[sId];
+                const isAct = batch.currentStage === sId;
+                return `<button class="stage-pill ${isAct ? 'active-yellow' : ''}" onclick="changeStage('${batch.id}', '${sId}')">${sObj.pill}</button>`;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Metadata Duo -->
+          <div class="meta-duo">
+            <div class="meta-cell">
+              <div class="meta-ico">🌡</div>
+              <div>
+                <div style="font-size:10px;color:var(--text-muted);font-weight:700;">Температура</div>
+                <div style="font-weight:800;">${batch.tempC}°C · ${stg.short}</div>
+              </div>
+            </div>
+            <div class="meta-cell">
+              <div class="meta-ico">${an.isPepper ? '🧂' : '📏'}</div>
+              <div>
+                <div style="font-size:10px;color:var(--text-muted);font-weight:700;">${an.isPepper ? 'Соль' : 'Калибр и тара'}</div>
+                <div style="font-weight:800;">${an.isPepper ? `${batch.saltPct}% (${an.saltGrams} г)` : `Ø${batch.diameterMm}мм · тара ${tare}г`}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Case-hardening / Vacuum Diagnostic Banner -->
+          ${an.crustDiag ? `
+            <div class="diag-banner" style="background:${an.crustDiag.kind === 'risk' ? '#FBE9E7' : '#E6F2F0'};">
+              <div>
+                <div style="font-weight:800;font-size:12.5px;">${an.crustDiag.title}</div>
+                <div style="color:var(--text-sec);font-size:11.5px;margin-top:2px;">${an.crustDiag.text}</div>
+              </div>
+              <button class="btn-ink" style="padding:8px 13px;font-size:11.5px;white-space:nowrap;" onclick="changeStage('${batch.id}', '${an.crustDiag.targetStage}')">${an.crustDiag.cta}</button>
+            </div>
+          ` : ''}
+
+          <!-- LAYERED MUSTARD + TEAL ARC WEIGH-IN DIAL -->
+          ${!an.isPepper ? `
+            <div class="arc-dial-card">
+              <div class="arc-top-row">
+                <button class="gross-toggle" onclick="toggleWeighMode()">
+                  ⚖️ ${ui.weighMode === 'gross' ? `Брутто (−${tare}г тары)` : 'Чистый вес (нетто)'} ⇄
+                </button>
+                <span id="arc-loss-badge" style="font-size:11.5px;font-weight:800;color:var(--ink);background:rgba(255,255,255,0.48);padding:4px 10px;border-radius:99px;font-family:var(--font-mono);">
+                  -${previewLoss}%
+                </span>
+              </div>
+
+              <div class="arc-teal-body">
+                <svg viewBox="0 0 260 88" width="100%" height="78" style="overflow:visible;margin-bottom:-20px;">
+                  ${ticks}
+                  <path d="M 58 92 A 72 72 0 0 1 202 92" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="${kx.toFixed(1)}" cy="${ky.toFixed(1)}" r="8.5" fill="#18191C" stroke="#FFFFFF" stroke-width="2.5"/>
+                </svg>
+
+                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;">
+                  <input id="arc-weight-input" type="number" inputmode="numeric" class="weight-inline-input"
+                    value="${ui.draftWeightInput}" oninput="onArcWeightInput(this.value)" />
+                  <span style="font-size:15px;font-weight:800;opacity:0.9;">г</span>
+                </div>
+                <div id="arc-net-caption" style="font-size:11px;opacity:0.82;margin-top:4px;font-weight:600;">
+                  ${ui.weighMode === 'gross' ? `Нетто: ${previewNet} г · Цель: ${an.targetWeight} г` : `Цель: ${an.targetWeight} г (-${batch.targetLossPct}%)`}
+                </div>
+
+                <div class="arc-steppers">
+                  <button class="teal-step-btn" onclick="stepDraftWeight(-10)">−10</button>
+                  <button class="teal-step-btn" onclick="stepDraftWeight(-1)">−1</button>
+                  <button class="teal-save-btn" onclick="commitWeighIn('${batch.id}')">▶ Записать</button>
+                  <button class="teal-step-btn" onclick="stepDraftWeight(1)">+1</button>
+                  <button class="teal-step-btn" onclick="stepDraftWeight(10)">+10</button>
+                </div>
+              </div>
+            </div>
+          ` : `
+            <div class="arc-dial-card">
+              <div class="arc-top-row">
+                <span style="font-size:11.5px;font-weight:800;color:var(--ink);background:rgba(255,255,255,0.9);padding:5px 11px;border-radius:99px;">
+                  🫧 ${batch.puffed ? 'Подушка CO₂ — пора стравить' : 'Давление в норме'}
+                </span>
+                <button class="gross-toggle" onclick="promptPepperPh('${batch.id}')">pH ${batch.phValue} ✎</button>
+              </div>
+              <div class="arc-teal-body">
+                <div style="font-size:24px;font-weight:800;">День ${an.elapsedDays} из ${batch.targetDays}</div>
+                <div style="font-size:12px;opacity:0.86;margin:4px 0 14px;">Дегазаций: ${batch.degasCount || 0} · Выход соуса ~${Math.round(batch.initialWeight * 1.1)} мл</div>
+                <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+                  ${batch.currentStage === 'ferm_vac' ? `
+                    <button class="teal-save-btn" onclick="togglePepperGas('${batch.id}')">
+                      ${batch.puffed ? '🫧 Стравить CO₂ и перепаять' : '🎈 Отметить вздутие'}
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+
+            <!-- Sauce Finishing Calculator for Peppers -->
+            <div style="padding:15px;border-radius:20px;background:var(--cream-bg);font-size:12px;">
+              <div style="font-weight:800;margin-bottom:8px;">🌶 Калькулятор пробивки в соус</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                <div><div style="color:var(--text-muted);font-size:10.5px;">Ябл. уксус 15%</div><div style="font-weight:800;font-family:var(--font-mono);font-size:14px;">${Math.round(batch.initialWeight * 0.15)} мл</div></div>
+                <div><div style="color:var(--text-muted);font-size:10.5px;">Ксантан 0.2%</div><div style="font-weight:800;font-family:var(--font-mono);font-size:14px;">${(batch.initialWeight * 0.002).toFixed(1)} г</div></div>
+                <div><div style="color:var(--text-muted);font-size:10.5px;">Итого соуса</div><div style="font-weight:800;font-family:var(--font-mono);font-size:14px;color:var(--coral-deep);">~${Math.round(batch.initialWeight * 1.1)} мл</div></div>
+              </div>
+            </div>
+          `}
+
+          ${batch.notes ? `
+            <div style="padding:13px 15px;border-radius:18px;background:var(--cream-bg);font-size:12.5px;color:var(--text-sec);line-height:1.45;">
+              <strong style="color:var(--ink);">Заметки:</strong> ${batch.notes}
+            </div>
+          ` : ''}
+
+          <button class="btn-ink" style="width:100%;" onclick="navigate('analytics')">
+            Открыть кривую (${an.readinessPct}%) и журнал взвешиваний →
+          </button>
+        </div>
+      `;
+    }
+
+    // --- SCREEN 3: ANALYTICS ("78% LEARNING PLAN" + DYNAMIC WAVE + CAPSULES) ---
+    function buildAnalyticsScreen(batch) {
+      if (!batch) return '';
+      const stg = STAGES[batch.currentStage] || STAGES.dry_casing;
+      const an = analyze(batch);
+
+      const bigVal = an.isPepper
+        ? `${an.readinessPct}%`
+        : (ui.metricMode === 'readiness' ? `${an.readinessPct}%` : `-${an.lossPct.toFixed(1)}%`);
+
+      const bigSub = an.isPepper
+        ? `Готовность (${an.elapsedDays} из ${batch.targetDays} дн · pH ${batch.phValue})`
+        : (ui.metricMode === 'readiness'
+            ? `Готовность к цели -${batch.targetLossPct}% (${an.targetWeight} г)`
+            : `Потеря веса от ${an.W0} г (сброшено ${an.lostGrams} г)`);
+
+      // Build dynamic spline SVG from actual weight logs + Fick's law projection
+      const splineSvg = buildDynamicSplineSVG(batch, an);
+
+      // Build 5 two-tone vertical capsule bars
+      const barItems = an.isPepper
+        ? [
+            { lbl: 'Старт', val: '0д', h: 28, c1: '#E6C7A8', c2: '#D8AD84' },
+            { lbl: 'Нед 1', val: '7д', h: 52, c1: '#EE9D68', c2: '#C8713B' },
+            { lbl: 'Нед 2', val: '14д', h: 76, c1: '#EA7B72', c2: '#C45249' },
+            { lbl: 'Сейчас', val: `${an.elapsedDays}д`, h: Math.min(96, Math.max(36, an.readinessPct)), c1: '#3B7D71', c2: '#295D53' },
+            { lbl: 'Цель', val: `${batch.targetDays}д`, h: 94, c1: '#8FB184', c2: '#56794C' }
+          ]
+        : [
+            { lbl: 'Посол', val: `${an.cureDays}д`, h: Math.min(86, Math.max(28, an.cureDays * 4)), c1: '#8884E6', c2: '#5B57B8' },
+            { lbl: 'Сушка', val: `${an.activeDryingDays}д`, h: Math.min(96, Math.max(32, an.activeDryingDays * 3.2)), c1: '#EE9D68', c2: '#C8713B' },
+            { lbl: 'Вакуум', val: `${an.vacuumDays}д`, h: Math.min(86, Math.max(26, an.vacuumDays * 7)), c1: '#3B7D71', c2: '#295D53' },
+            { lbl: 'Ушло', val: `${an.lossPct.toFixed(0)}%`, h: Math.min(96, Math.max(28, an.lossPct * 2.5)), c1: '#EA7B72', c2: '#C45249' },
+            { lbl: 'Ещё', val: `~${an.remDays}д`, h: Math.min(92, Math.max(28, an.remDays * 3.5)), c1: '#8FB184', c2: '#56794C' }
+          ];
+
+      const logsHtml = batch.weightLogs.slice().reverse().map((w, revIdx) => {
+        const realIdx = batch.weightLogs.length - 1 - revIdx;
+        const loss = (((an.W0 - w.netWeight) / an.W0) * 100).toFixed(1);
+        const sObj = STAGES[w.stage] || stg;
+        return `
+          <div class="journal-item">
+            <div>
+              <div style="font-weight:800;font-family:var(--font-mono);">
+                ${w.netWeight} г <span style="color:var(--coral-deep);margin-left:4px;">-${loss}%</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--text-sec);">${formatShortDate(w.date)} · ${sObj.short}${w.note ? ` · ${w.note}` : ''}</div>
+            </div>
+            ${batch.weightLogs.length > 1 ? `
+              <button style="border:none;background:var(--cream-card);color:var(--text-sec);width:28px;height:28px;border-radius:50%;font-size:12px;cursor:pointer;" onclick="deleteWeighLog('${batch.id}', ${realIdx})" title="Удалить замер">✕</button>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="analytics-wrap">
+          <!-- Batch quick switcher pills -->
+          <div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;">
+            ${store.batches.map(b => `
+              <button class="zone-chip ${b.id === batch.id ? 'active' : ''}" onclick="navigate('analytics', '${b.id}')">${b.title}</button>
+            `).join('')}
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.02em;">План и кривая</h2>
+              <div style="font-size:12px;color:var(--text-sec);font-weight:600;">${batch.title} · ${stg.short} (${batch.tempC}°C)</div>
+            </div>
+            <button class="circle-btn" onclick="navigate('detail')" title="К весам">⚖️</button>
+          </div>
+
+          <!-- 3 Vertical Pill Capsules (image.png) -->
+          <div class="capsules-trio">
+            <div class="stat-cap">
+              <div class="stat-cap-ico" style="background:#D9ECE6;">⚖️</div>
+              <div class="stat-cap-num">${an.Wcur}г</div>
+              <div class="stat-cap-lbl">Вес нетто</div>
+            </div>
+            <div class="stat-cap">
+              <div class="stat-cap-ico" style="background:#FADCD9;">💧</div>
+              <div class="stat-cap-num">${an.isPepper ? `${batch.saltPct}%` : `-${an.lostGrams}г`}</div>
+              <div class="stat-cap-lbl">${an.isPepper ? 'Соль' : 'Ушло влаги'}</div>
+            </div>
+            <div class="stat-cap">
+              <div class="stat-cap-ico" style="background:#E6E4F8;">⏳</div>
+              <div class="stat-cap-num">~${an.remDays}д</div>
+              <div class="stat-cap-lbl">До финиша</div>
+            </div>
+          </div>
+
+          <!-- Giant "78%" Readout -->
+          <div class="giant-pct-block">
+            <div onclick="toggleMetricMode()" style="cursor:pointer;">
+              <div class="giant-num">${bigVal}</div>
+              <div style="font-size:12px;color:var(--text-sec);font-weight:600;margin-top:4px;">${bigSub}</div>
+            </div>
+            <div style="text-align:center;">
+              <button class="circle-btn" style="border-radius:15px;width:46px;height:46px;background:var(--cream-card);border:none;" onclick="toggleMetricMode()">⇄</button>
+              <div style="font-size:10px;font-weight:700;color:var(--text-sec);margin-top:3px;">Режим %</div>
+            </div>
+          </div>
+
+          <!-- Smooth Wave Curve Card with Black Floating Bubble -->
+          <div class="wave-card">
+            <div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:800;margin-bottom:4px;">
+              <span>Сушка: ${an.activeDryingDays} дн</span>
+              <span style="color:var(--text-sec);">Вакуум: ${an.vacuumDays} дн · k=${an.k_eff.toFixed(3)}</span>
+            </div>
+            ${splineSvg}
+            <div class="month-pills-bar">
+              <span class="m-pill">Старт</span>
+              <span class="m-pill">Посол</span>
+              <span class="m-pill active-ring">${stg.short}</span>
+              <span class="m-pill">Цель</span>
+            </div>
+          </div>
+
+          <!-- Two-Tone Capsule Bar Card -->
+          <div class="caps-bar-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <div style="display:flex;gap:16px;align-items:baseline;">
+                <div><span style="font-size:21px;font-weight:800;">${an.activeDryingDays}</span> <span style="font-size:11.5px;color:var(--text-sec);font-weight:600;">дн сушки</span></div>
+                <div><span style="font-size:21px;font-weight:800;">${an.vacuumDays}</span> <span style="font-size:11.5px;color:var(--text-sec);font-weight:600;">дн вакуума</span></div>
+              </div>
+              <span style="font-size:10.5px;font-weight:800;background:var(--ink);color:var(--white);padding:4px 10px;border-radius:99px;">Этапы</span>
+            </div>
+            <div class="caps-stage">
+              ${barItems.map(bi => `
+                <div class="v-bar-col">
+                  <div class="v-bar-pill" style="height:${bi.h}px;background:linear-gradient(180deg, ${bi.c1} 0%, ${bi.c1} 54%, ${bi.c2} 54%, ${bi.c2} 100%);">
+                    <span>${bi.val}</span>
+                  </div>
+                  <span style="font-size:10px;font-weight:700;color:var(--text-sec);">${bi.lbl}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Weigh-In Journal -->
+          <div class="journal-card">
+            <div style="font-size:13px;font-weight:800;margin-bottom:6px;">Журнал взвешиваний (${batch.weightLogs.length})</div>
+            ${logsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function buildDynamicSplineSVG(batch, an) {
+      // Build real normalized polyline from weight logs + forecast point, smoothed with cubic bezier
+      const W = 310, H = 136, padX = 16, padTop = 34, padBot = 16;
+      const plotW = W - padX * 2, plotH = H - padTop - padBot;
+
+      let rawPts = [];
+      if (an.isPepper) {
+        rawPts = [
+          { t: 0, pct: 0 },
+          { t: 0.35, pct: Math.min(100, an.readinessPct * 0.45) },
+          { t: 0.72, pct: an.readinessPct },
+          { t: 1, pct: 100, projected: true }
+        ];
+      } else {
+        const logs = batch.weightLogs;
+        const startDate = batch.createdAt;
+        const lastLogDate = logs[logs.length - 1].date;
+        const totalElapsed = Math.max(1, diffDays(startDate, lastLogDate));
+        const totalSpan = Math.max(totalElapsed + Math.min(35, an.remDays), 10);
+
+        logs.forEach(l => {
+          const d = diffDays(startDate, l.date);
+          const loss = Math.max(0, ((an.W0 - l.netWeight) / an.W0) * 100);
+          const normPct = Math.min(105, (loss / Math.max(1, batch.targetLossPct)) * 100);
+          rawPts.push({ t: d / totalSpan, pct: normPct, w: l.netWeight, stage: l.stage });
+        });
+
+        if (an.remDays > 0 && an.Wcur > an.targetWeight) {
+          rawPts.push({ t: 1, pct: 100, w: an.targetWeight, projected: true });
+        }
+      }
+
+      const coords = rawPts.map(p => ({
+        x: padX + p.t * plotW,
+        y: padTop + plotH * (1 - Math.min(105, Math.max(0, p.pct)) / 105),
+        ...p
+      }));
+
+      // Actual points only vs projected tail
+      const actualCoords = coords.filter(c => !c.projected);
+      const activePt = actualCoords[actualCoords.length - 1] || coords[0];
+
+      function smoothPath(list) {
+        if (list.length < 2) return `M ${list[0].x} ${list[0].y}`;
+        let d = `M ${list[0].x.toFixed(1)} ${list[0].y.toFixed(1)}`;
+        for (let i = 0; i < list.length - 1; i++) {
+          const p0 = list[i], p1 = list[i + 1];
+          const cx = ((p0.x + p1.x) / 2).toFixed(1);
+          d += ` C ${cx} ${p0.y.toFixed(1)}, ${cx} ${p1.y.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+        }
+        return d;
+      }
+
+      const actualD = smoothPath(actualCoords);
+      const areaD = actualCoords.length >= 2
+        ? `${actualD} L ${activePt.x.toFixed(1)} ${H - padBot} L ${actualCoords[0].x.toFixed(1)} ${H - padBot} Z`
+        : '';
+
+      const projPt = coords.find(c => c.projected);
+      const projD = projPt
+        ? `M ${activePt.x.toFixed(1)} ${activePt.y.toFixed(1)} Q ${((activePt.x + projPt.x)/2).toFixed(1)} ${(activePt.y - 10).toFixed(1)} ${projPt.x.toFixed(1)} ${projPt.y.toFixed(1)}`
+        : '';
+
+      const bubbleTxt = an.isPepper ? `${an.readinessPct}%` : `-${an.lossPct.toFixed(1)}%`;
+      const bx = Math.min(W - 36, Math.max(36, activePt.x));
+      const by = Math.max(26, activePt.y);
+
+      return `
+        <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" fill="none">
+          <defs>
+            <linearGradient id="wf-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#D96B68" stop-opacity="0.24"/>
+              <stop offset="100%" stop-color="#D96B68" stop-opacity="0.0"/>
+            </linearGradient>
+          </defs>
+          <!-- Target top line -->
+          <line x1="${padX}" y1="${padTop + 4}" x2="${W - padX}" y2="${padTop + 4}" stroke="rgba(86,121,76,0.28)" stroke-dasharray="4 4"/>
+          ${areaD ? `<path d="${areaD}" fill="url(#wf-grad)"/>` : ''}
+          ${projD ? `<path d="${projD}" stroke="#8FB184" stroke-width="2.2" stroke-dasharray="5 4" stroke-linecap="round"/>` : ''}
+          <path d="${actualD}" stroke="#C86464" stroke-width="2.8" stroke-linecap="round"/>
+
+          <!-- Vertical guide under active point -->
+          <line x1="${activePt.x.toFixed(1)}" y1="${activePt.y.toFixed(1)}" x2="${activePt.x.toFixed(1)}" y2="${H - padBot}" stroke="rgba(24,25,28,0.14)" stroke-dasharray="2 2"/>
+
+          <!-- Subtle pastel circles on intermediate points -->
+          ${actualCoords.slice(1, -1).map(pt => `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="3.5" fill="#FAF8F1" stroke="#C86464" stroke-width="2"/>`).join('')}
+
+          ${projPt ? `<circle cx="${projPt.x.toFixed(1)}" cy="${projPt.y.toFixed(1)}" r="4.5" fill="#8FB184"/>` : ''}
+
+          <!-- Active point dot + Floating Black Pill Callout -->
+          <circle cx="${activePt.x.toFixed(1)}" cy="${activePt.y.toFixed(1)}" r="5.5" fill="#18191C" stroke="#FFFFFF" stroke-width="2.2"/>
+          <rect x="${(bx - 30).toFixed(1)}" y="${(by - 31).toFixed(1)}" width="60" height="22" rx="11" fill="#18191C"/>
+          <text x="${bx.toFixed(1)}" y="${(by - 16.5).toFixed(1)}" text-anchor="middle" fill="#FFFFFF" font-size="10.5" font-weight="800">${bubbleTxt}</text>
+        </svg>
+      `;
+    }
+
+    // --- SCREEN 4: SIMULATOR & SETTINGS ---
+    function buildSimScreen() {
+      const s = ui.sim;
+      const W_inf = 0.44 * s.weight;
+      const targetW = Math.round(s.weight * (1 - s.target / 100));
+      const k = 0.034 * s.meat * s.method * Math.pow(75 / s.diam, 1.42) * (0.68 + 0.32 * (s.temp / 12));
+      const pureDays = Math.ceil(-Math.log(Math.max(0.05, (targetW - W_inf) / (s.weight - W_inf))) / k);
+      const totalDays = pureDays + s.vacDays;
+
+      return `
+        <div class="analytics-wrap">
+          <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.02em;">Симулятор и настройки</h2>
+
+          <div class="sim-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-weight:800;font-size:15px;">Прогноз вяления (Фик)</span>
+              <span style="font-size:11px;font-weight:800;background:var(--butter);padding:4px 10px;border-radius:99px;">~${totalDays} дн всего</span>
+            </div>
+
+            <div class="capsules-trio">
+              <div class="stat-cap" style="padding:10px 6px;">
+                <div class="stat-cap-num" style="font-size:17px;">${targetW}г</div>
+                <div class="stat-cap-lbl">Финиш (-${s.target}%)</div>
+              </div>
+              <div class="stat-cap" style="padding:10px 6px;">
+                <div class="stat-cap-num" style="font-size:17px;color:var(--coral-deep);">${pureDays}д</div>
+                <div class="stat-cap-lbl">Чистая сушка</div>
+              </div>
+              <div class="stat-cap" style="padding:10px 6px;">
+                <div class="stat-cap-num" style="font-size:17px;color:var(--teal);">+${s.vacDays}д</div>
+                <div class="stat-cap-lbl">Вакуум-пауза</div>
+              </div>
+            </div>
+
+            <div>
+              <label class="f-lbl">Вид мяса</label>
+              <select class="f-inp" onchange="updateSim('meat', parseFloat(this.value))">
+                <option value="1.15" ${s.meat===1.15?'selected':''}>Говядина постная (Брезаола)</option>
+                <option value="1.05" ${s.meat===1.05?'selected':''}>Свинина постная (Карбонад / Ломо)</option>
+                <option value="0.78" ${s.meat===0.78?'selected':''}>Свинина мраморная (Шея / Коппа)</option>
+                <option value="0.65" ${s.meat===0.65?'selected':''}>Грудинка / Панчетта (жирная)</option>
+                <option value="1.30" ${s.meat===1.30?'selected':''}>Утиная грудка</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="f-lbl">Способ вяления</label>
+              <select class="f-inp" onchange="updateSim('method', parseFloat(this.value))">
+                <option value="1.00" ${s.method===1.00?'selected':''}>Подвес без оболочки (1.0×)</option>
+                <option value="0.85" ${s.method===0.85?'selected':''}>Коллаген / черева (0.85×)</option>
+                <option value="0.68" ${s.method===0.68?'selected':''}>Мембранный пакет Айцел (0.68×)</option>
+              </select>
+            </div>
+
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px;">
+                <span>Калибр / толщина куска</span><span>${s.diam} мм</span>
+              </div>
+              <input type="range" min="35" max="140" step="5" value="${s.diam}" class="craft-range" oninput="updateSim('diam', parseInt(this.value,10))"/>
+            </div>
+
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px;">
+                <span>Стартовый вес</span><span>${s.weight} г</span>
+              </div>
+              <input type="range" min="300" max="3000" step="50" value="${s.weight}" class="craft-range" oninput="updateSim('weight', parseInt(this.value,10))"/>
+            </div>
+
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px;">
+                <span>Температура камеры</span><span>${s.temp} °C</span>
+              </div>
+              <input type="range" min="2" max="18" step="1" value="${s.temp}" class="craft-range" oninput="updateSim('temp', parseInt(this.value,10))"/>
+            </div>
+
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px;">
+                <span>Целевая потеря веса</span><span>-${s.target}%</span>
+              </div>
+              <input type="range" min="25" max="45" step="1" value="${s.target}" class="craft-range" oninput="updateSim('target', parseInt(this.value,10))"/>
+            </div>
+
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px;">
+                <span>Пауза в вакууме (регидратация)</span><span>${s.vacDays} дн</span>
+              </div>
+              <input type="range" min="0" max="21" step="1" value="${s.vacDays}" class="craft-range" oninput="updateSim('vacDays', parseInt(this.value,10))"/>
+            </div>
+          </div>
+
+          <!-- App Settings & Data Controls -->
+          <div class="sim-card">
+            <div style="font-weight:800;font-size:15px;">Настройки учёта</div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+              <div>
+                <div style="font-weight:700;font-size:13px;">База расчёта потери %</div>
+                <div style="font-size:11.5px;color:var(--text-sec);">От сырого веса или после слива сока</div>
+              </div>
+              <button class="stage-pill active-yellow" onclick="toggleLossBase()">
+                ${store.settings.lossBase === 'raw' ? 'От сырого' : 'От навески'}
+              </button>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:6px;border-top:1px solid rgba(24,25,28,0.06);">
+              <button class="btn-ink" style="flex:1;font-size:12px;" onclick="exportBackup()">Поделиться бэкапом</button>
+              <button style="flex:1;border:none;background:var(--cream-card);color:var(--ink);font-weight:700;font-size:12px;padding:12px;border-radius:99px;cursor:pointer;" onclick="resetDemo()">Вернуть демо</button>
+            </div>
+
+            <button style="border:none;background:#FADCD9;color:#A63A35;font-weight:800;font-size:12px;padding:11px;border-radius:99px;cursor:pointer;" onclick="clearAllBatches()">
+              Очистить все партии (начать с чистого листа)
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // 7. INTERACTIVE HANDLERS
+    // =========================================================================
+    function setZoneFilter(z) {
+      ui.zoneFilter = z;
+      haptic('light');
+      render();
+    }
+
+    function changeStage(batchId, newStageId) {
+      const b = store.batches.find(x => x.id === batchId);
+      if (!b || b.currentStage === newStageId) return;
+      const today = daysAgoISO(0);
+      const curH = b.stageHistory[b.stageHistory.length - 1];
+      if (curH && !curH.endDate) curH.endDate = today;
+
+      const stg = STAGES[newStageId];
+      b.currentStage = newStageId;
+      b.tempC = stg.temp;
+      b.location = stg.loc;
+      if (newStageId.startsWith('dry_') && b.weightLogs.length) {
+        b.hangWeight = b.weightLogs[b.weightLogs.length - 1].netWeight;
+      }
+      b.stageHistory.push({ stage: newStageId, startDate: today, endDate: null, tempC: stg.temp });
+      persistStore();
+      haptic('medium');
+      showToast(`Этап: ${stg.short}`);
+      render();
+    }
+
+    function toggleWeighMode() {
+      const b = getSelectedBatch();
+      if (!b) return;
+      const tare = b.tareWeight || 0;
+      if (ui.weighMode === 'gross') {
+        ui.weighMode = 'net';
+        ui.draftWeightInput = Math.max(10, (ui.draftWeightInput || b.initialWeight) - tare);
+      } else {
+        ui.weighMode = 'gross';
+        ui.draftWeightInput = (ui.draftWeightInput || b.initialWeight) + tare;
+      }
+      haptic('light');
+      render();
+    }
+
+    function onArcWeightInput(val) {
+      const n = parseInt(val, 10);
+      if (isNaN(n)) return;
+      ui.draftWeightInput = n;
+      const b = getSelectedBatch();
+      if (!b) return;
+      const an = analyze(b);
+      const tare = b.tareWeight || 0;
+      const net = ui.weighMode === 'gross' ? Math.max(10, n - tare) : Math.max(10, n);
+      const loss = Math.max(0, ((an.W0 - net) / an.W0) * 100).toFixed(1);
+      const badge = document.getElementById('arc-loss-badge');
+      const cap = document.getElementById('arc-net-caption');
+      if (badge) badge.textContent = `-${loss}%`;
+      if (cap) cap.textContent = ui.weighMode === 'gross'
+        ? `Нетто: ${net} г · Цель: ${an.targetWeight} г`
+        : `Цель: ${an.targetWeight} г (-${b.targetLossPct}%)`;
+    }
+
+    function stepDraftWeight(delta) {
+      const b = getSelectedBatch();
+      if (!b) return;
+      ui.draftWeightInput = Math.max(20, (ui.draftWeightInput || b.initialWeight) + delta);
+      haptic('light');
+      const inp = document.getElementById('arc-weight-input');
+      if (inp) {
+        inp.value = ui.draftWeightInput;
+        onArcWeightInput(ui.draftWeightInput);
+      } else {
+        render();
+      }
+    }
+
+    function commitWeighIn(batchId) {
+      const b = store.batches.find(x => x.id === batchId);
+      if (!b) return;
+      const tare = b.tareWeight || 0;
+      const rawVal = parseInt(ui.draftWeightInput, 10);
+      if (isNaN(rawVal) || rawVal < 20) return;
+      const net = ui.weighMode === 'gross' ? Math.max(10, rawVal - tare) : rawVal;
+
+      b.weightLogs.push({
+        date: daysAgoISO(0),
+        netWeight: net,
+        stage: b.currentStage,
+        note: ui.weighMode === 'gross' ? `Брутто ${rawVal} г (−${tare}г)` : 'Замер нетто'
+      });
+      ui.draftWeightInput = null;
+      persistStore();
+      haptic('success');
+      showToast(`Записано: ${net} г нетто`);
+      render();
+    }
+
+    function deleteWeighLog(batchId, idx) {
+      const b = store.batches.find(x => x.id === batchId);
+      if (!b || b.weightLogs.length <= 1) return;
+      b.weightLogs.splice(idx, 1);
+      ui.draftWeightInput = null;
+      persistStore();
+      haptic('light');
+      showToast('Замер удалён');
+      render();
+    }
+
+    function togglePepperGas(batchId) {
+      const b = store.batches.find(x => x.id === batchId);
+      if (!b) return;
+      if (b.puffed) {
+        b.puffed = false;
+        b.degasCount = (b.degasCount || 0) + 1;
+        showToast('CO₂ стравлен, пакет перепаян!');
+      } else {
+        b.puffed = true;
+        showToast('Отмечена подушка CO₂');
+      }
+      persistStore();
+      haptic('success');
+      render();
+    }
+
+    function promptPepperPh(batchId) {
+      const b = store.batches.find(x => x.id === batchId);
+      if (!b) return;
+      const val = prompt('Введи текущий pH перцев (напр. 3.6):', String(b.phValue || 3.8));
+      const num = parseFloat((val || '').replace(',', '.'));
+      if (!isNaN(num) && num > 1 && num < 9) {
+        b.phValue = Math.round(num * 10) / 10;
+        persistStore();
+        haptic('light');
+        render();
+      }
+    }
+
+    function toggleMetricMode() {
+      ui.metricMode = ui.metricMode === 'readiness' ? 'loss' : 'readiness';
+      haptic('light');
+      render();
+    }
+
+    function updateSim(key, val) {
+      ui.sim[key] = val;
+      render();
+    }
+
+    function toggleLossBase() {
+      store.settings.lossBase = store.settings.lossBase === 'raw' ? 'hang' : 'raw';
+      persistStore();
+      haptic('light');
+      showToast(store.settings.lossBase === 'raw' ? 'База: сырой вес до посола' : 'База: вес перед навеской');
+      render();
+    }
+
+    function exportBackup() {
+      const txt = JSON.stringify(store, null, 2);
+      if (hasAndroid && window.AndroidBridge.shareText) {
+        window.AndroidBridge.shareText('Бэкап КАМЕРА (JSON)', txt);
+      } else {
+        navigator.clipboard && navigator.clipboard.writeText(txt);
+        showToast('JSON скопирован');
+      }
+    }
+
+    function resetDemo() {
+      if (!confirm('Восстановить демо-партии (Коппа, Брезаола, Habanero)?')) return;
+      store = createDemoData();
+      ui.selectedId = store.batches[0].id;
+      persistStore();
+      haptic('medium');
+      showToast('Демо-партии восстановлены');
+      navigate('home');
+    }
+
+    function clearAllBatches() {
+      if (!confirm('Удалить все текущие партии и начать с чистого листа?')) return;
+      store.batches = [];
+      ui.selectedId = null;
+      persistStore();
+      haptic('medium');
+      showToast('Камера очищена');
+      navigate('home');
+    }
+
+    // =========================================================================
+    // 8. ADD / EDIT BATCH MODAL
+    // =========================================================================
+    function openBatchModal(editId) {
+      ui.editingBatchId = editId;
+      const modal = document.getElementById('batch-modal');
+      const delBtn = document.getElementById('m-delete-btn');
+      const heading = document.getElementById('modal-heading');
+
+      if (editId) {
+        const b = store.batches.find(x => x.id === editId);
+        if (!b) return;
+        heading.textContent = 'Редактировать партию';
+        delBtn.classList.remove('hidden');
+        document.getElementById('m-cat').value = b.category;
+        syncModalCategory();
+        document.getElementById('m-title').value = b.title;
+        if (b.category === 'meat') {
+          document.getElementById('m-meat-type').value = b.meatType || 'pork_marbled';
+          document.getElementById('m-diam').value = b.diameterMm || 85;
+          document.getElementById('m-target').value = b.targetLossPct || 35;
+          document.getElementById('m-tare').value = b.tareWeight || 12;
+        } else {
+          document.getElementById('m-target').value = b.targetDays || 21;
+          document.getElementById('m-tare').value = b.brineWater || 0;
+        }
+        document.getElementById('m-weight').value = b.initialWeight;
+        document.getElementById('m-stage').value = b.currentStage;
+        document.getElementById('m-temp').value = b.tempC;
+        document.getElementById('m-loc').value = b.location || '';
+        document.getElementById('m-notes').value = b.notes || '';
+      } else {
+        heading.textContent = 'Новая закладка';
+        delBtn.classList.add('hidden');
+        document.getElementById('m-cat').value = 'meat';
+        syncModalCategory();
+        document.getElementById('m-title').value = '';
+        document.getElementById('m-weight').value = 1250;
+        document.getElementById('m-diam').value = 90;
+        document.getElementById('m-tare').value = 14;
+        document.getElementById('m-target').value = 35;
+        document.getElementById('m-notes').value = '';
+      }
+
+      refreshModalCalc();
+      modal.classList.add('open');
+      haptic('light');
+    }
+
+    function closeBatchModal() {
+      document.getElementById('batch-modal').classList.remove('open');
+    }
+
+    function syncModalCategory() {
+      const cat = document.getElementById('m-cat').value;
+      const meatRow = document.getElementById('m-meat-row');
+      const stgSel = document.getElementById('m-stage');
+      if (cat === 'pepper') {
+        meatRow.style.display = 'none';
+        stgSel.innerHTML = `
+          <option value="ferm_vac">Вакуумный пакет (2.8%)</option>
+          <option value="ferm_brine">Банка с рассолом (3.5%)</option>
+        `;
+        document.getElementById('m-tare-lbl').textContent = 'Вода для рассола (мл)';
+        document.getElementById('m-target-lbl').textContent = 'Срок (дней)';
+        if (!ui.editingBatchId) {
+          document.getElementById('m-tare').value = 0;
+          document.getElementById('m-target').value = 21;
+          document.getElementById('m-temp').value = 22;
+          document.getElementById('m-loc').value = 'Тёплый шкаф · 22°C';
+        }
+      } else {
+        meatRow.style.display = 'grid';
+        stgSel.innerHTML = `
+          <option value="cure_vac">Посол в вакууме (3°C)</option>
+          <option value="dry_casing">Вяление в оболочке (12°C)</option>
+          <option value="dry_naked">Подвес без оболочки (13°C)</option>
+          <option value="dry_membrane">Мембранный пакет (4°C)</option>
+          <option value="rehydrate_vac">Регидратация в вакууме (4°C)</option>
+          <option value="smoke">Копчение (20°C)</option>
+        `;
+        document.getElementById('m-tare-lbl').textContent = 'Тара: шпагат/оболочка (г)';
+        document.getElementById('m-target-lbl').textContent = 'Цель усушки (%)';
+        if (!ui.editingBatchId) {
+          document.getElementById('m-tare').value = 14;
+          document.getElementById('m-target').value = 35;
+          document.getElementById('m-temp').value = 3;
+          document.getElementById('m-loc').value = 'Холодильник · 3°C';
+        }
+      }
+      refreshModalCalc();
+    }
+
+    function onModalStageChange() {
+      const sId = document.getElementById('m-stage').value;
+      const stg = STAGES[sId];
+      if (stg && !ui.editingBatchId) {
+        document.getElementById('m-temp').value = stg.temp;
+        document.getElementById('m-loc').value = stg.loc;
+      }
+      refreshModalCalc();
+    }
+
+    function refreshModalCalc() {
+      const cat = document.getElementById('m-cat').value;
+      const w = parseInt(document.getElementById('m-weight').value, 10) || 1000;
+      const tVal = parseInt(document.getElementById('m-target').value, 10) || 35;
+      const box = document.getElementById('m-calc-box');
+      if (cat === 'meat') {
+        const sN = (w * 0.0135).toFixed(1);
+        const sR = (w * 0.0135).toFixed(1);
+        const dex = (w * 0.004).toFixed(1);
+        const finW = Math.round(w * (1 - tVal / 100));
+        box.innerHTML = `🧂 Равновесный посол 2.7%: <b>${sN} г</b> нитритной + <b>${sR} г</b> морской соли + <b>${dex} г</b> сахара.<br/>🎯 Готовый вес при -${tVal}%: <b>${finW} г</b> (испарить ${w - finW} г).`;
+      } else {
+        const stg = document.getElementById('m-stage').value;
+        const water = parseInt(document.getElementById('m-tare').value, 10) || 0;
+        const pct = stg === 'ferm_vac' ? 2.8 : 3.5;
+        const mass = stg === 'ferm_vac' ? w : (w + water);
+        const salt = (mass * pct / 100).toFixed(1);
+        box.innerHTML = `🌶 Соль (${pct}% от ${mass} г): <b>${salt} г</b> неиодированной соли. Выдержка: <b>${tVal} дн</b>.`;
+      }
+    }
+
+    function saveBatchModal() {
+      const cat = document.getElementById('m-cat').value;
+      const title = document.getElementById('m-title').value.trim() || (cat === 'meat' ? 'Новый кусок' : 'Острые перцы');
+      const w = Math.max(50, parseInt(document.getElementById('m-weight').value, 10) || 1000);
+      const tareOrWater = Math.max(0, parseInt(document.getElementById('m-tare').value, 10) || 0);
+      const stgId = document.getElementById('m-stage').value;
+      const targetVal = Math.max(1, parseInt(document.getElementById('m-target').value, 10) || 35);
+      const tempC = parseInt(document.getElementById('m-temp').value, 10);
+      const loc = document.getElementById('m-loc').value.trim() || (STAGES[stgId] ? STAGES[stgId].loc : 'Камера');
+      const notes = document.getElementById('m-notes').value.trim();
+      const diam = Math.max(25, parseInt(document.getElementById('m-diam').value, 10) || 85);
+      const meatType = document.getElementById('m-meat-type').value;
+
+      if (ui.editingBatchId) {
+        const b = store.batches.find(x => x.id === ui.editingBatchId);
+        if (b) {
+          b.category = cat;
+          b.title = title;
+          b.initialWeight = w;
+          b.tempC = isNaN(tempC) ? 4 : tempC;
+          b.location = loc;
+          b.notes = notes;
+          if (cat === 'meat') {
+            b.meatType = meatType;
+            b.diameterMm = diam;
+            b.tareWeight = tareOrWater;
+            b.targetLossPct = targetVal;
+          } else {
+            b.brineWater = tareOrWater;
+            b.targetDays = targetVal;
+            b.saltPct = stgId === 'ferm_vac' ? 2.8 : 3.5;
+          }
+          if (b.currentStage !== stgId) {
+            changeStage(b.id, stgId);
+          }
+        }
+        persistStore();
+        closeBatchModal();
+        ui.draftWeightInput = null;
+        haptic('success');
+        showToast('Партия обновлена');
+        render();
+        return;
+      }
+
+      const id = 'b-' + Date.now();
+      const today = daysAgoISO(0);
+      const newBatch = {
+        id,
+        category: cat,
+        title,
+        meatType: cat === 'meat' ? meatType : null,
+        diameterMm: cat === 'meat' ? diam : null,
+        initialWeight: w,
+        hangWeight: w,
+        tareWeight: cat === 'meat' ? tareOrWater : 15,
+        brineWater: cat === 'pepper' ? tareOrWater : 0,
+        targetLossPct: cat === 'meat' ? targetVal : 0,
+        currentStage: stgId,
+        tempC: isNaN(tempC) ? (STAGES[stgId] ? STAGES[stgId].temp : 4) : tempC,
+        location: loc,
+        saltPct: cat === 'meat' ? 2.7 : (stgId === 'ferm_vac' ? 2.8 : 3.5),
+        puffed: false,
+        degasCount: 0,
+        phValue: 4.1,
+        targetDays: cat === 'pepper' ? targetVal : 0,
+        createdAt: today,
+        notes,
+        stageHistory: [{ stage: stgId, startDate: today, endDate: null, tempC: isNaN(tempC) ? 4 : tempC }],
+        weightLogs: [{ date: today, netWeight: w, stage: stgId, note: 'Старт партии' }]
+      };
+
+      store.batches.unshift(newBatch);
+      ui.selectedId = id;
+      ui.draftWeightInput = null;
+      ui.zoneFilter = 'all';
+      persistStore();
+      closeBatchModal();
+      haptic('success');
+      showToast(`Закладка «${title}» создана!`);
+      navigate('detail', id);
+    }
+
+    function deleteEditingBatch() {
+      if (!ui.editingBatchId) return;
+      if (!confirm('Удалить эту партию навсегда?')) return;
+      store.batches = store.batches.filter(x => x.id !== ui.editingBatchId);
+      ui.selectedId = store.batches.length ? store.batches[0].id : null;
+      persistStore();
+      closeBatchModal();
+      haptic('medium');
+      showToast('Партия удалена');
+      navigate('home');
+    }
+
+    // Boot
+    loadStore();
+    ui.selectedId = store.batches.length ? store.batches[0].id : null;
+    render();
+  </script>
+</body>
+</html>
