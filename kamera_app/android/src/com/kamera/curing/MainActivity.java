@@ -5,20 +5,23 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.window.OnBackInvokedCallback;
+import android.widget.FrameLayout;
 import android.window.OnBackInvokedDispatcher;
 
 import java.io.BufferedReader;
@@ -30,9 +33,11 @@ import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends Activity {
     private static final String STATE_FILENAME = "kamera_batches_v1.json";
+    private FrameLayout rootContainer;
     private WebView webView;
     private int statusInsetDp = 0;
     private int navInsetDp = 0;
+    private int imeInsetDp = 0;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -43,11 +48,16 @@ public class MainActivity extends Activity {
         window.setStatusBarColor(Color.parseColor("#FAF8F1"));
         window.setNavigationBarColor(Color.parseColor("#FAF8F1"));
 
+        rootContainer = new FrameLayout(this);
+        rootContainer.setBackgroundColor(Color.parseColor("#FAF8F1"));
+
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#FAF8F1"));
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setVerticalScrollBarEnabled(false);
         webView.setHorizontalScrollBarEnabled(false);
+        webView.setFocusable(true);
+        webView.setFocusableInTouchMode(true);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -72,27 +82,61 @@ public class MainActivity extends Activity {
             }
         });
 
-        setContentView(webView);
+        rootContainer.addView(
+                webView,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                )
+        );
+        setContentView(rootContainer);
 
-        // Handle edge-to-edge insets cleanly on Android 15+ (targetSdk 35)
-        View rootView = webView;
-        rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+        // Properly handle edge-to-edge system bars + soft keyboard (IME) on Android 11-15+
+        rootContainer.setOnApplyWindowInsetsListener((v, insets) -> {
             float density = getResources().getDisplayMetrics().density;
             int topPx;
-            int bottomPx;
+            int navPx;
+            int imePx = 0;
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 android.graphics.Insets sys = insets.getInsets(WindowInsets.Type.systemBars());
+                android.graphics.Insets ime = insets.getInsets(WindowInsets.Type.ime());
                 topPx = sys.top;
-                bottomPx = sys.bottom;
+                navPx = sys.bottom;
+                imePx = ime.bottom;
             } else {
                 topPx = insets.getSystemWindowInsetTop();
-                bottomPx = insets.getSystemWindowInsetBottom();
+                navPx = insets.getSystemWindowInsetBottom();
             }
+
+            // Physically shrink WebView container above the soft keyboard so inputs are never covered!
+            int bottomPaddingPx = imePx > 0 ? imePx : 0;
+            if (v.getPaddingBottom() != bottomPaddingPx) {
+                v.setPadding(0, 0, 0, bottomPaddingPx);
+            }
+
             statusInsetDp = Math.round(topPx / density);
-            navInsetDp = Math.round(bottomPx / density);
+            navInsetDp = imePx > 0 ? 0 : Math.round(navPx / density);
+            imeInsetDp = Math.round(imePx / density);
             pushInsetsToWeb();
             return insets;
         });
+
+        // Fallback keyboard detection for Android 7-10 (< API 30)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            rootContainer.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+                Rect r = new Rect();
+                rootContainer.getWindowVisibleDisplayFrame(r);
+                int screenH = rootContainer.getRootView().getHeight();
+                int keypadPx = screenH - r.bottom;
+                float density = getResources().getDisplayMetrics().density;
+                int newImeDp = keypadPx > screenH * 0.15 ? Math.round(keypadPx / density) : 0;
+                if (newImeDp != imeInsetDp) {
+                    imeInsetDp = newImeDp;
+                    pushInsetsToWeb();
+                }
+            });
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
@@ -106,11 +150,31 @@ public class MainActivity extends Activity {
 
     private void pushInsetsToWeb() {
         if (webView == null) return;
-        final String js = "if(window.__setAndroidInsets){window.__setAndroidInsets(" + statusInsetDp + "," + navInsetDp + ");}";
+        final String js = "if(window.__setAndroidInsets){window.__setAndroidInsets("
+                + statusInsetDp + "," + navInsetDp + "," + imeInsetDp + ");}";
         webView.post(() -> webView.evaluateJavascript(js, null));
     }
 
+    private void hideSoftKeyboard() {
+        try {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            View target = getCurrentFocus();
+            if (target == null) target = webView;
+            if (imm != null && target != null) {
+                imm.hideSoftInputFromWindow(target.getWindowToken(), 0);
+            }
+            if (webView != null) {
+                webView.clearFocus();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     private void handleBackAction() {
+        if (imeInsetDp > 0) {
+            hideSoftKeyboard();
+            return;
+        }
         if (webView == null) {
             finish();
             return;
@@ -167,6 +231,11 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 return false;
             }
+        }
+
+        @JavascriptInterface
+        public void hideKeyboard() {
+            runOnUiThread(() -> hideSoftKeyboard());
         }
 
         @JavascriptInterface
