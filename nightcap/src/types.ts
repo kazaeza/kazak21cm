@@ -7,6 +7,7 @@ export interface Lens {
 
 export interface VibeTag {
   id: string;
+  emoji: string;
   label: string;
   sub: string;
   glow: string;
@@ -23,6 +24,7 @@ export type BottleGroupId = 'spirits' | 'aperitifs' | 'liqueurs' | 'wine_beer';
 
 export type BottleId =
   | 'gin'
+  | 'sloe-gin'
   | 'white-rum'
   | 'dark-rum'
   | 'vodka'

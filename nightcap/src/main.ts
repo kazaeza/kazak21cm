@@ -266,6 +266,7 @@ function initApp(): void {
       const dotEl = document.getElementById('selected-vibe-dot')!;
       const titleEl = document.getElementById('selected-vibe-title')!;
       const subEl = document.getElementById('selected-vibe-sub')!;
+      dotEl.textContent = state.selectedTag.emoji || '🍸';
       dotEl.style.background = state.selectedTag.glow || 'linear-gradient(135deg,#f7b2d9,#87b8ff)';
       titleEl.textContent = state.selectedTag.label;
       subEl.textContent = state.selectedTag.sub || 'свой запрос';
@@ -397,7 +398,7 @@ function initApp(): void {
     const parts: string[] = [];
     for (const t of tagHits) {
       parts.push(
-        `<button type="button" class="sugg-chip sugg-tag" data-sugg-tag="${escapeHtml(t.id)}">${icon('sparkles', 'icon-xs')}<span>${escapeHtml(t.label)}</span></button>`
+        `<button type="button" class="sugg-chip sugg-tag" data-sugg-tag="${escapeHtml(t.id)}"><span>${escapeHtml(t.emoji)}</span><span>${escapeHtml(t.label)}</span></button>`
       );
     }
     for (const r of recipeHits) {
@@ -416,6 +417,7 @@ function initApp(): void {
     const found = TAGS.find((t) => t.label.toLowerCase() === val.toLowerCase());
     state.selectedTag = found || {
       id: `custom:${val.toLowerCase()}`,
+      emoji: '🍸',
       label: val,
       sub: 'свой запрос',
       glow: 'linear-gradient(135deg,#8ec5fc,#e0c3fc)',

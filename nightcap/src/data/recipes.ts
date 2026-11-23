@@ -1,8 +1,9 @@
 import type { GlassType, IceType, MethodType, Recipe, RecipeCategory } from '../types';
 import { RECIPES_PART_1 } from './recipes-part1';
 import { RECIPES_PART_2 } from './recipes-part2';
+import { RECIPES_PART_3 } from './recipes-part3';
 
-export const RECIPES: Recipe[] = [...RECIPES_PART_1, ...RECIPES_PART_2];
+export const RECIPES: Recipe[] = [...RECIPES_PART_1, ...RECIPES_PART_2, ...RECIPES_PART_3];
 
 export const RECIPE_MAP = new Map<string, Recipe>(RECIPES.map((r) => [r.id, r]));
 

@@ -10,6 +10,7 @@ export const BOTTLE_GROUPS: { id: BottleGroupId; title: string; subtitle: string
 export const BOTTLES: Bottle[] = [
   // Крепкая основа
   { id: 'gin', name: 'Джин', sub: 'сухой лондонский', group: 'spirits', accent: '#66e0ff' },
+  { id: 'sloe-gin', name: 'Слоу джин', sub: 'терновый ягодный джин', group: 'spirits', accent: '#c026d3' },
   { id: 'white-rum', name: 'Белый ром', sub: 'для мохито и дайкири', group: 'spirits', accent: '#6ee7b7' },
   { id: 'dark-rum', name: 'Тёмный / пряный ром', sub: 'май тай и шторм', group: 'spirits', accent: '#f59e0b' },
   { id: 'vodka', name: 'Водка', sub: 'чистая база', group: 'spirits', accent: '#bae6fd' },

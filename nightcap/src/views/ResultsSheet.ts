@@ -101,7 +101,7 @@ export class ResultsSheet {
       : 'Слишком редкое сочетание';
 
     const subtitleText = tagCount
-      ? this.lastTags.map((t) => t.label).join(' · ')
+      ? this.lastTags.map((t) => `${t.emoji} ${t.label}`).join(' · ')
       : shelfOnly && shelf.size > 0
         ? 'Доступно из твоей полки'
         : 'Вся коллекция туманности';

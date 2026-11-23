@@ -204,6 +204,12 @@ button {
   line-height: 1.1;
 }
 
+.tag-emoji {
+  font-size: 14.5px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 .tag-spark {
   width: 10px;
   height: 10px;
@@ -440,11 +446,16 @@ button {
 }
 
 .selected-vibe-dot {
-  width: 12px;
-  height: 12px;
+  width: 34px;
+  height: 34px;
   border-radius: 9999px;
   flex-shrink: 0;
-  box-shadow: 0 0 12px rgba(215, 175, 255, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  line-height: 1;
+  box-shadow: 0 0 14px rgba(215, 175, 255, 0.45);
 }
 
 .selected-vibe-texts {

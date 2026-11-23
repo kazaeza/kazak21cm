@@ -162,7 +162,7 @@ export class RecipeModal {
       .map((tid) => {
         const t = TAG_MAP.get(tid);
         if (!t) return '';
-        return `<button type="button" class="recipe-tag-chip" data-jump-tag="${escapeHtml(t.id)}" style="--chip-glow:${t.glow}"><span>${escapeHtml(t.label)}</span></button>`;
+        return `<button type="button" class="recipe-tag-chip" data-jump-tag="${escapeHtml(t.id)}" style="--chip-glow:${t.glow}"><span>${escapeHtml(t.emoji)} ${escapeHtml(t.label)}</span></button>`;
       })
       .join('');
 

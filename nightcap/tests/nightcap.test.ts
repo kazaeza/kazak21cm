@@ -26,11 +26,12 @@ describe('Nightcap data integrity', () => {
     }
   });
 
-  test('all 36 vibe tags have at least 4 matching recipes (zero dead tags)', () => {
-    expect(TAGS.length).toBe(36);
+  test('all 30 custom vibe tags have emojis and at least 5 matching recipes (zero dead tags)', () => {
+    expect(TAGS.length).toBe(30);
     for (const tag of TAGS) {
+      expect(tag.emoji.length).toBeGreaterThan(0);
       const count = RECIPES.filter((r) => r.tags.includes(tag.id)).length;
-      expect(count).toBeGreaterThanOrEqual(4);
+      expect(count).toBeGreaterThanOrEqual(5);
     }
   });
 
@@ -53,13 +54,19 @@ describe('Nightcap data integrity', () => {
 });
 
 describe('Smart matcher & shelf filtering', () => {
-  test('matches Russian synonyms like 0%, виски, просекко, and English names', () => {
+  test('matches Russian synonyms like 0%, виски, слоу, джем, and English names', () => {
     const zeroHits = RECIPES.filter((r) => recipeMatchesQuery(r, '0%'));
     expect(zeroHits.length).toBeGreaterThanOrEqual(10);
-    expect(zeroHits.every((r) => r.abv === 0 || r.tags.includes('zero'))).toBe(true);
+    expect(zeroHits.every((r) => r.abv === 0)).toBe(true);
 
     const whiskyHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'виски'));
     expect(whiskyHits.some((r) => r.id === 'gold-rush')).toBe(true);
+
+    const sloeHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'слоу'));
+    expect(sloeHits.length).toBeGreaterThanOrEqual(5);
+
+    const jamHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'джем'));
+    expect(jamHits.length).toBeGreaterThanOrEqual(5);
 
     const negroniHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'negroni'));
     expect(negroniHits.some((r) => r.id === 'negroni')).toBe(true);
@@ -70,12 +77,12 @@ describe('Smart matcher & shelf filtering', () => {
   });
 
   test('ranks exact multi-tag matches ahead of partial matches', () => {
-    const ginTag = TAG_MAP.get('gin-night')!;
+    const ginTag = TAG_MAP.get('gin-tonic')!;
     const oliveTag = TAG_MAP.get('olive')!;
     const matches = matchRecipes([ginTag, oliveTag], new Set(), false);
     expect(matches.length).toBeGreaterThan(0);
     expect(matches[0].hits).toBe(2);
-    expect(matches[0].recipe.tags).toContain('gin-night');
+    expect(matches[0].recipe.tags).toContain('gin-tonic');
     expect(matches[0].recipe.tags).toContain('olive');
   });
 

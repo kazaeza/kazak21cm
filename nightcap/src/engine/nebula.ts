@@ -320,7 +320,7 @@ export class NebulaEngine {
       btn.setAttribute('aria-pressed', isSel ? 'true' : 'false');
       btn.innerHTML = `
         <span class="tag-main">
-          <svg class="tag-spark" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0L9.7 6.3L16 8L9.7 9.7L8 16L6.3 9.7L0 8L6.3 6.3L8 0Z"/></svg>
+          <span class="tag-emoji" aria-hidden="true">${escapeHtml(tag.emoji)}</span>
           <span>${escapeHtml(tag.label)}</span>
         </span>
         <span class="tag-sub">${escapeHtml(tag.sub)}</span>
