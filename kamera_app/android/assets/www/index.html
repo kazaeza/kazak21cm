@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>КАМЕРА</title>
+  <title>ferment</title>
   <style>
     :root {
       --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Roboto', 'Segoe UI', sans-serif;
@@ -161,7 +161,7 @@
     .btn-soft:active { transform: scale(0.96); }
 
     /* =====================================================================
-       HOME SCREEN (ПОГРЕБ)
+       HOME SCREEN
        ===================================================================== */
     .home-header {
       padding: calc(14px + var(--safe-top)) 18px 12px;
@@ -322,7 +322,7 @@
     }
 
     /* =====================================================================
-       DETAIL SCREEN — CALM, CONTEXTUAL, INTEGRATED CURVE
+       DETAIL SCREEN — SAFE TIMELINE INSPECTOR + EXPLICIT STAGE TRANSFER
        ===================================================================== */
     .detail-hero {
       padding: calc(12px + var(--safe-top)) 18px 26px;
@@ -340,21 +340,73 @@
       margin-top: -18px;
       position: relative;
       z-index: 3;
-      padding: 18px 18px 24px;
+      padding: 16px 18px 24px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
-    /* Clean 4-state single-row stage bar */
-    .stage-bar-4 {
+    /* Live current-status strip above tabs */
+    .live-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 16px;
+      background: var(--cream-bg);
+      font-size: 12px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* Read-only browse tabs (tapping NEVER mutates the piece!) */
+    .inspect-tabs-4 {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      background: var(--cream-bg);
-      padding: 5px;
+      gap: 4px;
+      background: var(--cream-card);
+      padding: 4px;
       border-radius: 99px;
     }
+    .inspect-tabs-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      background: var(--cream-card);
+      padding: 4px;
+      border-radius: 99px;
+    }
+
+    .inspect-tab {
+      border: none;
+      background: transparent;
+      color: var(--text-sec);
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 8px 4px;
+      border-radius: 99px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.16s var(--ease);
+      white-space: nowrap;
+    }
+    .inspect-tab.viewing {
+      background: var(--ink);
+      color: var(--white);
+      box-shadow: 0 3px 10px rgba(24, 25, 28, 0.18);
+    }
+
+    /* Modal phase picker */
     .stage-bar-3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -363,7 +415,6 @@
       padding: 5px;
       border-radius: 99px;
     }
-
     .phase-btn {
       border: none;
       background: transparent;
@@ -373,14 +424,12 @@
       padding: 9px 4px;
       border-radius: 99px;
       cursor: pointer;
-      transition: all 0.18s var(--ease);
       white-space: nowrap;
     }
     .phase-btn.active {
       background: var(--butter);
       color: var(--ink);
       font-weight: 800;
-      box-shadow: 0 3px 10px rgba(245, 213, 71, 0.42);
     }
 
     /* Drying sub-method chips */
@@ -406,7 +455,7 @@
       color: var(--white);
     }
 
-    /* LOCKED VACUUM / CURE CARD (No weigh-in allowed!) */
+    /* LOCKED VACUUM / CURE CARD */
     .vacuum-locked-card {
       border-radius: 26px;
       padding: 18px 16px;
@@ -443,7 +492,46 @@
       transition: width 0.35s var(--ease);
     }
 
-    /* LAYERED MUSTARD + TEAL ARC DIAL (ONLY ON DRYING STAGE!) */
+    /* Calm Read-Only Preview Card when browsing another tab */
+    .inspect-preview-card {
+      border-radius: 24px;
+      background: var(--cream-bg);
+      border: 1.5px solid rgba(24, 25, 28, 0.08);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    /* Explicit transfer action bar on live fermentation card */
+    .transfer-actions-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .transfer-btn {
+      border: 1.5px solid rgba(24, 25, 28, 0.12);
+      background: var(--cream-bg);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 12px 10px;
+      border-radius: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: transform 0.14s var(--ease);
+    }
+    .transfer-btn:active { transform: scale(0.96); }
+    .transfer-btn.archive-go {
+      background: #E4F2E1;
+      border-color: #8FB184;
+      color: #2E5225;
+    }
+
+    /* LAYERED MUSTARD + TEAL ARC DIAL */
     .arc-dial-card {
       border-radius: 28px;
       background: var(--mustard);
@@ -541,7 +629,7 @@
     }
     .teal-save-btn:active { transform: scale(0.96); }
 
-    /* TASTING VERDICT CARD (ON DONE STAGE) */
+    /* TASTING VERDICT CARD */
     .tasting-card {
       border-radius: 24px;
       background: var(--cream-bg);
@@ -571,7 +659,7 @@
       border-color: var(--ink);
     }
 
-    /* INTEGRATED ANALYTICS SECTION INSIDE DETAIL */
+    /* INTEGRATED ANALYTICS SECTION */
     .capsules-trio {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -623,7 +711,7 @@
     .journal-item:last-child { border-bottom: none; }
 
     /* =====================================================================
-       ARCHIVE & PLANS SCREEN (АРХИВ)
+       ARCHIVE & PLANS SCREEN
        ===================================================================== */
     .archive-wrap {
       padding: calc(14px + var(--safe-top)) 18px 24px;
@@ -680,9 +768,7 @@
       gap: 12px;
     }
 
-    /* =====================================================================
-       FLOATING 3-ITEM BOTTOM DOCK
-       ===================================================================== */
+    /* FLOATING 3-ITEM BOTTOM DOCK */
     .bottom-dock {
       position: fixed;
       bottom: calc(14px + var(--safe-bottom));
@@ -828,11 +914,11 @@
     }
     .loc-btn {
       flex: 1;
-      min-width: 120px;
+      min-width: 126px;
       border: 1.5px solid rgba(24, 25, 28, 0.12);
       background: var(--white);
       color: var(--ink);
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 700;
       padding: 10px 10px;
       border-radius: 15px;
@@ -889,9 +975,8 @@
   <div class="app-root">
     <div class="screen-viewport" id="viewport"></div>
 
-    <!-- Clean 3-Button Floating Black Dock -->
     <nav class="bottom-dock">
-      <button class="dock-btn active" id="dock-home" onclick="navigate('home')" aria-label="Погреб">
+      <button class="dock-btn active" id="dock-home" onclick="navigate('home')" aria-label="Камеры">
         <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>
       </button>
       <button class="dock-fab" onclick="openBatchModal({ category: 'meat', existing: false })" aria-label="Добавить">＋</button>
@@ -908,7 +993,7 @@
     </button>
   </div>
 
-  <!-- MODAL: COMPACT 1-SCREEN ADD / EDIT BATCH -->
+  <!-- MODAL: COMPACT ADD / EDIT BATCH -->
   <div class="sheet-backdrop" id="batch-modal" onclick="if(event.target===this){ dismissKeyboard(); closeBatchModal(); }">
     <div class="sheet-panel" id="sheet-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -916,7 +1001,6 @@
         <button class="circle-btn" style="width:34px;height:34px;" onclick="dismissKeyboard(); closeBatchModal();">✕</button>
       </div>
 
-      <!-- Category + Already Exists Toggle Row -->
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
         <div class="seg-toggle" style="flex:1;margin:0;">
           <button type="button" class="seg-opt active" id="cat-meat-btn" onclick="setModalCat('meat')">🥩 Мясо</button>
@@ -927,7 +1011,6 @@
         </button>
       </div>
 
-      <!-- Cut Selector + Smart Optimal Hint -->
       <div class="f-group">
         <label class="f-lbl" id="m-cut-lbl">Что закладываем</label>
         <select id="m-cut" class="f-inp" onchange="onModalCutChange()"></select>
@@ -935,7 +1018,6 @@
 
       <div id="m-opt-hint" style="padding:10px 12px;border-radius:14px;background:var(--butter-soft);font-size:11.5px;line-height:1.4;margin-bottom:11px;"></div>
 
-      <!-- Name + Weight + Target % -->
       <div class="f-group">
         <label class="f-lbl">Название</label>
         <input id="m-title" class="f-inp" enterkeyhint="done" placeholder="Напр. Коппа #2" />
@@ -952,7 +1034,6 @@
         </div>
       </div>
 
-      <!-- Backdate Box (ONLY visible when "Уже лежит" is active!) -->
       <div id="m-existing-box" class="hidden" style="background:var(--white);border:1.5px solid rgba(24,25,28,0.09);border-radius:18px;padding:12px;margin-bottom:11px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
           <div class="f-group" style="margin-bottom:0;">
@@ -972,27 +1053,23 @@
         </div>
       </div>
 
-      <!-- Phase Selector -->
       <div class="f-group">
         <label class="f-lbl">Этап сейчас</label>
         <div id="m-phase-picker" class="stage-bar-3" style="background:var(--white);border:1px solid rgba(24,25,28,0.08);"></div>
       </div>
 
-      <!-- Drying Method Sub-row (only if meat + dry phase) -->
       <div class="f-group hidden" id="m-dry-method-wrap">
-        <label class="f-lbl">Способ вяления</label>
+        <label class="f-lbl">Формат в камере</label>
         <div class="sub-chips-row" id="m-dry-method-chips"></div>
       </div>
 
-      <!-- Brine Water (only if pepper + brine) -->
       <div class="f-group hidden" id="m-brine-wrap">
         <label class="f-lbl">Вода для рассола (мл)</label>
         <input id="m-brine" type="number" inputmode="numeric" enterkeyhint="done" value="500" class="f-inp" oninput="refreshModalHint()" />
       </div>
 
-      <!-- Fixed Fridge Picker -->
       <div class="f-group">
-        <label class="f-lbl">Где лежит</label>
+        <label class="f-lbl">Камера</label>
         <div class="loc-picker" id="m-loc-picker"></div>
       </div>
 
@@ -1011,11 +1088,11 @@
     </div>
   </div>
 
-  <!-- MODAL: COMPACT SETTINGS SHEET -->
+  <!-- MODAL: SETTINGS -->
   <div class="sheet-backdrop" id="settings-modal" onclick="if(event.target===this) closeSettings()">
     <div class="sheet-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h3 style="font-size:20px;font-weight:800;">Настройки и бэкап</h3>
+        <h3 style="font-size:20px;font-weight:800;">Настройки ferment</h3>
         <button class="circle-btn" style="width:34px;height:34px;" onclick="closeSettings()">✕</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
@@ -1038,10 +1115,18 @@
 
   <script>
     // =========================================================================
-    // 1. NATIVE BRIDGE & KEYBOARD HANDLING
+    // 1. NATIVE BRIDGE, KEYBOARD & BACK SWIPE SYNC
     // =========================================================================
     const hasAndroid = typeof window.AndroidBridge !== 'undefined';
     let currentImeDp = 0;
+
+    function syncAndroidBackState() {
+      if (!hasAndroid || !window.AndroidBridge.setCanGoBack) return;
+      const modalOpen = document.getElementById('batch-modal').classList.contains('open')
+        || document.getElementById('settings-modal').classList.contains('open');
+      const canGoBack = ui.screen !== 'home' || modalOpen || currentImeDp > 40 || isTextFieldFocused();
+      try { window.AndroidBridge.setCanGoBack(!!canGoBack); } catch (e) {}
+    }
 
     window.__setAndroidInsets = function(topDp, bottomDp, imeDp) {
       document.documentElement.style.setProperty('--safe-top', Math.max(0, topDp || 0) + 'px');
@@ -1050,6 +1135,7 @@
       const isKb = currentImeDp > 40 || isTextFieldFocused();
       document.body.classList.toggle('kb-open', isKb);
       if (currentImeDp > 40) scrollActiveInputIntoView();
+      syncAndroidBackState();
     };
 
     function isTextFieldFocused() {
@@ -1072,6 +1158,7 @@
       if (hasAndroid && window.AndroidBridge.hideKeyboard) {
         try { window.AndroidBridge.hideKeyboard(); } catch (e) {}
       }
+      syncAndroidBackState();
     }
 
     document.addEventListener('focusin', (ev) => {
@@ -1079,11 +1166,15 @@
       if (tag === 'INPUT' || tag === 'TEXTAREA') {
         document.body.classList.add('kb-open');
         scrollActiveInputIntoView();
+        syncAndroidBackState();
       }
     });
     document.addEventListener('focusout', () => {
       setTimeout(() => {
-        if (!isTextFieldFocused() && currentImeDp <= 40) document.body.classList.remove('kb-open');
+        if (!isTextFieldFocused() && currentImeDp <= 40) {
+          document.body.classList.remove('kb-open');
+          syncAndroidBackState();
+        }
       }, 140);
     });
     document.addEventListener('keydown', (ev) => {
@@ -1112,25 +1203,25 @@
       el.textContent = msg;
       el.classList.add('show');
       clearTimeout(window.__toastT);
-      window.__toastT = setTimeout(() => el.classList.remove('show'), 1800);
+      window.__toastT = setTimeout(() => el.classList.remove('show'), 1900);
     }
 
     // =========================================================================
-    // 2. DOMAIN MODEL: CLEAN 4 PHASES + REAL CUTS FROM "СУ ШЕФ"
+    // 2. DOMAIN MODEL: 3°C FRIDGE + 12°C FERMENTATION CHAMBER
     // =========================================================================
     const LOCATIONS = {
-      fridge_3:  { id: 'fridge_3',  label: 'Холодильник 3°C',  short: 'Холод. 3°C',  temp: 3,  icon: '❄️' },
-      fridge_12: { id: 'fridge_12', label: 'Холодильник 12°C', short: 'Холод. 12°C', temp: 12, icon: '🌡' },
-      room_22:   { id: 'room_22',   label: 'Комната ~22°C',    short: 'Комната 22°C', temp: 22, icon: '🌶' }
+      fridge_3:  { id: 'fridge_3',  label: 'Холодильник 3°C',   short: 'Холод. 3°C', temp: 3,  icon: '❄️' },
+      fridge_12: { id: 'fridge_12', label: 'Ферм-камера 12°C',  short: 'Ферм. 12°C', temp: 12, icon: '🌡' },
+      room_22:   { id: 'room_22',   label: 'Комната ~22°C',     short: 'Комн. 22°C', temp: 22, icon: '🌶' }
     };
 
     const PHASES = {
-      cure:       { id: 'cure',       label: 'Посол',    full: 'Посол в вакууме',      hex: '#8884E6', defLoc: 'fridge_3',  isDrying: false, isLocked: true },
-      dry:        { id: 'dry',        label: 'Вяление',  full: 'Вяление',              hex: '#EE9D68', defLoc: 'fridge_12', isDrying: true,  isLocked: false },
-      vacuum:     { id: 'vacuum',     label: 'Вакуум',   full: 'Выравнивание (вакуум)', hex: '#3B7D71', defLoc: 'fridge_3',  isDrying: false, isLocked: true },
-      done:       { id: 'done',       label: 'Готово',   full: 'Дегустация · Архив',   hex: '#8FB184', defLoc: 'fridge_3',  isDrying: false, isLocked: true },
-      ferm_vac:   { id: 'ferm_vac',   label: 'Вакуум',   full: 'Ферментация в вакууме', hex: '#EA7B72', defLoc: 'room_22',   isDrying: false, isLocked: true },
-      ferm_brine: { id: 'ferm_brine', label: 'Рассол',   full: 'Ферментация в рассоле', hex: '#8FB184', defLoc: 'room_22',   isDrying: false, isLocked: true }
+      cure:       { id: 'cure',       tab: 'Посол',     full: 'Посол в вакууме',          hex: '#8884E6', defLoc: 'fridge_3',  isDrying: false },
+      dry:        { id: 'dry',        tab: 'Ферм. 12°', full: 'Ферментация (12°C)',       hex: '#EE9D68', defLoc: 'fridge_12', isDrying: true  },
+      vacuum:     { id: 'vacuum',     tab: 'Вакуум',    full: 'Отлёжка в вакууме',        hex: '#3B7D71', defLoc: 'fridge_3',  isDrying: false },
+      done:       { id: 'done',       tab: 'Готово',    full: 'Готово · в Архиве',        hex: '#8FB184', defLoc: 'fridge_3',  isDrying: false },
+      ferm_vac:   { id: 'ferm_vac',   tab: 'Вакуум',    full: 'Ферментация в вакууме',    hex: '#EA7B72', defLoc: 'room_22',   isDrying: false },
+      ferm_brine: { id: 'ferm_brine', tab: 'Рассол',    full: 'Ферментация в рассоле',    hex: '#8FB184', defLoc: 'room_22',   isDrying: false }
     };
 
     const DRY_METHODS = {
@@ -1149,11 +1240,10 @@
     ];
 
     const MEAT_CATALOG = {
-      // Свинина
       pork_coppa: {
         group: 'Свинина', label: 'Коппа (свиная шея)', defTitle: 'Коппа',
         factor: 0.78, optLoss: 34, refDiam: 95, refWeight: 1200, optMethod: 'casing',
-        cureDays: 14, saltPct: 2.7, tip: 'Шея любит оболочку при 12°C и потерю 33–35%.'
+        cureDays: 14, saltPct: 2.7, tip: 'Шея любит оболочку в ферм-камере 12°C и потерю 33–35%.'
       },
       pork_lonzino: {
         group: 'Свинина', label: 'Лонзино (карбонад / корейка)', defTitle: 'Лонзино',
@@ -1168,35 +1258,33 @@
       pork_ham: {
         group: 'Свинина', label: 'Вяленый окорок / лопатка', defTitle: 'Вяленый окорок',
         factor: 0.75, optLoss: 35, refDiam: 105, refWeight: 1200, optMethod: 'casing',
-        cureDays: 16, saltPct: 2.7, tip: 'Плотный отруб — вялить в оболочке, полезна пауза в вакууме.'
+        cureDays: 16, saltPct: 2.7, tip: 'Плотный отруб — ферментировать в оболочке, полезна пауза в вакууме.'
       },
       pork_tenderloin: {
         group: 'Свинина', label: 'Свиная вырезка (Филетто)', defTitle: 'Свиная вырезка',
         factor: 1.18, optLoss: 35, refDiam: 48, refWeight: 500, optMethod: 'naked',
-        cureDays: 7, saltPct: 2.5, tip: 'Тонкий кусок — быстро сохнет на открытом подвесе (~12–16 дн).'
+        cureDays: 7, saltPct: 2.5, tip: 'Тонкий кусок — сохнет в 12°C за ~12–16 дн.'
       },
       pork_guanciale: {
         group: 'Свинина', label: 'Щековина (Гуанчале)', defTitle: 'Гуанчале',
         factor: 0.58, optLoss: 25, refDiam: 45, refWeight: 800, optMethod: 'naked',
         cureDays: 10, saltPct: 2.6, tip: 'Очень жирный отруб — достаточно 23–26% потери.'
       },
-      // Птица (реальные форматы из архива!)
       duck_barrel: {
         group: 'Птица', label: 'Утиный бочонок (2 грудки)', defTitle: 'Утиный бочонок',
         factor: 0.96, optLoss: 35, refDiam: 74, refWeight: 800, optMethod: 'naked',
-        cureDays: 6, saltPct: 2.6, tip: 'Связанный бочонок толще одиночной грудки — сушить до −35% + вакуум!'
+        cureDays: 6, saltPct: 2.6, tip: 'Связанный бочонок толще одиночной грудки — держать в 12°C до −35% + вакуум!'
       },
       duck_carpaccio: {
         group: 'Птица', label: 'Карпаччо из утки (1 грудка)', defTitle: 'Карпаччо из утки',
         factor: 1.28, optLoss: 33, refDiam: 38, refWeight: 380, optMethod: 'naked',
-        cureDays: 4, saltPct: 2.6, tip: 'Одиночная грудка солится 3–4 дня, сохнет ~10–14 дней.'
+        cureDays: 4, saltPct: 2.6, tip: 'Одиночная грудка солится 3–4 дня, ферментируется ~10–14 дней.'
       },
       chicken_carpaccio: {
         group: 'Птица', label: 'Карпаччо из курицы', defTitle: 'Карпаччо из курицы',
         factor: 1.35, optLoss: 35, refDiam: 46, refWeight: 500, optMethod: 'naked',
-        cureDays: 4, saltPct: 2.6, tip: '2.6% нитритной соли (13 г на 500 г), вяление 7–12 дней до −35%.'
+        cureDays: 4, saltPct: 2.6, tip: '2.6% нитритной соли (13 г на 500 г), в 12°C 7–12 дней до −35%.'
       },
-      // Говядина
       beef_bresaola: {
         group: 'Говядина', label: 'Вяленая говядина / Брезаола', defTitle: 'Брезаола',
         factor: 1.15, optLoss: 36, refDiam: 85, refWeight: 1200, optMethod: 'casing',
@@ -1205,7 +1293,7 @@
       beef_basturma: {
         group: 'Говядина', label: 'Говядина под бастурму', defTitle: 'Бастурма',
         factor: 1.12, optLoss: 38, refDiam: 55, refWeight: 1000, optMethod: 'naked',
-        cureDays: 10, saltPct: 2.8, tip: 'Сухой плотный срез — цель 37–40% на открытом подвесе.'
+        cureDays: 10, saltPct: 2.8, tip: 'Сухой плотный срез — цель 37–40%.'
       },
       beef_tenderloin: {
         group: 'Говядина', label: 'Говяжья вырезка (Филе)', defTitle: 'Говяжья вырезка',
@@ -1244,7 +1332,7 @@
     }
 
     // =========================================================================
-    // 3. REAL IMPORT FROM USER'S "СУ ШЕФ" ARCHIVE (AUG–NOV 2026)
+    // 3. SEED DATA & STORAGE (PRESERVES USER'S EXISTING v0.3 DATA!)
     // =========================================================================
     function createSousChefSeed() {
       return {
@@ -1261,216 +1349,123 @@
           }
         ],
         batches: [
-          // --- ACTIVE BATCHES ---
           {
             id: 'sc-chicken-classic',
             category: 'meat',
             title: 'Карпаччо: курица',
             cutId: 'chicken_carpaccio',
-            initialWeight: 500,
-            hangWeight: 500,
-            targetLossPct: 35,
-            phase: 'cure',
-            dryMethod: 'naked',
-            smoked: false,
-            locId: 'fridge_3',
-            saltPct: 2.6,
+            initialWeight: 500, hangWeight: 500, targetLossPct: 35,
+            phase: 'cure', dryMethod: 'naked', smoked: false, locId: 'fridge_3', saltPct: 2.6,
             createdAt: '2026-11-17',
             notes: 'Классика: 13 г нитритной соли, вакуумный посол (с 17 ноя).',
-            verdict: '',
-            tastingNote: '',
-            phaseHistory: [
-              { phase: 'cure', startDate: '2026-11-17', endDate: null }
-            ],
-            weightLogs: [
-              { date: '2026-11-17', weight: 500, phase: 'cure', note: 'Закладка в вакуум (13 г нитритки)' }
-            ]
+            verdict: '', tastingNote: '',
+            phaseHistory: [{ phase: 'cure', startDate: '2026-11-17', endDate: null }],
+            weightLogs: [{ date: '2026-11-17', weight: 500, phase: 'cure', note: 'Закладка в вакуум (13 г нитритки)' }]
           },
           {
             id: 'sc-chicken-lemon',
             category: 'meat',
             title: 'Карпаччо: лимон',
             cutId: 'chicken_carpaccio',
-            initialWeight: 500,
-            hangWeight: 500,
-            targetLossPct: 35,
-            phase: 'cure',
-            dryMethod: 'naked',
-            smoked: false,
-            locId: 'fridge_3',
-            saltPct: 2.6,
+            initialWeight: 500, hangWeight: 500, targetLossPct: 35,
+            phase: 'cure', dryMethod: 'naked', smoked: false, locId: 'fridge_3', saltPct: 2.6,
             createdAt: '2026-11-17',
             notes: 'Куриная грудка: нитритная соль, чёрный перец, лимон, чеснок.',
-            verdict: '',
-            tastingNote: '',
-            phaseHistory: [
-              { phase: 'cure', startDate: '2026-11-17', endDate: null }
-            ],
-            weightLogs: [
-              { date: '2026-11-17', weight: 500, phase: 'cure', note: 'Вакуумный посол с лимоном' }
-            ]
+            verdict: '', tastingNote: '',
+            phaseHistory: [{ phase: 'cure', startDate: '2026-11-17', endDate: null }],
+            weightLogs: [{ date: '2026-11-17', weight: 500, phase: 'cure', note: 'Вакуумный посол с лимоном' }]
           },
           {
             id: 'sc-duck-carpaccio',
             category: 'meat',
             title: 'Карпаччо: утка',
             cutId: 'duck_carpaccio',
-            initialWeight: 400,
-            hangWeight: 400,
-            targetLossPct: 33,
-            phase: 'cure',
-            dryMethod: 'naked',
-            smoked: false,
-            locId: 'fridge_3',
-            saltPct: 2.6,
+            initialWeight: 400, hangWeight: 400, targetLossPct: 33,
+            phase: 'cure', dryMethod: 'naked', smoked: false, locId: 'fridge_3', saltPct: 2.6,
             createdAt: '2026-11-17',
             notes: 'Пряное утиное: нитритная соль, паприка, фенхель, чили, чеснок (вес уточни в ✎).',
-            verdict: '',
-            tastingNote: '',
-            phaseHistory: [
-              { phase: 'cure', startDate: '2026-11-17', endDate: null }
-            ],
-            weightLogs: [
-              { date: '2026-11-17', weight: 400, phase: 'cure', note: 'Вакуумный посол' }
-            ]
+            verdict: '', tastingNote: '',
+            phaseHistory: [{ phase: 'cure', startDate: '2026-11-17', endDate: null }],
+            weightLogs: [{ date: '2026-11-17', weight: 400, phase: 'cure', note: 'Вакуумный посол' }]
           },
           {
             id: 'sc-duck-barrel-1',
             category: 'meat',
             title: 'Утиный бочонок №1',
             cutId: 'duck_barrel',
-            initialWeight: 800,
-            hangWeight: 800,
-            targetLossPct: 35,
-            phase: 'dry',
-            dryMethod: 'naked',
-            smoked: false,
-            locId: 'fridge_12',
-            saltPct: 2.6,
+            initialWeight: 800, hangWeight: 800, targetLossPct: 35,
+            phase: 'dry', dryMethod: 'naked', smoked: false, locId: 'fridge_12', saltPct: 2.6,
             createdAt: '2026-11-04',
-            notes: '2 грудки связаны бочонком. 20 ноя пробовал: нежный, но влажноватый — досушить и выдержать в вакууме.',
-            verdict: '💧 Влажновато',
-            tastingNote: '',
+            notes: '2 грудки связаны бочонком. 20 ноя пробовал: нежный, но влажноватый — додержать в 12°C и в вакуум.',
+            verdict: '💧 Влажновато', tastingNote: '',
             phaseHistory: [
               { phase: 'cure', startDate: '2026-11-04', endDate: '2026-11-09' },
               { phase: 'dry', startDate: '2026-11-09', endDate: null }
             ],
-            weightLogs: [
-              { date: '2026-11-04', weight: 800, phase: 'cure', note: 'Старт (2 грудки в бочонок)' }
-            ]
+            weightLogs: [{ date: '2026-11-04', weight: 800, phase: 'cure', note: 'Старт (2 грудки в бочонок)' }]
           },
           {
             id: 'sc-duck-barrel-2',
             category: 'meat',
             title: 'Утиный бочонок №2 (копчёный)',
             cutId: 'duck_barrel',
-            initialWeight: 800,
-            hangWeight: 800,
-            targetLossPct: 35,
-            phase: 'dry',
-            dryMethod: 'naked',
-            smoked: true,
-            locId: 'fridge_12',
-            saltPct: 2.6,
+            initialWeight: 800, hangWeight: 800, targetLossPct: 35,
+            phase: 'dry', dryMethod: 'naked', smoked: true, locId: 'fridge_12', saltPct: 2.6,
             createdAt: '2026-11-04',
             notes: 'Второй бочонок после лёгкого холодного копчения для сравнения с первым.',
-            verdict: '',
-            tastingNote: '',
+            verdict: '', tastingNote: '',
             phaseHistory: [
               { phase: 'cure', startDate: '2026-11-04', endDate: '2026-11-09' },
               { phase: 'dry', startDate: '2026-11-09', endDate: null }
             ],
-            weightLogs: [
-              { date: '2026-11-04', weight: 800, phase: 'cure', note: 'Старт + холодное копчение' }
-            ]
+            weightLogs: [{ date: '2026-11-04', weight: 800, phase: 'cure', note: 'Старт + холодное копчение' }]
           },
           {
             id: 'sc-coppa-1',
             category: 'meat',
             title: 'Коппа (шея)',
             cutId: 'pork_coppa',
-            initialWeight: 1200,
-            hangWeight: 1200,
-            targetLossPct: 34,
-            phase: 'cure',
-            dryMethod: 'casing',
-            smoked: false,
-            locId: 'fridge_3',
-            saltPct: 2.7,
+            initialWeight: 1200, hangWeight: 1200, targetLossPct: 34,
+            phase: 'cure', dryMethod: 'casing', smoked: false, locId: 'fridge_3', saltPct: 2.7,
             createdAt: '2026-10-05',
-            notes: 'Запущен посол в вакууме в начале октября. Переключи на «Вяление» и внеси текущий вес, если уже висит в Willmark 12°C.',
-            verdict: '',
-            tastingNote: '',
-            phaseHistory: [
-              { phase: 'cure', startDate: '2026-10-05', endDate: null }
-            ],
-            weightLogs: [
-              { date: '2026-10-05', weight: 1200, phase: 'cure', note: 'Посол в вакууме' }
-            ]
+            notes: 'Запущен посол в вакууме в начале октября. Перенеси в ферм-камеру 12°C, если уже висит.',
+            verdict: '', tastingNote: '',
+            phaseHistory: [{ phase: 'cure', startDate: '2026-10-05', endDate: null }],
+            weightLogs: [{ date: '2026-10-05', weight: 1200, phase: 'cure', note: 'Посол в вакууме' }]
           },
           {
             id: 'sc-pancetta-2',
             category: 'meat',
             title: 'Панчетта №2',
             cutId: 'pork_pancetta',
-            initialWeight: 1200,
-            hangWeight: 1200,
-            targetLossPct: 26,
-            phase: 'cure',
-            dryMethod: 'naked',
-            smoked: false,
-            locId: 'fridge_3',
-            saltPct: 2.5,
+            initialWeight: 1200, hangWeight: 1200, targetLossPct: 26,
+            phase: 'cure', dryMethod: 'naked', smoked: false, locId: 'fridge_3', saltPct: 2.5,
             createdAt: '2026-10-05',
-            notes: 'Грудинка ~1.2 кг, посол в вакууме с начала октября. Поправь этап и вес по факту.',
-            verdict: '',
-            tastingNote: '',
-            phaseHistory: [
-              { phase: 'cure', startDate: '2026-10-05', endDate: null }
-            ],
-            weightLogs: [
-              { date: '2026-10-05', weight: 1200, phase: 'cure', note: 'Посол в вакууме' }
-            ]
+            notes: 'Грудинка ~1.2 кг, посол в вакууме с начала октября.',
+            verdict: '', tastingNote: '',
+            phaseHistory: [{ phase: 'cure', startDate: '2026-10-05', endDate: null }],
+            weightLogs: [{ date: '2026-10-05', weight: 1200, phase: 'cure', note: 'Посол в вакууме' }]
           },
           {
             id: 'sc-ham-1',
             category: 'meat',
             title: 'Вяленый окорок',
             cutId: 'pork_ham',
-            initialWeight: 1200,
-            hangWeight: 1200,
-            targetLossPct: 35,
-            phase: 'cure',
-            dryMethod: 'casing',
-            smoked: false,
-            locId: 'fridge_3',
-            saltPct: 2.7,
+            initialWeight: 1200, hangWeight: 1200, targetLossPct: 35,
+            phase: 'cure', dryMethod: 'casing', smoked: false, locId: 'fridge_3', saltPct: 2.7,
             createdAt: '2026-10-05',
-            notes: 'Свиной окорок ~1.2 кг, посол в вакууме с начала октября. Поправь этап и вес по факту.',
-            verdict: '',
-            tastingNote: '',
-            phaseHistory: [
-              { phase: 'cure', startDate: '2026-10-05', endDate: null }
-            ],
-            weightLogs: [
-              { date: '2026-10-05', weight: 1200, phase: 'cure', note: 'Посол в вакууме' }
-            ]
+            notes: 'Свиной окорок ~1.2 кг, посол в вакууме с начала октября.',
+            verdict: '', tastingNote: '',
+            phaseHistory: [{ phase: 'cure', startDate: '2026-10-05', endDate: null }],
+            weightLogs: [{ date: '2026-10-05', weight: 1200, phase: 'cure', note: 'Посол в вакууме' }]
           },
-
-          // --- COMPLETED / ARCHIVE BATCHES ---
           {
             id: 'sc-pancetta-1',
             category: 'meat',
             title: 'Панчетта №1',
             cutId: 'pork_pancetta',
-            initialWeight: 518,
-            hangWeight: 518,
-            targetLossPct: 25,
-            phase: 'done',
-            dryMethod: 'membrane',
-            smoked: false,
-            locId: 'fridge_3',
-            saltPct: 2.5,
+            initialWeight: 518, hangWeight: 518, targetLossPct: 25,
+            phase: 'done', dryMethod: 'membrane', smoked: false, locId: 'fridge_3', saltPct: 2.5,
             createdAt: '2026-08-05',
             notes: 'Августовская партия в мембране. В начале октября 394 г (усушка ~24%), выравнивание в вакууме.',
             verdict: '👍 Хорошо',
@@ -1483,7 +1478,7 @@
             ],
             weightLogs: [
               { date: '2026-08-05', weight: 518, phase: 'cure', note: 'Старт (~500 г)' },
-              { date: '2026-10-04', weight: 394, phase: 'vacuum', note: '394 г (~24%), в вакуум на выравнивание' }
+              { date: '2026-10-04', weight: 394, phase: 'vacuum', note: '394 г (~24%), в вакуум' }
             ]
           },
           {
@@ -1491,14 +1486,8 @@
             category: 'meat',
             title: 'Лонзино / карбонад №1',
             cutId: 'pork_lonzino',
-            initialWeight: 490,
-            hangWeight: 490,
-            targetLossPct: 33,
-            phase: 'done',
-            dryMethod: 'membrane',
-            smoked: false,
-            locId: 'fridge_3',
-            saltPct: 2.6,
+            initialWeight: 490, hangWeight: 490, targetLossPct: 33,
+            phase: 'done', dryMethod: 'membrane', smoked: false, locId: 'fridge_3', saltPct: 2.6,
             createdAt: '2026-08-05',
             notes: 'Первая партия в мембране, старт в начале августа.',
             verdict: '🥓 Как сало',
@@ -1508,66 +1497,13 @@
               { phase: 'dry', startDate: '2026-08-17', endDate: '2026-10-03' },
               { phase: 'done', startDate: '2026-10-03', endDate: null }
             ],
-            weightLogs: [
-              { date: '2026-08-05', weight: 490, phase: 'cure', note: 'Старт (~490 г)' }
-            ]
+            weightLogs: [{ date: '2026-08-05', weight: 490, phase: 'cure', note: 'Старт (~490 г)' }]
           }
         ]
       };
     }
 
     let store = null;
-
-    function migrateLegacyBatch(b) {
-      // Convert v0.2 batch schema to clean v0.3 schema cleanly
-      let phase = 'dry';
-      let dryMethod = 'casing';
-      let smoked = false;
-      if (b.currentStage === 'cure_vac') phase = 'cure';
-      else if (b.currentStage === 'rehydrate_vac') phase = 'vacuum';
-      else if (b.currentStage === 'done') phase = 'done';
-      else if (b.currentStage === 'ferm_vac' || b.currentStage === 'ferm_brine') phase = b.currentStage;
-      else {
-        phase = 'dry';
-        if (b.currentStage === 'dry_naked') dryMethod = 'naked';
-        else if (b.currentStage === 'dry_membrane') dryMethod = 'membrane';
-        else if (b.currentStage === 'smoke') { dryMethod = 'naked'; smoked = true; }
-      }
-      return {
-        id: b.id,
-        category: b.category || 'meat',
-        title: b.title || 'Партия',
-        cutId: MEAT_CATALOG[b.meatType] ? b.meatType : (b.category === 'pepper' ? 'pepper_vac' : 'pork_coppa'),
-        initialWeight: b.initialWeight || 1000,
-        hangWeight: b.hangWeight || b.initialWeight || 1000,
-        brineWater: b.brineWater || 0,
-        targetLossPct: b.targetLossPct || 34,
-        targetDays: b.targetDays || 21,
-        phase,
-        dryMethod,
-        smoked,
-        locId: b.locId || (phase === 'dry' ? 'fridge_12' : (b.category === 'pepper' ? 'room_22' : 'fridge_3')),
-        saltPct: b.saltPct || 2.6,
-        puffed: !!b.puffed,
-        degasCount: b.degasCount || 0,
-        phValue: b.phValue || 4.0,
-        createdAt: b.createdAt || daysAgoISO(0),
-        notes: b.notes || '',
-        verdict: b.verdict || '',
-        tastingNote: b.tastingNote || '',
-        phaseHistory: (b.stageHistory || [{ stage: phase, startDate: b.createdAt || daysAgoISO(0), endDate: null }]).map(h => ({
-          phase: h.stage === 'cure_vac' ? 'cure' : (h.stage === 'rehydrate_vac' ? 'vacuum' : (h.stage === 'done' ? 'done' : (h.stage && h.stage.startsWith('ferm_') ? h.stage : 'dry'))),
-          startDate: h.startDate || daysAgoISO(0),
-          endDate: h.endDate || null
-        })),
-        weightLogs: (b.weightLogs || [{ date: b.createdAt || daysAgoISO(0), netWeight: b.initialWeight || 1000 }]).map(w => ({
-          date: w.date || daysAgoISO(0),
-          weight: w.weight || w.netWeight || b.initialWeight || 1000,
-          phase: w.phase || phase,
-          note: w.note || ''
-        }))
-      };
-    }
 
     function loadStore() {
       let raw = '';
@@ -1585,20 +1521,6 @@
             if (!store.plans) store.plans = [];
             return;
           }
-          // Upgrade from v0.1 / v0.2 -> v0.3: preserve user's own real batches + import Sous Chef archive!
-          const seed = createSousChefSeed();
-          const oldDemoIds = new Set(['coppa-1', 'bresaola-2', 'habanero-vac', 'jalapeno-brine', 'pancetta-3']);
-          const userOwn = (parsed && Array.isArray(parsed.batches))
-            ? parsed.batches.filter(b => !oldDemoIds.has(b.id)).map(migrateLegacyBatch)
-            : [];
-          store = {
-            schemaVersion: 3,
-            settings: (parsed && parsed.settings) || { lossBase: 'raw' },
-            plans: seed.plans,
-            batches: [...userOwn, ...seed.batches]
-          };
-          persistStore();
-          return;
         } catch (e) {}
       }
       store = createSousChefSeed();
@@ -1614,14 +1536,16 @@
     }
 
     let ui = {
-      screen: 'home', // 'home' | 'detail' | 'archive'
-      archiveTab: 'done', // 'done' | 'plans'
+      screen: 'home',       // 'home' | 'detail' | 'archive'
+      prevScreen: 'home',   // remembers whether we opened detail from home or archive
+      archiveTab: 'done',   // 'done' | 'plans'
       selectedId: null,
+      inspectPhase: null,   // READ-ONLY tab currently inspected inside detail!
+      transferPickerFor: null, // 'cure' | 'inspect-dry' | null (inline confirmation when moving to 12°C)
       zoneFilter: 'all',
       draftWeight: null,
       weighDateMode: 'today',
       metricMode: 'readiness',
-      showHangMethodPicker: false,
       modal: {
         editingId: null,
         fromPlanId: null,
@@ -1635,17 +1559,14 @@
     };
 
     // =========================================================================
-    // 4. AUTO-SCALED FICK'S LAW DRYING ENGINE (NO CALIPER INPUT NEEDED!)
+    // 4. FICK'S LAW FERMENTATION / DRYING ENGINE
     // =========================================================================
-    function getCut(cutId) {
-      return MEAT_CATALOG[cutId] || MEAT_CATALOG.pork_coppa;
-    }
+    function getCut(cutId) { return MEAT_CATALOG[cutId] || MEAT_CATALOG.pork_coppa; }
 
-    function getPhaseColor(batch) {
-      if (batch.phase === 'dry') {
-        return (DRY_METHODS[batch.dryMethod] || DRY_METHODS.casing).hex;
-      }
-      return (PHASES[batch.phase] || PHASES.dry).hex;
+    function getPhaseColor(batch, phaseOverride) {
+      const ph = phaseOverride || batch.phase;
+      if (ph === 'dry') return (DRY_METHODS[batch.dryMethod] || DRY_METHODS.casing).hex;
+      return (PHASES[ph] || PHASES.dry).hex;
     }
 
     function getPhaseShortLabel(batch) {
@@ -1653,13 +1574,12 @@
         const m = (DRY_METHODS[batch.dryMethod] || DRY_METHODS.casing).label;
         return batch.smoked ? `${m} · 💨` : m;
       }
-      return (PHASES[batch.phase] || PHASES.dry).label;
+      return (PHASES[batch.phase] || PHASES.dry).tab;
     }
 
     function analyze(batch) {
       const today = daysAgoISO(0);
 
-      // PEPPER ANALYSIS
       if (batch.category === 'pepper') {
         const elapsed = diffDays(batch.createdAt, today);
         const targetDays = batch.targetDays || 21;
@@ -1679,7 +1599,6 @@
         };
       }
 
-      // MEAT ANALYSIS
       const cut = getCut(batch.cutId);
       const useHang = store.settings.lossBase === 'hang' && batch.hangWeight;
       const W0 = useHang ? batch.hangWeight : batch.initialWeight;
@@ -1693,7 +1612,6 @@
         ? Math.max(100, Math.round((lossPct / targetLoss) * 100))
         : Math.min(100, Math.max(0, Math.round((lossPct / targetLoss) * 100)));
 
-      // Auto-estimated effective diameter from cut + weight via cubic root geometry scaling!
       const estDiam = Math.max(32, Math.min(130, cut.refDiam * Math.pow(Math.max(200, W0) / cut.refWeight, 1 / 3)));
       const W_inf = 0.44 * W0;
       const methodF = (DRY_METHODS[batch.dryMethod] || DRY_METHODS.casing).factor;
@@ -1712,7 +1630,6 @@
       const curH = batch.phaseHistory[batch.phaseHistory.length - 1];
       const curPhaseDays = curH ? diffDays(curH.startDate, today) : 0;
 
-      // Empirical Fick rate from real weigh-ins
       let k_emp = null;
       if (dryDays >= 3 && Wcur < W0 && Wcur > W_inf + 10) {
         const ratio = (Wcur - W_inf) / (W0 - W_inf);
@@ -1737,7 +1654,7 @@
         etaBadge = 'В архиве';
         etaSort = 999;
       } else if (batch.phase === 'cure') {
-        etaBadge = cureLeft === 0 ? 'На навеску!' : `посол ~${cureLeft}д`;
+        etaBadge = cureLeft === 0 ? 'В ферм-камеру!' : `посол ~${cureLeft}д`;
         etaSort = cureLeft;
       } else if (batch.phase === 'vacuum') {
         etaBadge = curPhaseDays >= 5 ? 'Достать?' : `вак · ${curPhaseDays}д`;
@@ -1769,11 +1686,12 @@
     // =========================================================================
     // 5. FLOATING 3D CULINARY SVG ILLUSTRATIONS
     // =========================================================================
-    function renderArt(batch, size) {
+    function renderArt(batch, size, phaseOverride) {
       const w = size === 'large' ? 136 : 72;
       const h = size === 'large' ? 142 : 76;
+      const ph = phaseOverride || batch.phase;
 
-      if (batch.category === 'pepper' && batch.phase === 'ferm_vac') {
+      if (batch.category === 'pepper' && ph === 'ferm_vac') {
         const puff = batch.puffed ? 5 : 0;
         return `
           <svg viewBox="0 0 140 148" width="${w}" height="${h}" fill="none">
@@ -1808,8 +1726,7 @@
         `;
       }
 
-      // Meat in Vacuum (Cure OR Equalization Vacuum)
-      if (batch.phase === 'cure' || batch.phase === 'vacuum') {
+      if (ph === 'cure' || ph === 'vacuum') {
         const isChicken = batch.cutId === 'chicken_carpaccio';
         const meatFill = isChicken ? '#E69F87' : '#A6342E';
         return `
@@ -1829,7 +1746,6 @@
         `;
       }
 
-      // Hanging / Done Meat Cut (adapts to smoked, casing/membrane, naked, poultry)
       const isBeef = (batch.cutId || '').startsWith('beef_');
       const isChicken = batch.cutId === 'chicken_carpaccio';
       const fill = batch.smoked ? '#9C481E' : (isChicken ? '#D9856C' : (isBeef ? '#8C2224' : '#B84339'));
@@ -1870,11 +1786,16 @@
 
     function navigate(screen, batchId) {
       dismissKeyboard();
+      if (screen === 'detail' && ui.screen !== 'detail') {
+        ui.prevScreen = ui.screen;
+      }
       if (batchId) {
         ui.selectedId = batchId;
+        const target = store.batches.find(x => x.id === batchId);
+        ui.inspectPhase = target ? target.phase : null;
         ui.draftWeight = null;
         ui.weighDateMode = 'today';
-        ui.showHangMethodPicker = false;
+        ui.transferPickerFor = null;
       }
       ui.screen = screen;
       haptic('light');
@@ -1886,13 +1807,22 @@
       if (isTextFieldFocused() || currentImeDp > 40) { dismissKeyboard(); return true; }
       if (document.getElementById('batch-modal').classList.contains('open')) { closeBatchModal(); return true; }
       if (document.getElementById('settings-modal').classList.contains('open')) { closeSettings(); return true; }
-      if (ui.screen !== 'home') { navigate('home'); return true; }
+      if (ui.screen === 'detail') {
+        const b = getSelectedBatch();
+        const dest = (b && b.phase === 'done') ? 'archive' : (ui.prevScreen === 'archive' ? 'archive' : 'home');
+        navigate(dest);
+        return true;
+      }
+      if (ui.screen !== 'home') {
+        navigate('home');
+        return true;
+      }
       return false;
     };
 
     function render() {
-      document.getElementById('dock-home').classList.toggle('active', ui.screen === 'home' || ui.screen === 'detail');
-      document.getElementById('dock-archive').classList.toggle('active', ui.screen === 'archive');
+      document.getElementById('dock-home').classList.toggle('active', ui.screen === 'home' || (ui.screen === 'detail' && ui.prevScreen !== 'archive'));
+      document.getElementById('dock-archive').classList.toggle('active', ui.screen === 'archive' || (ui.screen === 'detail' && ui.prevScreen === 'archive'));
 
       const vp = document.getElementById('viewport');
       if (ui.screen === 'home') {
@@ -1906,15 +1836,16 @@
         setStatusBar('#FAF8F1', true);
         vp.innerHTML = buildArchiveScreen();
       }
+      syncAndroidBackState();
     }
 
-    // --- SCREEN 1: HOME (ПОГРЕБ) ---
+    // --- SCREEN 1: HOME ---
     function buildHomeScreen() {
       const active = store.batches.filter(b => b.phase !== 'done');
       const analyzed = active.map(b => ({ b, an: analyze(b) })).sort((a, c) => a.an.etaSort - c.an.etaSort);
 
       const quickRows = analyzed.slice(0, 4).map(({ b, an }) => {
-        const urgent = an.etaBadge === 'На навеску!' || an.etaBadge === 'Готово!' || an.etaBadge === 'Достать?' || an.etaBadge === 'CO₂!';
+        const urgent = an.etaBadge === 'В ферм-камеру!' || an.etaBadge === 'Готово!' || an.etaBadge === 'Достать?' || an.etaBadge === 'CO₂!';
         return `
           <div class="quick-row" onclick="navigate('detail', '${b.id}')">
             <div style="display:flex;align-items:center;gap:7px;min-width:0;">
@@ -1928,14 +1859,14 @@
 
       const spot = analyzed[0];
       const spotLabel = !spot ? 'Пусто'
-        : (spot.an.etaBadge === 'На навеску!' ? 'Пора вешать'
+        : (spot.an.etaBadge === 'В ферм-камеру!' ? 'В ферм-камеру'
           : (spot.b.phase === 'vacuum' ? 'В вакууме'
             : (spot.b.puffed ? 'Стравить CO₂' : 'Ближе всех')));
 
       const zones = [
         { id: 'all', lbl: `Все (${active.length})` },
         { id: 'fridge_3', lbl: '❄️ 3°C' },
-        { id: 'fridge_12', lbl: '🌡 12°C' },
+        { id: 'fridge_12', lbl: '🌡 Ферм. 12°C' },
         { id: 'pepper', lbl: '🌶 Перцы' }
       ];
 
@@ -1980,8 +1911,8 @@
           <div style="display:flex;align-items:center;gap:11px;">
             <div class="avatar-badge">🧑‍🍳</div>
             <div>
-              <div style="font-size:19px;font-weight:800;letter-spacing:-0.02em;">КАМЕРА</div>
-              <div style="font-size:11.5px;color:var(--text-sec);font-weight:600;">В работе: ${active.length} · В архиве: ${store.batches.length - active.length}</div>
+              <div style="font-size:20px;font-weight:800;letter-spacing:-0.03em;">ferment</div>
+              <div style="font-size:11.5px;color:var(--text-sec);font-weight:600;">В работе: ${active.length} · Архив: ${store.batches.length - active.length}</div>
             </div>
           </div>
           <button class="circle-btn" onclick="openSettings()" aria-label="Настройки">⚙️</button>
@@ -2017,7 +1948,7 @@
         </div>
 
         <div class="section-row">
-          <span style="font-size:15.5px;font-weight:800;">В холодильниках</span>
+          <span style="font-size:15.5px;font-weight:800;">Сейчас в камерах</span>
           <span style="font-size:11.5px;color:var(--text-sec);font-weight:600;">${filtered.length} шт</span>
         </div>
 
@@ -2025,172 +1956,259 @@
       `;
     }
 
-    // --- SCREEN 2: DETAIL (CALM HERO + 4 PHASES + CONTEXTUAL ACTION + INTEGRATED CURVE) ---
+    // --- SCREEN 2: DETAIL (READ-ONLY STAGE INSPECTOR + EXPLICIT TRANSFERS) ---
     function buildDetailScreen(batch) {
       if (!batch) return '';
       const an = analyze(batch);
       const loc = LOCATIONS[batch.locId] || LOCATIONS.fridge_12;
       const bg = getPhaseColor(batch);
 
+      if (!ui.inspectPhase) ui.inspectPhase = batch.phase;
+      const viewedPhase = ui.inspectPhase;
+      const isViewingLive = viewedPhase === batch.phase;
+
       const r = 19;
       const c = 2 * Math.PI * r;
       const ringPct = batch.phase === 'cure' ? an.curePct : an.readinessPct;
       const off = c * (1 - ringPct / 100);
 
-      // Phase bar (4 pills for meat, 3 for peppers)
       const phaseOrder = batch.category === 'pepper'
         ? ['ferm_vac', 'ferm_brine', 'done']
         : ['cure', 'dry', 'vacuum', 'done'];
 
-      // Build the ONE contextual action card for this exact phase!
-      let actionCardHtml = '';
+      const liveStageObj = PHASES[batch.phase] || PHASES.dry;
+      const visitedSet = new Set(batch.phaseHistory.map(h => h.phase));
 
-      if (an.isPepper) {
-        actionCardHtml = `
-          <div class="vacuum-locked-card" style="background:${batch.phase === 'ferm_vac' ? '#C45249' : '#56794C'};">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="lock-badge">🌶 ${PHASES[batch.phase].full}</span>
-              <button class="arc-chip-btn" onclick="promptPepperPh('${batch.id}')">pH ${batch.phValue} ✎</button>
-            </div>
-            <div>
-              <div style="font-size:24px;font-weight:800;">День ${an.elapsedDays} из ${batch.targetDays}</div>
-              <div style="font-size:12px;opacity:0.88;margin-top:2px;">Соль ${batch.saltPct}% (${an.saltGrams} г) · Выход соуса ~${Math.round(batch.initialWeight * 1.1)} мл</div>
-            </div>
-            <div class="vac-progress-track"><div class="vac-progress-fill" style="width:${an.readinessPct}%;"></div></div>
-            ${batch.phase === 'ferm_vac' ? `
-              <button class="btn-butter" style="width:100%;" onclick="togglePepperGas('${batch.id}')">
-                ${batch.puffed ? '🫧 Стравить CO₂ и перепаять' : '🎈 Отметить вздутие CO₂'}
-              </button>
-            ` : ''}
-          </div>
-        `;
-      } else if (batch.phase === 'cure') {
-        // LOCKED CURE CARD — NO WEIGH-IN ALLOWED!
-        actionCardHtml = `
-          <div class="vacuum-locked-card" style="background:linear-gradient(155deg, #7C77DB 0%, #5B57B8 100%);">
-            <span class="lock-badge">🔒 Вес зафиксирован в вакууме · ${an.Wcur} г</span>
-            <div>
-              <div style="font-size:24px;font-weight:800;">Посол: день ${an.cureDays} из ${an.recCure}</div>
-              <div style="font-size:12px;opacity:0.88;margin-top:2px;">
-                ${an.cureLeft === 0 ? 'Оптимальный срок посола пройден — можно доставать и вешать!' : `Осталось посола ~${an.cureLeft} дн · Соль ${batch.saltPct}%`}
+      // Build the card for whichever tab is currently inspected (`viewedPhase`)
+      let cardHtml = '';
+
+      if (isViewingLive) {
+        // VIEWING THE CURRENT ACTIVE STAGE OF THIS PIECE
+        if (an.isPepper && batch.phase !== 'done') {
+          cardHtml = `
+            <div class="vacuum-locked-card" style="background:${batch.phase === 'ferm_vac' ? '#C45249' : '#56794C'};">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="lock-badge">🌶 ${liveStageObj.full}</span>
+                <button class="arc-chip-btn" onclick="promptPepperPh('${batch.id}')">pH ${batch.phValue} ✎</button>
+              </div>
+              <div>
+                <div style="font-size:24px;font-weight:800;">День ${an.elapsedDays} из ${batch.targetDays}</div>
+                <div style="font-size:12px;opacity:0.88;margin-top:2px;">Соль ${batch.saltPct}% (${an.saltGrams} г) · Выход соуса ~${Math.round(batch.initialWeight * 1.1)} мл</div>
+              </div>
+              <div class="vac-progress-track"><div class="vac-progress-fill" style="width:${an.readinessPct}%;"></div></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                ${batch.phase === 'ferm_vac' ? `
+                  <button class="btn-butter" style="flex:1;padding:11px 10px;font-size:12px;" onclick="togglePepperGas('${batch.id}')">
+                    ${batch.puffed ? '🫧 Стравить CO₂' : '🎈 Отметить CO₂'}
+                  </button>
+                ` : ''}
+                <button style="flex:1;border:1.5px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.14);color:#fff;font-size:12px;font-weight:800;padding:11px 10px;border-radius:99px;cursor:pointer;" onclick="moveBatchToPhase('${batch.id}', 'done')">
+                  ✓ Готово → в Архив
+                </button>
               </div>
             </div>
-            <div class="vac-progress-track"><div class="vac-progress-fill" style="width:${an.curePct}%;"></div></div>
-
-            ${!ui.showHangMethodPicker ? `
-              <button class="btn-butter" style="width:100%;" onclick="toggleHangPicker()">
-                Достать и повесить на вяление →
-              </button>
-            ` : `
-              <div style="background:rgba(255,255,255,0.14);border-radius:18px;padding:11px;display:flex;flex-direction:column;gap:8px;">
-                <div style="font-size:11.5px;font-weight:700;">Как будешь вялить? (переедет в 12°C)</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                  <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="startDryingWithMethod('${batch.id}', 'casing')">В оболочке</button>
-                  <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="startDryingWithMethod('${batch.id}', 'naked')">Без обол.</button>
-                  <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="startDryingWithMethod('${batch.id}', 'membrane')">Мембрана</button>
+          `;
+        } else if (batch.phase === 'cure') {
+          cardHtml = `
+            <div class="vacuum-locked-card" style="background:linear-gradient(155deg, #7C77DB 0%, #5B57B8 100%);">
+              <span class="lock-badge">🔒 Вес зафиксирован в вакууме · ${an.Wcur} г</span>
+              <div>
+                <div style="font-size:24px;font-weight:800;">Посол: день ${an.cureDays} из ${an.recCure}</div>
+                <div style="font-size:12px;opacity:0.88;margin-top:2px;">
+                  ${an.cureLeft === 0 ? 'Посол завершён — можно доставать и переносить в ферм-камеру 12°C!' : `Осталось посола ~${an.cureLeft} дн · Соль ${batch.saltPct}%`}
                 </div>
               </div>
-            `}
-          </div>
-        `;
-      } else if (batch.phase === 'vacuum') {
-        // LOCKED VACUUM EQUALIZATION CARD — NO WEIGH-IN ALLOWED!
-        actionCardHtml = `
-          <div class="vacuum-locked-card" style="background:linear-gradient(155deg, #3B7D71 0%, #265950 100%);">
-            <span class="lock-badge">🔒 Вес зафиксирован в вакууме · ${an.Wcur} г (−${an.lossPct.toFixed(1)}%)</span>
-            <div>
-              <div style="font-size:24px;font-weight:800;">Отлёжка: ${an.curPhaseDays}-й день</div>
-              <div style="font-size:12px;opacity:0.88;margin-top:2px;">
-                Испарение на паузе — влага из центра размягчает корку и оболочку.
+              <div class="vac-progress-track"><div class="vac-progress-fill" style="width:${an.curePct}%;"></div></div>
+
+              ${ui.transferPickerFor !== 'cure' ? `
+                <button class="btn-butter" style="width:100%;" onclick="openTransferPicker('cure')">
+                  Перенести в ферм-камеру 12°C →
+                </button>
+              ` : `
+                <div style="background:rgba(255,255,255,0.16);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                  <div style="font-size:11.5px;font-weight:700;">Выбери формат для ферм-камеры 12°C:</div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'casing')">В оболочке</button>
+                    <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'naked')">Без обол.</button>
+                    <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'membrane')">Мембрана</button>
+                  </div>
+                </div>
+              `}
+            </div>
+          `;
+        } else if (batch.phase === 'vacuum') {
+          cardHtml = `
+            <div class="vacuum-locked-card" style="background:linear-gradient(155deg, #3B7D71 0%, #265950 100%);">
+              <span class="lock-badge">🔒 Вес зафиксирован в вакууме · ${an.Wcur} г (−${an.lossPct.toFixed(1)}%)</span>
+              <div>
+                <div style="font-size:24px;font-weight:800;">Отлёжка: ${an.curPhaseDays}-й день</div>
+                <div style="font-size:12px;opacity:0.88;margin-top:2px;">
+                  Испарение на паузе — влага из центра выравнивает корку и оболочку.
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <button class="btn-butter" style="padding:11px 10px;font-size:12px;" onclick="moveBatchToPhase('${batch.id}', 'dry')">↩ В ферм-камеру 12°</button>
+                <button style="border:1.5px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.14);color:#fff;font-size:12px;font-weight:800;padding:11px 10px;border-radius:99px;cursor:pointer;" onclick="moveBatchToPhase('${batch.id}', 'done')">✓ Готово → в Архив</button>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <button class="btn-butter" style="padding:11px 10px;font-size:12px;" onclick="setBatchPhase('${batch.id}', 'dry')">↩ Довяливать</button>
-              <button style="border:1.5px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.14);color:#fff;font-size:12px;font-weight:800;padding:11px 10px;border-radius:99px;cursor:pointer;" onclick="setBatchPhase('${batch.id}', 'done')">✓ Пробовать</button>
-            </div>
-          </div>
-        `;
-      } else if (batch.phase === 'done') {
-        // TASTING VERDICT CARD
-        actionCardHtml = `
-          <div class="tasting-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:13px;font-weight:800;">Дегустация и вердикт</span>
-              <span style="font-size:11px;font-weight:800;font-family:var(--font-mono);color:var(--sage-deep);">Итог: ${an.Wcur} г (−${an.lossPct.toFixed(1)}%)</span>
-            </div>
-            <div class="verdict-chips">
-              ${VERDICTS.map(v => `
-                <button class="verdict-chip ${batch.verdict === v ? 'selected' : ''}" onclick="setVerdict('${batch.id}', '${v}')">${v}</button>
-              `).join('')}
-            </div>
-            <input id="tasting-note-inp" class="f-inp" enterkeyhint="done" value="${(batch.tastingNote || '').replace(/"/g, '&quot;')}"
-              placeholder="Вывод на будущее (напр. досушить до -36%, меньше соли)..."
-              onchange="saveTastingNote('${batch.id}', this.value)" />
-          </div>
-        `;
-      } else {
-        // ACTIVE DRYING STAGE — SHOW LAYERED ARC WEIGH-IN DIAL!
-        if (ui.draftWeight === null) ui.draftWeight = an.Wcur;
-        const draftLoss = Math.max(0, ((an.W0 - ui.draftWeight) / an.W0) * 100).toFixed(1);
-
-        let ticks = '';
-        for (let i = 0; i <= 24; i++) {
-          const angle = Math.PI + (i / 24) * Math.PI;
-          const active = (i / 24) * 100 <= an.readinessPct;
-          const x1 = 130 + Math.cos(angle) * 86, y1 = 92 + Math.sin(angle) * 86;
-          const x2 = 130 + Math.cos(angle) * 94, y2 = 92 + Math.sin(angle) * 94;
-          ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${active ? '#FFFFFF' : 'rgba(255,255,255,0.28)'}" stroke-width="2.4" stroke-linecap="round"/>`;
-        }
-        const ka = Math.PI + (Math.min(100, Math.max(0, an.readinessPct)) / 100) * Math.PI;
-        const kx = 130 + Math.cos(ka) * 72, ky = 92 + Math.sin(ka) * 72;
-
-        actionCardHtml = `
-          ${an.crustRisk ? `
-            <div style="padding:11px 13px;border-radius:18px;background:#FBE9E7;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;">
-              <div><strong>Риск закала:</strong> высокий темп (${an.speedPctDay.toFixed(1)}%/д). Можно убрать в вакуум на 5–7 дн.</div>
-              <button class="btn-ink" style="padding:8px 12px;font-size:11px;white-space:nowrap;" onclick="setBatchPhase('${batch.id}', 'vacuum')">В вакуум</button>
-            </div>
-          ` : ''}
-
-          <div class="arc-dial-card">
-            <div class="arc-top-row">
-              <button class="arc-chip-btn" onclick="toggleWeighDate()">
-                📅 ${ui.weighDateMode === 'today' ? 'Сегодня' : 'Вчера'} ⇄
+          `;
+        } else if (batch.phase === 'done') {
+          cardHtml = `
+            <div class="tasting-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;font-weight:800;">Дегустация · кусок в Архиве</span>
+                <span style="font-size:11px;font-weight:800;font-family:var(--font-mono);color:var(--sage-deep);">${an.Wcur} г (−${an.lossPct.toFixed(1)}%)</span>
+              </div>
+              <div class="verdict-chips">
+                ${VERDICTS.map(v => `
+                  <button class="verdict-chip ${batch.verdict === v ? 'selected' : ''}" onclick="setVerdict('${batch.id}', '${v}')">${v}</button>
+                `).join('')}
+              </div>
+              <input id="tasting-note-inp" class="f-inp" enterkeyhint="done" value="${(batch.tastingNote || '').replace(/"/g, '&quot;')}"
+                placeholder="Вывод на будущее (напр. додержать до -36%, меньше соли)..."
+                onchange="saveTastingNote('${batch.id}', this.value)" />
+              <button class="btn-soft" style="width:100%;" onclick="moveBatchToPhase('${batch.id}', '${an.isPepper ? 'ferm_vac' : 'dry'}')">
+                ↩ Вернуть из Архива в работу
               </button>
-              <span id="arc-loss-badge" style="font-size:11.5px;font-weight:800;color:var(--ink);background:rgba(255,255,255,0.52);padding:4px 10px;border-radius:99px;font-family:var(--font-mono);">
-                -${draftLoss}%
-              </span>
+            </div>
+          `;
+        } else {
+          // ACTIVE FERMENTATION (12°C) — SHOW FORMAT CHIPS, WEIGH-IN DIAL & EXPLICIT TRANSFER BUTTONS!
+          if (ui.draftWeight === null) ui.draftWeight = an.Wcur;
+          const draftLoss = Math.max(0, ((an.W0 - ui.draftWeight) / an.W0) * 100).toFixed(1);
+
+          let ticks = '';
+          for (let i = 0; i <= 24; i++) {
+            const angle = Math.PI + (i / 24) * Math.PI;
+            const active = (i / 24) * 100 <= an.readinessPct;
+            const x1 = 130 + Math.cos(angle) * 86, y1 = 92 + Math.sin(angle) * 86;
+            const x2 = 130 + Math.cos(angle) * 94, y2 = 92 + Math.sin(angle) * 94;
+            ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${active ? '#FFFFFF' : 'rgba(255,255,255,0.28)'}" stroke-width="2.4" stroke-linecap="round"/>`;
+          }
+          const ka = Math.PI + (Math.min(100, Math.max(0, an.readinessPct)) / 100) * Math.PI;
+          const kx = 130 + Math.cos(ka) * 72, ky = 92 + Math.sin(ka) * 72;
+
+          cardHtml = `
+            <div class="sub-chips-row">
+              ${Object.values(DRY_METHODS).map(m => `
+                <button class="sub-chip ${batch.dryMethod === m.id ? 'active' : ''}" onclick="setDryMethod('${batch.id}', '${m.id}')">${m.label}</button>
+              `).join('')}
+              <button class="sub-chip ${batch.smoked ? 'active' : ''}" onclick="toggleSmoked('${batch.id}')">💨 Копчёное</button>
             </div>
 
-            <div class="arc-teal-body">
-              <svg viewBox="0 0 260 98" width="100%" height="84" style="overflow:visible;margin-bottom:-6px;">
-                ${ticks}
-                <path d="M 58 92 A 72 72 0 0 1 202 92" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="5" stroke-linecap="round"/>
-                <circle cx="${kx.toFixed(1)}" cy="${ky.toFixed(1)}" r="8.5" fill="#18191C" stroke="#FFFFFF" stroke-width="2.5"/>
-              </svg>
-
-              <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;">
-                <input id="arc-weight-input" type="number" inputmode="numeric" enterkeyhint="done" class="weight-inline-input"
-                  value="${ui.draftWeight}" oninput="onArcWeightInput(this.value)" />
-                <span style="font-size:16px;font-weight:800;opacity:0.9;">г</span>
+            ${an.crustRisk ? `
+              <div style="padding:11px 13px;border-radius:18px;background:#FBE9E7;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;">
+                <div><strong>Риск закала:</strong> высокий темп (${an.speedPctDay.toFixed(1)}%/д). Убери в вакуум на 5–7 дн.</div>
+                <button class="btn-ink" style="padding:8px 12px;font-size:11px;white-space:nowrap;" onclick="moveBatchToPhase('${batch.id}', 'vacuum')">В вакуум</button>
               </div>
-              <div style="font-size:11px;opacity:0.84;margin-top:4px;font-weight:600;">
-                Старт: ${an.W0} г → Цель: ${an.targetWeight} г (−${batch.targetLossPct}%)
+            ` : ''}
+
+            <div class="arc-dial-card">
+              <div class="arc-top-row">
+                <button class="arc-chip-btn" onclick="toggleWeighDate()">
+                  📅 ${ui.weighDateMode === 'today' ? 'Сегодня' : 'Вчера'} ⇄
+                </button>
+                <span id="arc-loss-badge" style="font-size:11.5px;font-weight:800;color:var(--ink);background:rgba(255,255,255,0.52);padding:4px 10px;border-radius:99px;font-family:var(--font-mono);">
+                  -${draftLoss}%
+                </span>
               </div>
 
-              <div class="arc-steppers">
-                <button class="teal-step-btn" onclick="stepDraftWeight(-10)">−10</button>
-                <button class="teal-step-btn" onclick="stepDraftWeight(-1)">−1</button>
-                <button class="teal-save-btn" onclick="commitWeighIn('${batch.id}')">▶ Записать</button>
-                <button class="teal-step-btn" onclick="stepDraftWeight(1)">+1</button>
-                <button class="teal-step-btn" onclick="stepDraftWeight(10)">+10</button>
+              <div class="arc-teal-body">
+                <svg viewBox="0 0 260 98" width="100%" height="84" style="overflow:visible;margin-bottom:-6px;">
+                  ${ticks}
+                  <path d="M 58 92 A 72 72 0 0 1 202 92" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="${kx.toFixed(1)}" cy="${ky.toFixed(1)}" r="8.5" fill="#18191C" stroke="#FFFFFF" stroke-width="2.5"/>
+                </svg>
+
+                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;">
+                  <input id="arc-weight-input" type="number" inputmode="numeric" enterkeyhint="done" class="weight-inline-input"
+                    value="${ui.draftWeight}" oninput="onArcWeightInput(this.value)" />
+                  <span style="font-size:16px;font-weight:800;opacity:0.9;">г</span>
+                </div>
+                <div style="font-size:11px;opacity:0.84;margin-top:4px;font-weight:600;">
+                  Старт: ${an.W0} г → Цель: ${an.targetWeight} г (−${batch.targetLossPct}%)
+                </div>
+
+                <div class="arc-steppers">
+                  <button class="teal-step-btn" onclick="stepDraftWeight(-10)">−10</button>
+                  <button class="teal-step-btn" onclick="stepDraftWeight(-1)">−1</button>
+                  <button class="teal-save-btn" onclick="commitWeighIn('${batch.id}')">▶ Записать</button>
+                  <button class="teal-step-btn" onclick="stepDraftWeight(1)">+1</button>
+                  <button class="teal-step-btn" onclick="stepDraftWeight(10)">+10</button>
+                </div>
               </div>
             </div>
+
+            <!-- EXPLICIT TRANSFER ACTIONS (Never happens accidentally!) -->
+            <div class="transfer-actions-row">
+              <button class="transfer-btn" onclick="moveBatchToPhase('${batch.id}', 'vacuum')">🫧 Убрать в вакуум</button>
+              <button class="transfer-btn archive-go" onclick="moveBatchToPhase('${batch.id}', 'done')">✓ Готово → в Архив</button>
+            </div>
+          `;
+        }
+      } else {
+        // VIEWING ANOTHER TAB IN READ-ONLY INSPECTOR MODE (PEEKING WITHOUT MOVING!)
+        const pObj = PHASES[viewedPhase] || PHASES.dry;
+        const pastEntries = batch.phaseHistory.filter(h => h.phase === viewedPhase);
+        const phaseLogs = batch.weightLogs.filter(l => l.phase === viewedPhase);
+        const today = daysAgoISO(0);
+
+        let historyBlock = '';
+        if (pastEntries.length > 0) {
+          const totalInPhase = pastEntries.reduce((sum, h) => sum + diffDays(h.startDate, h.endDate || today), 0);
+          historyBlock = `
+            <div style="background:var(--white);border-radius:14px;padding:10px 12px;font-size:12px;">
+              <div style="font-weight:800;">Проходил этот этап (${totalInPhase} дн):</div>
+              ${pastEntries.map(h => `<div style="color:var(--text-sec);margin-top:2px;">${formatShortDate(h.startDate)} → ${h.endDate ? formatShortDate(h.endDate) : 'сейчас'} (${diffDays(h.startDate, h.endDate || today)} дн)</div>`).join('')}
+              ${phaseLogs.length ? `<div style="margin-top:4px;font-family:var(--font-mono);font-size:11.5px;">Замеры: ${phaseLogs.map(l => `${l.weight}г (${formatShortDate(l.date)})`).join(', ')}</div>` : ''}
+            </div>
+          `;
+        } else {
+          const previewDesc = viewedPhase === 'cure'
+            ? `Посол в вакууме при 3°C. Рекомендуется ~${an.recCure || 14} дн.`
+            : (viewedPhase === 'dry'
+                ? `Тихая ферментация в камере 12°C до −${batch.targetLossPct}% (${an.targetWeight} г).`
+                : (viewedPhase === 'vacuum'
+                    ? 'Выравнивание влажности и размягчение подсохшей оболочки в вакууме при 3°C (5–7 дн).'
+                    : 'Завершение цикла: ставишь дегустационную оценку и кусок убирается в Архив.'));
+          historyBlock = `<div style="font-size:12.5px;color:var(--text-sec);line-height:1.45;">Этап ещё не запускался. ${previewDesc}</div>`;
+        }
+
+        let transferBlock = '';
+        if (viewedPhase === 'dry' && !an.isPepper) {
+          transferBlock = ui.transferPickerFor !== 'inspect-dry'
+            ? `<button class="btn-ink" style="width:100%;" onclick="openTransferPicker('inspect-dry')">Перенести кусок в ферм-камеру 12°C →</button>`
+            : `
+              <div style="background:var(--white);border-radius:16px;padding:11px;display:flex;flex-direction:column;gap:8px;">
+                <div style="font-size:11.5px;font-weight:800;">Выбери формат и подтверди перенос в 12°C:</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'casing')">Оболочка</button>
+                  <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'naked')">Без обол.</button>
+                  <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'membrane')">Мембрана</button>
+                </div>
+              </div>
+            `;
+        } else {
+          const btnLbl = viewedPhase === 'done'
+            ? '✓ Завершить кусок и отправить в Архив'
+            : `Перенести кусок на этап «${pObj.tab}» →`;
+          transferBlock = `<button class="btn-ink" style="width:100%;" onclick="moveBatchToPhase('${batch.id}', '${viewedPhase}')">${btnLbl}</button>`;
+        }
+
+        cardHtml = `
+          <div class="inspect-preview-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <span style="font-size:13.5px;font-weight:800;">Просмотр: ${pObj.full}</span>
+              <button style="border:none;background:var(--butter);color:var(--ink);font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;cursor:pointer;" onclick="inspectStage('${batch.phase}')">
+                К текущему этапу
+              </button>
+            </div>
+            ${historyBlock}
+            ${transferBlock}
           </div>
         `;
       }
 
-      // Integrated Curve + Journal directly inside Detail sheet!
       const bigPctTxt = ui.metricMode === 'readiness' ? `${an.readinessPct}%` : `-${an.lossPct.toFixed(1)}%`;
       const logsHtml = batch.weightLogs.slice().reverse().map((w, rIdx) => {
         const idx = batch.weightLogs.length - 1 - rIdx;
@@ -2211,7 +2229,7 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
             <div style="min-width:0;">
               <div style="display:flex;gap:7px;align-items:center;margin-bottom:8px;">
-                <button class="circle-btn on-pastel" onclick="navigate('${batch.phase === 'done' ? 'archive' : 'home'}')">←</button>
+                <button class="circle-btn on-pastel" onclick="navigate('${batch.phase === 'done' ? 'archive' : (ui.prevScreen === 'archive' ? 'archive' : 'home')}')">←</button>
                 <button class="circle-btn on-pastel" onclick="openBatchModal({ editId: '${batch.id}' })" title="Редактировать">✎</button>
                 <button class="circle-btn on-pastel" style="width:auto;padding:0 12px;border-radius:99px;font-size:11.5px;gap:4px;" onclick="flipLocation('${batch.id}')">
                   ${loc.icon} ${loc.short} ⇄
@@ -2240,27 +2258,32 @@
         </div>
 
         <div class="detail-sheet">
-          <!-- Clean 4-State Single-Row Phase Bar -->
-          <div class="${batch.category === 'pepper' ? 'stage-bar-3' : 'stage-bar-4'}">
-            ${phaseOrder.map(pId => `
-              <button class="phase-btn ${batch.phase === pId ? 'active' : ''}" onclick="setBatchPhase('${batch.id}', '${pId}')">
-                ${PHASES[pId].label}
-              </button>
-            `).join('')}
+          <!-- Explicit Live Status Strip -->
+          <div class="live-status-row">
+            <div style="display:flex;align-items:center;gap:7px;">
+              <span class="live-dot" style="background:${bg};"></span>
+              <span>Сейчас: <b>${liveStageObj.full}</b></span>
+            </div>
+            <span style="font-size:11px;color:var(--text-muted);font-weight:600;">${loc.short}</span>
           </div>
 
-          <!-- Drying Method Sub-Chips (ONLY shown during Вяление!) -->
-          ${!an.isPepper && batch.phase === 'dry' ? `
-            <div class="sub-chips-row">
-              ${Object.values(DRY_METHODS).map(m => `
-                <button class="sub-chip ${batch.dryMethod === m.id ? 'active' : ''}" onclick="setDryMethod('${batch.id}', '${m.id}')">${m.label}</button>
-              `).join('')}
-              <button class="sub-chip ${batch.smoked ? 'active' : ''}" onclick="toggleSmoked('${batch.id}')">💨 Копчёное</button>
-            </div>
-          ` : ''}
+          <!-- READ-ONLY INSPECTOR TABS (Tap to view/peek, NEVER moves the piece!) -->
+          <div class="${batch.category === 'pepper' ? 'inspect-tabs-3' : 'inspect-tabs-4'}">
+            ${phaseOrder.map(pId => {
+              const isLive = batch.phase === pId;
+              const isViewing = viewedPhase === pId;
+              const wasDone = !isLive && visitedSet.has(pId);
+              const prefix = isLive ? '● ' : (wasDone ? '✓ ' : '');
+              return `
+                <button class="inspect-tab ${isViewing ? 'viewing' : ''}" onclick="inspectStage('${pId}')">
+                  <span>${prefix}${PHASES[pId].tab}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
 
-          <!-- THE ONE CONTEXTUAL ACTION CARD -->
-          ${actionCardHtml}
+          <!-- CONTEXTUAL CARD (Either Live Control Card OR Read-Only Preview + Explicit Transfer) -->
+          ${cardHtml}
 
           ${batch.notes ? `
             <div style="padding:12px 14px;border-radius:16px;background:var(--cream-bg);font-size:12.5px;color:var(--text-sec);line-height:1.45;">
@@ -2268,7 +2291,6 @@
             </div>
           ` : ''}
 
-          <!-- INTEGRATED PROGRESS & WAVE CURVE (NO EXTRA TAB NEEDED!) -->
           ${!an.isPepper ? `
             <div style="padding-top:4px;display:flex;flex-direction:column;gap:12px;">
               <div class="capsules-trio">
@@ -2282,7 +2304,7 @@
                 </div>
                 <div class="stat-cap">
                   <div class="stat-cap-num" style="color:var(--teal);">${an.cureDays}д / ${an.dryDays}д</div>
-                  <div class="stat-cap-lbl">Посол / Сушка</div>
+                  <div class="stat-cap-lbl">Посол / 12°C</div>
                 </div>
               </div>
 
@@ -2366,7 +2388,7 @@
       `;
     }
 
-    // --- SCREEN 3: ARCHIVE & PLANS (ЖУРНАЛ ДЕГУСТАЦИЙ И ПЛАНЫ) ---
+    // --- SCREEN 3: ARCHIVE & PLANS ---
     function buildArchiveScreen() {
       const doneBatches = store.batches.filter(b => b.phase === 'done');
 
@@ -2375,7 +2397,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
               <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.02em;">Архив и планы</h2>
-              <div style="font-size:12px;color:var(--text-sec);font-weight:600;">Сравнивай результаты и запускай идеи</div>
+              <div style="font-size:12px;color:var(--text-sec);font-weight:600;">Готовые партии попадают сюда</div>
             </div>
             <button class="circle-btn" onclick="openSettings()">⚙️</button>
           </div>
@@ -2403,7 +2425,7 @@
                   <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;font-family:var(--font-mono);font-weight:700;background:var(--cream-bg);padding:9px 12px;border-radius:14px;">
                     <span>${an.Wcur !== an.W0 ? `${an.W0}г → ${an.Wcur}г` : `Старт ${an.W0}г`}</span>
                     ${an.lossPct > 0.4 ? `<span style="color:var(--coral-deep);">−${an.lossPct.toFixed(0)}%</span>` : ''}
-                    <span style="color:var(--text-sec);margin-left:auto;">П:${an.cureDays}д · С:${an.dryDays}д${an.vacDays ? ` · В:${an.vacDays}д` : ''}</span>
+                    <span style="color:var(--text-sec);margin-left:auto;">П:${an.cureDays}д · Ф:${an.dryDays}д${an.vacDays ? ` · В:${an.vacDays}д` : ''}</span>
                   </div>
 
                   ${b.tastingNote || b.notes ? `
@@ -2413,7 +2435,7 @@
               `;
             }).join('') : `
               <div style="background:var(--white);border-radius:24px;padding:28px 18px;text-align:center;color:var(--text-sec);">
-                Пока нет завершённых партий. Когда переведёшь кусок в «Готово», он появится здесь.
+                Пока нет завершённых партий. Когда нажмёшь «✓ Готово → в Архив» в карточке куска, он переедет сюда.
               </div>
             `
           ) : `
@@ -2441,11 +2463,25 @@
     // =========================================================================
     function setZoneFilter(z) { ui.zoneFilter = z; haptic('light'); render(); }
     function setArchiveTab(t) { ui.archiveTab = t; haptic('light'); render(); }
-    function toggleHangPicker() { ui.showHangMethodPicker = !ui.showHangMethodPicker; haptic('light'); render(); }
     function toggleWeighDate() { ui.weighDateMode = ui.weighDateMode === 'today' ? 'yesterday' : 'today'; haptic('light'); render(); }
     function toggleMetricMode() { ui.metricMode = ui.metricMode === 'readiness' ? 'loss' : 'readiness'; haptic('light'); render(); }
 
-    function setBatchPhase(batchId, newPhase) {
+    // READ-ONLY TAB SWITCHING (Just inspect, never moves the batch!)
+    function inspectStage(phaseId) {
+      ui.inspectPhase = phaseId;
+      ui.transferPickerFor = null;
+      haptic('light');
+      render();
+    }
+
+    function openTransferPicker(kind) {
+      ui.transferPickerFor = ui.transferPickerFor === kind ? null : kind;
+      haptic('light');
+      render();
+    }
+
+    // EXPLICIT TRANSFER TO ANOTHER SECTION
+    function moveBatchToPhase(batchId, newPhase) {
       const b = store.batches.find(x => x.id === batchId);
       if (!b || b.phase === newPhase) return;
       const today = daysAgoISO(0);
@@ -2459,19 +2495,25 @@
         b.hangWeight = b.weightLogs[b.weightLogs.length - 1].weight;
       }
       b.phaseHistory.push({ phase: newPhase, startDate: today, endDate: null });
-      ui.showHangMethodPicker = false;
+      ui.inspectPhase = newPhase;
+      ui.transferPickerFor = null;
       ui.draftWeight = null;
       persistStore();
-      haptic('medium');
-      showToast(newPhase === 'done' ? 'Перенесено в Архив!' : `Этап: ${pObj.label}`);
+      haptic('success');
+      showToast(newPhase === 'done' ? 'Готово! Перенесено в Архив' : `Перенесено: ${pObj.full}`);
       render();
     }
 
-    function startDryingWithMethod(batchId, methodId) {
+    function transferToFerment(batchId, methodId) {
       const b = store.batches.find(x => x.id === batchId);
       if (!b) return;
       b.dryMethod = methodId;
-      setBatchPhase(batchId, 'dry');
+      moveBatchToPhase(batchId, 'dry');
+      if (methodId === 'membrane') {
+        b.locId = 'fridge_3';
+        persistStore();
+        render();
+      }
     }
 
     function setDryMethod(batchId, mId) {
@@ -2602,7 +2644,7 @@
 
     // Plans
     function addPlanIdea() {
-      const t = prompt('Что планируешь завялить или сбраживать?', 'Вяленая говядина (бастурма)');
+      const t = prompt('Что планируешь заложить?', 'Вяленая говядина (бастурма)');
       if (!t || !t.trim()) return;
       store.plans.unshift({ id: 'plan-' + Date.now(), title: t.trim(), category: 'meat', cutId: 'beef_bresaola', estWeight: 1000, note: 'Идея из планов' });
       persistStore();
@@ -2627,8 +2669,12 @@
       document.getElementById('loss-base-btn').textContent = store.settings.lossBase === 'raw' ? 'От сырого' : 'От навески';
       document.getElementById('settings-modal').classList.add('open');
       haptic('light');
+      syncAndroidBackState();
     }
-    function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
+    function closeSettings() {
+      document.getElementById('settings-modal').classList.remove('open');
+      syncAndroidBackState();
+    }
     function toggleLossBase() {
       store.settings.lossBase = store.settings.lossBase === 'raw' ? 'hang' : 'raw';
       document.getElementById('loss-base-btn').textContent = store.settings.lossBase === 'raw' ? 'От сырого' : 'От навески';
@@ -2638,7 +2684,7 @@
     }
     function exportBackup() {
       const txt = JSON.stringify(store, null, 2);
-      if (hasAndroid && window.AndroidBridge.shareText) window.AndroidBridge.shareText('Бэкап КАМЕРА', txt);
+      if (hasAndroid && window.AndroidBridge.shareText) window.AndroidBridge.shareText('Бэкап ferment', txt);
       else showToast('Бэкап готов');
     }
     function reimportSousChef() {
@@ -2662,7 +2708,7 @@
     }
 
     // =========================================================================
-    // 8. COMPACT 1-SCREEN ADD / EDIT MODAL
+    // 8. COMPACT ADD / EDIT MODAL
     // =========================================================================
     function buildMeatOptions(sel) {
       const groups = {};
@@ -2731,9 +2777,13 @@
       modal.classList.add('open');
       document.getElementById('sheet-panel').scrollTop = 0;
       haptic('light');
+      syncAndroidBackState();
     }
 
-    function closeBatchModal() { document.getElementById('batch-modal').classList.remove('open'); }
+    function closeBatchModal() {
+      document.getElementById('batch-modal').classList.remove('open');
+      syncAndroidBackState();
+    }
 
     function setModalCat(c) {
       ui.modal.category = c;
@@ -2787,7 +2837,7 @@
       holder.style.background = 'var(--white)';
       holder.innerHTML = phases.map(p => `
         <button type="button" class="phase-btn ${ui.modal.phase === p ? 'active' : ''}" onclick="selectModalPhase('${p}')">
-          ${PHASES[p].label}
+          ${PHASES[p].tab}
         </button>
       `).join('');
 
@@ -2901,7 +2951,7 @@
           b.smoked = ui.modal.smoked;
           b.locId = ui.modal.locId;
           b.notes = notes;
-          if (b.phase !== ui.modal.phase && b.phase !== 'done') setBatchPhase(b.id, ui.modal.phase);
+          if (b.phase !== ui.modal.phase && b.phase !== 'done') moveBatchToPhase(b.id, ui.modal.phase);
         }
         persistStore();
         closeBatchModal();
@@ -2957,6 +3007,7 @@
       }
 
       ui.selectedId = id;
+      ui.inspectPhase = ui.modal.phase;
       ui.draftWeight = null;
       ui.zoneFilter = 'all';
       persistStore();
@@ -2980,6 +3031,7 @@
     // Boot
     loadStore();
     ui.selectedId = store.batches.length ? store.batches[0].id : null;
+    ui.inspectPhase = store.batches.length ? store.batches[0].phase : null;
     render();
   </script>
 </body>

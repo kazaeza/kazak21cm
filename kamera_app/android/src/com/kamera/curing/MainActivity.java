@@ -22,6 +22,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 
 import java.io.BufferedReader;
@@ -38,6 +39,9 @@ public class MainActivity extends Activity {
     private int statusInsetDp = 0;
     private int navInsetDp = 0;
     private int imeInsetDp = 0;
+
+    private Object backCallbackObj = null;
+    private boolean backCallbackRegistered = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -91,7 +95,6 @@ public class MainActivity extends Activity {
         );
         setContentView(rootContainer);
 
-        // Properly handle edge-to-edge system bars + soft keyboard (IME) on Android 11-15+
         rootContainer.setOnApplyWindowInsetsListener((v, insets) -> {
             float density = getResources().getDisplayMetrics().density;
             int topPx;
@@ -109,7 +112,6 @@ public class MainActivity extends Activity {
                 navPx = insets.getSystemWindowInsetBottom();
             }
 
-            // Physically shrink WebView container above the soft keyboard so inputs are never covered!
             int bottomPaddingPx = imePx > 0 ? imePx : 0;
             if (v.getPaddingBottom() != bottomPaddingPx) {
                 v.setPadding(0, 0, 0, bottomPaddingPx);
@@ -119,10 +121,10 @@ public class MainActivity extends Activity {
             navInsetDp = imePx > 0 ? 0 : Math.round(navPx / density);
             imeInsetDp = Math.round(imePx / density);
             pushInsetsToWeb();
+            updateBackCallbackRegistration(imeInsetDp > 0 || backCallbackRegistered);
             return insets;
         });
 
-        // Fallback keyboard detection for Android 7-10 (< API 30)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             rootContainer.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
                 Rect r = new Rect();
@@ -139,13 +141,30 @@ public class MainActivity extends Activity {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
-                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-                    this::handleBackAction
-            );
+            backCallbackObj = (OnBackInvokedCallback) this::handleBackAction;
         }
 
         webView.loadUrl("file:///android_asset/www/index.html");
+    }
+
+    private void updateBackCallbackRegistration(final boolean shouldIntercept) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || backCallbackObj == null) {
+            return;
+        }
+        runOnUiThread(() -> {
+            try {
+                OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
+                OnBackInvokedCallback cb = (OnBackInvokedCallback) backCallbackObj;
+                if (shouldIntercept && !backCallbackRegistered) {
+                    dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_OVERLAY, cb);
+                    backCallbackRegistered = true;
+                } else if (!shouldIntercept && backCallbackRegistered) {
+                    dispatcher.unregisterOnBackInvokedCallback(cb);
+                    backCallbackRegistered = false;
+                }
+            } catch (Exception ignored) {
+            }
+        });
     }
 
     private void pushInsetsToWeb() {
@@ -183,6 +202,7 @@ public class MainActivity extends Activity {
                 "(function(){ return window.handleAndroidBack ? window.handleAndroidBack() : false; })()",
                 value -> {
                     if (!"true".equals(value)) {
+                        updateBackCallbackRegistration(false);
                         finish();
                     }
                 }
@@ -192,11 +212,7 @@ public class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            handleBackAction();
-        } else {
-            super.onBackPressed();
-        }
+        handleBackAction();
     }
 
     private class AndroidBridge {
@@ -231,6 +247,11 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 return false;
             }
+        }
+
+        @JavascriptInterface
+        public void setCanGoBack(final boolean canGoBack) {
+            updateBackCallbackRegistration(canGoBack || imeInsetDp > 0);
         }
 
         @JavascriptInterface

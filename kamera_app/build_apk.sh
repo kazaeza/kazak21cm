@@ -11,7 +11,7 @@ PLATFORM_JAR="$SDK_DIR/platforms/android-35/android.jar"
 KEYSTORE="${KAMERA_KEYSTORE:-$HOME/.android/kamera_dev.jks}"
 KEY_ALIAS="kamera"
 KEY_PASS="kamera2026"
-OUT_APK="$ROOT_DIR/kamera-v0.3.apk"
+OUT_APK="$ROOT_DIR/ferment-v0.4.apk"
 
 echo "==> Cleaning build dir..."
 rm -rf "$BUILD_DIR"
@@ -34,8 +34,8 @@ echo "==> Linking resources & assets into base APK..."
   --java "$BUILD_DIR/gen" \
   --min-sdk-version 24 \
   --target-sdk-version 35 \
-  --version-code 3 \
-  --version-name "0.3.0" \
+  --version-code 4 \
+  --version-name "0.4.0" \
   "$BUILD_DIR/res_flat/resources.zip"
 
 echo "==> Compiling Java sources..."
