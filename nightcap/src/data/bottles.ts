@@ -30,8 +30,10 @@ export const BOTTLES: Bottle[] = [
   { id: 'triple-sec', name: 'Апельсиновый ликёр', sub: 'Куантро / Трипл-сек', group: 'liqueurs', accent: '#fdba74' },
   { id: 'coffee-liqueur', name: 'Кофейный ликёр', sub: 'Калуа / аналоги', group: 'liqueurs', accent: '#a8764c' },
   { id: 'amaretto', name: 'Амаретто', sub: 'миндаль и вишня', group: 'liqueurs', accent: '#d97706' },
-  { id: 'cream-liqueur', name: 'Сливочный ликёр', sub: 'Бейлис / Айриш крим', group: 'liqueurs', accent: '#f5d0a9' },
-  { id: 'herbal-liqueur', name: 'Травяной / цветочный', sub: 'Шартрёз, Бузина, Фернет', group: 'liqueurs', accent: '#4ade80' },
+  { id: 'cream-liqueur', name: 'Сливочный / Адвокат', sub: 'Бейлис, Айриш крим, Адвокат', group: 'liqueurs', accent: '#f5d0a9' },
+  { id: 'herbal-liqueur', name: 'Травяной / Ягер / Фернет', sub: 'Ягер, Фернет, Бальзам, Шартрёз', group: 'liqueurs', accent: '#4ade80' },
+  { id: 'limoncello', name: 'Лимончелло', sub: 'итальянский лимонный ликёр', group: 'liqueurs', accent: '#fde047' },
+  { id: 'absinthe', name: 'Абсент', sub: 'полынь и анис', group: 'spirits', accent: '#22c55e' },
 
   // Вино, игристое и пиво
   { id: 'sparkling', name: 'Игристое / Просекко', sub: 'брюты и кава', group: 'wine_beer', accent: '#f9a8d4' },

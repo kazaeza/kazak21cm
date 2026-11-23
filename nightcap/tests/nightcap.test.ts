@@ -26,12 +26,30 @@ describe('Nightcap data integrity', () => {
     }
   });
 
-  test('all 30 custom vibe tags have emojis and at least 5 matching recipes (zero dead tags)', () => {
-    expect(TAGS.length).toBe(30);
+  test('all 36 vibe tags have emojis and strictly 5–12 curated recipes each (no bloat)', () => {
+    expect(TAGS.length).toBe(36);
     for (const tag of TAGS) {
       expect(tag.emoji.length).toBeGreaterThan(0);
       const count = RECIPES.filter((r) => r.tags.includes(tag.id)).length;
       expect(count).toBeGreaterThanOrEqual(5);
+      expect(count).toBeLessThanOrEqual(12);
+    }
+    for (const r of RECIPES) {
+      expect(r.tags.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  test('similar vibe tag pairs are cleanly separated with zero duplicate overlap', () => {
+    const pairs: [string, string][] = [
+      ['wasted', 'taxi'],
+      ['easy', 'pour-forget'],
+      ['summer', 'hot-day'],
+      ['vacation', 'tropics'],
+    ];
+    for (const [a, b] of pairs) {
+      const aSet = new Set(RECIPES.filter((r) => r.tags.includes(a)).map((r) => r.id));
+      const shared = RECIPES.filter((r) => r.tags.includes(b) && aSet.has(r.id));
+      expect(shared.length).toBe(0);
     }
   });
 
@@ -54,7 +72,7 @@ describe('Nightcap data integrity', () => {
 });
 
 describe('Smart matcher & shelf filtering', () => {
-  test('matches Russian synonyms like 0%, виски, слоу, джем, and English names', () => {
+  test('matches Russian synonyms like 0%, виски, слоу, джем, ягер, грейпфрут, and English names', () => {
     const zeroHits = RECIPES.filter((r) => recipeMatchesQuery(r, '0%'));
     expect(zeroHits.length).toBeGreaterThanOrEqual(10);
     expect(zeroHits.every((r) => r.abv === 0)).toBe(true);
@@ -68,6 +86,9 @@ describe('Smart matcher & shelf filtering', () => {
     const jamHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'джем'));
     expect(jamHits.length).toBeGreaterThanOrEqual(5);
 
+    const jagerHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'ягер'));
+    expect(jagerHits.length).toBeGreaterThanOrEqual(6);
+
     const negroniHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'negroni'));
     expect(negroniHits.some((r) => r.id === 'negroni')).toBe(true);
 
@@ -77,13 +98,12 @@ describe('Smart matcher & shelf filtering', () => {
   });
 
   test('ranks exact multi-tag matches ahead of partial matches', () => {
-    const ginTag = TAG_MAP.get('gin-tonic')!;
-    const oliveTag = TAG_MAP.get('olive')!;
-    const matches = matchRecipes([ginTag, oliveTag], new Set(), false);
+    const jagerTag = TAG_MAP.get('jager')!;
+    const coffeeTag = TAG_MAP.get('coffee')!;
+    const matches = matchRecipes([jagerTag, coffeeTag], new Set(), false);
     expect(matches.length).toBeGreaterThan(0);
     expect(matches[0].hits).toBe(2);
-    expect(matches[0].recipe.tags).toContain('gin-tonic');
-    expect(matches[0].recipe.tags).toContain('olive');
+    expect(matches[0].recipe.id).toBe('grizzly-bear');
   });
 
   test('shelf filtering marks 0,0% ready and filters alcohol drinks by bottles', () => {

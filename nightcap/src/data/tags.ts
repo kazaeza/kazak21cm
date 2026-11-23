@@ -41,15 +41,27 @@ export const TAGS: VibeTag[] = [
   { id: 'easy', emoji: '👌', label: 'Без возни', sub: 'пара движений — и уже кайф', glow: 'linear-gradient(135deg,#67e8f9,#f0abfc)', lenses: ['all', 'light', 'zero'] },
   { id: 'pour-forget', emoji: '🧊', label: 'Налил и забыл', sub: 'две бутылки прямо на лёд', glow: 'linear-gradient(135deg,#818cf8,#38bdf8)', lenses: ['all', 'light', 'strong'] },
   { id: 'choco-nut', emoji: '🍫', label: 'Шоколад и орех', sub: 'миндаль, какао и сливочный десерт', glow: 'linear-gradient(135deg,#d97706,#c084fc)', lenses: ['all', 'sweet', 'fun'] },
-  { id: 'orange', emoji: '🍊', label: 'Апельсино', sub: 'фреш, цедра, апероль и закат', glow: 'linear-gradient(135deg,#f97316,#facc15)', lenses: ['all', 'light', 'sweet', 'zero'] },
+  { id: 'orange', emoji: '🍊', label: 'Апельсино', sub: 'фреш, мандарин, апероль и закат', glow: 'linear-gradient(135deg,#f97316,#facc15)', lenses: ['all', 'light', 'sweet', 'zero'] },
+  { id: 'jager', emoji: '🦌', label: 'Ягер и бальзам', sub: 'егермейстер, рижский и травы', glow: 'linear-gradient(135deg,#22c55e,#d97706)', lenses: ['all', 'strong', 'fun'] },
+  { id: 'grapefruit', emoji: '🩷', label: 'Грейпфрут', sub: 'терпкая розовая кислинка', glow: 'linear-gradient(135deg,#fb7185,#f97316)', lenses: ['all', 'sour', 'light'] },
+  { id: 'tea', emoji: '🍵', label: 'Чайный пьяница', sub: 'эрл грей, ромашка и жасмин', glow: 'linear-gradient(135deg,#34d399,#f59e0b)', lenses: ['all', 'light', 'fun', 'zero'] },
+  { id: 'cola', emoji: '🫧', label: 'С колой', sub: 'батанга, байкал и куба-миксы', glow: 'linear-gradient(135deg,#b45309,#60a5fa)', lenses: ['all', 'light', 'party'] },
+  { id: 'cognac', emoji: '🥃', label: 'Коньячок', sub: 'классика и винтаж на бренди', glow: 'linear-gradient(135deg,#ea580c,#fbbf24)', lenses: ['all', 'strong', 'sweet'] },
+  { id: 'alchemy', emoji: '🧪', label: 'Алхимия', sub: 'самые смелые и странные миксы', glow: 'linear-gradient(135deg,#a855f7,#2dd4bf)', lenses: ['all', 'fun', 'strong'] },
 ];
 
 export const TAG_MAP = new Map<string, VibeTag>(TAGS.map((t) => [t.id, t]));
 
 export const SURPRISES: SurpriseCombo[] = [
-  { ids: ['gin-tonic'], text: '🍸 Джин Джоник — можжевельник и хрустящий лёд!' },
+  { ids: ['gin-tonic'], text: '🍸 Джин Джоник — можжевельник и авторские тоники!' },
   { ids: ['sloe-gin'], text: '🫐 Чёто со сло джином — ягодная барная классика' },
   { ids: ['jam'], text: '🍓 Конфитюр — густо, ароматно и с джемом!' },
+  { ids: ['jager'], text: '🦌 Ягер и бальзам — лесные травы и характер' },
+  { ids: ['grapefruit'], text: '🩷 Грейпфрут — розовая сочная горчинка' },
+  { ids: ['tea'], text: '🍵 Чайный пьяница — бергамот, ромашка и алкоголь' },
+  { ids: ['cola'], text: '🫧 С колой — от Батанги до «Байкала» на джине' },
+  { ids: ['cognac'], text: '🥃 Коньячок — винтаж и благородный градус' },
+  { ids: ['alchemy'], text: '🧪 Алхимия — рискуем и пробуем редкое!' },
   { ids: ['italy'], text: '🤌 Итальяно — негрони, апероль и дольче вита' },
   { ids: ['shots'], text: '⚡ SHOTS! — быстро, ярко и без лишних слов' },
   { ids: ['coffee'], text: '☕ Хочю кофя — бодрый ночной заряд' },
@@ -61,8 +73,4 @@ export const SURPRISES: SurpriseCombo[] = [
   { ids: ['spicy'], text: '🌶️ Остренько — чили, имбирь и огонёк' },
   { ids: ['sweet'], text: '🤗 Сланенького — вместо торта и десерта' },
   { ids: ['tequila'], text: '🌵 Текила — лайм, соль и мексиканский вайб' },
-  { ids: ['cucumber'], text: '🥒 Огуречность — хрустящая прохлада' },
-  { ids: ['orange'], text: '🍊 Апельсино — сочный цитрусовый закат' },
-  { ids: ['tropics'], text: '🌴 Тропиканка — курс на маракуйю и кокос' },
-  { ids: ['serious'], text: '🥃 Всё серьёзно — классика на большом льду' },
 ];

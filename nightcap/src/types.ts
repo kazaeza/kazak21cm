@@ -42,6 +42,8 @@ export type BottleId =
   | 'amaretto'
   | 'cream-liqueur'
   | 'herbal-liqueur'
+  | 'limoncello'
+  | 'absinthe'
   | 'sparkling'
   | 'wine'
   | 'beer';
