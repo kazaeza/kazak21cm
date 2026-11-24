@@ -9,4 +9,5 @@
 
     <color name="splash_bg">#FAF8F1</color>
     <color name="nav_bg">#FAF8F1</color>
+    <color name="ic_launcher_bg">#18191C</color>
 </resources>

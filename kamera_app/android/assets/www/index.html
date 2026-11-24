@@ -7,6 +7,7 @@
   <style>
     :root {
       --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Roboto', 'Segoe UI', sans-serif;
+      --font-serif: Georgia, 'Times New Roman', serif;
       --font-mono: 'SF Mono', 'Roboto Mono', ui-monospace, monospace;
 
       --safe-top: 0px;
@@ -79,13 +80,13 @@
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
-      padding-bottom: calc(114px + var(--safe-bottom));
+      padding-bottom: calc(112px + var(--safe-bottom));
     }
 
     body.kb-open .screen-viewport { padding-bottom: 120px; }
     .screen-viewport::-webkit-scrollbar { width: 0; height: 0; }
 
-    /* COMMON CONTROLS */
+    /* COMMON BUTTONS */
     .circle-btn {
       width: 38px;
       height: 38px;
@@ -171,17 +172,15 @@
       gap: 10px;
     }
 
-    .avatar-badge {
+    .brand-mark {
       width: 42px;
       height: 42px;
-      border-radius: 50%;
-      background: var(--butter);
+      border-radius: 14px;
+      background: var(--ink);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-      border: 2.5px solid var(--white);
-      box-shadow: 0 5px 14px rgba(24, 25, 28, 0.08);
+      box-shadow: 0 6px 16px rgba(24, 25, 28, 0.14);
       flex-shrink: 0;
     }
 
@@ -322,12 +321,12 @@
     }
 
     /* =====================================================================
-       DETAIL SCREEN — SAFE TIMELINE INSPECTOR + EXPLICIT STAGE TRANSFER
+       DETAIL SCREEN — TAB-FREE PASSPORT + EDITABLE CHRONOLOGY TIMELINE
        ===================================================================== */
     .detail-hero {
       padding: calc(12px + var(--safe-top)) 18px 26px;
       color: var(--white);
-      min-height: 256px;
+      min-height: 244px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -340,99 +339,120 @@
       margin-top: -18px;
       position: relative;
       z-index: 3;
-      padding: 16px 18px 24px;
+      padding: 18px 18px 26px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
     }
 
-    /* Live current-status strip above tabs */
-    .live-status-row {
+    /* BLOCK A: CHRONOLOGY & SUMMARY PILLS */
+    .chronology-box {
+      background: var(--cream-bg);
+      border-radius: 24px;
+      padding: 15px 15px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .summary-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .sum-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 99px;
+      background: var(--white);
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--ink);
+      box-shadow: 0 2px 6px rgba(24, 25, 28, 0.04);
+    }
+
+    .timeline-stack {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .tl-row {
+      display: flex;
+      align-items: stretch;
+      gap: 11px;
+      cursor: pointer;
+      padding: 6px 8px;
+      margin: 0 -8px;
+      border-radius: 16px;
+      transition: background 0.14s;
+    }
+    .tl-row:active { background: rgba(24, 25, 28, 0.05); }
+
+    .tl-rail {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 16px;
+      flex-shrink: 0;
+      padding-top: 4px;
+    }
+
+    .tl-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 2.5px solid var(--white);
+      box-shadow: 0 0 0 1.5px rgba(24, 25, 28, 0.15);
+    }
+    .tl-dot.current {
+      width: 14px;
+      height: 14px;
+      box-shadow: 0 0 0 3px rgba(245, 213, 71, 0.55);
+    }
+
+    .tl-line {
+      flex: 1;
+      width: 2px;
+      background: rgba(24, 25, 28, 0.11);
+      margin-top: 4px;
+      min-height: 18px;
+    }
+    .tl-row:last-child .tl-line { display: none; }
+
+    .tl-content {
+      flex: 1;
+      min-width: 0;
+      padding-bottom: 8px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 8px 12px;
-      border-radius: 16px;
-      background: var(--cream-bg);
-      font-size: 12px;
     }
+    .tl-row:last-child .tl-content { padding-bottom: 2px; }
 
-    .live-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-      flex-shrink: 0;
-    }
-
-    /* Read-only browse tabs (tapping NEVER mutates the piece!) */
-    .inspect-tabs-4 {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 4px;
-      background: var(--cream-card);
-      padding: 4px;
-      border-radius: 99px;
-    }
-    .inspect-tabs-3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 4px;
-      background: var(--cream-card);
-      padding: 4px;
-      border-radius: 99px;
-    }
-
-    .inspect-tab {
-      border: none;
-      background: transparent;
-      color: var(--text-sec);
+    .tl-days-badge {
+      font-family: var(--font-mono);
       font-size: 11.5px;
-      font-weight: 700;
-      padding: 8px 4px;
+      font-weight: 800;
+      padding: 4px 9px;
       border-radius: 99px;
-      cursor: pointer;
+      background: var(--white);
+      color: var(--ink);
+      white-space: nowrap;
       display: inline-flex;
       align-items: center;
-      justify-content: center;
       gap: 4px;
-      transition: all 0.16s var(--ease);
-      white-space: nowrap;
     }
-    .inspect-tab.viewing {
-      background: var(--ink);
-      color: var(--white);
-      box-shadow: 0 3px 10px rgba(24, 25, 28, 0.18);
-    }
-
-    /* Modal phase picker */
-    .stage-bar-3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      background: var(--cream-bg);
-      padding: 5px;
-      border-radius: 99px;
-    }
-    .phase-btn {
-      border: none;
-      background: transparent;
-      color: var(--text-sec);
-      font-size: 12px;
-      font-weight: 700;
-      padding: 9px 4px;
-      border-radius: 99px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .phase-btn.active {
+    .tl-days-badge.live {
       background: var(--butter);
-      color: var(--ink);
-      font-weight: 800;
     }
 
-    /* Drying sub-method chips */
+    /* Sub-chips for casing/smoked */
     .sub-chips-row {
       display: flex;
       flex-wrap: wrap;
@@ -455,15 +475,15 @@
       color: var(--white);
     }
 
-    /* LOCKED VACUUM / CURE CARD */
+    /* BLOCK B: LOCKED VACUUM CARD OR ARC WEIGH-IN DIAL */
     .vacuum-locked-card {
       border-radius: 26px;
-      padding: 18px 16px;
+      padding: 17px 16px;
       color: var(--white);
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 12px 28px rgba(24, 25, 28, 0.12);
+      gap: 11px;
+      box-shadow: 0 12px 28px rgba(24, 25, 28, 0.11);
     }
 
     .lock-badge {
@@ -492,46 +512,6 @@
       transition: width 0.35s var(--ease);
     }
 
-    /* Calm Read-Only Preview Card when browsing another tab */
-    .inspect-preview-card {
-      border-radius: 24px;
-      background: var(--cream-bg);
-      border: 1.5px solid rgba(24, 25, 28, 0.08);
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 11px;
-    }
-
-    /* Explicit transfer action bar on live fermentation card */
-    .transfer-actions-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .transfer-btn {
-      border: 1.5px solid rgba(24, 25, 28, 0.12);
-      background: var(--cream-bg);
-      color: var(--ink);
-      font-size: 12px;
-      font-weight: 800;
-      padding: 12px 10px;
-      border-radius: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      transition: transform 0.14s var(--ease);
-    }
-    .transfer-btn:active { transform: scale(0.96); }
-    .transfer-btn.archive-go {
-      background: #E4F2E1;
-      border-color: #8FB184;
-      color: #2E5225;
-    }
-
-    /* LAYERED MUSTARD + TEAL ARC DIAL */
     .arc-dial-card {
       border-radius: 28px;
       background: var(--mustard);
@@ -549,11 +529,14 @@
       padding: 0 14px 10px;
     }
 
-    .arc-chip-btn {
-      border: none;
-      background: rgba(255, 255, 255, 0.9);
+    .arc-date-pill {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.92);
       color: var(--ink);
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 800;
       padding: 5px 11px;
       border-radius: 99px;
@@ -629,7 +612,7 @@
     }
     .teal-save-btn:active { transform: scale(0.96); }
 
-    /* TASTING VERDICT CARD */
+    /* TASTING CARD */
     .tasting-card {
       border-radius: 24px;
       background: var(--cream-bg);
@@ -638,7 +621,6 @@
       flex-direction: column;
       gap: 11px;
     }
-
     .verdict-chips {
       display: flex;
       flex-wrap: wrap;
@@ -659,37 +641,7 @@
       border-color: var(--ink);
     }
 
-    /* INTEGRATED ANALYTICS SECTION */
-    .capsules-trio {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 9px;
-    }
-
-    .stat-cap {
-      background: var(--cream-bg);
-      border-radius: 24px;
-      padding: 11px 6px 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-
-    .stat-cap-num {
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      font-family: var(--font-mono);
-    }
-
-    .stat-cap-lbl {
-      font-size: 10.5px;
-      color: var(--text-sec);
-      font-weight: 600;
-      margin-top: 2px;
-    }
-
+    /* BLOCK C: WAVE CURVE & EDITABLE WEIGHT JOURNAL */
     .wave-card {
       background: var(--cream-bg);
       border-radius: 24px;
@@ -704,10 +656,14 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 9px 0;
+      padding: 10px 6px;
+      margin: 0 -6px;
       border-bottom: 1px solid rgba(24, 25, 28, 0.06);
       font-size: 12.5px;
+      border-radius: 12px;
+      cursor: pointer;
     }
+    .journal-item:active { background: rgba(24, 25, 28, 0.05); }
     .journal-item:last-child { border-bottom: none; }
 
     /* =====================================================================
@@ -852,7 +808,7 @@
       gap: 6px;
     }
 
-    /* MODAL SHEETS */
+    /* MODAL BOTTOM SHEETS */
     .sheet-backdrop {
       position: fixed;
       inset: 0;
@@ -907,6 +863,46 @@
     }
     .f-inp:focus { border-color: var(--ink); }
 
+    .stage-grid-picker {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .stage-pick-card {
+      border: 1.5px solid rgba(24, 25, 28, 0.11);
+      background: var(--white);
+      color: var(--ink);
+      padding: 11px 12px;
+      border-radius: 16px;
+      font-size: 12.5px;
+      font-weight: 800;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stage-pick-card.selected {
+      background: var(--butter);
+      border-color: var(--ink);
+    }
+
+    .q-day-chip {
+      border: 1px solid rgba(24, 25, 28, 0.15);
+      background: var(--white);
+      color: var(--ink);
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 6px 11px;
+      border-radius: 99px;
+      cursor: pointer;
+    }
+    .q-day-chip.selected {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: var(--white);
+    }
+
     .loc-picker {
       display: flex;
       gap: 8px;
@@ -931,17 +927,6 @@
     .loc-btn.selected {
       background: var(--butter);
       border-color: var(--ink);
-    }
-
-    .q-day-chip {
-      border: 1px solid rgba(24, 25, 28, 0.14);
-      background: var(--white);
-      color: var(--ink);
-      font-size: 11px;
-      font-weight: 700;
-      padding: 5px 10px;
-      border-radius: 99px;
-      cursor: pointer;
     }
 
     .toast-pill {
@@ -979,7 +964,7 @@
       <button class="dock-btn active" id="dock-home" onclick="navigate('home')" aria-label="Камеры">
         <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>
       </button>
-      <button class="dock-fab" onclick="openBatchModal({ category: 'meat', existing: false })" aria-label="Добавить">＋</button>
+      <button class="dock-fab" onclick="openPassportModal({ mode: 'new', category: 'meat' })" aria-label="Добавить">＋</button>
       <button class="dock-btn" id="dock-archive" onclick="navigate('archive')" aria-label="Архив и планы">
         <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       </button>
@@ -993,107 +978,197 @@
     </button>
   </div>
 
-  <!-- MODAL: COMPACT ADD / EDIT BATCH -->
-  <div class="sheet-backdrop" id="batch-modal" onclick="if(event.target===this){ dismissKeyboard(); closeBatchModal(); }">
-    <div class="sheet-panel" id="sheet-panel">
+  <!-- =======================================================================
+       SHEET 1: PASSPORT MODAL (ADD NEW OR EDIT BASIC PASSPORT OF PIECE)
+       ======================================================================= -->
+  <div class="sheet-backdrop" id="passport-modal" onclick="if(event.target===this){ dismissKeyboard(); closeAllModals(); }">
+    <div class="sheet-panel" id="passport-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h3 id="modal-heading" style="font-size:20px;font-weight:800;">Новая закладка</h3>
-        <button class="circle-btn" style="width:34px;height:34px;" onclick="dismissKeyboard(); closeBatchModal();">✕</button>
+        <h3 id="pm-heading" style="font-size:20px;font-weight:800;">Новая закладка</h3>
+        <button class="circle-btn" style="width:34px;height:34px;" onclick="dismissKeyboard(); closeAllModals();">✕</button>
       </div>
 
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
-        <div class="seg-toggle" style="flex:1;margin:0;">
-          <button type="button" class="seg-opt active" id="cat-meat-btn" onclick="setModalCat('meat')">🥩 Мясо</button>
-          <button type="button" class="seg-opt" id="cat-pepper-btn" onclick="setModalCat('pepper')">🌶 Перцы</button>
-        </div>
-        <button type="button" class="sub-chip" id="exist-toggle-btn" onclick="toggleModalExisting()" style="padding:10px 12px;white-space:nowrap;">
-          Уже лежит
-        </button>
+      <!-- Category Toggle (only on new) -->
+      <div class="seg-toggle" id="pm-cat-bar" style="margin-bottom:12px;">
+        <button type="button" class="seg-opt active" id="pm-cat-meat" onclick="setPmCat('meat')">🥩 Мясо</button>
+        <button type="button" class="seg-opt" id="pm-cat-pepper" onclick="setPmCat('pepper')">🌶 Перцы</button>
       </div>
 
       <div class="f-group">
-        <label class="f-lbl" id="m-cut-lbl">Что закладываем</label>
-        <select id="m-cut" class="f-inp" onchange="onModalCutChange()"></select>
+        <label class="f-lbl" id="pm-cut-lbl">Отруб / вид</label>
+        <select id="pm-cut" class="f-inp" onchange="onPmCutChange()"></select>
       </div>
 
-      <div id="m-opt-hint" style="padding:10px 12px;border-radius:14px;background:var(--butter-soft);font-size:11.5px;line-height:1.4;margin-bottom:11px;"></div>
+      <div id="pm-opt-hint" style="padding:10px 12px;border-radius:14px;background:var(--butter-soft);font-size:11.5px;line-height:1.4;margin-bottom:11px;"></div>
 
       <div class="f-group">
-        <label class="f-lbl">Название</label>
-        <input id="m-title" class="f-inp" enterkeyhint="done" placeholder="Напр. Коппа #2" />
+        <label class="f-lbl">Название партии</label>
+        <input id="pm-title" class="f-inp" enterkeyhint="done" placeholder="Напр. Коппа #2" />
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 0.75fr;gap:9px;">
+      <div style="display:grid;grid-template-columns:1fr 0.78fr;gap:9px;">
         <div class="f-group">
           <label class="f-lbl">Стартовый вес (г)</label>
-          <input id="m-weight" type="number" inputmode="numeric" enterkeyhint="done" value="1200" class="f-inp" oninput="refreshModalHint()" />
+          <input id="pm-weight" type="number" inputmode="numeric" enterkeyhint="done" value="1200" class="f-inp" oninput="refreshPmHint()" />
         </div>
         <div class="f-group">
-          <label class="f-lbl" id="m-target-lbl">Усушка (%)</label>
-          <input id="m-target" type="number" inputmode="numeric" enterkeyhint="done" value="34" class="f-inp" oninput="refreshModalHint()" />
+          <label class="f-lbl" id="pm-target-lbl">Цель усушки (%)</label>
+          <input id="pm-target" type="number" inputmode="numeric" enterkeyhint="done" value="34" class="f-inp" oninput="refreshPmHint()" />
         </div>
       </div>
 
-      <div id="m-existing-box" class="hidden" style="background:var(--white);border:1.5px solid rgba(24,25,28,0.09);border-radius:18px;padding:12px;margin-bottom:11px;">
+      <!-- Initial Stage & Start Date (ONLY when creating a new batch; for existing pieces, stages live in Chronology!) -->
+      <div id="pm-initial-stage-section">
+        <div class="f-group">
+          <label class="f-lbl">С какого этапа начинаем запись</label>
+          <div id="pm-phase-grid" class="stage-grid-picker"></div>
+        </div>
+
+        <div class="f-group hidden" id="pm-dry-method-wrap">
+          <label class="f-lbl">Формат в ферм-камере 12°C</label>
+          <div class="sub-chips-row" id="pm-dry-chips"></div>
+        </div>
+
+        <div class="f-group hidden" id="pm-brine-wrap">
+          <label class="f-lbl">Вода для рассола (мл)</label>
+          <input id="pm-brine" type="number" inputmode="numeric" enterkeyhint="done" value="500" class="f-inp" oninput="refreshPmHint()" />
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
-          <div class="f-group" style="margin-bottom:0;">
-            <label class="f-lbl">Дата закладки</label>
-            <input id="m-start-date" type="date" class="f-inp" style="padding:9px 10px;font-size:13px;" onchange="refreshModalHint()" />
+          <div class="f-group">
+            <label class="f-lbl">Когда положил (дата старта)</label>
+            <input id="pm-start-date" type="date" class="f-inp" style="padding:10px;" />
           </div>
-          <div class="f-group" id="m-cur-w-wrap" style="margin-bottom:0;">
-            <label class="f-lbl">Вес сейчас (г)</label>
-            <input id="m-cur-weight" type="number" inputmode="numeric" enterkeyhint="done" class="f-inp" style="padding:9px 10px;" placeholder="если взвесил" oninput="refreshModalHint()" />
+          <div class="f-group" id="pm-cur-w-wrap">
+            <label class="f-lbl">Вес сейчас (если уже сохнет)</label>
+            <input id="pm-cur-weight" type="number" inputmode="numeric" enterkeyhint="done" class="f-inp" placeholder="необяз." />
           </div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
-          <button type="button" class="q-day-chip" onclick="setStartAgo(7)">−7 дн</button>
-          <button type="button" class="q-day-chip" onclick="setStartAgo(14)">−14 дн</button>
-          <button type="button" class="q-day-chip" onclick="setStartAgo(21)">−21 дн</button>
-          <button type="button" class="q-day-chip" onclick="setStartAgo(30)">−30 дн</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 11px;">
+          <button type="button" class="q-day-chip" onclick="setInputDateAgo('pm-start-date', 0)">Сегодня</button>
+          <button type="button" class="q-day-chip" onclick="setInputDateAgo('pm-start-date', 1)">Вчера</button>
+          <button type="button" class="q-day-chip" onclick="setInputDateAgo('pm-start-date', 7)">−7 дн</button>
+          <button type="button" class="q-day-chip" onclick="setInputDateAgo('pm-start-date', 14)">−14 дн</button>
         </div>
-      </div>
-
-      <div class="f-group">
-        <label class="f-lbl">Этап сейчас</label>
-        <div id="m-phase-picker" class="stage-bar-3" style="background:var(--white);border:1px solid rgba(24,25,28,0.08);"></div>
-      </div>
-
-      <div class="f-group hidden" id="m-dry-method-wrap">
-        <label class="f-lbl">Формат в камере</label>
-        <div class="sub-chips-row" id="m-dry-method-chips"></div>
-      </div>
-
-      <div class="f-group hidden" id="m-brine-wrap">
-        <label class="f-lbl">Вода для рассола (мл)</label>
-        <input id="m-brine" type="number" inputmode="numeric" enterkeyhint="done" value="500" class="f-inp" oninput="refreshModalHint()" />
-      </div>
-
-      <div class="f-group">
-        <label class="f-lbl">Камера</label>
-        <div class="loc-picker" id="m-loc-picker"></div>
       </div>
 
       <div class="f-group">
         <label class="f-lbl">Специи / заметка</label>
-        <input id="m-notes" type="text" enterkeyhint="done" class="f-inp" placeholder="Нитритка, перец, чеснок, лимон..." />
+        <input id="pm-notes" type="text" enterkeyhint="done" class="f-inp" placeholder="Нитритка, перец, чеснок, лимон..." />
       </div>
 
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;">
-        <button id="m-delete-btn" class="hidden" style="border:none;background:#FADCD9;color:#A63A35;font-weight:800;font-size:12.5px;padding:12px 15px;border-radius:99px;cursor:pointer;" onclick="deleteEditingBatch()">Удалить</button>
+        <button id="pm-delete-btn" class="hidden" style="border:none;background:#FADCD9;color:#A63A35;font-weight:800;font-size:12.5px;padding:12px 15px;border-radius:99px;cursor:pointer;" onclick="deleteEditingBatch()">Удалить кусок</button>
         <div style="display:flex;gap:8px;margin-left:auto;">
-          <button type="button" class="btn-soft" onclick="dismissKeyboard(); closeBatchModal();">Отмена</button>
-          <button type="button" class="btn-butter" onclick="saveBatchModal()">Сохранить</button>
+          <button type="button" class="btn-soft" onclick="dismissKeyboard(); closeAllModals();">Отмена</button>
+          <button type="button" class="btn-butter" onclick="savePassportModal()">Сохранить</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: SETTINGS -->
-  <div class="sheet-backdrop" id="settings-modal" onclick="if(event.target===this) closeSettings()">
+  <!-- =======================================================================
+       SHEET 2: STAGE CHRONOLOGY EDITOR (EDIT RETROACTIVE DATES OR ADD STAGE!)
+       ======================================================================= -->
+  <div class="sheet-backdrop" id="stage-modal" onclick="if(event.target===this){ dismissKeyboard(); closeAllModals(); }">
+    <div class="sheet-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 id="sm-heading" style="font-size:20px;font-weight:800;">Следующий этап</h3>
+        <button class="circle-btn" style="width:34px;height:34px;" onclick="dismissKeyboard(); closeAllModals();">✕</button>
+      </div>
+
+      <div class="f-group">
+        <label class="f-lbl">Этап</label>
+        <div id="sm-phase-grid" class="stage-grid-picker"></div>
+      </div>
+
+      <div class="f-group hidden" id="sm-method-wrap">
+        <label class="f-lbl">Формат в ферм-камере 12°C</label>
+        <div class="sub-chips-row" id="sm-method-chips"></div>
+      </div>
+
+      <div class="f-group">
+        <label class="f-lbl" id="sm-start-lbl">С какой даты начался этот этап</label>
+        <input id="sm-start-date" type="date" class="f-inp" />
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;">
+          <button type="button" class="q-day-chip" onclick="setInputDateAgo('sm-start-date', 0)">Сегодня</button>
+          <button type="button" class="q-day-chip" onclick="setInputDateAgo('sm-start-date', 1)">Вчера</button>
+          <button type="button" class="q-day-chip" onclick="setInputDateAgo('sm-start-date', 2)">Позавчера</button>
+          <button type="button" class="q-day-chip" onclick="setInputDateAgo('sm-start-date', 5)">−5 дн</button>
+          <button type="button" class="q-day-chip" onclick="setInputDateAgo('sm-start-date', 10)">−10 дн</button>
+        </div>
+      </div>
+
+      <!-- End date field (shown when editing a completed historical stage or inserting a past stage) -->
+      <div class="f-group hidden" id="sm-end-wrap">
+        <label class="f-lbl">Дата окончания этапа (перехода дальше)</label>
+        <input id="sm-end-date" type="date" class="f-inp" />
+      </div>
+
+      <!-- Optional weight at transition (e.g. weighed right before sealing in vacuum) -->
+      <div class="f-group" id="sm-weight-wrap">
+        <label class="f-lbl">Вес при переходе (г, если взвешивал — необязательно)</label>
+        <input id="sm-weight" type="number" inputmode="numeric" enterkeyhint="done" class="f-inp" placeholder="оставь пустым, если не взвешивал" />
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px;">
+        <button id="sm-delete-btn" class="hidden" style="border:none;background:#FADCD9;color:#A63A35;font-weight:800;font-size:12.5px;padding:12px 15px;border-radius:99px;cursor:pointer;" onclick="deleteStageEntry()">Удалить этап</button>
+        <div style="display:flex;gap:8px;margin-left:auto;">
+          <button type="button" class="btn-soft" onclick="dismissKeyboard(); closeAllModals();">Отмена</button>
+          <button type="button" class="btn-butter" onclick="saveStageEntry()">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       SHEET 3: EDIT INDIVIDUAL WEIGHT LOG ENTRY (DATE + GRAMS + NOTE)
+       ======================================================================= -->
+  <div class="sheet-backdrop" id="log-modal" onclick="if(event.target===this){ dismissKeyboard(); closeAllModals(); }">
+    <div class="sheet-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:20px;font-weight:800;">Редактировать замер</h3>
+        <button class="circle-btn" style="width:34px;height:34px;" onclick="dismissKeyboard(); closeAllModals();">✕</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="f-group">
+          <label class="f-lbl">Вес (г)</label>
+          <input id="lm-weight" type="number" inputmode="numeric" enterkeyhint="done" class="f-inp" />
+        </div>
+        <div class="f-group">
+          <label class="f-lbl">Дата взвешивания</label>
+          <input id="lm-date" type="date" class="f-inp" />
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px;">
+        <button type="button" class="q-day-chip" onclick="setInputDateAgo('lm-date', 0)">Сегодня</button>
+        <button type="button" class="q-day-chip" onclick="setInputDateAgo('lm-date', 1)">Вчера</button>
+        <button type="button" class="q-day-chip" onclick="setInputDateAgo('lm-date', 3)">−3 дн</button>
+        <button type="button" class="q-day-chip" onclick="setInputDateAgo('lm-date', 7)">−7 дн</button>
+      </div>
+
+      <div class="f-group">
+        <label class="f-lbl">Заметка к замеру</label>
+        <input id="lm-note" type="text" enterkeyhint="done" class="f-inp" placeholder="Напр. подсох край, плотный..." />
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px;">
+        <button id="lm-delete-btn" style="border:none;background:#FADCD9;color:#A63A35;font-weight:800;font-size:12.5px;padding:12px 15px;border-radius:99px;cursor:pointer;" onclick="deleteWeightLogModal()">Удалить</button>
+        <div style="display:flex;gap:8px;margin-left:auto;">
+          <button type="button" class="btn-soft" onclick="dismissKeyboard(); closeAllModals();">Отмена</button>
+          <button type="button" class="btn-butter" onclick="saveWeightLogModal()">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHEET 4: SETTINGS -->
+  <div class="sheet-backdrop" id="settings-modal" onclick="if(event.target===this) closeAllModals()">
     <div class="sheet-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h3 style="font-size:20px;font-weight:800;">Настройки ferment</h3>
-        <button class="circle-btn" style="width:34px;height:34px;" onclick="closeSettings()">✕</button>
+        <button class="circle-btn" style="width:34px;height:34px;" onclick="closeAllModals()">✕</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div style="background:var(--white);border-radius:20px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
@@ -1120,11 +1195,20 @@
     const hasAndroid = typeof window.AndroidBridge !== 'undefined';
     let currentImeDp = 0;
 
+    function isAnyModalOpen() {
+      return ['passport-modal', 'stage-modal', 'log-modal', 'settings-modal']
+        .some(id => document.getElementById(id).classList.contains('open'));
+    }
+
+    function closeAllModals() {
+      ['passport-modal', 'stage-modal', 'log-modal', 'settings-modal']
+        .forEach(id => document.getElementById(id).classList.remove('open'));
+      syncAndroidBackState();
+    }
+
     function syncAndroidBackState() {
       if (!hasAndroid || !window.AndroidBridge.setCanGoBack) return;
-      const modalOpen = document.getElementById('batch-modal').classList.contains('open')
-        || document.getElementById('settings-modal').classList.contains('open');
-      const canGoBack = ui.screen !== 'home' || modalOpen || currentImeDp > 40 || isTextFieldFocused();
+      const canGoBack = ui.screen !== 'home' || isAnyModalOpen() || currentImeDp > 40 || isTextFieldFocused();
       try { window.AndroidBridge.setCanGoBack(!!canGoBack); } catch (e) {}
     }
 
@@ -1210,18 +1294,18 @@
     // 2. DOMAIN MODEL: 3°C FRIDGE + 12°C FERMENTATION CHAMBER
     // =========================================================================
     const LOCATIONS = {
-      fridge_3:  { id: 'fridge_3',  label: 'Холодильник 3°C',   short: 'Холод. 3°C', temp: 3,  icon: '❄️' },
-      fridge_12: { id: 'fridge_12', label: 'Ферм-камера 12°C',  short: 'Ферм. 12°C', temp: 12, icon: '🌡' },
-      room_22:   { id: 'room_22',   label: 'Комната ~22°C',     short: 'Комн. 22°C', temp: 22, icon: '🌶' }
+      fridge_3:  { id: 'fridge_3',  label: 'Холодильник 3°C',  short: 'Холод. 3°C', temp: 3,  icon: '❄️' },
+      fridge_12: { id: 'fridge_12', label: 'Ферм-камера 12°C', short: 'Ферм. 12°C', temp: 12, icon: '🌡' },
+      room_22:   { id: 'room_22',   label: 'Комната ~22°C',    short: 'Комн. 22°C', temp: 22, icon: '🌶' }
     };
 
     const PHASES = {
-      cure:       { id: 'cure',       tab: 'Посол',     full: 'Посол в вакууме',          hex: '#8884E6', defLoc: 'fridge_3',  isDrying: false },
-      dry:        { id: 'dry',        tab: 'Ферм. 12°', full: 'Ферментация (12°C)',       hex: '#EE9D68', defLoc: 'fridge_12', isDrying: true  },
-      vacuum:     { id: 'vacuum',     tab: 'Вакуум',    full: 'Отлёжка в вакууме',        hex: '#3B7D71', defLoc: 'fridge_3',  isDrying: false },
-      done:       { id: 'done',       tab: 'Готово',    full: 'Готово · в Архиве',        hex: '#8FB184', defLoc: 'fridge_3',  isDrying: false },
-      ferm_vac:   { id: 'ferm_vac',   tab: 'Вакуум',    full: 'Ферментация в вакууме',    hex: '#EA7B72', defLoc: 'room_22',   isDrying: false },
-      ferm_brine: { id: 'ferm_brine', tab: 'Рассол',    full: 'Ферментация в рассоле',    hex: '#8FB184', defLoc: 'room_22',   isDrying: false }
+      cure:       { id: 'cure',       short: 'Посол',     full: 'Посол в вакууме',       sub: '3°C · в пакете',  hex: '#8884E6', defLoc: 'fridge_3',  isDrying: false },
+      dry:        { id: 'dry',        short: 'Ферм. 12°', full: 'Ферм-камера 12°C',      sub: 'вяление / ферм.', hex: '#EE9D68', defLoc: 'fridge_12', isDrying: true  },
+      vacuum:     { id: 'vacuum',     short: 'Вакуум',    full: 'Отлёжка в вакууме',     sub: '3°C · корка',     hex: '#3B7D71', defLoc: 'fridge_3',  isDrying: false },
+      done:       { id: 'done',       short: 'Готово',    full: 'Готово · в Архиве',     sub: 'дегустация',      hex: '#8FB184', defLoc: 'fridge_3',  isDrying: false },
+      ferm_vac:   { id: 'ferm_vac',   short: 'Вакуум',    full: 'Перцы в вакууме',       sub: '22°C · без воды', hex: '#EA7B72', defLoc: 'room_22',   isDrying: false },
+      ferm_brine: { id: 'ferm_brine', short: 'Рассол',    full: 'Перцы в рассоле',       sub: '22°C · банка',    hex: '#8FB184', defLoc: 'room_22',   isDrying: false }
     };
 
     const DRY_METHODS = {
@@ -1243,76 +1327,68 @@
       pork_coppa: {
         group: 'Свинина', label: 'Коппа (свиная шея)', defTitle: 'Коппа',
         factor: 0.78, optLoss: 34, refDiam: 95, refWeight: 1200, optMethod: 'casing',
-        cureDays: 14, saltPct: 2.7, tip: 'Шея любит оболочку в ферм-камере 12°C и потерю 33–35%.'
+        cureDays: 14, saltPct: 2.7
       },
       pork_lonzino: {
         group: 'Свинина', label: 'Лонзино (карбонад / корейка)', defTitle: 'Лонзино',
         factor: 1.05, optLoss: 33, refDiam: 78, refWeight: 900, optMethod: 'casing',
-        cureDays: 12, saltPct: 2.6, tip: 'Постная корейка — оптимально −33%, в конце 5–7 дн в вакууме.'
+        cureDays: 12, saltPct: 2.6
       },
       pork_pancetta: {
         group: 'Свинина', label: 'Панчетта (свиная грудинка)', defTitle: 'Панчетта',
         factor: 0.65, optLoss: 26, refDiam: 52, refWeight: 1000, optMethod: 'naked',
-        cureDays: 12, saltPct: 2.5, tip: 'Жир плохо отдаёт воду — цель 24–28%, затем отлёжка в вакууме.'
+        cureDays: 12, saltPct: 2.5
       },
       pork_ham: {
         group: 'Свинина', label: 'Вяленый окорок / лопатка', defTitle: 'Вяленый окорок',
         factor: 0.75, optLoss: 35, refDiam: 105, refWeight: 1200, optMethod: 'casing',
-        cureDays: 16, saltPct: 2.7, tip: 'Плотный отруб — ферментировать в оболочке, полезна пауза в вакууме.'
+        cureDays: 16, saltPct: 2.7
       },
       pork_tenderloin: {
         group: 'Свинина', label: 'Свиная вырезка (Филетто)', defTitle: 'Свиная вырезка',
         factor: 1.18, optLoss: 35, refDiam: 48, refWeight: 500, optMethod: 'naked',
-        cureDays: 7, saltPct: 2.5, tip: 'Тонкий кусок — сохнет в 12°C за ~12–16 дн.'
+        cureDays: 7, saltPct: 2.5
       },
       pork_guanciale: {
         group: 'Свинина', label: 'Щековина (Гуанчале)', defTitle: 'Гуанчале',
         factor: 0.58, optLoss: 25, refDiam: 45, refWeight: 800, optMethod: 'naked',
-        cureDays: 10, saltPct: 2.6, tip: 'Очень жирный отруб — достаточно 23–26% потери.'
+        cureDays: 10, saltPct: 2.6
       },
       duck_barrel: {
         group: 'Птица', label: 'Утиный бочонок (2 грудки)', defTitle: 'Утиный бочонок',
         factor: 0.96, optLoss: 35, refDiam: 74, refWeight: 800, optMethod: 'naked',
-        cureDays: 6, saltPct: 2.6, tip: 'Связанный бочонок толще одиночной грудки — держать в 12°C до −35% + вакуум!'
+        cureDays: 6, saltPct: 2.6
       },
       duck_carpaccio: {
         group: 'Птица', label: 'Карпаччо из утки (1 грудка)', defTitle: 'Карпаччо из утки',
         factor: 1.28, optLoss: 33, refDiam: 38, refWeight: 380, optMethod: 'naked',
-        cureDays: 4, saltPct: 2.6, tip: 'Одиночная грудка солится 3–4 дня, ферментируется ~10–14 дней.'
+        cureDays: 4, saltPct: 2.6
       },
       chicken_carpaccio: {
         group: 'Птица', label: 'Карпаччо из курицы', defTitle: 'Карпаччо из курицы',
         factor: 1.35, optLoss: 35, refDiam: 46, refWeight: 500, optMethod: 'naked',
-        cureDays: 4, saltPct: 2.6, tip: '2.6% нитритной соли (13 г на 500 г), в 12°C 7–12 дней до −35%.'
+        cureDays: 4, saltPct: 2.6
       },
       beef_bresaola: {
         group: 'Говядина', label: 'Вяленая говядина / Брезаола', defTitle: 'Брезаола',
         factor: 1.15, optLoss: 36, refDiam: 85, refWeight: 1200, optMethod: 'casing',
-        cureDays: 14, saltPct: 2.6, tip: 'Глазной мускул или оковалок: оптимально −35…37% в оболочке.'
+        cureDays: 14, saltPct: 2.6
       },
       beef_basturma: {
         group: 'Говядина', label: 'Говядина под бастурму', defTitle: 'Бастурма',
         factor: 1.12, optLoss: 38, refDiam: 55, refWeight: 1000, optMethod: 'naked',
-        cureDays: 10, saltPct: 2.8, tip: 'Сухой плотный срез — цель 37–40%.'
+        cureDays: 10, saltPct: 2.8
       },
       beef_tenderloin: {
         group: 'Говядина', label: 'Говяжья вырезка (Филе)', defTitle: 'Говяжья вырезка',
         factor: 1.20, optLoss: 35, refDiam: 65, refWeight: 900, optMethod: 'naked',
-        cureDays: 10, saltPct: 2.5, tip: 'Нежная вырезка — оптимально −34…35%.'
+        cureDays: 10, saltPct: 2.5
       }
     };
 
     const PEPPER_CATALOG = {
-      pepper_vac: {
-        label: 'Острые перцы в вакууме', defTitle: 'Острые перцы (вакуум)',
-        optPhase: 'ferm_vac', saltPct: 2.8, targetDays: 21, defBrine: 0,
-        tip: '2.5–3% соли в вакуумном пакете. Страви CO₂, когда пакет раздуется.'
-      },
-      pepper_brine: {
-        label: 'Перцы в рассоле (гидрозатвор)', defTitle: 'Перцы в рассоле',
-        optPhase: 'ferm_brine', saltPct: 3.5, targetDays: 28, defBrine: 500,
-        tip: '3.5% соли от массы перцев + воды. Выдержка 21–28 дней.'
-      }
+      pepper_vac: { label: 'Острые перцы в вакууме', defTitle: 'Острые перцы (вакуум)', optPhase: 'ferm_vac', saltPct: 2.8, targetDays: 21, defBrine: 0 },
+      pepper_brine: { label: 'Перцы в рассоле (банка)', defTitle: 'Перцы в рассоле', optPhase: 'ferm_brine', saltPct: 3.5, targetDays: 28, defBrine: 500 }
     };
 
     const MONTHS_RU = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
@@ -1331,8 +1407,46 @@
       return Math.max(0, Math.round((b - a) / 86400000));
     }
 
+    // Keep phaseHistory contiguous, sorted, and sync batch.phase + batch.createdAt!
+    function normalizeBatchChronology(b) {
+      if (!Array.isArray(b.phaseHistory) || !b.phaseHistory.length) {
+        b.phaseHistory = [{ phase: b.phase || 'cure', startDate: b.createdAt || daysAgoISO(0), endDate: null }];
+      }
+      b.phaseHistory.sort((x, y) => (x.startDate || '').localeCompare(y.startDate || ''));
+      for (let i = 0; i < b.phaseHistory.length; i++) {
+        const cur = b.phaseHistory[i];
+        if (i < b.phaseHistory.length - 1) {
+          const next = b.phaseHistory[i + 1];
+          // Ensure contiguous chain unless user explicitly set something else
+          cur.endDate = next.startDate;
+        } else {
+          cur.endDate = null;
+        }
+      }
+      const first = b.phaseHistory[0];
+      const last = b.phaseHistory[b.phaseHistory.length - 1];
+      b.createdAt = first.startDate;
+      b.phase = last.phase;
+      if (last.method) b.dryMethod = last.method;
+      if (typeof last.smoked === 'boolean') b.smoked = last.smoked;
+
+      // Sync chamber location to active stage automatically
+      if (b.category === 'meat') {
+        if (b.phase === 'dry') {
+          b.locId = b.dryMethod === 'membrane' ? 'fridge_3' : 'fridge_12';
+        } else {
+          b.locId = 'fridge_3';
+        }
+      }
+
+      if (Array.isArray(b.weightLogs) && b.weightLogs.length) {
+        b.weightLogs.sort((x, y) => (x.date || '').localeCompare(y.date || ''));
+        b.weightLogs[0].date = b.createdAt;
+      }
+    }
+
     // =========================================================================
-    // 3. SEED DATA & STORAGE (PRESERVES USER'S EXISTING v0.3 DATA!)
+    // 3. SEED DATA & STORAGE (PRESERVES ALL EXISTING USER DATA!)
     // =========================================================================
     function createSousChefSeed() {
       return {
@@ -1351,48 +1465,40 @@
         batches: [
           {
             id: 'sc-chicken-classic',
-            category: 'meat',
-            title: 'Карпаччо: курица',
-            cutId: 'chicken_carpaccio',
+            category: 'meat', title: 'Карпаччо: курица', cutId: 'chicken_carpaccio',
             initialWeight: 500, hangWeight: 500, targetLossPct: 35,
             phase: 'cure', dryMethod: 'naked', smoked: false, locId: 'fridge_3', saltPct: 2.6,
             createdAt: '2026-11-17',
             notes: 'Классика: 13 г нитритной соли, вакуумный посол (с 17 ноя).',
             verdict: '', tastingNote: '',
             phaseHistory: [{ phase: 'cure', startDate: '2026-11-17', endDate: null }],
-            weightLogs: [{ date: '2026-11-17', weight: 500, phase: 'cure', note: 'Закладка в вакуум (13 г нитритки)' }]
+            weightLogs: [{ date: '2026-11-17', weight: 500, phase: 'cure', note: 'Старт (13 г нитритки)' }]
           },
           {
             id: 'sc-chicken-lemon',
-            category: 'meat',
-            title: 'Карпаччо: лимон',
-            cutId: 'chicken_carpaccio',
+            category: 'meat', title: 'Карпаччо: лимон', cutId: 'chicken_carpaccio',
             initialWeight: 500, hangWeight: 500, targetLossPct: 35,
             phase: 'cure', dryMethod: 'naked', smoked: false, locId: 'fridge_3', saltPct: 2.6,
             createdAt: '2026-11-17',
             notes: 'Куриная грудка: нитритная соль, чёрный перец, лимон, чеснок.',
             verdict: '', tastingNote: '',
             phaseHistory: [{ phase: 'cure', startDate: '2026-11-17', endDate: null }],
-            weightLogs: [{ date: '2026-11-17', weight: 500, phase: 'cure', note: 'Вакуумный посол с лимоном' }]
+            weightLogs: [{ date: '2026-11-17', weight: 500, phase: 'cure', note: 'Посол с лимоном' }]
           },
           {
             id: 'sc-duck-carpaccio',
-            category: 'meat',
-            title: 'Карпаччо: утка',
-            cutId: 'duck_carpaccio',
+            category: 'meat', title: 'Карпаччо: утка', cutId: 'duck_carpaccio',
             initialWeight: 400, hangWeight: 400, targetLossPct: 33,
             phase: 'cure', dryMethod: 'naked', smoked: false, locId: 'fridge_3', saltPct: 2.6,
             createdAt: '2026-11-17',
             notes: 'Пряное утиное: нитритная соль, паприка, фенхель, чили, чеснок (вес уточни в ✎).',
             verdict: '', tastingNote: '',
             phaseHistory: [{ phase: 'cure', startDate: '2026-11-17', endDate: null }],
-            weightLogs: [{ date: '2026-11-17', weight: 400, phase: 'cure', note: 'Вакуумный посол' }]
+            weightLogs: [{ date: '2026-11-17', weight: 400, phase: 'cure', note: 'Посол в вакууме' }]
           },
           {
             id: 'sc-duck-barrel-1',
-            category: 'meat',
-            title: 'Утиный бочонок №1',
-            cutId: 'duck_barrel',
+            category: 'meat', title: 'Утиный бочонок №1', cutId: 'duck_barrel',
             initialWeight: 800, hangWeight: 800, targetLossPct: 35,
             phase: 'dry', dryMethod: 'naked', smoked: false, locId: 'fridge_12', saltPct: 2.6,
             createdAt: '2026-11-04',
@@ -1400,15 +1506,13 @@
             verdict: '💧 Влажновато', tastingNote: '',
             phaseHistory: [
               { phase: 'cure', startDate: '2026-11-04', endDate: '2026-11-09' },
-              { phase: 'dry', startDate: '2026-11-09', endDate: null }
+              { phase: 'dry', startDate: '2026-11-09', endDate: null, method: 'naked', smoked: false }
             ],
-            weightLogs: [{ date: '2026-11-04', weight: 800, phase: 'cure', note: 'Старт (2 грудки в бочонок)' }]
+            weightLogs: [{ date: '2026-11-04', weight: 800, phase: 'cure', note: 'Старт (2 грудки)' }]
           },
           {
             id: 'sc-duck-barrel-2',
-            category: 'meat',
-            title: 'Утиный бочонок №2 (копчёный)',
-            cutId: 'duck_barrel',
+            category: 'meat', title: 'Утиный бочонок №2 (копчёный)', cutId: 'duck_barrel',
             initialWeight: 800, hangWeight: 800, targetLossPct: 35,
             phase: 'dry', dryMethod: 'naked', smoked: true, locId: 'fridge_12', saltPct: 2.6,
             createdAt: '2026-11-04',
@@ -1416,54 +1520,46 @@
             verdict: '', tastingNote: '',
             phaseHistory: [
               { phase: 'cure', startDate: '2026-11-04', endDate: '2026-11-09' },
-              { phase: 'dry', startDate: '2026-11-09', endDate: null }
+              { phase: 'dry', startDate: '2026-11-09', endDate: null, method: 'naked', smoked: true }
             ],
-            weightLogs: [{ date: '2026-11-04', weight: 800, phase: 'cure', note: 'Старт + холодное копчение' }]
+            weightLogs: [{ date: '2026-11-04', weight: 800, phase: 'cure', note: 'Старт + хол. копчение' }]
           },
           {
             id: 'sc-coppa-1',
-            category: 'meat',
-            title: 'Коппа (шея)',
-            cutId: 'pork_coppa',
+            category: 'meat', title: 'Коппа (шея)', cutId: 'pork_coppa',
             initialWeight: 1200, hangWeight: 1200, targetLossPct: 34,
             phase: 'cure', dryMethod: 'casing', smoked: false, locId: 'fridge_3', saltPct: 2.7,
             createdAt: '2026-10-05',
-            notes: 'Запущен посол в вакууме в начале октября. Перенеси в ферм-камеру 12°C, если уже висит.',
+            notes: 'Старт в начале октября. Нажми «＋ Следующий этап», чтобы указать дату переноса в ферм-камеру 12°C!',
             verdict: '', tastingNote: '',
             phaseHistory: [{ phase: 'cure', startDate: '2026-10-05', endDate: null }],
             weightLogs: [{ date: '2026-10-05', weight: 1200, phase: 'cure', note: 'Посол в вакууме' }]
           },
           {
             id: 'sc-pancetta-2',
-            category: 'meat',
-            title: 'Панчетта №2',
-            cutId: 'pork_pancetta',
+            category: 'meat', title: 'Панчетта №2', cutId: 'pork_pancetta',
             initialWeight: 1200, hangWeight: 1200, targetLossPct: 26,
             phase: 'cure', dryMethod: 'naked', smoked: false, locId: 'fridge_3', saltPct: 2.5,
             createdAt: '2026-10-05',
-            notes: 'Грудинка ~1.2 кг, посол в вакууме с начала октября.',
+            notes: 'Грудинка ~1.2 кг с начала октября. Тапни на этап в Хронологии, чтобы проставить реальные даты.',
             verdict: '', tastingNote: '',
             phaseHistory: [{ phase: 'cure', startDate: '2026-10-05', endDate: null }],
             weightLogs: [{ date: '2026-10-05', weight: 1200, phase: 'cure', note: 'Посол в вакууме' }]
           },
           {
             id: 'sc-ham-1',
-            category: 'meat',
-            title: 'Вяленый окорок',
-            cutId: 'pork_ham',
+            category: 'meat', title: 'Вяленый окорок', cutId: 'pork_ham',
             initialWeight: 1200, hangWeight: 1200, targetLossPct: 35,
             phase: 'cure', dryMethod: 'casing', smoked: false, locId: 'fridge_3', saltPct: 2.7,
             createdAt: '2026-10-05',
-            notes: 'Свиной окорок ~1.2 кг, посол в вакууме с начала октября.',
+            notes: 'Свиной окорок ~1.2 кг с начала октября.',
             verdict: '', tastingNote: '',
             phaseHistory: [{ phase: 'cure', startDate: '2026-10-05', endDate: null }],
             weightLogs: [{ date: '2026-10-05', weight: 1200, phase: 'cure', note: 'Посол в вакууме' }]
           },
           {
             id: 'sc-pancetta-1',
-            category: 'meat',
-            title: 'Панчетта №1',
-            cutId: 'pork_pancetta',
+            category: 'meat', title: 'Панчетта №1', cutId: 'pork_pancetta',
             initialWeight: 518, hangWeight: 518, targetLossPct: 25,
             phase: 'done', dryMethod: 'membrane', smoked: false, locId: 'fridge_3', saltPct: 2.5,
             createdAt: '2026-08-05',
@@ -1472,7 +1568,7 @@
             tastingNote: 'Усушка ~24% (394 г), отлично выровнялась после вакуума.',
             phaseHistory: [
               { phase: 'cure', startDate: '2026-08-05', endDate: '2026-08-17' },
-              { phase: 'dry', startDate: '2026-08-17', endDate: '2026-10-04' },
+              { phase: 'dry', startDate: '2026-08-17', endDate: '2026-10-04', method: 'membrane' },
               { phase: 'vacuum', startDate: '2026-10-04', endDate: '2026-10-12' },
               { phase: 'done', startDate: '2026-10-12', endDate: null }
             ],
@@ -1483,9 +1579,7 @@
           },
           {
             id: 'sc-lonzino-1',
-            category: 'meat',
-            title: 'Лонзино / карбонад №1',
-            cutId: 'pork_lonzino',
+            category: 'meat', title: 'Лонзино / карбонад №1', cutId: 'pork_lonzino',
             initialWeight: 490, hangWeight: 490, targetLossPct: 33,
             phase: 'done', dryMethod: 'membrane', smoked: false, locId: 'fridge_3', saltPct: 2.6,
             createdAt: '2026-08-05',
@@ -1494,7 +1588,7 @@
             tastingNote: 'Разрезал в начале октября, почти съел. По текстуре получилось ближе к салу, чем к прошутто.',
             phaseHistory: [
               { phase: 'cure', startDate: '2026-08-05', endDate: '2026-08-17' },
-              { phase: 'dry', startDate: '2026-08-17', endDate: '2026-10-03' },
+              { phase: 'dry', startDate: '2026-08-17', endDate: '2026-10-03', method: 'membrane' },
               { phase: 'done', startDate: '2026-10-03', endDate: null }
             ],
             weightLogs: [{ date: '2026-08-05', weight: 490, phase: 'cure', note: 'Старт (~490 г)' }]
@@ -1519,6 +1613,7 @@
           if (parsed && parsed.schemaVersion === 3 && Array.isArray(parsed.batches)) {
             store = parsed;
             if (!store.plans) store.plans = [];
+            store.batches.forEach(normalizeBatchChronology);
             return;
           }
         } catch (e) {}
@@ -1536,25 +1631,31 @@
     }
 
     let ui = {
-      screen: 'home',       // 'home' | 'detail' | 'archive'
-      prevScreen: 'home',   // remembers whether we opened detail from home or archive
-      archiveTab: 'done',   // 'done' | 'plans'
+      screen: 'home',
+      prevScreen: 'home',
+      archiveTab: 'done',
       selectedId: null,
-      inspectPhase: null,   // READ-ONLY tab currently inspected inside detail!
-      transferPickerFor: null, // 'cure' | 'inspect-dry' | null (inline confirmation when moving to 12°C)
       zoneFilter: 'all',
       draftWeight: null,
-      weighDateMode: 'today',
+      weighDateISO: null, // explicit date for new weigh-in (defaults to today, can pick any past date!)
       metricMode: 'readiness',
-      modal: {
+      pm: {
         editingId: null,
         fromPlanId: null,
         category: 'meat',
-        existing: false,
         phase: 'cure',
         dryMethod: 'casing',
-        smoked: false,
-        locId: 'fridge_3'
+        smoked: false
+      },
+      sm: {
+        mode: 'append', // 'append' (next stage) | 'edit' (existing timeline item)
+        index: -1,
+        phase: 'dry',
+        dryMethod: 'casing',
+        smoked: false
+      },
+      lm: {
+        index: -1
       }
     };
 
@@ -1563,18 +1664,10 @@
     // =========================================================================
     function getCut(cutId) { return MEAT_CATALOG[cutId] || MEAT_CATALOG.pork_coppa; }
 
-    function getPhaseColor(batch, phaseOverride) {
-      const ph = phaseOverride || batch.phase;
+    function getPhaseColor(batch, phOverride) {
+      const ph = phOverride || batch.phase;
       if (ph === 'dry') return (DRY_METHODS[batch.dryMethod] || DRY_METHODS.casing).hex;
       return (PHASES[ph] || PHASES.dry).hex;
-    }
-
-    function getPhaseShortLabel(batch) {
-      if (batch.phase === 'dry') {
-        const m = (DRY_METHODS[batch.dryMethod] || DRY_METHODS.casing).label;
-        return batch.smoked ? `${m} · 💨` : m;
-      }
-      return (PHASES[batch.phase] || PHASES.dry).tab;
     }
 
     function analyze(batch) {
@@ -1595,7 +1688,7 @@
           etaBadge, etaSort: batch.puffed ? 0 : remDays,
           elapsedDays: elapsed, curPhaseDays: elapsed,
           cureDays: 0, dryDays: 0, vacDays: batch.phase === 'ferm_vac' ? elapsed : 0,
-          saltGrams, k_eff: 0.04, speedPctDay: 0, crustRisk: false
+          saltGrams, k_eff: 0.04, speedPctDay: 0
         };
       }
 
@@ -1627,21 +1720,34 @@
         else if (h.phase === 'vacuum') vacDays += d;
       }
 
+      // Active drying days UP TO the date of the latest weight log (critical for accurate retroactive calibration!)
+      let dryDaysAtLastLog = 0;
+      for (const h of batch.phaseHistory) {
+        if (h.phase === 'dry' && h.startDate < lastLog.date) {
+          const endCap = (!h.endDate || h.endDate > lastLog.date) ? lastLog.date : h.endDate;
+          dryDaysAtLastLog += diffDays(h.startDate, endCap);
+        }
+      }
+
       const curH = batch.phaseHistory[batch.phaseHistory.length - 1];
       const curPhaseDays = curH ? diffDays(curH.startDate, today) : 0;
 
       let k_emp = null;
-      if (dryDays >= 3 && Wcur < W0 && Wcur > W_inf + 10) {
+      if (dryDaysAtLastLog >= 3 && Wcur < W0 && Wcur > W_inf + 10) {
         const ratio = (Wcur - W_inf) / (W0 - W_inf);
-        if (ratio > 0.05 && ratio < 0.99) k_emp = -Math.log(ratio) / dryDays;
+        if (ratio > 0.05 && ratio < 0.99) k_emp = -Math.log(ratio) / dryDaysAtLastLog;
       }
-      const empTrust = Math.min(0.85, dryDays / 14);
+      const empTrust = Math.min(0.85, dryDaysAtLastLog / 14);
       const k_eff = k_emp !== null ? (k_emp * empTrust + k_prior * (1 - empTrust)) : k_prior;
 
       let remDryingDays = 0;
       if (Wcur > targetWeight && Wcur > W_inf + 5 && targetWeight > W_inf) {
         const rNeed = (targetWeight - W_inf) / (Wcur - W_inf);
-        if (rNeed > 0 && rNeed < 1) remDryingDays = Math.ceil(-Math.log(rNeed) / Math.max(0.004, k_eff));
+        if (rNeed > 0 && rNeed < 1) {
+          const fromLastLog = Math.ceil(-Math.log(rNeed) / Math.max(0.004, k_eff));
+          const drySinceLastLog = Math.max(0, dryDays - dryDaysAtLastLog);
+          remDryingDays = Math.max(1, fromLastLog - drySinceLastLog);
+        }
       }
 
       const recCure = cut.cureDays || 12;
@@ -1664,32 +1770,33 @@
         etaSort = Wcur <= targetWeight ? 0 : remDryingDays;
       }
 
-      let speedPctDay = 0;
-      if (batch.weightLogs.length >= 2) {
-        const prev = batch.weightLogs[batch.weightLogs.length - 2];
-        const dt = Math.max(1, diffDays(prev.date, lastLog.date));
-        speedPctDay = Math.max(0, (((prev.weight - lastLog.weight) / W0) * 100) / dt);
-      }
-      const crustRisk = batch.phase === 'dry' && batch.dryMethod === 'naked' && estDiam >= 70 && speedPctDay >= 1.7;
-
       return {
         isPepper: false,
         cut, W0, Wcur, targetWeight, lostGrams, lossPct, readinessPct,
         remDays: remDryingDays, cureLeft, recCure, curePct,
         etaBadge, etaSort,
         elapsedDays: diffDays(batch.createdAt, today),
-        curPhaseDays, cureDays, dryDays, vacDays,
-        k_eff, speedPctDay, crustRisk
+        curPhaseDays, cureDays, dryDays, vacDays, k_eff
       };
     }
 
     // =========================================================================
-    // 5. FLOATING 3D CULINARY SVG ILLUSTRATIONS
+    // 5. FLOATING 3D ARTWORK & EDITORIAL BRAND MARK
     // =========================================================================
-    function renderArt(batch, size, phaseOverride) {
-      const w = size === 'large' ? 136 : 72;
-      const h = size === 'large' ? 142 : 76;
-      const ph = phaseOverride || batch.phase;
+    function renderBrandMarkSVG() {
+      return `
+        <svg viewBox="0 0 40 40" width="24" height="24" fill="none">
+          <text x="15" y="30" fill="#FAF8F1" font-family="Georgia, serif" font-style="italic" font-weight="700" font-size="30">f</text>
+          <path d="M27.5 19.5 C27.5 19.5 31.5 24 31.5 26.8 C31.5 29.1 29.7 30.8 27.5 30.8 C25.3 30.8 23.5 29.1 23.5 26.8 C23.5 24 27.5 19.5 27.5 19.5 Z" fill="#EA7B72"/>
+          <circle cx="30" cy="15.5" r="2" fill="#F5D547"/>
+        </svg>
+      `;
+    }
+
+    function renderArt(batch, size) {
+      const w = size === 'large' ? 128 : 72;
+      const h = size === 'large' ? 134 : 76;
+      const ph = batch.phase;
 
       if (batch.category === 'pepper' && ph === 'ferm_vac') {
         const puff = batch.puffed ? 5 : 0;
@@ -1703,7 +1810,6 @@
               <path d="M68 30 C68 22 76 18 80 18" stroke="#4D7C3E" stroke-width="3.5" stroke-linecap="round"/>
               <path d="M48 48 C46 34 90 34 88 50 C92 72 84 94 68 96 C52 94 44 72 48 48 Z" fill="#FF6B2B"/>
               <circle cx="84" cy="78" r="13" fill="#FFD166"/>
-              <circle cx="46" cy="37" r="4" fill="rgba(255,255,255,0.75)"/>
               ${batch.puffed ? `<circle cx="106" cy="22" r="10" fill="#18191C"/><text x="106" y="26" text-anchor="middle" fill="#F5D547" font-size="11" font-weight="800">!</text>` : ''}
             </g>
           </svg>
@@ -1791,11 +1897,8 @@
       }
       if (batchId) {
         ui.selectedId = batchId;
-        const target = store.batches.find(x => x.id === batchId);
-        ui.inspectPhase = target ? target.phase : null;
         ui.draftWeight = null;
-        ui.weighDateMode = 'today';
-        ui.transferPickerFor = null;
+        ui.weighDateISO = daysAgoISO(0);
       }
       ui.screen = screen;
       haptic('light');
@@ -1805,8 +1908,7 @@
 
     window.handleAndroidBack = function() {
       if (isTextFieldFocused() || currentImeDp > 40) { dismissKeyboard(); return true; }
-      if (document.getElementById('batch-modal').classList.contains('open')) { closeBatchModal(); return true; }
-      if (document.getElementById('settings-modal').classList.contains('open')) { closeSettings(); return true; }
+      if (isAnyModalOpen()) { closeAllModals(); return true; }
       if (ui.screen === 'detail') {
         const b = getSelectedBatch();
         const dest = (b && b.phase === 'done') ? 'archive' : (ui.prevScreen === 'archive' ? 'archive' : 'home');
@@ -1884,7 +1986,7 @@
           ? `${an.elapsedDays}д`
           : (b.phase === 'cure' ? `${an.cureDays}д` : (an.lossPct > 0.4 ? `-${an.lossPct.toFixed(0)}%` : `${an.curPhaseDays}д`));
         const sub = an.isPepper
-          ? `${getPhaseShortLabel(b)} · ${an.etaBadge}`
+          ? `${PHASES[b.phase].short} · ${an.etaBadge}`
           : `${an.Wcur} г · ${an.etaBadge}`;
         return `
           <div class="pastel-card" style="background:${bg};" onclick="navigate('detail', '${b.id}')">
@@ -1909,9 +2011,9 @@
       return `
         <header class="home-header">
           <div style="display:flex;align-items:center;gap:11px;">
-            <div class="avatar-badge">🧑‍🍳</div>
+            <div class="brand-mark">${renderBrandMarkSVG()}</div>
             <div>
-              <div style="font-size:20px;font-weight:800;letter-spacing:-0.03em;">ferment</div>
+              <div style="font-size:21px;font-weight:800;letter-spacing:-0.03em;">ferment</div>
               <div style="font-size:11.5px;color:var(--text-sec);font-weight:600;">В работе: ${active.length} · Архив: ${store.batches.length - active.length}</div>
             </div>
           </div>
@@ -1930,7 +2032,7 @@
             <div>${quickRows || '<div style="font-size:12px;color:var(--text-muted);padding:8px 0;">Нет активных партий</div>'}</div>
           </div>
 
-          <div class="heute-right" onclick="${spot ? `navigate('detail', '${spot.b.id}')` : `openBatchModal({category:'meat',existing:false})`}">
+          <div class="heute-right" onclick="${spot ? `navigate('detail', '${spot.b.id}')` : `openPassportModal({mode:'new',category:'meat'})`}">
             <div>
               <div style="font-size:12px;font-weight:800;line-height:1.15;">${spotLabel}</div>
               <div style="font-size:10px;opacity:0.75;font-weight:700;margin-top:2px;">${spot ? spot.an.etaBadge : 'Начать'}</div>
@@ -1956,270 +2058,216 @@
       `;
     }
 
-    // --- SCREEN 2: DETAIL (READ-ONLY STAGE INSPECTOR + EXPLICIT TRANSFERS) ---
+    // --- SCREEN 2: DETAIL — ZERO TABS! CHRONOLOGY + ONE LIVE ACTION + EDITABLE LOGS ---
     function buildDetailScreen(batch) {
       if (!batch) return '';
       const an = analyze(batch);
       const loc = LOCATIONS[batch.locId] || LOCATIONS.fridge_12;
       const bg = getPhaseColor(batch);
-
-      if (!ui.inspectPhase) ui.inspectPhase = batch.phase;
-      const viewedPhase = ui.inspectPhase;
-      const isViewingLive = viewedPhase === batch.phase;
+      const today = daysAgoISO(0);
 
       const r = 19;
       const c = 2 * Math.PI * r;
       const ringPct = batch.phase === 'cure' ? an.curePct : an.readinessPct;
       const off = c * (1 - ringPct / 100);
 
-      const phaseOrder = batch.category === 'pepper'
-        ? ['ferm_vac', 'ferm_brine', 'done']
-        : ['cure', 'dry', 'vacuum', 'done'];
+      // --- BLOCK A: FULL EDITABLE STAGE CHRONOLOGY ---
+      const summaryPills = an.isPepper
+        ? `
+          <span class="sum-pill">🌶 Всего: ${an.elapsedDays} дн</span>
+          <span class="sum-pill">🧂 Соль ${batch.saltPct}% (${an.saltGrams} г)</span>
+        `
+        : `
+          <span class="sum-pill"><span style="width:7px;height:7px;border-radius:50%;background:#8884E6;"></span>Посол: ${an.cureDays} дн</span>
+          <span class="sum-pill"><span style="width:7px;height:7px;border-radius:50%;background:#EE9D68;"></span>Ферм. 12°: ${an.dryDays} дн</span>
+          <span class="sum-pill"><span style="width:7px;height:7px;border-radius:50%;background:#3B7D71;"></span>Вакуум: ${an.vacDays} дн</span>
+        `;
 
-      const liveStageObj = PHASES[batch.phase] || PHASES.dry;
-      const visitedSet = new Set(batch.phaseHistory.map(h => h.phase));
+      const timelineRows = batch.phaseHistory.map((h, idx) => {
+        const isCurrent = idx === batch.phaseHistory.length - 1;
+        const pObj = PHASES[h.phase] || PHASES.dry;
+        const days = diffDays(h.startDate, h.endDate || today);
+        const dotColor = getPhaseColor(batch, h.phase);
 
-      // Build the card for whichever tab is currently inspected (`viewedPhase`)
-      let cardHtml = '';
+        let titleTxt = pObj.full;
+        if (h.phase === 'dry') {
+          const mLbl = (DRY_METHODS[h.method || batch.dryMethod] || DRY_METHODS.casing).label;
+          const smk = (typeof h.smoked === 'boolean' ? h.smoked : batch.smoked) ? ' · 💨' : '';
+          titleTxt = `Ферм-камера 12°C (${mLbl}${smk})`;
+        }
 
-      if (isViewingLive) {
-        // VIEWING THE CURRENT ACTIVE STAGE OF THIS PIECE
-        if (an.isPepper && batch.phase !== 'done') {
-          cardHtml = `
-            <div class="vacuum-locked-card" style="background:${batch.phase === 'ferm_vac' ? '#C45249' : '#56794C'};">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span class="lock-badge">🌶 ${liveStageObj.full}</span>
-                <button class="arc-chip-btn" onclick="promptPepperPh('${batch.id}')">pH ${batch.phValue} ✎</button>
+        const rangeTxt = h.endDate
+          ? `${formatShortDate(h.startDate)} → ${formatShortDate(h.endDate)}`
+          : `с ${formatShortDate(h.startDate)} · идёт сейчас`;
+
+        return `
+          <div class="tl-row" onclick="openStageEditor('edit', ${idx})">
+            <div class="tl-rail">
+              <div class="tl-dot ${isCurrent ? 'current' : ''}" style="background:${dotColor};"></div>
+              <div class="tl-line"></div>
+            </div>
+            <div class="tl-content">
+              <div style="min-width:0;">
+                <div style="font-size:13px;font-weight:800;line-height:1.2;">${titleTxt}</div>
+                <div style="font-size:11.5px;color:var(--text-sec);margin-top:2px;">${rangeTxt}</div>
               </div>
-              <div>
-                <div style="font-size:24px;font-weight:800;">День ${an.elapsedDays} из ${batch.targetDays}</div>
-                <div style="font-size:12px;opacity:0.88;margin-top:2px;">Соль ${batch.saltPct}% (${an.saltGrams} г) · Выход соуса ~${Math.round(batch.initialWeight * 1.1)} мл</div>
+              <div class="tl-days-badge ${isCurrent && batch.phase !== 'done' ? 'live' : ''}">
+                <span>${days} дн</span>
+                <span style="opacity:0.45;font-size:10px;">✎</span>
               </div>
-              <div class="vac-progress-track"><div class="vac-progress-fill" style="width:${an.readinessPct}%;"></div></div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                ${batch.phase === 'ferm_vac' ? `
-                  <button class="btn-butter" style="flex:1;padding:11px 10px;font-size:12px;" onclick="togglePepperGas('${batch.id}')">
-                    ${batch.puffed ? '🫧 Стравить CO₂' : '🎈 Отметить CO₂'}
-                  </button>
-                ` : ''}
-                <button style="flex:1;border:1.5px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.14);color:#fff;font-size:12px;font-weight:800;padding:11px 10px;border-radius:99px;cursor:pointer;" onclick="moveBatchToPhase('${batch.id}', 'done')">
-                  ✓ Готово → в Архив
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // --- BLOCK B: ONE CONTEXTUAL LIVE ACTION CARD ---
+      let actionCardHtml = '';
+      if (an.isPepper && batch.phase !== 'done') {
+        actionCardHtml = `
+          <div class="vacuum-locked-card" style="background:${batch.phase === 'ferm_vac' ? '#C45249' : '#56794C'};">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="lock-badge">🌶 ${PHASES[batch.phase].full}</span>
+              <button class="arc-date-pill" onclick="promptPepperPh('${batch.id}')">pH ${batch.phValue} ✎</button>
+            </div>
+            <div>
+              <div style="font-size:23px;font-weight:800;">День ${an.elapsedDays} из ${batch.targetDays}</div>
+              <div style="font-size:12px;opacity:0.88;margin-top:2px;">Выход соуса ~${Math.round(batch.initialWeight * 1.1)} мл (уксус ~${Math.round(batch.initialWeight * 0.15)} мл)</div>
+            </div>
+            <div class="vac-progress-track"><div class="vac-progress-fill" style="width:${an.readinessPct}%;"></div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              ${batch.phase === 'ferm_vac' ? `
+                <button class="btn-butter" style="flex:1;padding:11px 10px;font-size:12px;" onclick="togglePepperGas('${batch.id}')">
+                  ${batch.puffed ? '🫧 Стравить CO₂' : '🎈 Вздулся пакет'}
                 </button>
-              </div>
-            </div>
-          `;
-        } else if (batch.phase === 'cure') {
-          cardHtml = `
-            <div class="vacuum-locked-card" style="background:linear-gradient(155deg, #7C77DB 0%, #5B57B8 100%);">
-              <span class="lock-badge">🔒 Вес зафиксирован в вакууме · ${an.Wcur} г</span>
-              <div>
-                <div style="font-size:24px;font-weight:800;">Посол: день ${an.cureDays} из ${an.recCure}</div>
-                <div style="font-size:12px;opacity:0.88;margin-top:2px;">
-                  ${an.cureLeft === 0 ? 'Посол завершён — можно доставать и переносить в ферм-камеру 12°C!' : `Осталось посола ~${an.cureLeft} дн · Соль ${batch.saltPct}%`}
-                </div>
-              </div>
-              <div class="vac-progress-track"><div class="vac-progress-fill" style="width:${an.curePct}%;"></div></div>
-
-              ${ui.transferPickerFor !== 'cure' ? `
-                <button class="btn-butter" style="width:100%;" onclick="openTransferPicker('cure')">
-                  Перенести в ферм-камеру 12°C →
-                </button>
-              ` : `
-                <div style="background:rgba(255,255,255,0.16);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:8px;">
-                  <div style="font-size:11.5px;font-weight:700;">Выбери формат для ферм-камеры 12°C:</div>
-                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'casing')">В оболочке</button>
-                    <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'naked')">Без обол.</button>
-                    <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'membrane')">Мембрана</button>
-                  </div>
-                </div>
-              `}
-            </div>
-          `;
-        } else if (batch.phase === 'vacuum') {
-          cardHtml = `
-            <div class="vacuum-locked-card" style="background:linear-gradient(155deg, #3B7D71 0%, #265950 100%);">
-              <span class="lock-badge">🔒 Вес зафиксирован в вакууме · ${an.Wcur} г (−${an.lossPct.toFixed(1)}%)</span>
-              <div>
-                <div style="font-size:24px;font-weight:800;">Отлёжка: ${an.curPhaseDays}-й день</div>
-                <div style="font-size:12px;opacity:0.88;margin-top:2px;">
-                  Испарение на паузе — влага из центра выравнивает корку и оболочку.
-                </div>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                <button class="btn-butter" style="padding:11px 10px;font-size:12px;" onclick="moveBatchToPhase('${batch.id}', 'dry')">↩ В ферм-камеру 12°</button>
-                <button style="border:1.5px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.14);color:#fff;font-size:12px;font-weight:800;padding:11px 10px;border-radius:99px;cursor:pointer;" onclick="moveBatchToPhase('${batch.id}', 'done')">✓ Готово → в Архив</button>
-              </div>
-            </div>
-          `;
-        } else if (batch.phase === 'done') {
-          cardHtml = `
-            <div class="tasting-card">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:13px;font-weight:800;">Дегустация · кусок в Архиве</span>
-                <span style="font-size:11px;font-weight:800;font-family:var(--font-mono);color:var(--sage-deep);">${an.Wcur} г (−${an.lossPct.toFixed(1)}%)</span>
-              </div>
-              <div class="verdict-chips">
-                ${VERDICTS.map(v => `
-                  <button class="verdict-chip ${batch.verdict === v ? 'selected' : ''}" onclick="setVerdict('${batch.id}', '${v}')">${v}</button>
-                `).join('')}
-              </div>
-              <input id="tasting-note-inp" class="f-inp" enterkeyhint="done" value="${(batch.tastingNote || '').replace(/"/g, '&quot;')}"
-                placeholder="Вывод на будущее (напр. додержать до -36%, меньше соли)..."
-                onchange="saveTastingNote('${batch.id}', this.value)" />
-              <button class="btn-soft" style="width:100%;" onclick="moveBatchToPhase('${batch.id}', '${an.isPepper ? 'ferm_vac' : 'dry'}')">
-                ↩ Вернуть из Архива в работу
+              ` : ''}
+              <button class="btn-soft" style="flex:1;padding:11px 10px;font-size:12px;" onclick="openStageEditor('append', -1, 'done')">
+                ✓ Завершить…
               </button>
             </div>
-          `;
-        } else {
-          // ACTIVE FERMENTATION (12°C) — SHOW FORMAT CHIPS, WEIGH-IN DIAL & EXPLICIT TRANSFER BUTTONS!
-          if (ui.draftWeight === null) ui.draftWeight = an.Wcur;
-          const draftLoss = Math.max(0, ((an.W0 - ui.draftWeight) / an.W0) * 100).toFixed(1);
-
-          let ticks = '';
-          for (let i = 0; i <= 24; i++) {
-            const angle = Math.PI + (i / 24) * Math.PI;
-            const active = (i / 24) * 100 <= an.readinessPct;
-            const x1 = 130 + Math.cos(angle) * 86, y1 = 92 + Math.sin(angle) * 86;
-            const x2 = 130 + Math.cos(angle) * 94, y2 = 92 + Math.sin(angle) * 94;
-            ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${active ? '#FFFFFF' : 'rgba(255,255,255,0.28)'}" stroke-width="2.4" stroke-linecap="round"/>`;
-          }
-          const ka = Math.PI + (Math.min(100, Math.max(0, an.readinessPct)) / 100) * Math.PI;
-          const kx = 130 + Math.cos(ka) * 72, ky = 92 + Math.sin(ka) * 72;
-
-          cardHtml = `
-            <div class="sub-chips-row">
-              ${Object.values(DRY_METHODS).map(m => `
-                <button class="sub-chip ${batch.dryMethod === m.id ? 'active' : ''}" onclick="setDryMethod('${batch.id}', '${m.id}')">${m.label}</button>
+          </div>
+        `;
+      } else if (batch.phase === 'cure') {
+        actionCardHtml = `
+          <div class="vacuum-locked-card" style="background:linear-gradient(155deg, #7C77DB 0%, #5B57B8 100%);">
+            <span class="lock-badge">🔒 В вакууме · вес ${an.Wcur} г</span>
+            <div>
+              <div style="font-size:23px;font-weight:800;">Посол: ${an.cureDays} из ~${an.recCure} дн</div>
+              <div style="font-size:12px;opacity:0.88;margin-top:2px;">
+                ${an.cureLeft === 0 ? 'Посол готов! Переложил раньше? Укажи реальную дату в кнопке ниже.' : `Осталось посола ~${an.cureLeft} дн · Соль ${batch.saltPct}%`}
+              </div>
+            </div>
+            <div class="vac-progress-track"><div class="vac-progress-fill" style="width:${an.curePct}%;"></div></div>
+            <button class="btn-butter" style="width:100%;" onclick="openStageEditor('append', -1, 'dry')">
+              Перенести в ферм-камеру 12°C (выбрать дату)…
+            </button>
+          </div>
+        `;
+      } else if (batch.phase === 'vacuum') {
+        actionCardHtml = `
+          <div class="vacuum-locked-card" style="background:linear-gradient(155deg, #3B7D71 0%, #265950 100%);">
+            <span class="lock-badge">🔒 В вакууме · ${an.Wcur} г (−${an.lossPct.toFixed(1)}%)</span>
+            <div>
+              <div style="font-size:23px;font-weight:800;">Отлёжка: ${an.curPhaseDays}-й день</div>
+              <div style="font-size:12px;opacity:0.88;margin-top:2px;">
+                Влага выравнивается, таймер усушки стоит на паузе.
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <button class="btn-butter" style="padding:11px 8px;font-size:12px;" onclick="openStageEditor('append', -1, 'dry')">↩ Вернуть в 12°C…</button>
+              <button style="border:1.5px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.14);color:#fff;font-size:12px;font-weight:800;padding:11px 8px;border-radius:99px;cursor:pointer;" onclick="openStageEditor('append', -1, 'done')">✓ В Архив…</button>
+            </div>
+          </div>
+        `;
+      } else if (batch.phase === 'done') {
+        actionCardHtml = `
+          <div class="tasting-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:800;">Дегустация · кусок в Архиве</span>
+              <span style="font-size:11px;font-weight:800;font-family:var(--font-mono);color:var(--sage-deep);">${an.Wcur} г (−${an.lossPct.toFixed(1)}%)</span>
+            </div>
+            <div class="verdict-chips">
+              ${VERDICTS.map(v => `
+                <button class="verdict-chip ${batch.verdict === v ? 'selected' : ''}" onclick="setVerdict('${batch.id}', '${v}')">${v}</button>
               `).join('')}
-              <button class="sub-chip ${batch.smoked ? 'active' : ''}" onclick="toggleSmoked('${batch.id}')">💨 Копчёное</button>
             </div>
-
-            ${an.crustRisk ? `
-              <div style="padding:11px 13px;border-radius:18px;background:#FBE9E7;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;">
-                <div><strong>Риск закала:</strong> высокий темп (${an.speedPctDay.toFixed(1)}%/д). Убери в вакуум на 5–7 дн.</div>
-                <button class="btn-ink" style="padding:8px 12px;font-size:11px;white-space:nowrap;" onclick="moveBatchToPhase('${batch.id}', 'vacuum')">В вакуум</button>
-              </div>
-            ` : ''}
-
-            <div class="arc-dial-card">
-              <div class="arc-top-row">
-                <button class="arc-chip-btn" onclick="toggleWeighDate()">
-                  📅 ${ui.weighDateMode === 'today' ? 'Сегодня' : 'Вчера'} ⇄
-                </button>
-                <span id="arc-loss-badge" style="font-size:11.5px;font-weight:800;color:var(--ink);background:rgba(255,255,255,0.52);padding:4px 10px;border-radius:99px;font-family:var(--font-mono);">
-                  -${draftLoss}%
-                </span>
-              </div>
-
-              <div class="arc-teal-body">
-                <svg viewBox="0 0 260 98" width="100%" height="84" style="overflow:visible;margin-bottom:-6px;">
-                  ${ticks}
-                  <path d="M 58 92 A 72 72 0 0 1 202 92" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="5" stroke-linecap="round"/>
-                  <circle cx="${kx.toFixed(1)}" cy="${ky.toFixed(1)}" r="8.5" fill="#18191C" stroke="#FFFFFF" stroke-width="2.5"/>
-                </svg>
-
-                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;">
-                  <input id="arc-weight-input" type="number" inputmode="numeric" enterkeyhint="done" class="weight-inline-input"
-                    value="${ui.draftWeight}" oninput="onArcWeightInput(this.value)" />
-                  <span style="font-size:16px;font-weight:800;opacity:0.9;">г</span>
-                </div>
-                <div style="font-size:11px;opacity:0.84;margin-top:4px;font-weight:600;">
-                  Старт: ${an.W0} г → Цель: ${an.targetWeight} г (−${batch.targetLossPct}%)
-                </div>
-
-                <div class="arc-steppers">
-                  <button class="teal-step-btn" onclick="stepDraftWeight(-10)">−10</button>
-                  <button class="teal-step-btn" onclick="stepDraftWeight(-1)">−1</button>
-                  <button class="teal-save-btn" onclick="commitWeighIn('${batch.id}')">▶ Записать</button>
-                  <button class="teal-step-btn" onclick="stepDraftWeight(1)">+1</button>
-                  <button class="teal-step-btn" onclick="stepDraftWeight(10)">+10</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- EXPLICIT TRANSFER ACTIONS (Never happens accidentally!) -->
-            <div class="transfer-actions-row">
-              <button class="transfer-btn" onclick="moveBatchToPhase('${batch.id}', 'vacuum')">🫧 Убрать в вакуум</button>
-              <button class="transfer-btn archive-go" onclick="moveBatchToPhase('${batch.id}', 'done')">✓ Готово → в Архив</button>
-            </div>
-          `;
-        }
+            <input class="f-inp" enterkeyhint="done" value="${(batch.tastingNote || '').replace(/"/g, '&quot;')}"
+              placeholder="Вывод на будущее (напр. додержать до -36%, меньше соли)..."
+              onchange="saveTastingNote('${batch.id}', this.value)" />
+          </div>
+        `;
       } else {
-        // VIEWING ANOTHER TAB IN READ-ONLY INSPECTOR MODE (PEEKING WITHOUT MOVING!)
-        const pObj = PHASES[viewedPhase] || PHASES.dry;
-        const pastEntries = batch.phaseHistory.filter(h => h.phase === viewedPhase);
-        const phaseLogs = batch.weightLogs.filter(l => l.phase === viewedPhase);
-        const today = daysAgoISO(0);
+        // ACTIVE FERMENTATION 12°C — WEIGH-IN DIAL WITH ANY DATE PICKER!
+        if (ui.draftWeight === null) ui.draftWeight = an.Wcur;
+        if (!ui.weighDateISO) ui.weighDateISO = today;
+        const draftLoss = Math.max(0, ((an.W0 - ui.draftWeight) / an.W0) * 100).toFixed(1);
+        const dateChipLabel = ui.weighDateISO === today
+          ? 'Сегодня'
+          : (ui.weighDateISO === daysAgoISO(1) ? 'Вчера' : formatShortDate(ui.weighDateISO));
 
-        let historyBlock = '';
-        if (pastEntries.length > 0) {
-          const totalInPhase = pastEntries.reduce((sum, h) => sum + diffDays(h.startDate, h.endDate || today), 0);
-          historyBlock = `
-            <div style="background:var(--white);border-radius:14px;padding:10px 12px;font-size:12px;">
-              <div style="font-weight:800;">Проходил этот этап (${totalInPhase} дн):</div>
-              ${pastEntries.map(h => `<div style="color:var(--text-sec);margin-top:2px;">${formatShortDate(h.startDate)} → ${h.endDate ? formatShortDate(h.endDate) : 'сейчас'} (${diffDays(h.startDate, h.endDate || today)} дн)</div>`).join('')}
-              ${phaseLogs.length ? `<div style="margin-top:4px;font-family:var(--font-mono);font-size:11.5px;">Замеры: ${phaseLogs.map(l => `${l.weight}г (${formatShortDate(l.date)})`).join(', ')}</div>` : ''}
-            </div>
-          `;
-        } else {
-          const previewDesc = viewedPhase === 'cure'
-            ? `Посол в вакууме при 3°C. Рекомендуется ~${an.recCure || 14} дн.`
-            : (viewedPhase === 'dry'
-                ? `Тихая ферментация в камере 12°C до −${batch.targetLossPct}% (${an.targetWeight} г).`
-                : (viewedPhase === 'vacuum'
-                    ? 'Выравнивание влажности и размягчение подсохшей оболочки в вакууме при 3°C (5–7 дн).'
-                    : 'Завершение цикла: ставишь дегустационную оценку и кусок убирается в Архив.'));
-          historyBlock = `<div style="font-size:12.5px;color:var(--text-sec);line-height:1.45;">Этап ещё не запускался. ${previewDesc}</div>`;
+        let ticks = '';
+        for (let i = 0; i <= 24; i++) {
+          const angle = Math.PI + (i / 24) * Math.PI;
+          const active = (i / 24) * 100 <= an.readinessPct;
+          const x1 = 130 + Math.cos(angle) * 86, y1 = 92 + Math.sin(angle) * 86;
+          const x2 = 130 + Math.cos(angle) * 94, y2 = 92 + Math.sin(angle) * 94;
+          ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${active ? '#FFFFFF' : 'rgba(255,255,255,0.28)'}" stroke-width="2.4" stroke-linecap="round"/>`;
         }
+        const ka = Math.PI + (Math.min(100, Math.max(0, an.readinessPct)) / 100) * Math.PI;
+        const kx = 130 + Math.cos(ka) * 72, ky = 92 + Math.sin(ka) * 72;
 
-        let transferBlock = '';
-        if (viewedPhase === 'dry' && !an.isPepper) {
-          transferBlock = ui.transferPickerFor !== 'inspect-dry'
-            ? `<button class="btn-ink" style="width:100%;" onclick="openTransferPicker('inspect-dry')">Перенести кусок в ферм-камеру 12°C →</button>`
-            : `
-              <div style="background:var(--white);border-radius:16px;padding:11px;display:flex;flex-direction:column;gap:8px;">
-                <div style="font-size:11.5px;font-weight:800;">Выбери формат и подтверди перенос в 12°C:</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                  <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'casing')">Оболочка</button>
-                  <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'naked')">Без обол.</button>
-                  <button class="btn-butter" style="flex:1;padding:10px 8px;font-size:12px;" onclick="transferToFerment('${batch.id}', 'membrane')">Мембрана</button>
-                </div>
+        actionCardHtml = `
+          <div class="arc-dial-card">
+            <div class="arc-top-row">
+              <label class="arc-date-pill">
+                <span>📅 Замер: ${dateChipLabel} ▾</span>
+                <input type="date" value="${ui.weighDateISO}" max="${today}" onchange="onWeighDatePick(this.value)"
+                  style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;" />
+              </label>
+              <span id="arc-loss-badge" style="font-size:11.5px;font-weight:800;color:var(--ink);background:rgba(255,255,255,0.52);padding:4px 10px;border-radius:99px;font-family:var(--font-mono);">
+                -${draftLoss}%
+              </span>
+            </div>
+
+            <div class="arc-teal-body">
+              <svg viewBox="0 0 260 98" width="100%" height="82" style="overflow:visible;margin-bottom:-6px;">
+                ${ticks}
+                <path d="M 58 92 A 72 72 0 0 1 202 92" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="5" stroke-linecap="round"/>
+                <circle cx="${kx.toFixed(1)}" cy="${ky.toFixed(1)}" r="8.5" fill="#18191C" stroke="#FFFFFF" stroke-width="2.5"/>
+              </svg>
+
+              <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;">
+                <input id="arc-weight-input" type="number" inputmode="numeric" enterkeyhint="done" class="weight-inline-input"
+                  value="${ui.draftWeight}" oninput="onArcWeightInput(this.value)" />
+                <span style="font-size:16px;font-weight:800;opacity:0.9;">г</span>
               </div>
-            `;
-        } else {
-          const btnLbl = viewedPhase === 'done'
-            ? '✓ Завершить кусок и отправить в Архив'
-            : `Перенести кусок на этап «${pObj.tab}» →`;
-          transferBlock = `<button class="btn-ink" style="width:100%;" onclick="moveBatchToPhase('${batch.id}', '${viewedPhase}')">${btnLbl}</button>`;
-        }
+              <div style="font-size:11px;opacity:0.84;margin-top:4px;font-weight:600;">
+                Старт: ${an.W0} г → Цель: ${an.targetWeight} г (−${batch.targetLossPct}%)
+              </div>
 
-        cardHtml = `
-          <div class="inspect-preview-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-              <span style="font-size:13.5px;font-weight:800;">Просмотр: ${pObj.full}</span>
-              <button style="border:none;background:var(--butter);color:var(--ink);font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;cursor:pointer;" onclick="inspectStage('${batch.phase}')">
-                К текущему этапу
-              </button>
+              <div class="arc-steppers">
+                <button class="teal-step-btn" onclick="stepDraftWeight(-10)">−10</button>
+                <button class="teal-step-btn" onclick="stepDraftWeight(-1)">−1</button>
+                <button class="teal-save-btn" onclick="commitWeighIn('${batch.id}')">▶ Записать</button>
+                <button class="teal-step-btn" onclick="stepDraftWeight(1)">+1</button>
+                <button class="teal-step-btn" onclick="stepDraftWeight(10)">+10</button>
+              </div>
             </div>
-            ${historyBlock}
-            ${transferBlock}
           </div>
         `;
       }
 
+      // --- BLOCK C: CURVE & TAP-TO-EDIT WEIGHT JOURNAL ---
       const bigPctTxt = ui.metricMode === 'readiness' ? `${an.readinessPct}%` : `-${an.lossPct.toFixed(1)}%`;
       const logsHtml = batch.weightLogs.slice().reverse().map((w, rIdx) => {
         const idx = batch.weightLogs.length - 1 - rIdx;
         const lPct = (((an.W0 - w.weight) / an.W0) * 100).toFixed(1);
         return `
-          <div class="journal-item">
+          <div class="journal-item" onclick="openWeightLogEditor(${idx})">
             <div>
               <div style="font-weight:800;font-family:var(--font-mono);">${w.weight} г <span style="color:var(--coral-deep);margin-left:4px;">−${lPct}%</span></div>
               <div style="font-size:11px;color:var(--text-sec);">${formatShortDate(w.date)}${w.note ? ` · ${w.note}` : ''}</div>
             </div>
-            ${batch.weightLogs.length > 1 ? `<button style="border:none;background:var(--cream-card);color:var(--text-sec);width:26px;height:26px;border-radius:50%;font-size:11px;cursor:pointer;" onclick="deleteLog('${batch.id}', ${idx})">✕</button>` : ''}
+            <span style="font-size:12px;color:var(--text-muted);font-weight:700;">✎</span>
           </div>
         `;
       }).join('');
@@ -2230,13 +2278,13 @@
             <div style="min-width:0;">
               <div style="display:flex;gap:7px;align-items:center;margin-bottom:8px;">
                 <button class="circle-btn on-pastel" onclick="navigate('${batch.phase === 'done' ? 'archive' : (ui.prevScreen === 'archive' ? 'archive' : 'home')}')">←</button>
-                <button class="circle-btn on-pastel" onclick="openBatchModal({ editId: '${batch.id}' })" title="Редактировать">✎</button>
+                <button class="circle-btn on-pastel" onclick="openPassportModal({ editId: '${batch.id}' })" title="Паспорт куска">✎</button>
                 <button class="circle-btn on-pastel" style="width:auto;padding:0 12px;border-radius:99px;font-size:11.5px;gap:4px;" onclick="flipLocation('${batch.id}')">
                   ${loc.icon} ${loc.short} ⇄
                 </button>
               </div>
-              <div style="font-size:11px;opacity:0.88;font-weight:700;">Старт ${formatShortDate(batch.createdAt)} · ${an.elapsedDays} дн</div>
-              <h1 style="font-size:25px;font-weight:800;letter-spacing:-0.02em;line-height:1.12;margin-top:2px;">${batch.title}</h1>
+              <div style="font-size:11px;opacity:0.9;font-weight:700;">Старт ${formatShortDate(batch.createdAt)} · всего ${an.elapsedDays} дн</div>
+              <h1 style="font-size:24px;font-weight:800;letter-spacing:-0.02em;line-height:1.12;margin-top:2px;">${batch.title}</h1>
             </div>
 
             <div style="display:flex;flex-direction:column;align-items:center;text-align:center;">
@@ -2252,79 +2300,59 @@
             </div>
           </div>
 
-          <div style="height:142px;display:flex;align-items:center;justify-content:center;">
+          <div style="height:132px;display:flex;align-items:center;justify-content:center;">
             ${renderArt(batch, 'large')}
           </div>
         </div>
 
         <div class="detail-sheet">
-          <!-- Explicit Live Status Strip -->
-          <div class="live-status-row">
-            <div style="display:flex;align-items:center;gap:7px;">
-              <span class="live-dot" style="background:${bg};"></span>
-              <span>Сейчас: <b>${liveStageObj.full}</b></span>
+
+          <!-- BLOCK A: CHRONOLOGY TIMELINE (ALL DAYS VISIBLE + RETROACTIVE EDIT ON TAP!) -->
+          <section class="chronology-box">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;font-weight:800;">Хронология куска</span>
+              <span style="font-size:10.5px;color:var(--text-muted);font-weight:700;">тапни на этап, чтобы изменить дату</span>
             </div>
-            <span style="font-size:11px;color:var(--text-muted);font-weight:600;">${loc.short}</span>
-          </div>
 
-          <!-- READ-ONLY INSPECTOR TABS (Tap to view/peek, NEVER moves the piece!) -->
-          <div class="${batch.category === 'pepper' ? 'inspect-tabs-3' : 'inspect-tabs-4'}">
-            ${phaseOrder.map(pId => {
-              const isLive = batch.phase === pId;
-              const isViewing = viewedPhase === pId;
-              const wasDone = !isLive && visitedSet.has(pId);
-              const prefix = isLive ? '● ' : (wasDone ? '✓ ' : '');
-              return `
-                <button class="inspect-tab ${isViewing ? 'viewing' : ''}" onclick="inspectStage('${pId}')">
-                  <span>${prefix}${PHASES[pId].tab}</span>
-                </button>
-              `;
-            }).join('')}
-          </div>
+            <div class="summary-strip">${summaryPills}</div>
 
-          <!-- CONTEXTUAL CARD (Either Live Control Card OR Read-Only Preview + Explicit Transfer) -->
-          ${cardHtml}
+            <div class="timeline-stack">${timelineRows}</div>
+
+            <button class="btn-ink" style="width:100%;padding:11px 14px;font-size:12.5px;" onclick="openStageEditor('append', -1)">
+              ＋ Следующий этап (или записать задним числом)
+            </button>
+          </section>
+
+          <!-- BLOCK B: SINGLE CONTEXTUAL ACTION WIDGET -->
+          ${actionCardHtml}
 
           ${batch.notes ? `
-            <div style="padding:12px 14px;border-radius:16px;background:var(--cream-bg);font-size:12.5px;color:var(--text-sec);line-height:1.45;">
-              <strong style="color:var(--ink);">Заметка:</strong> ${batch.notes}
+            <div style="padding:12px 14px;border-radius:16px;background:var(--cream-bg);font-size:12.5px;color:var(--text-sec);line-height:1.45;" onclick="openPassportModal({ editId: '${batch.id}' })">
+              <strong style="color:var(--ink);">Заметка:</strong> ${batch.notes} <span style="opacity:0.5;">✎</span>
             </div>
           ` : ''}
 
+          <!-- BLOCK C: WAVE CURVE & EDITABLE WEIGHT JOURNAL -->
           ${!an.isPepper ? `
-            <div style="padding-top:4px;display:flex;flex-direction:column;gap:12px;">
-              <div class="capsules-trio">
-                <div class="stat-cap">
-                  <div class="stat-cap-num">${an.Wcur}г</div>
-                  <div class="stat-cap-lbl">Вес сейчас</div>
+            <div class="wave-card">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+                <div onclick="toggleMetricMode()" style="cursor:pointer;">
+                  <span style="font-size:30px;font-weight:800;letter-spacing:-0.03em;">${bigPctTxt}</span>
+                  <span style="font-size:11.5px;color:var(--text-sec);font-weight:600;margin-left:6px;">
+                    ${ui.metricMode === 'readiness' ? `к цели −${batch.targetLossPct}% (${an.targetWeight} г)` : `ушло ${an.lostGrams} г`}
+                  </span>
                 </div>
-                <div class="stat-cap">
-                  <div class="stat-cap-num" style="color:var(--coral-deep);">−${an.lostGrams}г</div>
-                  <div class="stat-cap-lbl">Ушло влаги</div>
-                </div>
-                <div class="stat-cap">
-                  <div class="stat-cap-num" style="color:var(--teal);">${an.cureDays}д / ${an.dryDays}д</div>
-                  <div class="stat-cap-lbl">Посол / 12°C</div>
-                </div>
+                <span style="font-size:11px;font-weight:700;color:var(--text-muted);">⇄</span>
               </div>
+              ${buildSplineSVG(batch, an)}
+            </div>
 
-              <div class="wave-card">
-                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-                  <div onclick="toggleMetricMode()" style="cursor:pointer;">
-                    <span style="font-size:32px;font-weight:800;letter-spacing:-0.03em;">${bigPctTxt}</span>
-                    <span style="font-size:11.5px;color:var(--text-sec);font-weight:600;margin-left:6px;">
-                      ${ui.metricMode === 'readiness' ? `к цели −${batch.targetLossPct}%` : 'потеря веса'}
-                    </span>
-                  </div>
-                  <span style="font-size:11px;font-weight:700;color:var(--text-muted);">Вакуум: ${an.vacDays}д</span>
-                </div>
-                ${buildSplineSVG(batch, an)}
+            <div style="background:var(--cream-bg);border-radius:22px;padding:13px 15px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:12.5px;font-weight:800;">Взвешивания (${batch.weightLogs.length})</span>
+                <button style="border:none;background:var(--white);color:var(--ink);font-size:11px;font-weight:800;padding:5px 10px;border-radius:99px;cursor:pointer;" onclick="openWeightLogEditor(-1)">＋ Замер за дату</button>
               </div>
-
-              <div style="background:var(--cream-bg);border-radius:22px;padding:13px 15px;">
-                <div style="font-size:12.5px;font-weight:800;margin-bottom:4px;">Журнал взвешиваний (${batch.weightLogs.length})</div>
-                <div class="journal-list">${logsHtml}</div>
-              </div>
+              <div class="journal-list">${logsHtml}</div>
             </div>
           ` : ''}
         </div>
@@ -2332,7 +2360,7 @@
     }
 
     function buildSplineSVG(batch, an) {
-      const W = 300, H = 118, padX = 14, padTop = 30, padBot = 14;
+      const W = 300, H = 114, padX = 14, padTop = 28, padBot = 12;
       const plotW = W - padX * 2, plotH = H - padTop - padBot;
 
       const logs = batch.weightLogs;
@@ -2366,7 +2394,7 @@
         : '';
 
       const bx = Math.min(W - 34, Math.max(34, lastPt.x));
-      const by = Math.max(25, lastPt.y);
+      const by = Math.max(24, lastPt.y);
 
       return `
         <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" fill="none">
@@ -2397,7 +2425,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
               <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.02em;">Архив и планы</h2>
-              <div style="font-size:12px;color:var(--text-sec);font-weight:600;">Готовые партии попадают сюда</div>
+              <div style="font-size:12px;color:var(--text-sec);font-weight:600;">Готовые партии и заметки на будущее</div>
             </div>
             <button class="circle-btn" onclick="openSettings()">⚙️</button>
           </div>
@@ -2422,10 +2450,10 @@
                     ${b.verdict ? `<span style="font-size:11.5px;font-weight:800;background:var(--butter-soft);padding:5px 10px;border-radius:99px;white-space:nowrap;">${b.verdict}</span>` : ''}
                   </div>
 
-                  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;font-family:var(--font-mono);font-weight:700;background:var(--cream-bg);padding:9px 12px;border-radius:14px;">
+                  <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;font-family:var(--font-mono);font-weight:700;background:var(--cream-bg);padding:9px 12px;border-radius:14px;">
                     <span>${an.Wcur !== an.W0 ? `${an.W0}г → ${an.Wcur}г` : `Старт ${an.W0}г`}</span>
                     ${an.lossPct > 0.4 ? `<span style="color:var(--coral-deep);">−${an.lossPct.toFixed(0)}%</span>` : ''}
-                    <span style="color:var(--text-sec);margin-left:auto;">П:${an.cureDays}д · Ф:${an.dryDays}д${an.vacDays ? ` · В:${an.vacDays}д` : ''}</span>
+                    <span style="color:var(--text-sec);margin-left:auto;">Посол ${an.cureDays}д · 12° ${an.dryDays}д${an.vacDays ? ` · Вак ${an.vacDays}д` : ''}</span>
                   </div>
 
                   ${b.tastingNote || b.notes ? `
@@ -2435,7 +2463,7 @@
               `;
             }).join('') : `
               <div style="background:var(--white);border-radius:24px;padding:28px 18px;text-align:center;color:var(--text-sec);">
-                Пока нет завершённых партий. Когда нажмёшь «✓ Готово → в Архив» в карточке куска, он переедет сюда.
+                Пока нет завершённых партий. Когда переведёшь кусок в «Готово», он появится здесь.
               </div>
             `
           ) : `
@@ -2459,81 +2487,253 @@
     }
 
     // =========================================================================
-    // 7. INTERACTIVE HANDLERS
+    // 7. CHRONOLOGY STAGE EDITOR & WEIGHT LOG EDITOR (RETROACTIVE DATES!)
+    // =========================================================================
+    function setInputDateAgo(inputId, daysAgo) {
+      document.getElementById(inputId).value = daysAgoISO(daysAgo);
+      haptic('light');
+    }
+
+    function openStageEditor(mode, index, presetPhase) {
+      const b = getSelectedBatch();
+      if (!b) return;
+      ui.sm.mode = mode;
+      ui.sm.index = index;
+
+      const isPepper = b.category === 'pepper';
+      const delBtn = document.getElementById('sm-delete-btn');
+      const endWrap = document.getElementById('sm-end-wrap');
+      const weightWrap = document.getElementById('sm-weight-wrap');
+
+      if (mode === 'edit' && index >= 0 && index < b.phaseHistory.length) {
+        const entry = b.phaseHistory[index];
+        const isLast = index === b.phaseHistory.length - 1;
+        document.getElementById('sm-heading').textContent = 'Изменить этап и даты';
+        ui.sm.phase = entry.phase;
+        ui.sm.dryMethod = entry.method || b.dryMethod || 'casing';
+        ui.sm.smoked = typeof entry.smoked === 'boolean' ? entry.smoked : !!b.smoked;
+        document.getElementById('sm-start-date').value = entry.startDate;
+
+        if (!isLast) {
+          endWrap.classList.remove('hidden');
+          document.getElementById('sm-end-date').value = entry.endDate || daysAgoISO(0);
+        } else {
+          endWrap.classList.add('hidden');
+        }
+        weightWrap.classList.add('hidden');
+        delBtn.classList.toggle('hidden', b.phaseHistory.length <= 1);
+      } else {
+        document.getElementById('sm-heading').textContent = 'Перевести на этап';
+        // Smart default next stage
+        let nextPh = presetPhase;
+        if (!nextPh) {
+          if (isPepper) nextPh = b.phase === 'done' ? 'ferm_vac' : 'done';
+          else if (b.phase === 'cure') nextPh = 'dry';
+          else if (b.phase === 'dry') nextPh = 'vacuum';
+          else if (b.phase === 'vacuum') nextPh = 'done';
+          else nextPh = 'dry';
+        }
+        ui.sm.phase = nextPh;
+        ui.sm.dryMethod = b.dryMethod || getCut(b.cutId).optMethod || 'casing';
+        ui.sm.smoked = !!b.smoked;
+        document.getElementById('sm-start-date').value = daysAgoISO(0);
+        document.getElementById('sm-weight').value = '';
+        endWrap.classList.add('hidden');
+        weightWrap.classList.toggle('hidden', isPepper);
+        delBtn.classList.add('hidden');
+      }
+
+      renderStageModalPickers(isPepper);
+      document.getElementById('stage-modal').classList.add('open');
+      haptic('light');
+      syncAndroidBackState();
+    }
+
+    function renderStageModalPickers(isPepper) {
+      const phases = isPepper ? ['ferm_vac', 'ferm_brine', 'done'] : ['cure', 'dry', 'vacuum', 'done'];
+      document.getElementById('sm-phase-grid').innerHTML = phases.map(pId => {
+        const p = PHASES[pId];
+        return `
+          <button type="button" class="stage-pick-card ${ui.sm.phase === pId ? 'selected' : ''}" onclick="selectSmPhase('${pId}', ${isPepper})">
+            <span>${p.short}</span>
+            <span style="font-size:10.5px;font-weight:600;opacity:0.7;">${p.sub}</span>
+          </button>
+        `;
+      }).join('');
+
+      const showMethod = !isPepper && ui.sm.phase === 'dry';
+      document.getElementById('sm-method-wrap').classList.toggle('hidden', !showMethod);
+      if (showMethod) {
+        document.getElementById('sm-method-chips').innerHTML = Object.values(DRY_METHODS).map(m => `
+          <button type="button" class="sub-chip ${ui.sm.dryMethod === m.id ? 'active' : ''}" onclick="selectSmMethod('${m.id}', ${isPepper})">${m.label}</button>
+        `).join('') + `<button type="button" class="sub-chip ${ui.sm.smoked ? 'active' : ''}" onclick="toggleSmSmoked(${isPepper})">💨 Копчёное</button>`;
+      }
+    }
+
+    function selectSmPhase(pId, isPepper) { ui.sm.phase = pId; haptic('light'); renderStageModalPickers(isPepper); }
+    function selectSmMethod(mId, isPepper) { ui.sm.dryMethod = mId; haptic('light'); renderStageModalPickers(isPepper); }
+    function toggleSmSmoked(isPepper) { ui.sm.smoked = !ui.sm.smoked; haptic('light'); renderStageModalPickers(isPepper); }
+
+    function saveStageEntry() {
+      dismissKeyboard();
+      const b = getSelectedBatch();
+      if (!b) return;
+      const startDate = document.getElementById('sm-start-date').value || daysAgoISO(0);
+
+      if (ui.sm.mode === 'edit' && ui.sm.index >= 0) {
+        const idx = ui.sm.index;
+        const entry = b.phaseHistory[idx];
+        entry.phase = ui.sm.phase;
+        entry.startDate = startDate;
+        if (ui.sm.phase === 'dry') {
+          entry.method = ui.sm.dryMethod;
+          entry.smoked = ui.sm.smoked;
+          b.dryMethod = ui.sm.dryMethod;
+          b.smoked = ui.sm.smoked;
+        }
+        // Keep previous stage's endDate synced to this stage's startDate
+        if (idx > 0) {
+          b.phaseHistory[idx - 1].endDate = startDate;
+        }
+        // If user also edited endDate of a middle stage, sync next stage's startDate!
+        if (idx < b.phaseHistory.length - 1) {
+          const endVal = document.getElementById('sm-end-date').value;
+          if (endVal && endVal >= startDate) {
+            entry.endDate = endVal;
+            b.phaseHistory[idx + 1].startDate = endVal;
+          }
+        }
+        normalizeBatchChronology(b);
+        persistStore();
+        closeAllModals();
+        haptic('success');
+        showToast('Хронология обновлена');
+        render();
+        return;
+      }
+
+      // APPEND NEW STAGE (even retroactively!)
+      const newEntry = {
+        phase: ui.sm.phase,
+        startDate,
+        endDate: null
+      };
+      if (ui.sm.phase === 'dry') {
+        newEntry.method = ui.sm.dryMethod;
+        newEntry.smoked = ui.sm.smoked;
+        b.dryMethod = ui.sm.dryMethod;
+        b.smoked = ui.sm.smoked;
+      }
+
+      b.phaseHistory.push(newEntry);
+
+      // Optional transition weight
+      const wVal = parseInt(document.getElementById('sm-weight').value, 10);
+      if (!isNaN(wVal) && wVal > 20) {
+        b.weightLogs.push({ date: startDate, weight: wVal, phase: ui.sm.phase, note: PHASES[ui.sm.phase].short });
+        if (ui.sm.phase === 'dry') b.hangWeight = wVal;
+      } else if (ui.sm.phase === 'dry' && b.weightLogs.length) {
+        b.hangWeight = b.weightLogs[b.weightLogs.length - 1].weight;
+      }
+
+      normalizeBatchChronology(b);
+      ui.draftWeight = null;
+      persistStore();
+      closeAllModals();
+      haptic('success');
+      showToast(b.phase === 'done' ? 'Готово! Кусок в Архиве' : `Этап: ${PHASES[b.phase].full}`);
+      render();
+    }
+
+    function deleteStageEntry() {
+      const b = getSelectedBatch();
+      if (!b || b.phaseHistory.length <= 1 || ui.sm.index < 0) return;
+      if (!confirm('Удалить этот этап из хронологии?')) return;
+      b.phaseHistory.splice(ui.sm.index, 1);
+      normalizeBatchChronology(b);
+      ui.draftWeight = null;
+      persistStore();
+      closeAllModals();
+      haptic('medium');
+      showToast('Этап удалён');
+      render();
+    }
+
+    // --- WEIGHT LOG EDITOR (EDIT ANY PAST LOG OR ADD RETROACTIVE LOG) ---
+    function openWeightLogEditor(idx) {
+      const b = getSelectedBatch();
+      if (!b) return;
+      ui.lm.index = idx;
+      const delBtn = document.getElementById('lm-delete-btn');
+
+      if (idx >= 0 && idx < b.weightLogs.length) {
+        const log = b.weightLogs[idx];
+        document.getElementById('lm-weight').value = log.weight;
+        document.getElementById('lm-date').value = log.date;
+        document.getElementById('lm-note').value = log.note || '';
+        delBtn.classList.toggle('hidden', b.weightLogs.length <= 1);
+      } else {
+        const an = analyze(b);
+        document.getElementById('lm-weight').value = an.Wcur;
+        document.getElementById('lm-date').value = daysAgoISO(1);
+        document.getElementById('lm-note').value = '';
+        delBtn.classList.add('hidden');
+      }
+      document.getElementById('log-modal').classList.add('open');
+      haptic('light');
+      syncAndroidBackState();
+    }
+
+    function saveWeightLogModal() {
+      dismissKeyboard();
+      const b = getSelectedBatch();
+      if (!b) return;
+      const w = parseInt(document.getElementById('lm-weight').value, 10);
+      const d = document.getElementById('lm-date').value || daysAgoISO(0);
+      const note = document.getElementById('lm-note').value.trim();
+      if (isNaN(w) || w < 20) return;
+
+      if (ui.lm.index >= 0 && ui.lm.index < b.weightLogs.length) {
+        b.weightLogs[ui.lm.index].weight = w;
+        b.weightLogs[ui.lm.index].date = d;
+        b.weightLogs[ui.lm.index].note = note;
+        if (ui.lm.index === 0) b.initialWeight = w;
+      } else {
+        b.weightLogs.push({ date: d, weight: w, phase: b.phase, note });
+      }
+
+      b.weightLogs.sort((x, y) => x.date.localeCompare(y.date));
+      ui.draftWeight = null;
+      persistStore();
+      closeAllModals();
+      haptic('success');
+      showToast('Замер сохранён');
+      render();
+    }
+
+    function deleteWeightLogModal() {
+      const b = getSelectedBatch();
+      if (!b || b.weightLogs.length <= 1 || ui.lm.index < 0) return;
+      b.weightLogs.splice(ui.lm.index, 1);
+      ui.draftWeight = null;
+      persistStore();
+      closeAllModals();
+      haptic('light');
+      showToast('Замер удалён');
+      render();
+    }
+
+    // =========================================================================
+    // 8. QUICK INTERACTIONS ON DETAIL SCREEN
     // =========================================================================
     function setZoneFilter(z) { ui.zoneFilter = z; haptic('light'); render(); }
     function setArchiveTab(t) { ui.archiveTab = t; haptic('light'); render(); }
-    function toggleWeighDate() { ui.weighDateMode = ui.weighDateMode === 'today' ? 'yesterday' : 'today'; haptic('light'); render(); }
     function toggleMetricMode() { ui.metricMode = ui.metricMode === 'readiness' ? 'loss' : 'readiness'; haptic('light'); render(); }
 
-    // READ-ONLY TAB SWITCHING (Just inspect, never moves the batch!)
-    function inspectStage(phaseId) {
-      ui.inspectPhase = phaseId;
-      ui.transferPickerFor = null;
+    function onWeighDatePick(isoVal) {
+      if (!isoVal) return;
+      ui.weighDateISO = isoVal;
       haptic('light');
-      render();
-    }
-
-    function openTransferPicker(kind) {
-      ui.transferPickerFor = ui.transferPickerFor === kind ? null : kind;
-      haptic('light');
-      render();
-    }
-
-    // EXPLICIT TRANSFER TO ANOTHER SECTION
-    function moveBatchToPhase(batchId, newPhase) {
-      const b = store.batches.find(x => x.id === batchId);
-      if (!b || b.phase === newPhase) return;
-      const today = daysAgoISO(0);
-      const curH = b.phaseHistory[b.phaseHistory.length - 1];
-      if (curH && !curH.endDate) curH.endDate = today;
-
-      b.phase = newPhase;
-      const pObj = PHASES[newPhase] || PHASES.dry;
-      b.locId = (newPhase === 'dry' && b.dryMethod === 'membrane') ? 'fridge_3' : pObj.defLoc;
-      if (newPhase === 'dry' && b.weightLogs.length) {
-        b.hangWeight = b.weightLogs[b.weightLogs.length - 1].weight;
-      }
-      b.phaseHistory.push({ phase: newPhase, startDate: today, endDate: null });
-      ui.inspectPhase = newPhase;
-      ui.transferPickerFor = null;
-      ui.draftWeight = null;
-      persistStore();
-      haptic('success');
-      showToast(newPhase === 'done' ? 'Готово! Перенесено в Архив' : `Перенесено: ${pObj.full}`);
-      render();
-    }
-
-    function transferToFerment(batchId, methodId) {
-      const b = store.batches.find(x => x.id === batchId);
-      if (!b) return;
-      b.dryMethod = methodId;
-      moveBatchToPhase(batchId, 'dry');
-      if (methodId === 'membrane') {
-        b.locId = 'fridge_3';
-        persistStore();
-        render();
-      }
-    }
-
-    function setDryMethod(batchId, mId) {
-      const b = store.batches.find(x => x.id === batchId);
-      if (!b) return;
-      b.dryMethod = mId;
-      if (mId === 'membrane') b.locId = 'fridge_3';
-      else if (b.locId === 'fridge_3') b.locId = 'fridge_12';
-      persistStore();
-      haptic('light');
-      render();
-    }
-
-    function toggleSmoked(batchId) {
-      const b = store.batches.find(x => x.id === batchId);
-      if (!b) return;
-      b.smoked = !b.smoked;
-      persistStore();
-      haptic('light');
-      showToast(b.smoked ? 'Отмечено: подкопчено 💨' : 'Снята отметка копчения');
       render();
     }
 
@@ -2580,25 +2780,14 @@
       const val = parseInt(ui.draftWeight, 10);
       if (isNaN(val) || val < 20) return;
 
-      const d = ui.weighDateMode === 'yesterday' ? daysAgoISO(1) : daysAgoISO(0);
+      const d = ui.weighDateISO || daysAgoISO(0);
       b.weightLogs.push({ date: d, weight: val, phase: 'dry', note: '' });
       b.weightLogs.sort((a, c) => a.date.localeCompare(c.date));
       ui.draftWeight = null;
-      ui.weighDateMode = 'today';
+      ui.weighDateISO = daysAgoISO(0);
       persistStore();
       haptic('success');
-      showToast(`Записано: ${val} г`);
-      render();
-    }
-
-    function deleteLog(batchId, idx) {
-      const b = store.batches.find(x => x.id === batchId);
-      if (!b || b.weightLogs.length <= 1) return;
-      b.weightLogs.splice(idx, 1);
-      ui.draftWeight = null;
-      persistStore();
-      haptic('light');
-      showToast('Замер удалён');
+      showToast(`Записано: ${val} г (${formatShortDate(d)})`);
       render();
     }
 
@@ -2642,7 +2831,7 @@
       }
     }
 
-    // Plans
+    // Plans & Settings
     function addPlanIdea() {
       const t = prompt('Что планируешь заложить?', 'Вяленая говядина (бастурма)');
       if (!t || !t.trim()) return;
@@ -2651,28 +2840,17 @@
       haptic('light');
       render();
     }
-
-    function deletePlan(id) {
-      store.plans = store.plans.filter(p => p.id !== id);
-      persistStore();
-      render();
-    }
-
+    function deletePlan(id) { store.plans = store.plans.filter(p => p.id !== id); persistStore(); render(); }
     function launchPlan(id) {
       const p = store.plans.find(x => x.id === id);
       if (!p) return;
-      openBatchModal({ category: p.category || 'meat', existing: false, presetCut: p.cutId, presetTitle: p.title, presetWeight: p.estWeight, fromPlanId: id });
+      openPassportModal({ mode: 'new', category: p.category || 'meat', presetCut: p.cutId, presetTitle: p.title, presetWeight: p.estWeight, fromPlanId: id });
     }
 
-    // Settings
     function openSettings() {
       document.getElementById('loss-base-btn').textContent = store.settings.lossBase === 'raw' ? 'От сырого' : 'От навески';
       document.getElementById('settings-modal').classList.add('open');
       haptic('light');
-      syncAndroidBackState();
-    }
-    function closeSettings() {
-      document.getElementById('settings-modal').classList.remove('open');
       syncAndroidBackState();
     }
     function toggleLossBase() {
@@ -2692,7 +2870,7 @@
       store = createSousChefSeed();
       ui.selectedId = store.batches[0].id;
       persistStore();
-      closeSettings();
+      closeAllModals();
       showToast('Архив «Су Шеф» загружен');
       navigate('home');
     }
@@ -2702,13 +2880,13 @@
       store.plans = [];
       ui.selectedId = null;
       persistStore();
-      closeSettings();
+      closeAllModals();
       showToast('Очищено');
       navigate('home');
     }
 
     // =========================================================================
-    // 8. COMPACT ADD / EDIT MODAL
+    // 9. CLEAN PASSPORT MODAL (ADD NEW OR EDIT BASIC PASSPORT)
     // =========================================================================
     function buildMeatOptions(sel) {
       const groups = {};
@@ -2723,260 +2901,190 @@
       `).join('');
     }
 
-    function openBatchModal(opts) {
+    function openPassportModal(opts) {
       const o = opts || {};
-      ui.modal.editingId = o.editId || null;
-      ui.modal.fromPlanId = o.fromPlanId || null;
+      ui.pm.editingId = o.editId || null;
+      ui.pm.fromPlanId = o.fromPlanId || null;
 
-      const modal = document.getElementById('batch-modal');
-      const delBtn = document.getElementById('m-delete-btn');
-      const existBtn = document.getElementById('exist-toggle-btn');
+      const isEdit = !!ui.pm.editingId;
+      document.getElementById('pm-cat-bar').classList.toggle('hidden', isEdit);
+      document.getElementById('pm-initial-stage-section').classList.toggle('hidden', isEdit);
+      document.getElementById('pm-delete-btn').classList.toggle('hidden', !isEdit);
 
-      if (ui.modal.editingId) {
-        const b = store.batches.find(x => x.id === ui.modal.editingId);
+      if (isEdit) {
+        const b = store.batches.find(x => x.id === ui.pm.editingId);
         if (!b) return;
-        document.getElementById('modal-heading').textContent = 'Редактировать';
-        delBtn.classList.remove('hidden');
-        existBtn.classList.add('hidden');
-        ui.modal.category = b.category;
-        ui.modal.existing = false;
-        ui.modal.phase = b.phase === 'done' ? 'dry' : b.phase;
-        ui.modal.dryMethod = b.dryMethod || 'casing';
-        ui.modal.smoked = !!b.smoked;
-        ui.modal.locId = b.locId || 'fridge_12';
-
-        syncModalUI(true);
-        document.getElementById('m-cut').value = b.cutId || (b.category === 'pepper' ? 'pepper_vac' : 'pork_coppa');
-        document.getElementById('m-title').value = b.title;
-        document.getElementById('m-weight').value = b.initialWeight;
-        document.getElementById('m-target').value = b.category === 'pepper' ? (b.targetDays || 21) : (b.targetLossPct || 34);
-        document.getElementById('m-brine').value = b.brineWater || 0;
-        document.getElementById('m-notes').value = b.notes || '';
-        refreshModalHint();
+        document.getElementById('pm-heading').textContent = 'Паспорт куска';
+        ui.pm.category = b.category;
+        populatePmCutDropdown(b.cutId);
+        document.getElementById('pm-title').value = b.title;
+        document.getElementById('pm-weight').value = b.initialWeight;
+        document.getElementById('pm-target').value = b.category === 'pepper' ? (b.targetDays || 21) : (b.targetLossPct || 34);
+        document.getElementById('pm-notes').value = b.notes || '';
+        refreshPmHint();
       } else {
-        document.getElementById('modal-heading').textContent = 'Новая закладка';
-        delBtn.classList.add('hidden');
-        existBtn.classList.remove('hidden');
-        ui.modal.category = o.category === 'pepper' ? 'pepper' : 'meat';
-        ui.modal.existing = !!o.existing;
-        ui.modal.phase = ui.modal.category === 'pepper' ? 'ferm_vac' : (ui.modal.existing ? 'dry' : 'cure');
-        ui.modal.dryMethod = 'casing';
-        ui.modal.smoked = false;
-        ui.modal.locId = ui.modal.category === 'pepper' ? 'room_22' : (ui.modal.phase === 'dry' ? 'fridge_12' : 'fridge_3');
+        document.getElementById('pm-heading').textContent = 'Новая закладка';
+        ui.pm.category = o.category === 'pepper' ? 'pepper' : 'meat';
+        ui.pm.phase = ui.pm.category === 'pepper' ? 'ferm_vac' : 'cure';
+        ui.pm.dryMethod = 'casing';
+        ui.pm.smoked = false;
 
-        syncModalUI(false);
-        if (o.presetCut) document.getElementById('m-cut').value = o.presetCut;
-        document.getElementById('m-title').value = o.presetTitle || '';
-        document.getElementById('m-weight').value = o.presetWeight || (ui.modal.category === 'pepper' ? 600 : 1200);
-        document.getElementById('m-cur-weight').value = '';
-        document.getElementById('m-start-date').value = daysAgoISO(14);
-        document.getElementById('m-notes').value = '';
-        onModalCutChange();
+        document.getElementById('pm-cat-meat').classList.toggle('active', ui.pm.category === 'meat');
+        document.getElementById('pm-cat-pepper').classList.toggle('active', ui.pm.category === 'pepper');
+        populatePmCutDropdown(o.presetCut);
+        document.getElementById('pm-title').value = o.presetTitle || '';
+        document.getElementById('pm-weight').value = o.presetWeight || (ui.pm.category === 'pepper' ? 600 : 1200);
+        document.getElementById('pm-start-date').value = daysAgoISO(0);
+        document.getElementById('pm-cur-weight').value = '';
+        document.getElementById('pm-notes').value = '';
+        onPmCutChange();
       }
 
-      modal.classList.add('open');
-      document.getElementById('sheet-panel').scrollTop = 0;
+      document.getElementById('passport-modal').classList.add('open');
+      document.getElementById('passport-panel').scrollTop = 0;
       haptic('light');
       syncAndroidBackState();
     }
 
-    function closeBatchModal() {
-      document.getElementById('batch-modal').classList.remove('open');
-      syncAndroidBackState();
-    }
-
-    function setModalCat(c) {
-      ui.modal.category = c;
-      ui.modal.phase = c === 'pepper' ? 'ferm_vac' : (ui.modal.existing ? 'dry' : 'cure');
-      ui.modal.locId = c === 'pepper' ? 'room_22' : (ui.modal.phase === 'dry' ? 'fridge_12' : 'fridge_3');
-      document.getElementById('m-weight').value = c === 'pepper' ? 600 : 1200;
-      haptic('light');
-      syncModalUI(false);
-      onModalCutChange();
-    }
-
-    function toggleModalExisting() {
-      ui.modal.existing = !ui.modal.existing;
-      if (ui.modal.category === 'meat' && ui.modal.existing) {
-        ui.modal.phase = 'dry';
-        ui.modal.locId = 'fridge_12';
-      }
-      haptic('light');
-      syncModalUI(false);
-      refreshModalHint();
-    }
-
-    function syncModalUI(isEdit) {
-      const isMeat = ui.modal.category === 'meat';
-      document.getElementById('cat-meat-btn').classList.toggle('active', isMeat);
-      document.getElementById('cat-pepper-btn').classList.toggle('active', !isMeat);
-      document.getElementById('exist-toggle-btn').classList.toggle('active', ui.modal.existing);
-      document.getElementById('m-existing-box').classList.toggle('hidden', isEdit || !ui.modal.existing);
-      document.getElementById('m-cur-w-wrap').classList.toggle('hidden', !isMeat);
-
-      const cutSel = document.getElementById('m-cut');
-      if (isMeat) {
-        document.getElementById('m-cut-lbl').textContent = 'Отруб / вид мяса';
-        document.getElementById('m-target-lbl').textContent = 'Усушка (%)';
-        cutSel.innerHTML = buildMeatOptions(cutSel.value || 'pork_coppa');
+    function populatePmCutDropdown(sel) {
+      const cutSel = document.getElementById('pm-cut');
+      if (ui.pm.category === 'meat') {
+        document.getElementById('pm-cut-lbl').textContent = 'Отруб / вид мяса';
+        document.getElementById('pm-target-lbl').textContent = 'Цель усушки (%)';
+        cutSel.innerHTML = buildMeatOptions(sel || 'pork_coppa');
       } else {
-        document.getElementById('m-cut-lbl').textContent = 'Способ ферментации';
-        document.getElementById('m-target-lbl').textContent = 'Срок (дн)';
-        cutSel.innerHTML = Object.entries(PEPPER_CATALOG).map(([id, p]) => `<option value="${id}">${p.label}</option>`).join('');
+        document.getElementById('pm-cut-lbl').textContent = 'Способ ферментации';
+        document.getElementById('pm-target-lbl').textContent = 'Срок (дн)';
+        cutSel.innerHTML = Object.entries(PEPPER_CATALOG).map(([id, p]) => `<option value="${id}" ${id===sel?'selected':''}>${p.label}</option>`).join('');
       }
-
-      renderModalPhasePicker();
-      renderModalLocPicker();
     }
 
-    function renderModalPhasePicker() {
-      const isMeat = ui.modal.category === 'meat';
-      const holder = document.getElementById('m-phase-picker');
+    function setPmCat(cat) {
+      ui.pm.category = cat;
+      ui.pm.phase = cat === 'pepper' ? 'ferm_vac' : 'cure';
+      document.getElementById('pm-cat-meat').classList.toggle('active', cat === 'meat');
+      document.getElementById('pm-cat-pepper').classList.toggle('active', cat === 'pepper');
+      document.getElementById('pm-weight').value = cat === 'pepper' ? 600 : 1200;
+      haptic('light');
+      populatePmCutDropdown();
+      onPmCutChange();
+    }
+
+    function renderPmPhasePicker() {
+      const isMeat = ui.pm.category === 'meat';
       const phases = isMeat ? ['cure', 'dry', 'vacuum'] : ['ferm_vac', 'ferm_brine'];
-      holder.className = isMeat ? 'stage-bar-3' : 'seg-toggle';
-      holder.style.background = 'var(--white)';
-      holder.innerHTML = phases.map(p => `
-        <button type="button" class="phase-btn ${ui.modal.phase === p ? 'active' : ''}" onclick="selectModalPhase('${p}')">
-          ${PHASES[p].tab}
-        </button>
-      `).join('');
+      document.getElementById('pm-phase-grid').style.gridTemplateColumns = isMeat ? 'repeat(3, 1fr)' : '1fr 1fr';
+      document.getElementById('pm-phase-grid').innerHTML = phases.map(pId => {
+        const p = PHASES[pId];
+        return `
+          <button type="button" class="stage-pick-card ${ui.pm.phase === pId ? 'selected' : ''}" style="padding:9px 8px;text-align:center;align-items:center;" onclick="selectPmPhase('${pId}')">
+            <span>${p.short}</span>
+          </button>
+        `;
+      }).join('');
 
-      document.getElementById('m-dry-method-wrap').classList.toggle('hidden', !(isMeat && ui.modal.phase === 'dry'));
-      document.getElementById('m-brine-wrap').classList.toggle('hidden', !(!isMeat && ui.modal.phase === 'ferm_brine'));
+      document.getElementById('pm-dry-method-wrap').classList.toggle('hidden', !(isMeat && ui.pm.phase === 'dry'));
+      document.getElementById('pm-brine-wrap').classList.toggle('hidden', !(!isMeat && ui.pm.phase === 'ferm_brine'));
+      document.getElementById('pm-cur-w-wrap').classList.toggle('hidden', !isMeat);
 
-      if (isMeat && ui.modal.phase === 'dry') {
-        document.getElementById('m-dry-method-chips').innerHTML = Object.values(DRY_METHODS).map(m => `
-          <button type="button" class="sub-chip ${ui.modal.dryMethod === m.id ? 'active' : ''}" onclick="selectModalDryMethod('${m.id}')">${m.label}</button>
-        `).join('') + `<button type="button" class="sub-chip ${ui.modal.smoked ? 'active' : ''}" onclick="toggleModalSmoked()">💨 Копчёное</button>`;
+      if (isMeat && ui.pm.phase === 'dry') {
+        document.getElementById('pm-dry-chips').innerHTML = Object.values(DRY_METHODS).map(m => `
+          <button type="button" class="sub-chip ${ui.pm.dryMethod === m.id ? 'active' : ''}" onclick="selectPmDryMethod('${m.id}')">${m.label}</button>
+        `).join('') + `<button type="button" class="sub-chip ${ui.pm.smoked ? 'active' : ''}" onclick="togglePmSmoked()">💨 Копчёное</button>`;
       }
     }
 
-    function selectModalPhase(p) {
-      ui.modal.phase = p;
-      ui.modal.locId = (p === 'dry' && ui.modal.dryMethod === 'membrane') ? 'fridge_3' : PHASES[p].defLoc;
-      haptic('light');
-      renderModalPhasePicker();
-      renderModalLocPicker();
-      refreshModalHint();
-    }
+    function selectPmPhase(p) { ui.pm.phase = p; haptic('light'); renderPmPhasePicker(); refreshPmHint(); }
+    function selectPmDryMethod(m) { ui.pm.dryMethod = m; haptic('light'); renderPmPhasePicker(); }
+    function togglePmSmoked() { ui.pm.smoked = !ui.pm.smoked; haptic('light'); renderPmPhasePicker(); }
 
-    function selectModalDryMethod(m) {
-      ui.modal.dryMethod = m;
-      ui.modal.locId = m === 'membrane' ? 'fridge_3' : 'fridge_12';
-      haptic('light');
-      renderModalPhasePicker();
-      renderModalLocPicker();
-    }
-
-    function toggleModalSmoked() {
-      ui.modal.smoked = !ui.modal.smoked;
-      haptic('light');
-      renderModalPhasePicker();
-    }
-
-    function renderModalLocPicker() {
-      const holder = document.getElementById('m-loc-picker');
-      const allowed = ui.modal.category === 'pepper' ? ['room_22', 'fridge_12', 'fridge_3'] : ['fridge_3', 'fridge_12'];
-      if (!allowed.includes(ui.modal.locId)) ui.modal.locId = allowed[0];
-      holder.innerHTML = allowed.map(id => {
-        const l = LOCATIONS[id];
-        return `<button type="button" class="loc-btn ${ui.modal.locId === id ? 'selected' : ''}" onclick="selectModalLoc('${id}')">${l.icon} ${l.label}</button>`;
-      }).join('');
-    }
-
-    function selectModalLoc(id) { ui.modal.locId = id; haptic('light'); renderModalLocPicker(); }
-    function setStartAgo(d) { document.getElementById('m-start-date').value = daysAgoISO(d); haptic('light'); refreshModalHint(); }
-
-    function onModalCutChange() {
-      const val = document.getElementById('m-cut').value;
-      if (ui.modal.category === 'meat') {
+    function onPmCutChange() {
+      const val = document.getElementById('pm-cut').value;
+      if (ui.pm.category === 'meat') {
         const cut = getCut(val);
-        document.getElementById('m-target').value = cut.optLoss;
-        document.getElementById('m-title').placeholder = cut.defTitle;
-        ui.modal.dryMethod = cut.optMethod;
-        renderModalPhasePicker();
+        document.getElementById('pm-target').value = cut.optLoss;
+        document.getElementById('pm-title').placeholder = cut.defTitle;
+        ui.pm.dryMethod = cut.optMethod;
       } else {
         const p = PEPPER_CATALOG[val] || PEPPER_CATALOG.pepper_vac;
-        document.getElementById('m-target').value = p.targetDays;
-        document.getElementById('m-brine').value = p.defBrine;
-        document.getElementById('m-title').placeholder = p.defTitle;
-        ui.modal.phase = p.optPhase;
-        renderModalPhasePicker();
+        document.getElementById('pm-target').value = p.targetDays;
+        document.getElementById('pm-brine').value = p.defBrine;
+        document.getElementById('pm-title').placeholder = p.defTitle;
+        ui.pm.phase = p.optPhase;
       }
-      refreshModalHint();
+      renderPmPhasePicker();
+      refreshPmHint();
     }
 
-    function refreshModalHint() {
-      const box = document.getElementById('m-opt-hint');
-      const w = parseInt(document.getElementById('m-weight').value, 10) || 1000;
-      const tVal = parseInt(document.getElementById('m-target').value, 10) || 34;
+    function refreshPmHint() {
+      const box = document.getElementById('pm-opt-hint');
+      const w = parseInt(document.getElementById('pm-weight').value, 10) || 1000;
+      const tVal = parseInt(document.getElementById('pm-target').value, 10) || 34;
 
-      if (ui.modal.category === 'meat') {
-        const cut = getCut(document.getElementById('m-cut').value);
+      if (ui.pm.category === 'meat') {
+        const cut = getCut(document.getElementById('pm-cut').value);
         const saltTotal = (w * cut.saltPct / 100).toFixed(1);
         const finW = Math.round(w * (1 - tVal / 100));
-        box.innerHTML = `<b>✨ Оптимально: −${cut.optLoss}% · ${(DRY_METHODS[cut.optMethod] || DRY_METHODS.casing).label}</b> · посол ~${cut.cureDays}д<br/>🧂 Соль ${cut.saltPct}%: <b>${saltTotal} г</b> (нитритная или 50/50) · Цель: <b>${finW} г</b>`;
+        box.innerHTML = `<b>✨ Оптимально: −${cut.optLoss}% · ${(DRY_METHODS[cut.optMethod] || DRY_METHODS.casing).label}</b> · посол ~${cut.cureDays}д<br/>🧂 Соль ${cut.saltPct}%: <b>${saltTotal} г</b> · Готовый вес: <b>${finW} г</b>`;
       } else {
-        const p = PEPPER_CATALOG[document.getElementById('m-cut').value] || PEPPER_CATALOG.pepper_vac;
-        const brine = ui.modal.phase === 'ferm_brine' ? (parseInt(document.getElementById('m-brine').value, 10) || 0) : 0;
-        const pct = ui.modal.phase === 'ferm_brine' ? 3.5 : p.saltPct;
+        const p = PEPPER_CATALOG[document.getElementById('pm-cut').value] || PEPPER_CATALOG.pepper_vac;
+        const brine = ui.pm.phase === 'ferm_brine' ? (parseInt(document.getElementById('pm-brine').value, 10) || 0) : 0;
+        const pct = ui.pm.phase === 'ferm_brine' ? 3.5 : p.saltPct;
         const saltG = ((w + brine) * pct / 100).toFixed(1);
         box.innerHTML = `<b>🌶 Оптимально: ${pct}% соли · ${p.targetDays} дн</b><br/>🧂 Соль на ${w + brine} г: <b>${saltG} г</b> неиодированной соли`;
       }
     }
 
-    function saveBatchModal() {
+    function savePassportModal() {
       dismissKeyboard();
-      const cat = ui.modal.category;
-      const cutId = document.getElementById('m-cut').value;
+      const cat = ui.pm.category;
+      const cutId = document.getElementById('pm-cut').value;
       const cutObj = cat === 'meat' ? getCut(cutId) : (PEPPER_CATALOG[cutId] || PEPPER_CATALOG.pepper_vac);
-      const title = document.getElementById('m-title').value.trim() || cutObj.defTitle;
-      const w = Math.max(40, parseInt(document.getElementById('m-weight').value, 10) || 1000);
-      const targetVal = Math.max(1, parseInt(document.getElementById('m-target').value, 10) || 34);
-      const brine = cat === 'pepper' && ui.modal.phase === 'ferm_brine' ? Math.max(0, parseInt(document.getElementById('m-brine').value, 10) || 0) : 0;
-      const notes = document.getElementById('m-notes').value.trim();
+      const title = document.getElementById('pm-title').value.trim() || cutObj.defTitle;
+      const w = Math.max(40, parseInt(document.getElementById('pm-weight').value, 10) || 1000);
+      const targetVal = Math.max(1, parseInt(document.getElementById('pm-target').value, 10) || 34);
+      const notes = document.getElementById('pm-notes').value.trim();
 
-      if (ui.modal.editingId) {
-        const b = store.batches.find(x => x.id === ui.modal.editingId);
+      if (ui.pm.editingId) {
+        const b = store.batches.find(x => x.id === ui.pm.editingId);
         if (b) {
-          b.category = cat;
           b.cutId = cutId;
           b.title = title;
           b.initialWeight = w;
-          if (b.weightLogs.length === 1) b.weightLogs[0].weight = w;
-          b.targetLossPct = cat === 'meat' ? targetVal : 0;
-          b.targetDays = cat === 'pepper' ? targetVal : 0;
-          b.brineWater = brine;
-          b.dryMethod = ui.modal.dryMethod;
-          b.smoked = ui.modal.smoked;
-          b.locId = ui.modal.locId;
+          if (b.weightLogs.length) b.weightLogs[0].weight = w;
+          if (cat === 'meat') b.targetLossPct = targetVal;
+          else b.targetDays = targetVal;
           b.notes = notes;
-          if (b.phase !== ui.modal.phase && b.phase !== 'done') moveBatchToPhase(b.id, ui.modal.phase);
         }
         persistStore();
-        closeBatchModal();
+        closeAllModals();
         ui.draftWeight = null;
         haptic('success');
-        showToast('Сохранено');
+        showToast('Паспорт сохранён');
         render();
         return;
       }
 
       const today = daysAgoISO(0);
-      const rawStart = document.getElementById('m-start-date').value;
-      const createdAt = (ui.modal.existing && rawStart && rawStart <= today) ? rawStart : today;
-      const phaseHistory = [{ phase: ui.modal.phase, startDate: createdAt, endDate: null }];
-      const weightLogs = [{ date: createdAt, weight: w, phase: ui.modal.phase, note: 'Старт' }];
+      const startDate = document.getElementById('pm-start-date').value || today;
+      const brine = cat === 'pepper' && ui.pm.phase === 'ferm_brine' ? Math.max(0, parseInt(document.getElementById('pm-brine').value, 10) || 0) : 0;
 
-      if (ui.modal.existing && cat === 'meat') {
-        const curW = parseInt(document.getElementById('m-cur-weight').value, 10);
+      const firstEntry = { phase: ui.pm.phase, startDate, endDate: null };
+      if (ui.pm.phase === 'dry') {
+        firstEntry.method = ui.pm.dryMethod;
+        firstEntry.smoked = ui.pm.smoked;
+      }
+      const weightLogs = [{ date: startDate, weight: w, phase: ui.pm.phase, note: 'Старт' }];
+
+      if (cat === 'meat') {
+        const curW = parseInt(document.getElementById('pm-cur-weight').value, 10);
         if (!isNaN(curW) && curW > 20 && curW !== w) {
-          weightLogs.push({ date: today, weight: curW, phase: ui.modal.phase, note: 'Текущий вес' });
+          weightLogs.push({ date: today, weight: curW, phase: ui.pm.phase, note: 'Вес при добавлении' });
         }
       }
 
       const id = 'b-' + Date.now();
-      store.batches.unshift({
+      const newBatch = {
         id,
         category: cat,
         title,
@@ -2986,43 +3094,44 @@
         brineWater: brine,
         targetLossPct: cat === 'meat' ? targetVal : 0,
         targetDays: cat === 'pepper' ? targetVal : 0,
-        phase: ui.modal.phase,
-        dryMethod: ui.modal.dryMethod,
-        smoked: ui.modal.smoked,
-        locId: ui.modal.locId,
-        saltPct: cat === 'meat' ? cutObj.saltPct : (ui.modal.phase === 'ferm_brine' ? 3.5 : cutObj.saltPct),
+        phase: ui.pm.phase,
+        dryMethod: ui.pm.dryMethod,
+        smoked: ui.pm.smoked,
+        locId: cat === 'pepper' ? 'room_22' : (ui.pm.phase === 'dry' && ui.pm.dryMethod !== 'membrane' ? 'fridge_12' : 'fridge_3'),
+        saltPct: cat === 'meat' ? cutObj.saltPct : (ui.pm.phase === 'ferm_brine' ? 3.5 : cutObj.saltPct),
         puffed: false,
         degasCount: 0,
         phValue: 4.0,
-        createdAt,
+        createdAt: startDate,
         notes,
         verdict: '',
         tastingNote: '',
-        phaseHistory,
+        phaseHistory: [firstEntry],
         weightLogs
-      });
+      };
+      normalizeBatchChronology(newBatch);
+      store.batches.unshift(newBatch);
 
-      if (ui.modal.fromPlanId) {
-        store.plans = store.plans.filter(p => p.id !== ui.modal.fromPlanId);
+      if (ui.pm.fromPlanId) {
+        store.plans = store.plans.filter(p => p.id !== ui.pm.fromPlanId);
       }
 
       ui.selectedId = id;
-      ui.inspectPhase = ui.modal.phase;
       ui.draftWeight = null;
       ui.zoneFilter = 'all';
       persistStore();
-      closeBatchModal();
+      closeAllModals();
       haptic('success');
       showToast(`Добавлено: «${title}»`);
       navigate('detail', id);
     }
 
     function deleteEditingBatch() {
-      if (!ui.modal.editingId || !confirm('Удалить эту партию?')) return;
-      store.batches = store.batches.filter(x => x.id !== ui.modal.editingId);
+      if (!ui.pm.editingId || !confirm('Удалить эту партию навсегда?')) return;
+      store.batches = store.batches.filter(x => x.id !== ui.pm.editingId);
       ui.selectedId = store.batches.length ? store.batches[0].id : null;
       persistStore();
-      closeBatchModal();
+      closeAllModals();
       haptic('medium');
       showToast('Удалено');
       navigate('home');
@@ -3031,7 +3140,7 @@
     // Boot
     loadStore();
     ui.selectedId = store.batches.length ? store.batches[0].id : null;
-    ui.inspectPhase = store.batches.length ? store.batches[0].phase : null;
+    ui.weighDateISO = daysAgoISO(0);
     render();
   </script>
 </body>
