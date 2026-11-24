@@ -4,6 +4,14 @@ import { RECIPES } from './data/recipes';
 import { matchRecipes } from './data/matcher';
 import { NebulaEngine } from './engine/nebula';
 import { WarpBurstEngine, parseGlowColors } from './engine/warpBurst';
+import {
+  bindTactilePress,
+  MorphingPillController,
+  sheetDepth,
+  TabTransitionController,
+  ToastController,
+  type ToastTone,
+} from './engine/motion';
 import { icon } from './components/icons';
 import { RecipeModal } from './views/RecipeModal';
 import { ResultsSheet } from './views/ResultsSheet';
@@ -34,24 +42,26 @@ const state: AppState = {
   lastSurpriseIdx: -1,
 };
 
-let toastTimer: ReturnType<typeof setTimeout> | null = null;
+let toastController: ToastController | null = null;
 
-function showToast(msg: string): void {
-  const el = document.getElementById('toast');
-  const txt = document.getElementById('toast-text');
-  if (!el || !txt) return;
-  txt.textContent = msg;
-  el.classList.add('visible');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    el.classList.remove('visible');
-  }, 2200);
+function showToast(msg: string, tone: ToastTone = 'default'): void {
+  toastController?.show(msg, { tone });
 }
 
 function initApp(): void {
   applyNativeInsets();
 
   const appEl = document.getElementById('cosmos-app')!;
+  const stageEl = document.getElementById('app-stage')!;
+  sheetDepth.setStageEl(stageEl);
+  bindTactilePress(appEl);
+
+  const toastEl = document.getElementById('toast');
+  const toastTextEl = document.getElementById('toast-text');
+  if (toastEl && toastTextEl) {
+    toastController = new ToastController(toastEl, toastTextEl);
+  }
+
   const canvasEl = document.getElementById('nebula-canvas') as HTMLCanvasElement;
   const tagLayerEl = document.getElementById('tag-layer')!;
   const topObstacleEl = document.getElementById('nebula-top-chrome')!;
@@ -66,6 +76,27 @@ function initApp(): void {
   const recipeModalRoot = document.getElementById('recipe-modal')!;
   const warpBurst = new WarpBurstEngine(fxCanvasEl);
   let warpLaunchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const tabFlow = new TabTransitionController<TabId>(
+    ['nebula', 'shelf', 'menu', 'saved'],
+    {
+      nebula: nebulaScreenEl,
+      shelf: shelfScreenEl,
+      menu: menuScreenEl,
+      saved: savedScreenEl,
+    },
+    { initial: 'nebula' }
+  );
+
+  const cosmicDockInnerEl = document.querySelector<HTMLElement>('.cosmic-dock')!;
+  const dockPill = new MorphingPillController({
+    container: cosmicDockInnerEl,
+    itemSelector: '.nav-item',
+    indicatorEl: document.getElementById('dock-pill-indicator'),
+    mode: 'fixed-width',
+  });
+
+  let lensPill: MorphingPillController | null = null;
 
   const getSelectedList = (): VibeTag[] => (state.selectedTag ? [state.selectedTag] : []);
   const getCurrentMatches = () => matchRecipes(getSelectedList(), state.shelf, state.shelfOnly);
@@ -224,12 +255,32 @@ function initApp(): void {
     renderConsole();
   }
 
-  function renderLenses(): void {
+  function renderLenses(immediate = false): void {
     const strip = document.getElementById('lens-strip')!;
-    strip.innerHTML = LENSES.map(
-      (l) =>
-        `<button type="button" class="lens-pill ${state.lens === l.id ? 'active' : ''}" data-lens="${l.id}">${escapeHtml(l.label)}</button>`
-    ).join('');
+    if (!strip.querySelector('[data-lens]')) {
+      const pillsHtml = LENSES.map(
+        (l) =>
+          `<button type="button" class="lens-pill ${state.lens === l.id ? 'active' : ''}" data-lens="${l.id}" role="tab" aria-selected="${state.lens === l.id ? 'true' : 'false'}">${escapeHtml(l.label)}</button>`
+      ).join('');
+      strip.innerHTML = `<span class="rail-glider" aria-hidden="true"></span>${pillsHtml}`;
+      lensPill = new MorphingPillController({
+        container: strip,
+        itemSelector: '[data-lens]',
+        indicatorSelector: '.rail-glider',
+        mode: 'adaptive-width',
+        autoScrollActive: true,
+      });
+      lensPill.sync(undefined, true);
+      requestAnimationFrame(() => lensPill?.sync(undefined, true));
+      return;
+    }
+
+    strip.querySelectorAll<HTMLElement>('[data-lens]').forEach((btn) => {
+      const isActive = btn.dataset.lens === state.lens;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    lensPill?.sync(undefined, immediate);
   }
 
   function syncShelfChip(chipEl: HTMLElement): void {
@@ -303,26 +354,29 @@ function initApp(): void {
   function switchTab(next: TabId): void {
     state.tab = next;
 
-    nebulaScreenEl.classList.toggle('hidden', next !== 'nebula');
-    shelfScreenEl.classList.toggle('hidden', next !== 'shelf');
-    menuScreenEl.classList.toggle('hidden', next !== 'menu');
-    savedScreenEl.classList.toggle('hidden', next !== 'saved');
-
     document.getElementById('cosmos-console')!.classList.toggle('hidden', next !== 'nebula');
     document.getElementById('orbit-hint')!.classList.toggle('hidden', next !== 'nebula');
 
     document.querySelectorAll<HTMLElement>('.nav-item').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.nav === next);
     });
+    dockPill.sync();
 
     if (next === 'shelf') shelfView.render();
     if (next === 'menu') menuView.render();
     if (next === 'saved') savedView.render();
     if (next === 'nebula') {
       renderConsole();
+      syncNebulaActive();
     }
 
-    syncNebulaActive();
+    tabFlow.switchTo(next, () => {
+      syncNebulaActive();
+      if (next === 'nebula') {
+        nebula.measureBounds();
+        lensPill?.sync(undefined, true);
+      }
+    });
   }
 
   // Signature v2.0 "Заебенить" blast: plasma arc + chromatic shockwaves + cocktail splash + haptic waveform
@@ -362,8 +416,8 @@ function initApp(): void {
       warpLaunchTimer = null;
       mixBtnEl.classList.remove('is-blasting');
       nebulaScreenEl.classList.remove('camera-punch');
-      resultsSheet.open(getCurrentMatches(), getSelectedList());
-    }, 220);
+      resultsSheet.open(getCurrentMatches(), getSelectedList(), { entrance: 'warp' });
+    }, 165);
   }
 
   function openOrbResults(): void {
@@ -638,11 +692,19 @@ function initApp(): void {
     }
   });
 
+  // Keep morphing pills aligned on viewport resize
+  window.addEventListener('resize', () => {
+    dockPill.sync(undefined, true);
+    lensPill?.sync(undefined, true);
+  });
+
   // Initial render & boot
-  renderLenses();
+  renderLenses(true);
   nebula.rebuildTags('all');
   renderConsole();
   updateDockBadges();
+  dockPill.sync(undefined, true);
+  requestAnimationFrame(() => dockPill.sync(undefined, true));
   nebula.start();
 }
 

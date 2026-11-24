@@ -1,4 +1,5 @@
 import type { BottleId, Recipe } from '../types';
+import { getShelfStatus } from '../data/matcher';
 import { RECIPES } from '../data/recipes';
 import { renderRecipeCard } from '../components/RecipeCard';
 import { icon } from '../components/icons';
@@ -54,8 +55,17 @@ export class SavedView {
     const shelf = this.cb.getShelf();
     const savedRecipes = RECIPES.filter((r) => savedIds.has(r.id));
 
+    let shelfCaptionHtml = '';
+    if (savedRecipes.length > 0 && shelf.size > 0) {
+      const readyCount = savedRecipes.filter((r) => getShelfStatus(r, shelf).onShelf).length;
+      shelfCaptionHtml =
+        readyCount > 0
+          ? `<p class="saved-shelf-caption">${icon('check', 'icon-xs')} С твоей полкой прямо сейчас готовы <strong>${readyCount} из ${savedRecipes.length}</strong></p>`
+          : `<p class="saved-shelf-caption">Из сохранённых пока ни один не совпадает с твоей полкой полностью.</p>`;
+    }
+
     const contentHtml = savedRecipes.length
-      ? `<div class="cards-stack">${savedRecipes
+      ? `${shelfCaptionHtml}<div class="cards-stack">${savedRecipes
           .map((recipe) =>
             renderRecipeCard({
               recipe,
@@ -68,10 +78,10 @@ export class SavedView {
         <div class="empty-state empty-state-tall">
           <div class="empty-orb">${icon('heart', 'icon-lg')}</div>
           <p class="empty-title">Тайник пока пуст</p>
-          <p class="empty-sub">Нажимай на сердечко в любом коктейле, чтобы сохранить любимые вечерние рецепты под рукой.</p>
+          <p class="empty-sub">Отмечай сердечком любимые коктейли, чтобы собрать личную вечернюю карту под рукой.</p>
           <div class="empty-actions">
-            <button type="button" class="btn-primary" data-go-nebula>В туманность</button>
-            <button type="button" class="btn-secondary" data-go-menu>Открыть карту</button>
+            <button type="button" class="btn-primary" data-go-nebula data-tactile>В туманность</button>
+            <button type="button" class="btn-secondary" data-go-menu data-tactile>Открыть карту</button>
           </div>
         </div>
       `;
@@ -80,7 +90,7 @@ export class SavedView {
       <div class="tab-scroll">
         <div class="tab-header">
           <div>
-            <p class="tab-eyebrow">Избранное</p>
+            <p class="tab-eyebrow">Личная коллекция</p>
             <h2 class="tab-title">Тайник</h2>
           </div>
           ${

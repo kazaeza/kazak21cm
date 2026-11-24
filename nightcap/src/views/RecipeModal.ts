@@ -6,6 +6,7 @@ import { TAG_MAP } from '../data/tags';
 import { renderCocktailGlass } from '../components/CocktailGlass';
 import { icon } from '../components/icons';
 import { escapeHtml, formatScaledAmount } from '../utils/html';
+import { MorphingPillController, SheetGestureController, sheetDepth } from '../engine/motion';
 
 export interface RecipeModalCallbacks {
   isSaved: (id: string) => boolean;
@@ -16,9 +17,13 @@ export interface RecipeModalCallbacks {
   onClose: () => void;
 }
 
+const MULT_INDEX: Record<number, number> = { 1: 0, 2: 1, 4: 2 };
+
 export class RecipeModal {
   private root: HTMLElement;
   private cb: RecipeModalCallbacks;
+  private gesture: SheetGestureController;
+  private multPill: MorphingPillController | null = null;
   private currentRecipe: Recipe | null = null;
   private multiplier = 1;
 
@@ -26,15 +31,20 @@ export class RecipeModal {
     this.root = root;
     this.cb = cb;
 
+    this.gesture = new SheetGestureController({
+      id: 'recipe',
+      rootEl: this.root,
+      depthManager: sheetDepth,
+      getPanelEl: () => this.root.querySelector<HTMLElement>('.recipe-modal-panel'),
+      getBackdropEl: () => this.root.querySelector<HTMLElement>('.sheet-backdrop'),
+      getScrollEl: () => this.root.querySelector<HTMLElement>('.recipe-modal-scroll'),
+      isDragHandle: (target) => Boolean(target.closest('.sheet-handle-bar, .recipe-modal-topbar')),
+      onDismiss: () => this.finalizeClose(),
+    });
+
     this.root.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
-      if (target === this.root) {
-        this.close();
-        return;
-      }
-
-      const closeBtn = target.closest<HTMLElement>('[data-close-recipe]');
-      if (closeBtn) {
+      if (target === this.root || target.closest('[data-close-recipe]')) {
         this.close();
         return;
       }
@@ -79,14 +89,24 @@ export class RecipeModal {
   }
 
   public open(recipe: Recipe): void {
+    const wasOpen = this.currentRecipe !== null;
     this.currentRecipe = recipe;
     this.multiplier = 1;
+    this.gesture.reset();
     this.render();
     this.root.classList.remove('hidden');
+    if (!wasOpen) {
+      sheetDepth.push({
+        id: 'recipe',
+        getPanelEl: () => this.root.querySelector<HTMLElement>('.recipe-modal-panel'),
+      });
+    }
     requestAnimationFrame(() => {
+      if (!this.currentRecipe) return;
       this.root.classList.add('open');
       const scroll = this.root.querySelector<HTMLElement>('.recipe-modal-scroll');
       if (scroll) scroll.scrollTop = 0;
+      this.multPill?.sync(undefined, true);
     });
   }
 
@@ -94,15 +114,25 @@ export class RecipeModal {
     if (!this.currentRecipe) return;
     this.currentRecipe = null;
     this.root.classList.remove('open');
-    setTimeout(() => {
+    this.gesture.animateClose(() => {
       if (!this.currentRecipe) {
         this.root.classList.add('hidden');
       }
-    }, 220);
+    });
+    sheetDepth.pop('recipe');
     this.cb.onClose();
   }
 
-  private renderIngredients(): void {
+  private finalizeClose(): void {
+    if (!this.currentRecipe) return;
+    this.currentRecipe = null;
+    this.root.classList.remove('open');
+    this.root.classList.add('hidden');
+    sheetDepth.pop('recipe');
+    this.cb.onClose();
+  }
+
+  private renderIngredients(immediateGlider = false): void {
     const listEl = this.root.querySelector<HTMLElement>('#modal-ingredients-list');
     if (!listEl || !this.currentRecipe) return;
     const shelf = this.cb.getShelf();
@@ -126,20 +156,31 @@ export class RecipeModal {
                 ${ing.note ? `<span class="ing-note">${escapeHtml(ing.note)}</span>` : ''}
               </div>
             </div>
+            <span class="ing-leader" aria-hidden="true"></span>
             <span class="ing-amount">${escapeHtml(scaled)}</span>
           </li>
         `;
       })
       .join('');
 
+    const multGroup = this.root.querySelector<HTMLElement>('.mult-pills');
+    if (multGroup) {
+      multGroup.style.setProperty('--mult-idx', String(MULT_INDEX[this.multiplier] ?? 0));
+    }
+
     this.root.querySelectorAll<HTMLElement>('[data-mult]').forEach((b) => {
       b.classList.toggle('active', Number(b.dataset.mult) === this.multiplier);
     });
+
+    this.multPill?.sync(undefined, immediateGlider);
   }
 
   private render(): void {
     const r = this.currentRecipe;
     if (!r) return;
+
+    this.multPill?.destroy();
+    this.multPill = null;
 
     const saved = this.cb.isSaved(r.id);
     const shelf = this.cb.getShelf();
@@ -170,7 +211,7 @@ export class RecipeModal {
       .map(
         (step, idx) => `
           <li class="step-item">
-            <span class="step-num">${idx + 1}</span>
+            <span class="step-num">${String(idx + 1).padStart(2, '0')}</span>
             <p class="step-text">${escapeHtml(step)}</p>
           </li>
         `
@@ -213,7 +254,9 @@ export class RecipeModal {
       : '';
 
     this.root.innerHTML = `
+      <div class="sheet-backdrop" data-close-recipe></div>
       <div class="recipe-modal-panel" style="--drink-glow: ${r.visual.glowColor}">
+        <div class="sheet-handle-bar"><span></span></div>
         <div class="recipe-modal-topbar">
           <button type="button" class="icon-circle-btn" data-close-recipe aria-label="Назад">
             ${icon('arrow-left', 'icon-md')}
@@ -264,10 +307,11 @@ export class RecipeModal {
           <section class="recipe-section glass-card">
             <div class="section-head-row">
               <h4 class="section-title">Ингредиенты</h4>
-              <div class="mult-pills" role="group" aria-label="Порции">
-                <button type="button" class="mult-pill active" data-mult="1">×1</button>
-                <button type="button" class="mult-pill" data-mult="2">×2</button>
-                <button type="button" class="mult-pill" data-mult="4">×4</button>
+              <div class="mult-pills" role="group" aria-label="Порции" style="--mult-idx: ${MULT_INDEX[this.multiplier] ?? 0}">
+                <span class="mult-glider" aria-hidden="true"></span>
+                <button type="button" class="mult-pill ${this.multiplier === 1 ? 'active' : ''}" data-mult="1">×1</button>
+                <button type="button" class="mult-pill ${this.multiplier === 2 ? 'active' : ''}" data-mult="2">×2</button>
+                <button type="button" class="mult-pill ${this.multiplier === 4 ? 'active' : ''}" data-mult="4">×4</button>
               </div>
             </div>
             <ul id="modal-ingredients-list" class="ing-list"></ul>
@@ -291,6 +335,16 @@ export class RecipeModal {
       </div>
     `;
 
-    this.renderIngredients();
+    const multGroup = this.root.querySelector<HTMLElement>('.mult-pills');
+    if (multGroup) {
+      this.multPill = new MorphingPillController({
+        container: multGroup,
+        itemSelector: '.mult-pill',
+        indicatorSelector: '.mult-glider',
+        mode: 'fixed-width',
+      });
+    }
+
+    this.renderIngredients(true);
   }
 }

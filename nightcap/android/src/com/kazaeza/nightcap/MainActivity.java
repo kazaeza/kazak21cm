@@ -38,7 +38,7 @@ public class MainActivity extends Activity {
 
         webView = new WebView(this);
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        webView.setBackgroundColor(Color.parseColor("#05050b"));
+        webView.setBackgroundColor(Color.parseColor("#07070c"));
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setVerticalScrollBarEnabled(false);
         webView.setHorizontalScrollBarEnabled(false);

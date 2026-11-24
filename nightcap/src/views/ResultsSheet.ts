@@ -2,6 +2,7 @@ import type { BottleId, MatchedRecipe, Recipe, VibeTag } from '../types';
 import { renderRecipeCard } from '../components/RecipeCard';
 import { icon } from '../components/icons';
 import { escapeHtml, pluralize } from '../utils/html';
+import { SheetGestureController, sheetDepth } from '../engine/motion';
 
 export interface ResultsSheetCallbacks {
   getShelf: () => Set<BottleId>;
@@ -14,9 +15,14 @@ export interface ResultsSheetCallbacks {
   onClose: () => void;
 }
 
+export interface ResultsSheetOpenOptions {
+  entrance?: 'warp' | 'standard';
+}
+
 export class ResultsSheet {
   private root: HTMLElement;
   private cb: ResultsSheetCallbacks;
+  private gesture: SheetGestureController;
   private openState = false;
   private lastMatches: MatchedRecipe[] = [];
   private lastTags: VibeTag[] = [];
@@ -25,13 +31,20 @@ export class ResultsSheet {
     this.root = root;
     this.cb = cb;
 
+    this.gesture = new SheetGestureController({
+      id: 'results',
+      rootEl: this.root,
+      depthManager: sheetDepth,
+      getPanelEl: () => this.root.querySelector<HTMLElement>('.results-panel'),
+      getBackdropEl: () => this.root.querySelector<HTMLElement>('.sheet-backdrop'),
+      getScrollEl: () => this.root.querySelector<HTMLElement>('.results-list'),
+      isDragHandle: (target) => Boolean(target.closest('.sheet-handle-bar, .results-header')),
+      onDismiss: () => this.finalizeClose(),
+    });
+
     this.root.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
-      if (target === this.root) {
-        this.close();
-        return;
-      }
-      if (target.closest('[data-close-results]')) {
+      if (target === this.root || target.closest('[data-close-results]')) {
         this.close();
         return;
       }
@@ -63,14 +76,24 @@ export class ResultsSheet {
     return this.openState;
   }
 
-  public open(matches: MatchedRecipe[], selectedTags: VibeTag[]): void {
+  public open(
+    matches: MatchedRecipe[],
+    selectedTags: VibeTag[],
+    opts?: ResultsSheetOpenOptions
+  ): void {
     this.lastMatches = matches;
     this.lastTags = selectedTags;
     this.openState = true;
+    this.gesture.reset();
+    this.root.classList.toggle('warp-entrance', opts?.entrance === 'warp');
     this.render(true);
     this.root.classList.remove('hidden');
+    sheetDepth.push({
+      id: 'results',
+      getPanelEl: () => this.root.querySelector<HTMLElement>('.results-panel'),
+    });
     requestAnimationFrame(() => {
-      this.root.classList.add('open');
+      if (this.openState) this.root.classList.add('open');
     });
   }
 
@@ -84,9 +107,22 @@ export class ResultsSheet {
     if (!this.openState) return;
     this.openState = false;
     this.root.classList.remove('open');
-    setTimeout(() => {
-      if (!this.openState) this.root.classList.add('hidden');
-    }, 220);
+    this.gesture.animateClose(() => {
+      if (!this.openState) {
+        this.root.classList.add('hidden');
+        this.root.classList.remove('warp-entrance');
+      }
+    });
+    sheetDepth.pop('results');
+    this.cb.onClose();
+  }
+
+  private finalizeClose(): void {
+    if (!this.openState) return;
+    this.openState = false;
+    this.root.classList.remove('open', 'warp-entrance');
+    this.root.classList.add('hidden');
+    sheetDepth.pop('results');
     this.cb.onClose();
   }
 
@@ -189,6 +225,7 @@ export class ResultsSheet {
     }
 
     this.root.innerHTML = `
+      <div class="sheet-backdrop" data-close-results></div>
       <div class="results-panel glass-chrome" style="--sheet-accent: ${sheetAccent}">
         <div class="sheet-handle-bar"><span></span></div>
         <div class="results-header">

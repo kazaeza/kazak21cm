@@ -55,6 +55,8 @@ export class ShelfView {
   public render(): void {
     const shelf = this.cb.getShelf();
     const avail = countAvailableForShelf(shelf);
+    const totalRecipes = RECIPES.length;
+    const availPct = totalRecipes > 0 ? Math.min(100, Math.round((avail / totalRecipes) * 100)) : 0;
     const hasBottles = shelf.size > 0;
 
     const groupsHtml = BOTTLE_GROUPS.map((grp) => {
@@ -68,7 +70,7 @@ export class ShelfView {
               <h3 class="shelf-group-title">${escapeHtml(grp.title)}</h3>
               <p class="shelf-group-sub">${escapeHtml(grp.subtitle)}</p>
             </div>
-            ${selectedInGroup > 0 ? `<span class="group-count-pill">${selectedInGroup}</span>` : ''}
+            ${selectedInGroup > 0 ? `<span class="group-count-pill">${selectedInGroup}/${items.length}</span>` : ''}
           </div>
           <div class="bottle-grid">
             ${items
@@ -76,12 +78,12 @@ export class ShelfView {
                 const active = shelf.has(b.id);
                 const cnt = bottleRecipeCount.get(b.id) || 0;
                 return `
-                  <button type="button" class="bottle-tile ${active ? 'active' : ''}" data-bottle-id="${escapeHtml(b.id)}" style="--bottle-accent:${b.accent}" aria-pressed="${active ? 'true' : 'false'}">
+                  <button type="button" class="bottle-tile ${active ? 'active' : ''}" data-bottle-id="${escapeHtml(b.id)}" data-tactile style="--bottle-accent:${b.accent}" aria-pressed="${active ? 'true' : 'false'}">
+                    <span class="bottle-accent-bar" aria-hidden="true"></span>
                     <div class="bottle-tile-top">
-                      <span class="bottle-dot"></span>
-                      <span class="bottle-check">${active ? icon('check', 'icon-xs') : ''}</span>
+                      <span class="bottle-name">${escapeHtml(b.name)}</span>
+                      <span class="bottle-check" aria-hidden="true">${active ? icon('check', 'icon-xs') : ''}</span>
                     </div>
-                    <div class="bottle-name">${escapeHtml(b.name)}</div>
                     <div class="bottle-sub">${escapeHtml(b.sub)}</div>
                     <div class="bottle-count">${cnt} ${pluralize(cnt, 'коктейль', 'коктейля', 'коктейлей')}</div>
                   </button>
@@ -102,7 +104,7 @@ export class ShelfView {
           </div>
           ${
             hasBottles
-              ? `<button type="button" class="ghost-pill-btn" data-clear-shelf>${icon('trash-2', 'icon-xs')} Сбросить</button>`
+              ? `<button type="button" class="ghost-pill-btn" data-clear-shelf data-tactile>${icon('trash-2', 'icon-xs')} Сбросить</button>`
               : ''
           }
         </div>
@@ -117,21 +119,28 @@ export class ShelfView {
               }</div>
               <p class="shelf-summary-sub">${
                 hasBottles
-                  ? `Прямо сейчас можно смешать <strong>${avail}</strong> ${pluralize(avail, 'коктейль', 'коктейля', 'коктейлей')} (включая 0,0%)`
-                  : 'Выбери пару основных бутылок — и в Космосе и Карте появится быстрый фильтр «С моей полки».'
+                  ? `Можно смешать <strong>${avail}</strong> ${pluralize(avail, 'коктейль', 'коктейля', 'коктейлей')} прямо сейчас`
+                  : 'Выбери пару базовых бутылок — и откроется фильтр «С моей полки».'
               }</p>
             </div>
             ${
               hasBottles
-                ? `<button type="button" class="btn-primary btn-compact" data-show-available>Открыть (${avail})</button>`
+                ? `<button type="button" class="btn-primary btn-compact" data-show-available data-tactile>Открыть (${avail})</button>`
                 : ''
             }
           </div>
 
+          <div class="shelf-progress" aria-label="Покрытие барной карты">
+            <div class="shelf-progress-track">
+              <div class="shelf-progress-fill" style="width:${availPct}%"></div>
+            </div>
+            <span class="shelf-progress-meta">${avail} / ${totalRecipes}</span>
+          </div>
+
           <div class="preset-row">
-            <span class="preset-label">Быстрый старт:</span>
+            <span class="preset-label">Быстрый старт</span>
             ${SHELF_PRESETS.map(
-              (p) => `<button type="button" class="preset-chip" data-preset-id="${escapeHtml(p.id)}">${escapeHtml(p.label)}</button>`
+              (p) => `<button type="button" class="preset-chip" data-preset-id="${escapeHtml(p.id)}" data-tactile>${escapeHtml(p.label)}</button>`
             ).join('')}
           </div>
         </div>

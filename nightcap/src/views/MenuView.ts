@@ -4,6 +4,7 @@ import { CATEGORY_LABELS, RECIPES } from '../data/recipes';
 import { renderRecipeCard } from '../components/RecipeCard';
 import { icon } from '../components/icons';
 import { escapeHtml, pluralize } from '../utils/html';
+import { MorphingPillController } from '../engine/motion';
 
 export type MenuFilterId = 'all' | 'shelf' | RecipeCategory | 'light' | 'strong';
 
@@ -34,6 +35,8 @@ export class MenuView {
   private query = '';
   private filter: MenuFilterId = 'all';
   private initialized = false;
+  private lastShelfVisible: boolean | null = null;
+  private railPill: MorphingPillController | null = null;
 
   constructor(root: HTMLElement, cb: MenuViewCallbacks) {
     this.root = root;
@@ -99,17 +102,20 @@ export class MenuView {
             <span id="menu-count-pill" class="group-count-pill"></span>
           </div>
 
-          <div class="menu-search-wrap">
-            <div class="search-field glass-card">
-              ${icon('search', 'icon-sm text-muted')}
-              <input id="menu-search-input" type="search" autocomplete="off" placeholder="Поиск: негрони, джин, маракуйя, 0%…" />
-              <button type="button" id="menu-search-clear" class="search-clear-btn hidden" data-clear-menu-search aria-label="Очистить">
-                ${icon('x', 'icon-xs')}
-              </button>
+          <div class="menu-sticky-bar">
+            <div class="menu-search-wrap">
+              <div class="search-field glass-card">
+                ${icon('search', 'icon-sm text-muted')}
+                <input id="menu-search-input" type="search" autocomplete="off" placeholder="Поиск: негрони, джин, маракуйя, 0%…" />
+                <button type="button" id="menu-search-clear" class="search-clear-btn hidden" data-clear-menu-search aria-label="Очистить">
+                  ${icon('x', 'icon-xs')}
+                </button>
+              </div>
             </div>
+
+            <div id="menu-filter-rail" class="pill-rail" role="tablist" aria-label="Категории коктейлей"></div>
           </div>
 
-          <div id="menu-filter-rail" class="pill-rail"></div>
           <div id="menu-list" class="cards-stack"></div>
           <div class="tab-bottom-spacer"></div>
         </div>
@@ -153,18 +159,40 @@ export class MenuView {
 
   private updateFiltersAndList(): void {
     const shelf = this.cb.getShelf();
-    if (this.filter === 'shelf' && shelf.size === 0) {
+    const hasShelf = shelf.size > 0;
+    if (this.filter === 'shelf' && !hasShelf) {
       this.filter = 'all';
     }
 
     const rail = this.root.querySelector<HTMLElement>('#menu-filter-rail');
     if (rail) {
-      rail.innerHTML = MENU_FILTERS.filter((f) => f.id !== 'shelf' || shelf.size > 0)
-        .map(
-          (f) =>
-            `<button type="button" class="filter-pill ${this.filter === f.id ? 'active' : ''}" data-menu-filter="${f.id}">${escapeHtml(f.label)}</button>`
-        )
-        .join('');
+      if (this.lastShelfVisible !== hasShelf || !rail.querySelector('[data-menu-filter]')) {
+        this.lastShelfVisible = hasShelf;
+        this.railPill?.destroy();
+        const pillsHtml = MENU_FILTERS.filter((f) => f.id !== 'shelf' || hasShelf)
+          .map(
+            (f) =>
+              `<button type="button" class="filter-pill ${this.filter === f.id ? 'active' : ''}" data-menu-filter="${f.id}" role="tab" aria-selected="${this.filter === f.id ? 'true' : 'false'}">${escapeHtml(f.label)}</button>`
+          )
+          .join('');
+        rail.innerHTML = `<span class="rail-glider" aria-hidden="true"></span>${pillsHtml}`;
+        this.railPill = new MorphingPillController({
+          container: rail,
+          itemSelector: '[data-menu-filter]',
+          indicatorSelector: '.rail-glider',
+          mode: 'adaptive-width',
+          autoScrollActive: true,
+        });
+        this.railPill.sync(undefined, true);
+        requestAnimationFrame(() => this.railPill?.sync(undefined, true));
+      } else {
+        rail.querySelectorAll<HTMLElement>('[data-menu-filter]').forEach((btn) => {
+          const isActive = btn.dataset.menuFilter === this.filter;
+          btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        this.railPill?.sync();
+      }
     }
     this.updateList();
   }
