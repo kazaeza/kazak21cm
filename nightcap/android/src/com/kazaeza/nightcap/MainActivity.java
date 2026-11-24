@@ -201,6 +201,13 @@ public class MainActivity extends Activity {
                 }
                 if (vibrator == null || !vibrator.hasVibrator()) return;
 
+                if ("blast".equals(style)) {
+                    long[] timings = new long[]{0L, 14L, 28L, 42L, 24L, 16L};
+                    int[] amplitudes = new int[]{0, 145, 0, 255, 0, 120};
+                    vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1));
+                    return;
+                }
+
                 long ms = 12L;
                 int amp = 75;
                 if ("medium".equals(style)) {

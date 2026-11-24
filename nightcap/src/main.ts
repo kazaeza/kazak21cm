@@ -3,6 +3,7 @@ import { LENSES, SURPRISES, TAGS, TAG_MAP } from './data/tags';
 import { RECIPES } from './data/recipes';
 import { matchRecipes } from './data/matcher';
 import { NebulaEngine } from './engine/nebula';
+import { WarpBurstEngine, parseGlowColors } from './engine/warpBurst';
 import { icon } from './components/icons';
 import { RecipeModal } from './views/RecipeModal';
 import { ResultsSheet } from './views/ResultsSheet';
@@ -61,7 +62,10 @@ function initApp(): void {
   const menuScreenEl = document.getElementById('screen-menu')!;
   const savedScreenEl = document.getElementById('screen-saved')!;
   const resultsRoot = document.getElementById('results-sheet')!;
+  const fxCanvasEl = document.getElementById('fx-canvas') as HTMLCanvasElement;
   const recipeModalRoot = document.getElementById('recipe-modal')!;
+  const warpBurst = new WarpBurstEngine(fxCanvasEl);
+  let warpLaunchTimer: ReturnType<typeof setTimeout> | null = null;
 
   const getSelectedList = (): VibeTag[] => (state.selectedTag ? [state.selectedTag] : []);
   const getCurrentMatches = () => matchRecipes(getSelectedList(), state.shelf, state.shelfOnly);
@@ -266,10 +270,18 @@ function initApp(): void {
       const dotEl = document.getElementById('selected-vibe-dot')!;
       const titleEl = document.getElementById('selected-vibe-title')!;
       const subEl = document.getElementById('selected-vibe-sub')!;
+      const mixBtnEl = document.getElementById('mix-btn')!;
+      const [c1, c2] = parseGlowColors(state.selectedTag.glow);
+
       dotEl.textContent = state.selectedTag.emoji || '🍸';
       dotEl.style.background = state.selectedTag.glow || 'linear-gradient(135deg,#f7b2d9,#87b8ff)';
+      dotEl.style.boxShadow = `0 0 18px ${c1}88`;
+      mixBtnEl.style.setProperty('--cta-c1', c1);
+      mixBtnEl.style.setProperty('--cta-c2', c2);
+
       titleEl.textContent = state.selectedTag.label;
       subEl.textContent = state.selectedTag.sub || 'свой запрос';
+      nebula.setAccentGlow(state.selectedTag.glow);
     }
 
     requestAnimationFrame(() => nebula.measureBounds());
@@ -313,8 +325,58 @@ function initApp(): void {
     syncNebulaActive();
   }
 
-  function openResults(): void {
+  // Signature v2.0 "Заебенить" blast: plasma arc + chromatic shockwaves + cocktail splash + haptic waveform
+  function launchWarpResults(): void {
+    if (warpLaunchTimer !== null) return;
+
+    haptic('blast');
+    if (state.tab !== 'nebula') {
+      switchTab('nebula');
+    }
+
+    const mixBtnEl = document.getElementById('mix-btn')!;
+    const appRect = appEl.getBoundingClientRect();
+    const btnRect = mixBtnEl.getBoundingClientRect();
+    const originX = (btnRect.left + btnRect.right) * 0.5 - appRect.left;
+    const originY = (btnRect.top + btnRect.bottom) * 0.5 - appRect.top;
+    const tagPos = nebula.getSelectedNodeScreenPos();
+
+    nebula.triggerWarpPulse();
+    warpBurst.trigger({
+      originX,
+      originY,
+      sourceX: tagPos?.x ?? null,
+      sourceY: tagPos?.y ?? null,
+      glow: state.selectedTag?.glow ?? null,
+      emoji: state.selectedTag?.emoji ?? '🍸',
+      intensity: 'full',
+    });
+
+    mixBtnEl.classList.remove('is-blasting');
+    nebulaScreenEl.classList.remove('camera-punch');
+    void mixBtnEl.offsetWidth;
+    mixBtnEl.classList.add('is-blasting');
+    nebulaScreenEl.classList.add('camera-punch');
+
+    warpLaunchTimer = setTimeout(() => {
+      warpLaunchTimer = null;
+      mixBtnEl.classList.remove('is-blasting');
+      nebulaScreenEl.classList.remove('camera-punch');
+      resultsSheet.open(getCurrentMatches(), getSelectedList());
+    }, 220);
+  }
+
+  function openOrbResults(): void {
     haptic('success');
+    const orbBtnEl = document.getElementById('center-orb-btn')!;
+    const appRect = appEl.getBoundingClientRect();
+    const orbRect = orbBtnEl.getBoundingClientRect();
+    warpBurst.trigger({
+      originX: (orbRect.left + orbRect.right) * 0.5 - appRect.left,
+      originY: (orbRect.top + orbRect.bottom) * 0.5 - appRect.top,
+      glow: state.selectedTag?.glow ?? null,
+      intensity: 'mini',
+    });
     if (state.tab !== 'nebula') {
       switchTab('nebula');
     }
@@ -490,8 +552,8 @@ function initApp(): void {
   });
 
   // Confirm "Заебенить" & Center Orb
-  document.getElementById('mix-btn')!.addEventListener('click', openResults);
-  document.getElementById('center-orb-btn')!.addEventListener('click', openResults);
+  document.getElementById('mix-btn')!.addEventListener('click', launchWarpResults);
+  document.getElementById('center-orb-btn')!.addEventListener('click', openOrbResults);
 
   // Surprise button: picks ONE vibrant tag and smoothly rotates the nebula right to it!
   document.getElementById('spin-surprise-btn')!.addEventListener('click', () => {

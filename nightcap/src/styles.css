@@ -141,6 +141,16 @@ button {
   cursor: grabbing;
 }
 
+.nebula-screen.camera-punch {
+  animation: nebulaCameraPunch 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes nebulaCameraPunch {
+  0% { transform: scale(1); }
+  38% { transform: scale(1.024); }
+  100% { transform: scale(1); }
+}
+
 .nebula-tag {
   position: absolute;
   top: 0;
@@ -149,40 +159,58 @@ button {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 8px 15px;
+  padding: 8.5px 15.5px;
   border-radius: 9999px;
-  background: linear-gradient(145deg, rgba(24, 20, 44, 0.78), rgba(13, 11, 28, 0.84));
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--glow-c, #c79bff) 13%, rgba(26, 21, 48, 0.86)),
+    rgba(11, 9, 24, 0.9)
+  );
+  border: 1px solid color-mix(in srgb, var(--glow-c, #c79bff) 30%, rgba(255, 255, 255, 0.16));
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.44),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   color: #ffffff;
   white-space: nowrap;
   will-change: transform, opacity;
   contain: layout style;
-  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Pure radial-gradient halo — looks like a soft cosmic glow at 0ms GPU cost (no filter:blur!) */
 .nebula-tag::before {
   content: '';
   position: absolute;
-  inset: -16px -22px;
+  inset: -18px -26px;
   border-radius: 9999px;
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--glow-c, #c79bff) 38%, transparent) 0%, transparent 72%);
-  opacity: 0.7;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--glow-c, #c79bff) 42%, transparent) 0%,
+    color-mix(in srgb, var(--glow-c2, #87b8ff) 16%, transparent) 44%,
+    transparent 74%
+  );
+  opacity: 0.76;
   z-index: -1;
   pointer-events: none;
   transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .nebula-tag.selected {
-  background: linear-gradient(135deg, rgba(48, 36, 82, 0.92), rgba(26, 20, 52, 0.94));
-  border-color: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 0 26px color-mix(in srgb, var(--glow-c, #c79bff) 65%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--glow-c, #c79bff) 34%, rgba(44, 32, 78, 0.95)),
+    color-mix(in srgb, var(--glow-c2, #87b8ff) 26%, rgba(20, 16, 44, 0.96))
+  );
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--glow-c, #c79bff) 72%, transparent),
+    0 0 12px color-mix(in srgb, var(--glow-c2, #87b8ff) 48%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
 }
 
 .nebula-tag.selected::before {
   opacity: 1;
-  transform: scale(1.25);
+  transform: scale(1.36);
 }
 
 .tag-main {
@@ -190,7 +218,7 @@ button {
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: -0.015em;
   text-shadow: 0 2px 10px rgba(5, 4, 15, 0.85);
   line-height: 1.15;
@@ -199,13 +227,13 @@ button {
 .tag-sub {
   margin-top: 2px;
   font-size: 10.5px;
-  color: rgba(235, 228, 255, 0.8);
+  color: rgba(238, 232, 255, 0.82);
   text-shadow: 0 1px 6px rgba(5, 4, 15, 0.9);
   line-height: 1.1;
 }
 
 .tag-emoji {
-  font-size: 14.5px;
+  font-size: 15px;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -256,6 +284,18 @@ button {
 .brand-spark {
   width: 16px;
   height: 16px;
+}
+
+.brand-version {
+  margin-left: 1px;
+  padding: 1.5px 6px;
+  border-radius: 9999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #f5d6ff;
+  background: linear-gradient(135deg, rgba(247, 178, 217, 0.22), rgba(135, 184, 255, 0.22));
+  border: 1px solid rgba(232, 190, 255, 0.36);
 }
 
 .header-actions {
@@ -503,31 +543,87 @@ button {
 .clear-x-btn:active { transform: scale(0.9); }
 
 .confirm-cta-btn {
+  --cta-c1: #f7b2d9;
+  --cta-c2: #87b8ff;
+  position: relative;
+  overflow: hidden;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
+  gap: 8px;
   border-radius: 9999px;
-  padding: 12px 18px;
-  background: var(--accent-grad);
-  color: #130f24;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  box-shadow: 0 8px 26px rgba(196, 146, 255, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  transition: transform 0.14s ease, filter 0.15s ease;
+  padding: 13px 20px;
+  background: linear-gradient(
+    112deg,
+    color-mix(in srgb, var(--cta-c1) 66%, #ffe2f2) 0%,
+    color-mix(in srgb, var(--cta-c1) 38%, #e2c8ff) 48%,
+    color-mix(in srgb, var(--cta-c2) 66%, #c8e4ff) 100%
+  );
+  color: #120d24;
+  font-size: 15.5px;
+  font-weight: 850;
+  letter-spacing: -0.015em;
+  box-shadow:
+    0 8px 28px color-mix(in srgb, var(--cta-c1) 52%, transparent),
+    0 2px 10px color-mix(in srgb, var(--cta-c2) 38%, transparent),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(18, 13, 36, 0.16);
+  transition: transform 0.14s ease, box-shadow 0.22s ease;
+}
+
+.confirm-cta-shimmer {
+  position: absolute;
+  inset: 0;
+  width: 55%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.52) 50%,
+    transparent 100%
+  );
+  transform: translateX(-140%) skewX(-18deg);
+  animation: ctaShimmerSweep 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes ctaShimmerSweep {
+  0%, 35% { transform: translateX(-140%) skewX(-18deg); }
+  80%, 100% { transform: translateX(310%) skewX(-18deg); }
+}
+
+.confirm-cta-zap {
+  position: relative;
+  z-index: 1;
+  fill: currentColor;
+}
+
+.confirm-cta-label {
+  position: relative;
+  z-index: 1;
 }
 
 .confirm-cta-btn:active {
-  transform: scale(0.97);
-  filter: brightness(0.95);
+  transform: scale(0.965);
+}
+
+.confirm-cta-btn.is-blasting {
+  animation: ctaBlastRecoil 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes ctaBlastRecoil {
+  0% { transform: scale(1); }
+  32% { transform: scale(0.93); }
+  72% { transform: scale(1.035); }
+  100% { transform: scale(1); }
 }
 
 .confirm-cta-count {
+  position: relative;
+  z-index: 1;
   border-radius: 9999px;
-  background: rgba(19, 15, 36, 0.16);
-  padding: 2px 8px;
+  background: rgba(18, 13, 36, 0.18);
+  padding: 2px 9px;
   font-size: 12px;
   font-weight: 800;
 }
@@ -1006,36 +1102,57 @@ button {
 .recipe-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 20px;
-  background: linear-gradient(155deg, rgba(28, 24, 50, 0.65), rgba(14, 12, 28, 0.8));
-  border: 1px solid rgba(255, 255, 255, 0.095);
+  gap: 13px;
+  padding: 12px 13px;
+  border-radius: 21px;
+  background:
+    radial-gradient(circle at 0% 50%, color-mix(in srgb, var(--drink-glow, #c79bff) 13%, transparent), transparent 52%),
+    linear-gradient(155deg, rgba(28, 24, 52, 0.72), rgba(13, 11, 26, 0.86));
+  border: 1px solid color-mix(in srgb, var(--drink-glow, #ffffff) 18%, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.2s ease;
 }
 
+.recipe-card-enter {
+  animation: cardCascadeIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: var(--card-delay, 0ms);
+}
+
+@keyframes cardCascadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .recipe-card:active {
   transform: scale(0.985);
-  border-color: rgba(215, 175, 255, 0.35);
+  border-color: rgba(215, 175, 255, 0.42);
 }
 
 .recipe-card-glass {
-  width: 54px;
-  height: 66px;
+  width: 58px;
+  height: 70px;
   flex-shrink: 0;
-  border-radius: 14px;
-  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--drink-glow) 22%, transparent), rgba(8, 7, 18, 0.72));
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 58%, color-mix(in srgb, var(--drink-glow, #c79bff) 28%, transparent), rgba(8, 7, 18, 0.84) 76%);
+  border: 1px solid color-mix(in srgb, var(--drink-glow, #ffffff) 22%, rgba(255, 255, 255, 0.07));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3px;
+  padding: 2px;
 }
 
 .cocktail-glass-mini {
-  width: 46px;
-  height: 56px;
+  width: 50px;
+  height: 62px;
   display: block;
 }
 
@@ -1174,6 +1291,7 @@ button {
 }
 
 .results-panel {
+  --sheet-accent: #c79bff;
   width: 100%;
   max-width: 520px;
   max-height: 85%;
@@ -1181,6 +1299,10 @@ button {
   flex-direction: column;
   border-radius: 28px 28px 0 0;
   overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--sheet-accent) 20%, transparent), transparent 56%),
+    linear-gradient(155deg, rgba(22, 18, 42, 0.96), rgba(10, 9, 20, 0.98));
+  border-top: 1px solid color-mix(in srgb, var(--sheet-accent) 38%, rgba(255, 255, 255, 0.14));
   transform: translateY(28px);
   transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   padding-bottom: var(--bottom-inset);
@@ -1188,6 +1310,16 @@ button {
 
 .sheet-overlay.open .results-panel {
   transform: translateY(0);
+}
+
+.fx-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: 48;
 }
 
 .sheet-handle-bar {
@@ -1200,7 +1332,7 @@ button {
   width: 38px;
   height: 4px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.24);
 }
 
 .results-header {
@@ -1215,16 +1347,16 @@ button {
 .results-eyebrow {
   margin: 0;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: #d9b3ff;
+  color: color-mix(in srgb, var(--sheet-accent) 68%, #ffffff);
 }
 
 .results-title {
   margin: 2px 0 0;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 18.5px;
+  font-weight: 750;
   color: #ffffff;
 }
 
@@ -1317,7 +1449,7 @@ button {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--drink-glow) 22%, transparent), transparent 52%),
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--drink-glow) 26%, transparent), transparent 54%),
     linear-gradient(180deg, #0d0a1f 0%, #060510 55%, #05050b 100%);
   transform: translateY(26px);
   transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1356,7 +1488,7 @@ button {
   padding: 0 16px;
 }
 
-/* Hero Cocktail Glass Stage */
+/* Hero Cocktail Glass Stage (Zero-blur multi-stop cosmic spotlight + bar-counter horizon) */
 .recipe-hero-stage {
   position: relative;
   display: flex;
@@ -1368,29 +1500,48 @@ button {
 
 .recipe-hero-aura {
   position: absolute;
-  top: 10px;
-  width: 220px;
-  height: 220px;
+  top: -6px;
+  width: 268px;
+  height: 248px;
   border-radius: 9999px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--drink-glow) 34%, transparent) 0%, transparent 72%);
-  filter: blur(22px);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--drink-glow) 34%, transparent) 0%,
+    color-mix(in srgb, var(--drink-glow) 13%, transparent) 44%,
+    transparent 74%
+  );
   pointer-events: none;
 }
 
 .recipe-hero-glass-wrap {
   position: relative;
-  width: 196px;
-  height: 222px;
+  width: 204px;
+  height: 228px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.recipe-hero-glass-wrap::before {
+  content: '';
+  position: absolute;
+  bottom: 11px;
+  width: 170px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--drink-glow) 48%, rgba(255, 255, 255, 0.25)) 50%,
+    transparent 100%
+  );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 .cocktail-glass-hero {
-  width: 190px;
-  height: 218px;
+  width: 196px;
+  height: 224px;
   display: block;
-  filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.55));
 }
 
 @keyframes bubbleRise {
@@ -1808,10 +1959,10 @@ button {
 .toast {
   position: absolute;
   left: 50%;
-  top: calc(var(--top-inset) + 12px);
+  top: calc(var(--top-inset) + 94px);
   z-index: 80;
   pointer-events: none;
-  transform: translate(-50%, -14px);
+  transform: translate(-50%, -10px);
   opacity: 0;
   transition: opacity 0.24s ease, transform 0.24s ease;
 }

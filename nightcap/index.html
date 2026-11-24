@@ -29,6 +29,7 @@
               </defs>
               <path d="M12 1L14.6 9.4L23 12L14.6 14.6L12 23L9.4 14.6L1 12L9.4 9.4L12 1Z" fill="url(#logoSpark)" />
             </svg>
+            <span class="brand-version">2.0</span>
           </div>
 
           <div class="header-actions">
@@ -96,6 +97,8 @@
           </div>
 
           <button id="mix-btn" type="button" class="confirm-cta-btn">
+            <span class="confirm-cta-shimmer" aria-hidden="true"></span>
+            <span data-icon="zap" data-icon-class="icon-sm confirm-cta-zap"></span>
             <span class="confirm-cta-label">Заебенить</span>
             <span id="mix-count" class="confirm-cta-count">12</span>
           </button>
@@ -141,8 +144,9 @@
       </nav>
     </div>
 
-    <!-- ==================== OVERLAYS ==================== -->
+    <!-- ==================== OVERLAYS & WARP FX ==================== -->
     <div id="results-sheet" class="sheet-overlay hidden" role="dialog" aria-modal="true" aria-label="Подборка коктейлей"></div>
+    <canvas id="fx-canvas" class="fx-canvas" aria-hidden="true"></canvas>
     <div id="recipe-modal" class="recipe-overlay hidden" role="dialog" aria-modal="true" aria-label="Рецепт коктейля"></div>
 
     <!-- Floating Toast -->

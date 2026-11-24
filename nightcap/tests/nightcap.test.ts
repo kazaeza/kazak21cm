@@ -4,6 +4,7 @@ import { TAGS, TAG_MAP, SURPRISES } from '../src/data/tags';
 import { BOTTLES, BOTTLE_MAP } from '../src/data/bottles';
 import { countAvailableForShelf, getShelfStatus, getSimilarRecipes, matchRecipes, recipeMatchesQuery } from '../src/data/matcher';
 import { renderCocktailGlass } from '../src/components/CocktailGlass';
+import { parseGlowColors } from '../src/engine/warpBurst';
 import type { BottleId } from '../src/types';
 
 describe('Nightcap data integrity', () => {
@@ -134,15 +135,26 @@ describe('Smart matcher & shelf filtering', () => {
   });
 });
 
-describe('CocktailGlass visualizer', () => {
-  test('renders valid SVG for every recipe in both hero and mini sizes', () => {
+describe('CocktailGlass 2.0 & WarpBurst utilities', () => {
+  test('renders valid Crystal 2.0 SVG for every recipe in both hero and mini sizes', () => {
     for (const r of RECIPES) {
       const hero = renderCocktailGlass(r, 'hero');
       const mini = renderCocktailGlass(r, 'mini');
       expect(hero).toContain('<svg');
       expect(hero).toContain('</svg>');
       expect(hero).toContain('cocktail-glass-hero');
+      expect(hero).toContain('-caustic');
+      expect(hero).toContain('-cyl');
       expect(mini).toContain('cocktail-glass-mini');
+      expect(mini).toContain('-caustic');
+    }
+  });
+
+  test('parses dual hex glow colors from tag gradients', () => {
+    for (const tag of TAGS) {
+      const [c1, c2] = parseGlowColors(tag.glow);
+      expect(c1).toMatch(/^#[0-9a-fA-F]{6}$/);
+      expect(c2).toMatch(/^#[0-9a-fA-F]{6}$/);
     }
   });
 });

@@ -67,7 +67,7 @@ export class ResultsSheet {
     this.lastMatches = matches;
     this.lastTags = selectedTags;
     this.openState = true;
-    this.render();
+    this.render(true);
     this.root.classList.remove('hidden');
     requestAnimationFrame(() => {
       this.root.classList.add('open');
@@ -77,7 +77,7 @@ export class ResultsSheet {
   public update(matches: MatchedRecipe[], selectedTags: VibeTag[]): void {
     this.lastMatches = matches;
     this.lastTags = selectedTags;
-    if (this.openState) this.render();
+    if (this.openState) this.render(false);
   }
 
   public close(): void {
@@ -90,11 +90,14 @@ export class ResultsSheet {
     this.cb.onClose();
   }
 
-  private render(): void {
+  private render(animateCards = false): void {
     const shelf = this.cb.getShelf();
     const shelfOnly = this.cb.isShelfOnly();
     const matches = this.lastMatches;
     const tagCount = this.lastTags.length;
+
+    const primaryHexMatch = this.lastTags[0]?.glow.match(/#[0-9a-fA-F]{6}/);
+    const sheetAccent = primaryHexMatch ? primaryHexMatch[0] : '#c79bff';
 
     const titleText = matches.length
       ? `${matches.length} ${pluralize(matches.length, 'коктейль', 'коктейля', 'коктейлей')}`
@@ -141,6 +144,7 @@ export class ResultsSheet {
       const exact = matches.filter((m) => m.hits === tagCount);
       const partial = matches.filter((m) => m.hits < tagCount);
 
+      let cardIdx = 0;
       if (exact.length > 0) {
         bodyHtml += `<div class="results-group-label">Точное попадание (${exact.length})</div>`;
         bodyHtml += exact
@@ -151,6 +155,7 @@ export class ResultsSheet {
               isSaved: this.cb.isSaved(m.recipe.id),
               matchBadge: `${m.hits} из ${tagCount}`,
               isExactMatch: true,
+              animIndex: animateCards ? cardIdx++ : undefined,
             })
           )
           .join('');
@@ -165,24 +170,26 @@ export class ResultsSheet {
               isSaved: this.cb.isSaved(m.recipe.id),
               matchBadge: `${m.hits} из ${tagCount}`,
               isExactMatch: false,
+              animIndex: animateCards ? cardIdx++ : undefined,
             })
           )
           .join('');
       }
     } else {
       bodyHtml = matches
-        .map((m) =>
+        .map((m, idx) =>
           renderRecipeCard({
             recipe: m.recipe,
             shelf,
             isSaved: this.cb.isSaved(m.recipe.id),
+            animIndex: animateCards ? idx : undefined,
           })
         )
         .join('');
     }
 
     this.root.innerHTML = `
-      <div class="results-panel glass-chrome">
+      <div class="results-panel glass-chrome" style="--sheet-accent: ${sheetAccent}">
         <div class="sheet-handle-bar"><span></span></div>
         <div class="results-header">
           <div class="results-header-text">

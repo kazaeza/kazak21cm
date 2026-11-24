@@ -12,10 +12,11 @@ export interface RecipeCardOptions {
   isSaved: boolean;
   matchBadge?: string;
   isExactMatch?: boolean;
+  animIndex?: number;
 }
 
 export function renderRecipeCard(opts: RecipeCardOptions): string {
-  const { recipe, shelf, isSaved, matchBadge, isExactMatch } = opts;
+  const { recipe, shelf, isSaved, matchBadge, isExactMatch, animIndex } = opts;
   const { onShelf, missingBottles } = getShelfStatus(recipe, shelf);
 
   let shelfBadge = '';
@@ -34,9 +35,12 @@ export function renderRecipeCard(opts: RecipeCardOptions): string {
     }
   }
 
+  const animClass = typeof animIndex === 'number' ? ' recipe-card-enter' : '';
+  const delayMs = typeof animIndex === 'number' ? Math.min(animIndex, 7) * 34 : 0;
+
   return `
-    <article class="recipe-card" data-open-recipe="${escapeHtml(recipe.id)}" role="button" tabindex="0">
-      <div class="recipe-card-glass" style="--drink-glow: ${recipe.visual.glowColor}">
+    <article class="recipe-card${animClass}" style="--drink-glow: ${recipe.visual.glowColor}; --card-delay: ${delayMs}ms" data-open-recipe="${escapeHtml(recipe.id)}" role="button" tabindex="0">
+      <div class="recipe-card-glass">
         ${renderCocktailGlass(recipe, 'mini')}
       </div>
       <div class="recipe-card-body">
