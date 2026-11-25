@@ -982,7 +982,7 @@ export class ToastController {
 
   public show(message: string, opts?: ToastShowOptions): void {
     const tone = opts?.tone ?? 'default';
-    const durationMs = opts?.durationMs ?? 2200;
+    const durationMs = opts?.durationMs ?? 1750;
 
     this.textEl.textContent = message;
     this.rootEl.dataset.tone = tone;

@@ -24,3 +24,11 @@ export function formatScaledAmount(amount: string, ml: number | undefined, mult:
     return Number.isInteger(scaled) ? String(scaled) : scaled.toFixed(1).replace('.', ',');
   });
 }
+
+export function parseGlowColors(glow?: string | null): [string, string] {
+  if (!glow) return ['#c79bff', '#7dd3fc'];
+  const hits = glow.match(/#[0-9a-fA-F]{6}/g);
+  if (hits && hits.length >= 2) return [hits[0], hits[1]];
+  if (hits && hits.length === 1) return [hits[0], '#7dd3fc'];
+  return ['#c79bff', '#7dd3fc'];
+}

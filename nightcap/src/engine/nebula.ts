@@ -32,7 +32,7 @@ interface Star {
   twinkle: number;
   speed: number;
   tint: string;
-  sparkleIdx: number; // -1 = dot, 0..2 = colored diffraction star
+  sparkleIdx: number;
 }
 
 interface ShootingStar {
@@ -54,25 +54,28 @@ interface TagNode {
   width: number;
   height: number;
   curOpacity: number;
+  repelX: number;
+  repelY: number;
   hidden: boolean;
   lastPointerAuto: boolean;
   lastZIndex: number;
+  isFocused: boolean;
   screenX: number;
   screenY: number;
   depth: number;
 }
 
-// Rich multi-hue JWST / Hubble emission nebula palette: [innerCoreRGB, outerWispRGB]
+// Rich cosmic neon emission palette: [innerCoreRGB, outerWispRGB]
 const NEBULA_PALETTE: [[number, number, number], [number, number, number]][] = [
-  [[232, 165, 255], [142, 68, 245]],  // electric violet -> deep amethyst
-  [[255, 168, 206], [236, 62, 138]],  // luminous rose -> magenta crimson
-  [[146, 228, 255], [48, 128, 246]],  // icy cyan -> sapphire blue
-  [[255, 204, 146], [244, 108, 68]],  // golden amber -> warm coral
-  [[142, 248, 214], [28, 178, 148]],  // aurora mint -> deep teal
-  [[192, 178, 255], [88, 76, 232]],   // starlight lilac -> cosmic indigo
+  [[232, 168, 255], [138, 72, 246]],  // nebula violet -> deep amethyst
+  [[255, 166, 214], [224, 68, 152]],  // aurora rose -> cosmic magenta
+  [[135, 224, 255], [56, 134, 248]],  // starlight cyan -> sapphire blue
+  [[152, 248, 226], [36, 186, 178]],  // cosmic mint -> cerulean teal
+  [[196, 182, 255], [96, 84, 238]],   // ultraviolet -> deep indigo
+  [[255, 198, 180], [218, 96, 132]],  // warm stardust -> rosewood
 ];
 
-const STAR_TINTS = ['#fff8ff', '#e4f0ff', '#ffe9d6', '#f2e2ff', '#daf7ff'];
+const STAR_TINTS = ['#f9f7ff', '#d8f1ff', '#f3e5ff', '#cfe6ff', '#ffeaf6'];
 
 function escapeHtml(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
@@ -81,8 +84,8 @@ function escapeHtml(s: string): string {
 function extractColors(glow: string): [string, string] {
   const matches = glow.match(/#[0-9a-fA-F]{6}/g);
   if (matches && matches.length >= 2) return [matches[0], matches[1]];
-  if (matches && matches.length === 1) return [matches[0], '#87b8ff'];
-  return ['#c79bff', '#87b8ff'];
+  if (matches && matches.length === 1) return [matches[0], '#7dd3fc'];
+  return ['#c79bff', '#7dd3fc'];
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -153,7 +156,6 @@ function projectMat(m: number[], x: number, y: number, z: number): [number, numb
   ];
 }
 
-// Pre-render multi-lobe organic volumetric cloud sprite ONCE (non-spherical realistic gas wisps!)
 function createVolumetricCloudSprite(
   core: [number, number, number],
   outer: [number, number, number],
@@ -167,7 +169,6 @@ function createVolumetricCloudSprite(
   if (!g) return c;
 
   const half = sz * 0.5;
-  // Sub-lobes create organic asymmetric wisps instead of plain flat circles
   const lobes = [
     { dx: 0, dy: 0, r: 0.92, w: 0.62, inner: true },
     { dx: -0.22 * Math.cos(variant), dy: -0.14 * Math.sin(variant), r: 0.72, w: 0.44, inner: false },
@@ -194,7 +195,6 @@ function createVolumetricCloudSprite(
   return c;
 }
 
-// Pre-render dark cosmic dust lane sprite ONCE to carve dramatic Hubble-like depth contrast
 function createDustSprite(): HTMLCanvasElement {
   const sz = 160;
   const c = document.createElement('canvas');
@@ -204,16 +204,15 @@ function createDustSprite(): HTMLCanvasElement {
   if (g) {
     const h = sz * 0.5;
     const grad = g.createRadialGradient(h, h, h * 0.08, h, h, h);
-    grad.addColorStop(0, 'rgba(5, 4, 12, 0.88)');
-    grad.addColorStop(0.52, 'rgba(5, 4, 12, 0.42)');
-    grad.addColorStop(1, 'rgba(5, 4, 12, 0)');
+    grad.addColorStop(0, 'rgba(5, 5, 13, 0.88)');
+    grad.addColorStop(0.52, 'rgba(5, 5, 13, 0.42)');
+    grad.addColorStop(1, 'rgba(5, 5, 13, 0)');
     g.fillStyle = grad;
     g.fillRect(0, 0, sz, sz);
   }
   return c;
 }
 
-// Pre-render crisp JWST/Hubble diffraction star sprite with glowing halo
 function createDiffractionStarSprite(tint: [number, number, number]): HTMLCanvasElement {
   const sz = 48;
   const c = document.createElement('canvas');
@@ -222,7 +221,6 @@ function createDiffractionStarSprite(tint: [number, number, number]): HTMLCanvas
   const g = c.getContext('2d');
   if (g) {
     const h = sz * 0.5;
-    // Soft halo
     const halo = g.createRadialGradient(h, h, 0.5, h, h, h * 0.82);
     halo.addColorStop(0, 'rgba(255, 255, 255, 1)');
     halo.addColorStop(0.22, `rgba(${tint[0]}, ${tint[1]}, ${tint[2]}, 0.72)`);
@@ -231,7 +229,6 @@ function createDiffractionStarSprite(tint: [number, number, number]): HTMLCanvas
     g.fillStyle = halo;
     g.fillRect(0, 0, sz, sz);
 
-    // Crisp 4-point diffraction spikes + delicate diagonal micro-rays
     g.translate(h, h);
     const r = h * 0.92;
     g.fillStyle = 'rgba(255, 252, 255, 0.95)';
@@ -243,7 +240,6 @@ function createDiffractionStarSprite(tint: [number, number, number]): HTMLCanvas
     g.quadraticCurveTo(-r * 0.08, -r * 0.08, 0, -r);
     g.fill();
 
-    // Subtle 45deg secondary spikes
     g.rotate(Math.PI * 0.25);
     const r2 = h * 0.44;
     g.fillStyle = `rgba(${tint[0]}, ${tint[1]}, ${tint[2]}, 0.65)`;
@@ -266,6 +262,7 @@ export interface NebulaOptions {
   bottomObstacleEl: HTMLElement;
   isSelected: (tagId: string) => boolean;
   onToggleTag: (tag: VibeTag) => void;
+  onFocusChange?: (tag: VibeTag | null) => void;
 }
 
 export class NebulaEngine {
@@ -277,9 +274,13 @@ export class NebulaEngine {
   private velY = 0;
   private isDragging = false;
   private dragMoved = false;
+  private pointerPos: { x: number; y: number } | null = null;
   private dragOrigin: { id: number; x: number; y: number; startX: number; startY: number; t: number } | null = null;
   private hoveredTagId: string | null = null;
   private focusTargetId: string | null = null;
+  private centeredTagId: string | null = null;
+  private lastDetentTime = 0;
+  private hasInteracted = false;
 
   private paused = false;
   private active = true;
@@ -287,16 +288,20 @@ export class NebulaEngine {
   private lastTime = 0;
   private frameCounter = 0;
 
-  // Dynamic reactive color tint from currently selected tag
-  private tintR = 192;
+  // Silky cloud dissolution (v4.0 "Заебенить" transition)
+  private targetDisperse = 0;
+  private disperseAmt = 0;
+
+  // Dynamic reactive color tint from focused/selected tag or current podium cocktail
+  private tintR = 178;
   private tintG = 140;
   private tintB = 255;
-  private targetTintR = 192;
+  private targetTintR = 178;
   private targetTintG = 140;
   private targetTintB = 255;
   private hasSelectionAura = false;
   private auraStrength = 0;
-  private warpBoost = 0; // 0..1 hyperdrive surge when "Заебенить" is pressed!
+  private warpBoost = 0;
 
   private viewportW = 390;
   private viewportH = 780;
@@ -310,7 +315,7 @@ export class NebulaEngine {
   private dustLanes: DustLane[];
   private stars: Star[];
   private shootingStar: ShootingStar | null = null;
-  private nextMeteorTime = 3500;
+  private nextMeteorTime = 3800;
   private tagNodes: TagNode[] = [];
 
   constructor(opts: NebulaOptions) {
@@ -324,14 +329,13 @@ export class NebulaEngine {
     );
     this.dustSprite = createDustSprite();
     this.sparkSprites = [
-      createDiffractionStarSprite([235, 195, 255]),
-      createDiffractionStarSprite([180, 225, 255]),
-      createDiffractionStarSprite([255, 210, 185]),
+      createDiffractionStarSprite([224, 185, 255]),
+      createDiffractionStarSprite([145, 224, 255]),
+      createDiffractionStarSprite([255, 192, 232]),
     ];
 
-    applyScreenRotation(this.rotM, 0.55, 0.12);
+    applyScreenRotation(this.rotM, 0.52, 0.14);
 
-    // 15 anisotropic multi-lobe volumetric clouds arranged along a galactic spiral band
     this.clouds = Array.from({ length: 15 }, (_, i) => {
       const y = (1 - (2 * (i + 0.5)) / 15) * 0.78;
       const r = Math.sqrt(Math.max(0, 1 - y * y));
@@ -345,14 +349,13 @@ export class NebulaEngine {
         rx: baseR * (1.22 + (i % 3) * 0.18),
         ry: baseR * (0.72 + ((i + 1) % 3) * 0.12),
         angle: (i * 0.87) % (Math.PI * 2),
-        rotSpeed: (i % 2 === 0 ? 1 : -1) * (0.00004 + (i % 3) * 0.00002),
+        rotSpeed: (i % 2 === 0 ? 1 : -1) * (0.00003 + (i % 3) * 0.000018),
         spriteIdx: i % NEBULA_PALETTE.length,
         phase: (i * 1.13) % (Math.PI * 2),
-        alpha: 0.22 + (i % 3) * 0.06,
+        alpha: 0.24 + (i % 3) * 0.06,
       };
     });
 
-    // 5 dark cosmic dust lanes that carve rich shadow pockets through the glowing gas
     this.dustLanes = Array.from({ length: 5 }, (_, i) => {
       const a = i * 1.256 + 0.4;
       const y = (i - 2) * 0.22;
@@ -367,14 +370,13 @@ export class NebulaEngine {
       };
     });
 
-    // Deterministic multi-depth cosmic starfield (115 crisp stars + 14 diffraction stars)
     let seed = 4219;
     const rand = () => {
       seed = (seed * 16807) % 2147483647;
       return (seed - 1) / 2147483646;
     };
 
-    this.stars = Array.from({ length: 115 }, (_, idx) => {
+    this.stars = Array.from({ length: 118 }, (_, idx) => {
       const theta = rand() * Math.PI * 2;
       const phi = Math.acos(2 * rand() - 1);
       const rad = 0.85 + rand() * 1.15;
@@ -422,23 +424,38 @@ export class NebulaEngine {
   }
 
   public spinImpulse(vx: number, vy: number): void {
+    this.hasInteracted = true;
     this.focusTargetId = null;
     this.velX = vx;
     this.velY = vy;
   }
 
-  // Triggered when user slams "Заебенить": surges the nebula core & spins into hyperdrive!
-  public triggerWarpPulse(): void {
-    this.warpBoost = 1;
-    this.velX = (this.velX >= 0 ? 1 : -1) * 0.0072;
-    this.velY = -0.0018;
+  /**
+   * Silky v4.0 cloud dissolution: smoothly disperses star-nodes outward past the screen edges
+   * while the volumetric nebula continues breathing behind the emerging Cocktail Podium.
+   */
+  public setDispersed(dispersed: boolean, immediate = false): void {
+    this.targetDisperse = dispersed ? 1 : 0;
+    if (immediate) {
+      this.disperseAmt = this.targetDisperse;
+    }
+    this.opts.tagLayerEl.style.pointerEvents = dispersed ? 'none' : '';
   }
 
-  // Updates reactive nebula core color to match the selected vibe tag
+  /**
+   * Gentle cosmic core pulse when opening the podium (zero harsh flicker).
+   */
+  public triggerWarpPulse(): void {
+    this.warpBoost = 1;
+  }
+
+  /**
+   * Smoothly morphs the nebula core glow to match a tag glow OR a cocktail's visual color.
+   */
   public setAccentGlow(glow: string | null): void {
     if (!glow) {
       this.hasSelectionAura = false;
-      this.targetTintR = 192;
+      this.targetTintR = 178;
       this.targetTintG = 140;
       this.targetTintB = 255;
       return;
@@ -451,7 +468,6 @@ export class NebulaEngine {
     this.hasSelectionAura = true;
   }
 
-  // Returns screen coordinates of the currently selected tag (if visible) for FX targeting
   public getSelectedNodeScreenPos(): { x: number; y: number } | null {
     for (const node of this.tagNodes) {
       if (this.opts.isSelected(node.tag.id) && !node.hidden) {
@@ -468,6 +484,7 @@ export class NebulaEngine {
   }
 
   public nudgeRotation(dYaw: number, dPitch: number): void {
+    this.hasInteracted = true;
     this.focusTargetId = null;
     applyScreenRotation(this.rotM, dYaw, dPitch);
     applyScreenRotation(this.starM, dYaw * 0.35, dPitch * 0.35);
@@ -509,6 +526,7 @@ export class NebulaEngine {
       btn.style.setProperty('--glow-c2', c2);
       btn.setAttribute('aria-pressed', isSel ? 'true' : 'false');
       btn.innerHTML = `
+        <span class="tag-star-dot" aria-hidden="true"></span>
         <span class="tag-main">
           <span class="tag-emoji" aria-hidden="true">${escapeHtml(tag.emoji)}</span>
           <span class="tag-label-text">${escapeHtml(tag.label)}</span>
@@ -525,7 +543,12 @@ export class NebulaEngine {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (this.dragMoved) return;
+        this.hasInteracted = true;
         this.opts.onToggleTag(tag);
+        // Smoothly pull a newly selected star into front optical focus!
+        if (this.opts.isSelected(tag.id)) {
+          this.focusTag(tag.id);
+        }
       });
 
       layer.appendChild(btn);
@@ -536,25 +559,28 @@ export class NebulaEngine {
         bx: r * Math.cos(a),
         by: y,
         bz: r * Math.sin(a),
-        width: 130,
-        height: 44,
+        width: 118,
+        height: 36,
         curOpacity: 0,
+        repelX: 0,
+        repelY: 0,
         hidden: false,
         lastPointerAuto: true,
         lastZIndex: 0,
+        isFocused: false,
         screenX: 0,
         screenY: 0,
         depth: 0,
       };
     });
 
-    // Single batched layout read — zero layout thrashing inside rAF
     for (const node of nodes) {
-      node.width = node.el.offsetWidth || 130;
-      node.height = node.el.offsetHeight || 44;
+      node.width = node.el.offsetWidth || 118;
+      node.height = node.el.offsetHeight || 36;
     }
 
     this.tagNodes = nodes;
+    this.centeredTagId = null;
     this.setAccentGlow(selectedGlow);
     this.measureBounds();
   }
@@ -567,11 +593,11 @@ export class NebulaEngine {
     const topRect = this.opts.topObstacleEl.getBoundingClientRect();
     const bottomRect = this.opts.bottomObstacleEl.getBoundingClientRect();
 
-    const topLimit = Math.max(108, topRect.bottom - appRect.top + 22);
-    const bottomLimit = Math.min(this.viewportH - 180, bottomRect.top - appRect.top - 24);
+    const topLimit = Math.max(106, topRect.bottom - appRect.top + 20);
+    const bottomLimit = Math.min(this.viewportH - 165, bottomRect.top - appRect.top - 22);
 
     this.safeTop = topLimit;
-    this.safeBottom = Math.max(topLimit + 120, bottomLimit);
+    this.safeBottom = Math.max(topLimit + 130, bottomLimit);
   }
 
   private bindResize(): void {
@@ -599,9 +625,13 @@ export class NebulaEngine {
   private bindDrag(): void {
     const layer = this.opts.tagLayerEl;
     layer.addEventListener('pointerdown', (e) => {
+      if (this.targetDisperse > 0.5) return;
       this.isDragging = true;
       this.dragMoved = false;
       this.focusTargetId = null;
+      this.hasInteracted = true;
+      const appRect = this.opts.appEl.getBoundingClientRect();
+      this.pointerPos = { x: e.clientX - appRect.left, y: e.clientY - appRect.top };
       this.dragOrigin = {
         id: e.pointerId,
         x: e.clientX,
@@ -616,6 +646,9 @@ export class NebulaEngine {
 
     window.addEventListener('pointermove', (e) => {
       if (!this.isDragging || !this.dragOrigin || e.pointerId !== this.dragOrigin.id) return;
+      const appRect = this.opts.appEl.getBoundingClientRect();
+      this.pointerPos = { x: e.clientX - appRect.left, y: e.clientY - appRect.top };
+
       const dist = Math.hypot(e.clientX - this.dragOrigin.startX, e.clientY - this.dragOrigin.startY);
       if (dist > 8) {
         this.dragMoved = true;
@@ -627,14 +660,14 @@ export class NebulaEngine {
       const dt = Math.max(4, now - this.dragOrigin.t);
       const dx = e.clientX - this.dragOrigin.x;
       const dy = e.clientY - this.dragOrigin.y;
-      const dYaw = dx * 0.0062;
-      const dPitch = dy * 0.0062;
+      const dYaw = dx * 0.0064;
+      const dPitch = dy * 0.0064;
 
       applyScreenRotation(this.rotM, dYaw, dPitch);
       applyScreenRotation(this.starM, dYaw * 0.35, dPitch * 0.35);
 
-      const instX = Math.max(-0.0085, Math.min(0.0085, dYaw / dt));
-      const instY = Math.max(-0.0085, Math.min(0.0085, dPitch / dt));
+      const instX = Math.max(-0.009, Math.min(0.009, dYaw / dt));
+      const instY = Math.max(-0.009, Math.min(0.009, dPitch / dt));
       this.velX = this.velX * 0.35 + instX * 0.65;
       this.velY = this.velY * 0.35 + instY * 0.65;
 
@@ -647,6 +680,7 @@ export class NebulaEngine {
       if (!this.isDragging) return;
       this.isDragging = false;
       this.dragOrigin = null;
+      this.pointerPos = null;
       layer.classList.remove('dragging');
       setTimeout(() => {
         this.dragMoved = false;
@@ -707,46 +741,90 @@ export class NebulaEngine {
       canvas.height = targetH;
     }
 
-    // Smooth color & warp interpolation
-    const colorLerp = Math.min(1, dt * 0.006);
+    // Smooth color, warp & disperse interpolation
+    const colorLerp = Math.min(1, dt * 0.0065);
     this.tintR += (this.targetTintR - this.tintR) * colorLerp;
     this.tintG += (this.targetTintG - this.tintG) * colorLerp;
     this.tintB += (this.targetTintB - this.tintB) * colorLerp;
 
     const targetAura = this.hasSelectionAura ? 1 : 0;
     this.auraStrength += (targetAura - this.auraStrength) * colorLerp;
+
+    const disperseLerp = Math.min(1, dt * (this.targetDisperse > 0.5 ? 0.011 : 0.0085));
+    this.disperseAmt += (this.targetDisperse - this.disperseAmt) * disperseLerp;
+    if (Math.abs(this.targetDisperse - this.disperseAmt) < 0.002) {
+      this.disperseAmt = this.targetDisperse;
+    }
+
     if (this.warpBoost > 0.001) {
-      this.warpBoost *= Math.pow(0.89, dt / 16.667);
+      this.warpBoost *= Math.pow(0.91, dt / 16.667);
     } else {
       this.warpBoost = 0;
     }
 
-    // Frame-rate independent 120Hz trackball rotation
-    if (!this.isDragging) {
+    const centerX = w * 0.5;
+    const centerY = (this.safeTop + this.safeBottom) * 0.5;
+    const usableH = Math.max(210, this.safeBottom - this.safeTop);
+    const radiusX = Math.min(w * 0.44, 320);
+    const radiusY = Math.min(usableH * 0.48, 224);
+
+    // Find current magnetic candidate near the front center before applying spring torque
+    let magneticCandidate: { node: TagNode; tx: number; ty: number; tz: number; dist2: number } | null = null;
+    for (let i = 0; i < this.tagNodes.length; i++) {
+      const node = this.tagNodes[i];
+      const [tx, ty, tz] = projectMat(this.rotM, node.bx, node.by, node.bz);
+      if (tz <= 0.35) continue;
+      const d2 = tx * tx + ty * ty;
+      if (!magneticCandidate || d2 < magneticCandidate.dist2) {
+        magneticCandidate = { node, tx, ty, tz, dist2: d2 };
+      }
+    }
+
+    // Trackball Inertia + Watch Crown Magnetic Pull + Weightless Omnidirectional Sway
+    if (!this.isDragging && this.targetDisperse < 0.5) {
       if (this.focusTargetId) {
         const targetNode = this.tagNodes.find((n) => n.tag.id === this.focusTargetId);
         if (targetNode) {
           const [tx, ty, tz] = projectMat(this.rotM, targetNode.bx, targetNode.by, targetNode.bz);
-          const gain = Math.min(0.18, dt * 0.0085);
+          const gain = Math.min(0.2, dt * 0.009);
           const dYaw = (tz < 0 ? (tx >= 0 ? -1 : 1) * 1.15 : -tx) * gain;
           const dPitch = -ty * gain;
           applyScreenRotation(this.rotM, dYaw, dPitch);
           applyScreenRotation(this.starM, dYaw * 0.35, dPitch * 0.35);
-          if (tz > 0.96 && Math.abs(tx) < 0.05 && Math.abs(ty) < 0.05) {
+          if (tz > 0.97 && Math.abs(tx) < 0.045 && Math.abs(ty) < 0.045) {
             this.focusTargetId = null;
           }
         } else {
           this.focusTargetId = null;
         }
       } else if (!this.paused) {
-        const drift = this.hoveredTagId ? 0.000035 : 0.00014;
-        const stepYaw = this.velX * dt + drift * dt;
-        const stepPitch = this.velY * dt;
-        applyScreenRotation(this.rotM, stepYaw, stepPitch);
-        applyScreenRotation(this.starM, stepYaw * 0.35, stepPitch * 0.35);
-        const decay = Math.pow(0.935, dt / 16.667);
-        this.velX *= decay;
-        this.velY *= decay;
+        const speed = Math.hypot(this.velX, this.velY);
+        if (speed > 0.00018) {
+          const stepYaw = this.velX * dt;
+          const stepPitch = this.velY * dt;
+          applyScreenRotation(this.rotM, stepYaw, stepPitch);
+          applyScreenRotation(this.starM, stepYaw * 0.35, stepPitch * 0.35);
+          const decay = Math.pow(0.92, dt / 16.667);
+          this.velX *= decay;
+          this.velY *= decay;
+        } else {
+          this.velX = 0;
+          this.velY = 0;
+          if (magneticCandidate && magneticCandidate.dist2 < 0.22 && magneticCandidate.dist2 > 0.0012 && !this.hoveredTagId) {
+            // Soft Watch-Crown magnetic lock onto the center star
+            const magGain = Math.min(0.11, dt * 0.0046);
+            const mYaw = -magneticCandidate.tx * magGain;
+            const mPitch = -magneticCandidate.ty * magGain;
+            applyScreenRotation(this.rotM, mYaw, mPitch);
+            applyScreenRotation(this.starM, mYaw * 0.28, mPitch * 0.28);
+          } else {
+            // Weightless deep-space zero-gravity sway (never marches endlessly sideways!)
+            const swayYaw = Math.sin(now * 0.00024) * 0.000034 * dt;
+            const swayPitch = Math.cos(now * 0.00019) * 0.000024 * dt;
+            applyScreenRotation(this.rotM, swayYaw, swayPitch);
+            applyScreenRotation(this.starM, swayYaw * 0.35, swayPitch * 0.35);
+          }
+        }
       }
     }
 
@@ -754,12 +832,6 @@ export class NebulaEngine {
       orthonormalize(this.rotM);
       orthonormalize(this.starM);
     }
-
-    const centerX = w * 0.5;
-    const centerY = (this.safeTop + this.safeBottom) * 0.5;
-    const usableH = Math.max(200, this.safeBottom - this.safeTop);
-    const radiusX = Math.min(w * 0.42, 305);
-    const radiusY = Math.min(usableH * 0.47, 215);
 
     const ctx = this.ctx;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -777,18 +849,18 @@ export class NebulaEngine {
       const depthFactor = 0.55 + 0.45 * ((szDepth + 1) * 0.5);
       const tw = (0.28 + 0.72 * (0.5 + 0.5 * Math.sin(now * s.speed + s.twinkle))) * depthFactor;
       if (s.sparkleIdx >= 0) {
-        const dim = s.size * (9.5 + this.warpBoost * 6);
-        ctx.globalAlpha = Math.min(1, tw * 0.92);
+        const dim = s.size * (9.5 + this.warpBoost * 4);
+        ctx.globalAlpha = Math.min(1, tw * 0.9);
         ctx.drawImage(this.sparkSprites[s.sparkleIdx], sxPos - dim * 0.5, syPos - dim * 0.5, dim, dim);
       } else {
-        const d = s.size * 1.75;
+        const d = s.size * 1.7;
         ctx.fillStyle = s.tint;
-        ctx.globalAlpha = tw * 0.76;
+        ctx.globalAlpha = tw * 0.74;
         ctx.fillRect(sxPos - d * 0.5, syPos - d * 0.5, d, d);
       }
     }
 
-    // 1b. Occasional shooting comet streak across deep space
+    // 1b. Occasional shooting comet streak
     this.updateShootingStar(now, dt, w, h);
     if (this.shootingStar) {
       const st = this.shootingStar;
@@ -801,8 +873,8 @@ export class NebulaEngine {
       ctx.globalAlpha = alpha;
       const grad = ctx.createLinearGradient(st.x, st.y, tx, ty);
       grad.addColorStop(0, 'rgba(255, 250, 255, 1)');
-      grad.addColorStop(0.35, 'rgba(210, 180, 255, 0.55)');
-      grad.addColorStop(1, 'rgba(210, 180, 255, 0)');
+      grad.addColorStop(0.35, 'rgba(195, 175, 255, 0.55)');
+      grad.addColorStop(1, 'rgba(135, 200, 255, 0)');
       ctx.strokeStyle = grad;
       ctx.lineWidth = 1.8;
       ctx.lineCap = 'round';
@@ -815,23 +887,21 @@ export class NebulaEngine {
 
     // 2. Volumetric Anisotropic Nebula Clouds + Reactive Core + Dust Lanes
     const breath = now * 0.00048;
-    const cloudScale = (Math.min(w, h) < 480 ? 0.78 : 1.06) * (1 + this.warpBoost * 0.16);
+    const cloudScale = (Math.min(w, h) < 480 ? 0.82 : 1.08) * (1 + this.disperseAmt * 0.14 + this.warpBoost * 0.08);
 
-    // 2a. Reactive central core glow (pulses in the color of the selected vibe!)
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const coreRad = Math.min(w, h) * (0.42 + 0.08 * this.auraStrength + 0.18 * this.warpBoost);
-    const coreAlpha = 0.14 + 0.16 * this.auraStrength + 0.28 * this.warpBoost;
+    const coreRad = Math.min(w, h) * (0.44 + 0.1 * this.auraStrength + 0.12 * this.disperseAmt);
+    const coreAlpha = 0.15 + 0.18 * this.auraStrength + 0.12 * this.disperseAmt + 0.16 * this.warpBoost;
     const coreGrad = ctx.createRadialGradient(centerX, centerY, coreRad * 0.04, centerX, centerY, coreRad);
     coreGrad.addColorStop(0, `rgba(${Math.round(this.tintR)}, ${Math.round(this.tintG)}, ${Math.round(this.tintB)}, ${coreAlpha.toFixed(3)})`);
-    coreGrad.addColorStop(0.5, `rgba(${Math.round(this.tintR * 0.7)}, ${Math.round(this.tintG * 0.65)}, ${Math.round(this.tintB)}, ${(coreAlpha * 0.38).toFixed(3)})`);
+    coreGrad.addColorStop(0.48, `rgba(${Math.round(this.tintR * 0.72)}, ${Math.round(this.tintG * 0.68)}, ${Math.round(this.tintB)}, ${(coreAlpha * 0.42).toFixed(3)})`);
     coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = coreGrad;
     ctx.beginPath();
     ctx.arc(centerX, centerY, coreRad, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2b. Stretched & rotated volumetric gas wisps
     for (let i = 0; i < this.clouds.length; i++) {
       const c = this.clouds[i];
       const [xx, yy, depth] = projectMat(this.rotM, c.x, c.y, c.z);
@@ -846,13 +916,12 @@ export class NebulaEngine {
       ctx.save();
       ctx.translate(px, py);
       ctx.rotate(rot);
-      ctx.globalAlpha = Math.min(1, c.alpha * (0.48 + 0.52 * depthNorm) * (1 + this.warpBoost * 0.45));
+      ctx.globalAlpha = Math.min(1, c.alpha * (0.48 + 0.52 * depthNorm) * (1 + this.disperseAmt * 0.22));
       ctx.drawImage(this.cloudSprites[c.spriteIdx], -rx, -ry, rx * 2, ry * 2);
       ctx.restore();
     }
     ctx.restore();
 
-    // 2c. Subtle dark interstellar dust lanes (carves deep 3D relief into the bright nebula)
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
     for (let i = 0; i < this.dustLanes.length; i++) {
@@ -873,27 +942,65 @@ export class NebulaEngine {
     ctx.restore();
     ctx.globalAlpha = 1;
 
-    // 3. Project 3D Tags + Constellation Resonance Filaments when a tag is selected
+    // 3. Project 3D Frameless Star-Nodes + Magnetic Watch-Crown Reticle + Neighbor Repulsion
     const projected = this.tagNodes.map((node) => {
       const [xx, yy, depth] = projectMat(this.rotM, node.bx, node.by, node.bz);
       const depthNorm = (depth + 1) * 0.5;
-      const persp = 0.80 + 0.26 * depthNorm;
-      const scale = 0.72 + 0.34 * depthNorm;
+      const persp = 0.78 + 0.30 * depthNorm;
+      const scale = 0.66 + 0.44 * depthNorm;
       const sx = centerX + xx * radiusX * persp;
       const sy = centerY + yy * radiusY * persp;
+      const centerDist2 = (sx - centerX) * (sx - centerX) + (sy - centerY) * (sy - centerY);
       return {
         node,
         x: sx,
         y: sy,
         depth,
         scale,
+        centerDist2,
       };
     });
+
+    // Identify the center-focused star (Watch-Crown reticle)
+    let centerFocusedNode: TagNode | null = null;
+    let bestFocusDist2 = Infinity;
+    for (let i = 0; i < projected.length; i++) {
+      const p = projected[i];
+      if (p.depth > 0.22 && p.centerDist2 < bestFocusDist2) {
+        bestFocusDist2 = p.centerDist2;
+        centerFocusedNode = p.node;
+      }
+    }
+
+    const nextFocusedId = this.targetDisperse > 0.5 ? null : (centerFocusedNode?.tag.id ?? null);
+    if (nextFocusedId !== this.centeredTagId) {
+      this.centeredTagId = nextFocusedId;
+      if (this.hasInteracted && nextFocusedId && now - this.lastDetentTime > 95) {
+        this.lastDetentTime = now;
+        this.opts.onFocusChange?.(centerFocusedNode?.tag ?? null);
+      }
+    }
+
+    const primaryProj =
+      projected.find((p) => this.opts.isSelected(p.node.tag.id)) ??
+      (centerFocusedNode ? projected.find((p) => p.node === centerFocusedNode) : undefined) ??
+      null;
+
+    // If nothing is explicitly selected yet, subtly bias ambient nebula tint toward centered reticle star
+    if (!this.opts.isSelected(this.centeredTagId || '') && centerFocusedNode && this.targetDisperse < 0.5) {
+      const [c1] = extractColors(centerFocusedNode.tag.glow);
+      const [r, g, b] = hexToRgb(c1);
+      this.targetTintR = r;
+      this.targetTintG = g;
+      this.targetTintB = b;
+      this.hasSelectionAura = true;
+    }
 
     const frontOccupied: { x: number; y: number; w: number; h: number }[] = [];
     projected.sort((a, b) => b.depth - a.depth);
 
-    const lerpK = Math.min(1, 1 - Math.pow(0.88, dt / 16.667));
+    const lerpK = Math.min(1, 1 - Math.pow(0.86, dt / 16.667));
+    const disperseEase = this.disperseAmt * this.disperseAmt;
     let selectedProj: { x: number; y: number; node: TagNode } | null = null;
     const visibleFrontNodes: { x: number; y: number; node: TagNode; op: number }[] = [];
 
@@ -902,35 +1009,85 @@ export class NebulaEngine {
       const node = p.node;
       const el = node.el;
       const isSel = this.opts.isSelected(node.tag.id);
+      const isFocused = !this.targetDisperse && (isSel || node.tag.id === this.centeredTagId);
+
+      // Update focused state for orbital reticle & smooth subtitle reveal
+      if (isFocused !== node.isFocused) {
+        node.isFocused = isFocused;
+        el.classList.toggle('focused', isFocused);
+      }
+
+      // Neighbor repulsion ("соседи мягко расступаются") away from spotlight node & active thumb
+      let targetRepelX = 0;
+      let targetRepelY = 0;
+      if (!isSel && !isFocused && primaryProj) {
+        const dx = p.x - primaryProj.x;
+        const dy = p.y - primaryProj.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 1 && d < 165) {
+          const push = (1 - d / 165) * 32;
+          targetRepelX += (dx / d) * push;
+          targetRepelY += (dy / d) * push * 0.85;
+        }
+      }
+      if (this.isDragging && this.pointerPos && !isSel) {
+        const dx = p.x - this.pointerPos.x;
+        const dy = p.y - this.pointerPos.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 1 && d < 128) {
+          const push = (1 - d / 128) * 26;
+          targetRepelX += (dx / d) * push;
+          targetRepelY += (dy / d) * push;
+        }
+      }
+
+      node.repelX += (targetRepelX - node.repelX) * lerpK;
+      node.repelY += (targetRepelY - node.repelY) * lerpK;
+
+      let baseX = p.x + node.repelX;
+      let baseY = p.y + node.repelY;
+
+      // Radial outward cloud dissolution when "Заебенить" is triggered
+      if (disperseEase > 0.001) {
+        const outDx = baseX - centerX;
+        const outDy = baseY - centerY;
+        const outDist = Math.hypot(outDx, outDy) || 1;
+        const pushDist = (260 + outDist * 0.55) * disperseEase;
+        baseX += (outDx / outDist) * pushDist;
+        baseY += (outDy / outDist) * pushDist;
+      }
 
       const ew = node.width * p.scale;
       const eh = node.height * p.scale;
 
-      const px = Math.max(ew * 0.5 + 12, Math.min(w - ew * 0.5 - 12, p.x));
-      const py = Math.max(this.safeTop, Math.min(this.safeBottom, p.y));
+      const px = this.disperseAmt > 0.01 ? baseX : Math.max(ew * 0.5 + 14, Math.min(w - ew * 0.5 - 14, baseX));
+      const py = this.disperseAmt > 0.01 ? baseY : Math.max(this.safeTop, Math.min(this.safeBottom, baseY));
 
       node.screenX = px;
       node.screenY = py;
       node.depth = p.depth;
 
-      let targetOpacity = smoothstep(-0.14, 0.52, p.depth);
+      let targetOpacity = smoothstep(-0.08, 0.56, p.depth);
 
+      // Keep crisp breathing room between overlapping non-focused background stars
       const tooClose =
         !isSel &&
+        !isFocused &&
         frontOccupied.some(
-          (q) => Math.abs(q.x - px) < (q.w + ew) * 0.44 && Math.abs(q.y - py) < (q.h + eh) * 0.56
+          (q) => Math.abs(q.x - px) < (q.w + ew) * 0.48 && Math.abs(q.y - py) < (q.h + eh) * 0.62
         );
       if (tooClose) {
-        targetOpacity *= 0.16;
+        targetOpacity *= 0.14;
       }
 
-      if (isSel) {
-        targetOpacity = Math.max(0.92, 0.82 + 0.18 * ((p.depth + 1) * 0.5));
+      if (isFocused) {
+        targetOpacity = Math.max(0.94, 0.86 + 0.14 * ((p.depth + 1) * 0.5));
       }
 
+      targetOpacity *= 1 - disperseEase;
       node.curOpacity += (targetOpacity - node.curOpacity) * lerpK;
 
-      if (node.curOpacity < 0.025 && !isSel) {
+      if (node.curOpacity < 0.025 && (!isSel || this.disperseAmt > 0.85)) {
         if (!node.hidden) {
           node.hidden = true;
           el.style.visibility = 'hidden';
@@ -945,50 +1102,54 @@ export class NebulaEngine {
         el.style.visibility = 'visible';
       }
 
-      const selScale = isSel ? p.scale * 1.07 : p.scale;
-      el.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) translate(-50%, -50%) scale(${selScale.toFixed(3)})`;
+      const focusBoost = isSel ? 1.12 : isFocused ? 1.07 : 1;
+      const finalScale = p.scale * focusBoost * (1 + disperseEase * 0.12);
+      el.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) translate(-50%, -50%) scale(${finalScale.toFixed(3)})`;
       el.style.opacity = node.curOpacity.toFixed(3);
 
-      const nextZ = isSel ? 230 : Math.round((p.depth + 1) * 90);
+      const nextZ = isSel ? 240 : isFocused ? 210 : Math.round((p.depth + 1) * 90);
       if (nextZ !== node.lastZIndex) {
         node.lastZIndex = nextZ;
         el.style.zIndex = String(nextZ);
       }
 
-      const nextAuto = node.curOpacity > 0.32;
+      const nextAuto = this.targetDisperse < 0.5 && node.curOpacity > 0.34;
       if (nextAuto !== node.lastPointerAuto) {
         node.lastPointerAuto = nextAuto;
         el.style.pointerEvents = nextAuto ? 'auto' : 'none';
       }
 
-      if (node.curOpacity > 0.38) {
+      if (node.curOpacity > 0.36) {
         frontOccupied.push({ x: px, y: py, w: ew, h: eh });
-        if (!isSel) visibleFrontNodes.push({ x: px, y: py, node, op: node.curOpacity });
+        if (!isSel && !isFocused) visibleFrontNodes.push({ x: px, y: py, node, op: node.curOpacity });
       }
-      if (isSel) selectedProj = { x: px, y: py, node };
+      if (isSel || (!selectedProj && isFocused)) {
+        selectedProj = { x: px, y: py, node };
+      }
     }
 
-    // 4. Luminous Constellation Ring & Star-Filaments around the Selected Tag!
-    if (selectedProj) {
+    // 4. Delicate Constellation Links & Starlight Reticle Ring around Selected / Focused Star
+    if (selectedProj && this.disperseAmt < 0.5) {
       const sx = selectedProj.x;
       const sy = selectedProj.y;
+      const isSelectedNode = this.opts.isSelected(selectedProj.node.tag.id);
       const rCol = `${Math.round(this.tintR)}, ${Math.round(this.tintG)}, ${Math.round(this.tintB)}`;
+      const reticleAlpha = (1 - this.disperseAmt * 2) * (isSelectedNode ? 0.58 : 0.32);
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      // Connect selected tag to 3 closest visible neighbor tags with delicate constellation filaments
       visibleFrontNodes.sort((a, b) => Math.hypot(a.x - sx, a.y - sy) - Math.hypot(b.x - sx, b.y - sy));
       const neighbors = visibleFrontNodes.slice(0, 3);
       for (const nb of neighbors) {
         const dist = Math.hypot(nb.x - sx, nb.y - sy);
-        if (dist > 230) continue;
+        if (dist > 235) continue;
         const lineGrad = ctx.createLinearGradient(sx, sy, nb.x, nb.y);
-        lineGrad.addColorStop(0, `rgba(${rCol}, 0.52)`);
-        lineGrad.addColorStop(1, `rgba(${rCol}, 0.04)`);
+        lineGrad.addColorStop(0, `rgba(${rCol}, ${reticleAlpha.toFixed(2)})`);
+        lineGrad.addColorStop(1, `rgba(${rCol}, 0.03)`);
         ctx.strokeStyle = lineGrad;
-        ctx.lineWidth = 1.25;
-        ctx.setLineDash([3, 5]);
+        ctx.lineWidth = 1.1;
+        ctx.setLineDash([2, 6]);
         ctx.beginPath();
         ctx.moveTo(sx, sy);
         ctx.lineTo(nb.x, nb.y);
@@ -996,22 +1157,23 @@ export class NebulaEngine {
       }
       ctx.setLineDash([]);
 
-      // Rotating orbital astrolabe halo behind the selected pill
-      const orbitPulse = 1 + 0.05 * Math.sin(now * 0.004);
-      const orx = (selectedProj.node.width * 0.56 + 16) * orbitPulse;
-      const ory = (selectedProj.node.height * 0.58 + 12) * orbitPulse;
-      ctx.strokeStyle = `rgba(${rCol}, 0.42)`;
-      ctx.lineWidth = 1.2;
+      // Orbiting astrolabe focus halo + twin starlight satellites on selected star
+      const orbitPulse = 1 + 0.04 * Math.sin(now * 0.004);
+      const orx = (selectedProj.node.width * 0.56 + 18) * orbitPulse;
+      const ory = (selectedProj.node.height * 0.62 + 12) * orbitPulse;
+      ctx.strokeStyle = `rgba(${rCol}, ${(reticleAlpha * 0.72).toFixed(2)})`;
+      ctx.lineWidth = isSelectedNode ? 1.25 : 0.9;
       ctx.beginPath();
       ctx.ellipse(sx, sy, orx, ory, 0, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Two orbiting starlight satellites on the selected pill's ring
-      for (let k = 0; k < 2; k++) {
-        const oa = now * 0.0022 + k * Math.PI;
-        const ox = sx + Math.cos(oa) * orx;
-        const oy = sy + Math.sin(oa) * ory;
-        ctx.drawImage(this.sparkSprites[0], ox - 9, oy - 9, 18, 18);
+      if (isSelectedNode) {
+        for (let k = 0; k < 2; k++) {
+          const oa = now * 0.0022 + k * Math.PI;
+          const ox = sx + Math.cos(oa) * orx;
+          const oy = sy + Math.sin(oa) * ory;
+          ctx.drawImage(this.sparkSprites[0], ox - 9, oy - 9, 18, 18);
+        }
       }
 
       ctx.restore();

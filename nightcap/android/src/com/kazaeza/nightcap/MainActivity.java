@@ -38,7 +38,7 @@ public class MainActivity extends Activity {
 
         webView = new WebView(this);
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        webView.setBackgroundColor(Color.parseColor("#07070c"));
+        webView.setBackgroundColor(Color.parseColor("#05050d"));
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setVerticalScrollBarEnabled(false);
         webView.setHorizontalScrollBarEnabled(false);
@@ -202,20 +202,23 @@ public class MainActivity extends Activity {
                 if (vibrator == null || !vibrator.hasVibrator()) return;
 
                 if ("blast".equals(style)) {
-                    long[] timings = new long[]{0L, 14L, 28L, 42L, 24L, 16L};
-                    int[] amplitudes = new int[]{0, 145, 0, 255, 0, 120};
+                    long[] timings = new long[]{0L, 12L, 26L, 34L};
+                    int[] amplitudes = new int[]{0, 140, 0, 235};
                     vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1));
                     return;
                 }
 
-                long ms = 12L;
+                long ms = 11L;
                 int amp = 75;
-                if ("medium".equals(style)) {
-                    ms = 20L;
-                    amp = 130;
+                if ("detent".equals(style)) {
+                    ms = 6L;
+                    amp = 48;
+                } else if ("medium".equals(style)) {
+                    ms = 18L;
+                    amp = 128;
                 } else if ("success".equals(style)) {
                     ms = 26L;
-                    amp = 180;
+                    amp = 175;
                 }
                 vibrator.vibrate(VibrationEffect.createOneShot(ms, amp));
             } catch (Throwable ignored) {

@@ -4,7 +4,7 @@ import { TAGS, TAG_MAP, SURPRISES } from '../src/data/tags';
 import { BOTTLES, BOTTLE_MAP } from '../src/data/bottles';
 import { countAvailableForShelf, getShelfStatus, getSimilarRecipes, matchRecipes, recipeMatchesQuery } from '../src/data/matcher';
 import { renderCocktailGlass } from '../src/components/CocktailGlass';
-import { parseGlowColors } from '../src/engine/warpBurst';
+import { parseGlowColors } from '../src/utils/html';
 import type { BottleId } from '../src/types';
 
 describe('Nightcap data integrity', () => {

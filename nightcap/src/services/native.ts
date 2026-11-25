@@ -1,5 +1,7 @@
+export type HapticStyle = 'light' | 'medium' | 'success' | 'blast' | 'detent';
+
 export interface NightcapNativeBridge {
-  haptic?: (style: 'light' | 'medium' | 'success' | 'blast') => void;
+  haptic?: (style: HapticStyle) => void;
   getInsets?: () => string;
   exitApp?: () => void;
 }
@@ -12,7 +14,7 @@ declare global {
   }
 }
 
-export function haptic(style: 'light' | 'medium' | 'success' | 'blast' = 'light'): void {
+export function haptic(style: HapticStyle = 'light'): void {
   try {
     if (window.NightcapNative?.haptic) {
       window.NightcapNative.haptic(style);
@@ -20,9 +22,11 @@ export function haptic(style: 'light' | 'medium' | 'success' | 'blast' = 'light'
     }
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       if (style === 'blast') {
-        navigator.vibrate([16, 28, 38, 22, 14]);
+        navigator.vibrate([12, 24, 30]);
+      } else if (style === 'detent') {
+        navigator.vibrate(5);
       } else {
-        const ms = style === 'light' ? 10 : style === 'medium' ? 20 : 28;
+        const ms = style === 'light' ? 10 : style === 'medium' ? 18 : 26;
         navigator.vibrate(ms);
       }
     }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#07070c" />
+  <meta name="theme-color" content="#05050d" />
   <title>nightcap. — Космическая туманность коктейлей</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -16,7 +16,7 @@
         <canvas id="nebula-canvas" aria-hidden="true"></canvas>
         <div id="tag-layer" aria-label="Вращающаяся туманность тегов"></div>
 
-        <!-- Floating Top Chrome: Editorial Header + Horizontal Lens Rail -->
+        <!-- Floating Top Chrome: Sci-Fi Brand + Minimal Utility Pills + Lens Rail -->
         <div id="nebula-top-chrome" class="nebula-top-chrome">
           <header class="app-header">
             <div class="brand-mark">
@@ -24,9 +24,9 @@
               <svg class="brand-spark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <defs>
                   <linearGradient id="logoSpark" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#f4dfb9" />
-                    <stop offset="55%" stop-color="#e8c78e" />
-                    <stop offset="100%" stop-color="#c59d5f" />
+                    <stop offset="0%" stop-color="#f7b2d9" />
+                    <stop offset="52%" stop-color="#c79bff" />
+                    <stop offset="100%" stop-color="#7dd3fc" />
                   </linearGradient>
                 </defs>
                 <path d="M12 1L14.4 9.6L23 12L14.4 14.4L12 23L9.6 14.4L1 12L9.6 9.6L12 1Z" fill="url(#logoSpark)" />
@@ -35,7 +35,7 @@
 
             <div class="header-actions">
               <button id="spin-surprise-btn" type="button" class="glass-pill surprise-btn" data-tactile>
-                <span data-icon="sparkles" data-icon-class="icon-xs text-gold"></span>
+                <span data-icon="sparkles" data-icon-class="icon-xs text-neon"></span>
                 <span>Удиви меня</span>
               </button>
 
@@ -61,7 +61,7 @@
       <!-- ==================== FLOATING BOTTOM STACK ==================== -->
       <div id="bottom-stack" class="bottom-stack">
         <div id="orbit-hint" class="orbit-hint">
-          Крути туманность · тапни на свой вайб
+          Крути сферу · наводи прицел или тапни вайб
         </div>
 
         <!-- Bottom Console: Search when idle -> Single-tag confirm "Заебенить" when selected -->
@@ -79,7 +79,7 @@
             <button id="idle-shelf-chip" type="button" class="mini-shelf-chip hidden" data-tactile></button>
           </div>
 
-          <!-- State B: One vibe selected -> crisp confirmation + big "Заебенить" CTA -->
+          <!-- State B: One vibe selected -> crisp confirmation + "Заебенить" CTA -->
           <div id="console-confirm" class="console-confirm hidden">
             <div class="selected-vibe-bar">
               <div class="selected-vibe-info">
@@ -148,15 +148,14 @@
       </div>
     </div>
 
-    <!-- ==================== OVERLAYS & WARP FX (OUTSIDE SCALED STAGE) ==================== -->
+    <!-- ==================== OVERLAYS (OUTSIDE VAUL SCALED STAGE) ==================== -->
     <div id="results-sheet" class="sheet-overlay hidden" role="dialog" aria-modal="true" aria-label="Подборка коктейлей"></div>
-    <canvas id="fx-canvas" class="fx-canvas" aria-hidden="true"></canvas>
     <div id="recipe-modal" class="recipe-overlay hidden" role="dialog" aria-modal="true" aria-label="Рецепт коктейля"></div>
 
     <!-- Floating Sonner-style Toast -->
     <div id="toast" class="toast" aria-live="polite">
       <div class="toast-pill glass-chrome">
-        <span data-icon="sparkles" data-icon-class="icon-xs text-gold"></span>
+        <span data-icon="sparkles" data-icon-class="icon-xs text-neon"></span>
         <span id="toast-text"></span>
       </div>
     </div>

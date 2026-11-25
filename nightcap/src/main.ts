@@ -3,7 +3,6 @@ import { LENSES, SURPRISES, TAGS, TAG_MAP } from './data/tags';
 import { RECIPES } from './data/recipes';
 import { matchRecipes } from './data/matcher';
 import { NebulaEngine } from './engine/nebula';
-import { WarpBurstEngine, parseGlowColors } from './engine/warpBurst';
 import {
   bindTactilePress,
   MorphingPillController,
@@ -20,7 +19,7 @@ import { MenuView } from './views/MenuView';
 import { SavedView } from './views/SavedView';
 import { applyNativeInsets, haptic, registerBackHandler } from './services/native';
 import { loadSaved, loadShelf, loadShelfOnly, saveSaved, saveShelf, saveShelfOnly } from './services/storage';
-import { escapeHtml } from './utils/html';
+import { escapeHtml, parseGlowColors } from './utils/html';
 
 interface AppState {
   tab: TabId;
@@ -72,9 +71,7 @@ function initApp(): void {
   const menuScreenEl = document.getElementById('screen-menu')!;
   const savedScreenEl = document.getElementById('screen-saved')!;
   const resultsRoot = document.getElementById('results-sheet')!;
-  const fxCanvasEl = document.getElementById('fx-canvas') as HTMLCanvasElement;
   const recipeModalRoot = document.getElementById('recipe-modal')!;
-  const warpBurst = new WarpBurstEngine(fxCanvasEl);
   let warpLaunchTimer: ReturnType<typeof setTimeout> | null = null;
 
   const tabFlow = new TabTransitionController<TabId>(
@@ -114,7 +111,7 @@ function initApp(): void {
     } else {
       state.saved.add(recipeId);
       haptic('success');
-      showToast('Сохранено в тайник');
+      showToast('Сохранено в тайник', 'success');
     }
     saveSaved(state.saved);
     updateDockBadges();
@@ -130,6 +127,7 @@ function initApp(): void {
     onPickTag: (tagId) => {
       const tag = TAG_MAP.get(tagId);
       if (!tag) return;
+      nebula.setDispersed(false);
       resultsSheet.close();
       switchTab('nebula');
       state.lens = 'all';
@@ -142,6 +140,7 @@ function initApp(): void {
       showToast(`Вайб: ${tag.label}`);
     },
     onClose: () => {
+      nebula.setDispersed(resultsSheet.isOpen());
       syncNebulaActive();
     },
   });
@@ -165,12 +164,18 @@ function initApp(): void {
     },
     onToggleSave: toggleSave,
     onOpenRecipe: openRecipe,
+    onHighlightRecipe: (recipe) => {
+      nebula.setAccentGlow(recipe.visual.glowColor);
+    },
     onClearTags: () => {
       state.selectedTag = null;
       nebula.syncSelectionStyles();
       renderConsole();
     },
-    onClose: () => {},
+    onClose: () => {
+      nebula.setDispersed(false);
+      nebula.syncSelectionStyles();
+    },
   });
 
   const shelfView = new ShelfView(shelfScreenEl, {
@@ -195,7 +200,7 @@ function initApp(): void {
       shelfView.render();
       renderConsole();
       updateDockBadges();
-      showToast('Набор бутылок добавлен на полку');
+      showToast('Набор бутылок добавлен на полку', 'success');
     },
     onClearShelf: () => {
       state.shelf.clear();
@@ -239,10 +244,18 @@ function initApp(): void {
     bottomObstacleEl,
     isSelected: (tagId) => state.selectedTag?.id === tagId,
     onToggleTag: (tag) => selectSingleTag(tag),
+    onFocusChange: (tag) => {
+      if (
+        tag &&
+        state.tab === 'nebula' &&
+        !resultsSheet.isOpen() &&
+        !recipeModal.isOpen()
+      ) {
+        haptic('detent');
+      }
+    },
   });
 
-  // Always single-tag selection: tapping a new tag immediately replaces the old one,
-  // tapping the already selected tag clears selection.
   function selectSingleTag(tag: VibeTag): void {
     if (state.selectedTag?.id === tag.id) {
       state.selectedTag = null;
@@ -325,7 +338,7 @@ function initApp(): void {
       const [c1, c2] = parseGlowColors(state.selectedTag.glow);
 
       dotEl.textContent = state.selectedTag.emoji || '🍸';
-      dotEl.style.background = state.selectedTag.glow || 'linear-gradient(135deg,#f7b2d9,#87b8ff)';
+      dotEl.style.background = state.selectedTag.glow || 'linear-gradient(135deg,#c79bff,#7dd3fc)';
       dotEl.style.boxShadow = `0 0 18px ${c1}88`;
       mixBtnEl.style.setProperty('--cta-c1', c1);
       mixBtnEl.style.setProperty('--cta-c2', c2);
@@ -379,7 +392,8 @@ function initApp(): void {
     });
   }
 
-  // Signature v2.0 "Заебенить" blast: plasma arc + chromatic shockwaves + cocktail splash + haptic waveform
+  // Silky v4.0 Cloud Dissolution: tags smoothly disperse outward, nebula shifts to #1 cocktail aura,
+  // and the Cosmic Podium rises cleanly at 120Hz with zero confetti lag!
   function launchWarpResults(): void {
     if (warpLaunchTimer !== null) return;
 
@@ -388,53 +402,34 @@ function initApp(): void {
       switchTab('nebula');
     }
 
-    const mixBtnEl = document.getElementById('mix-btn')!;
-    const appRect = appEl.getBoundingClientRect();
-    const btnRect = mixBtnEl.getBoundingClientRect();
-    const originX = (btnRect.left + btnRect.right) * 0.5 - appRect.left;
-    const originY = (btnRect.top + btnRect.bottom) * 0.5 - appRect.top;
-    const tagPos = nebula.getSelectedNodeScreenPos();
+    const matches = getCurrentMatches();
+    const topGlow = matches[0]?.recipe.visual.glowColor || state.selectedTag?.glow || null;
 
     nebula.triggerWarpPulse();
-    warpBurst.trigger({
-      originX,
-      originY,
-      sourceX: tagPos?.x ?? null,
-      sourceY: tagPos?.y ?? null,
-      glow: state.selectedTag?.glow ?? null,
-      emoji: state.selectedTag?.emoji ?? '🍸',
-      intensity: 'full',
-    });
+    nebula.setAccentGlow(topGlow);
+    nebula.setDispersed(true);
 
+    const mixBtnEl = document.getElementById('mix-btn')!;
     mixBtnEl.classList.remove('is-blasting');
-    nebulaScreenEl.classList.remove('camera-punch');
     void mixBtnEl.offsetWidth;
     mixBtnEl.classList.add('is-blasting');
-    nebulaScreenEl.classList.add('camera-punch');
 
     warpLaunchTimer = setTimeout(() => {
       warpLaunchTimer = null;
       mixBtnEl.classList.remove('is-blasting');
-      nebulaScreenEl.classList.remove('camera-punch');
-      resultsSheet.open(getCurrentMatches(), getSelectedList(), { entrance: 'warp' });
-    }, 165);
+      resultsSheet.open(matches, getSelectedList(), { entrance: 'warp' });
+    }, 150);
   }
 
   function openOrbResults(): void {
     haptic('success');
-    const orbBtnEl = document.getElementById('center-orb-btn')!;
-    const appRect = appEl.getBoundingClientRect();
-    const orbRect = orbBtnEl.getBoundingClientRect();
-    warpBurst.trigger({
-      originX: (orbRect.left + orbRect.right) * 0.5 - appRect.left,
-      originY: (orbRect.top + orbRect.bottom) * 0.5 - appRect.top,
-      glow: state.selectedTag?.glow ?? null,
-      intensity: 'mini',
-    });
     if (state.tab !== 'nebula') {
       switchTab('nebula');
     }
-    resultsSheet.open(getCurrentMatches(), getSelectedList());
+    const matches = getCurrentMatches();
+    nebula.setDispersed(true);
+    nebula.setAccentGlow(matches[0]?.recipe.visual.glowColor || state.selectedTag?.glow || null);
+    resultsSheet.open(matches, getSelectedList());
   }
 
   function toggleShelfFilter(): void {
@@ -458,7 +453,7 @@ function initApp(): void {
     if (!btn?.dataset.lens) return;
     state.lens = btn.dataset.lens as LensId;
     haptic('light');
-    nebula.nudgeRotation(0.55, 0.08);
+    nebula.nudgeRotation(0.52, 0.08);
     renderLenses();
     nebula.rebuildTags(state.lens);
   });
@@ -536,7 +531,7 @@ function initApp(): void {
       emoji: '🍸',
       label: val,
       sub: 'свой запрос',
-      glow: 'linear-gradient(135deg,#8ec5fc,#e0c3fc)',
+      glow: 'linear-gradient(135deg,#c79bff,#7dd3fc)',
       lenses: ['all'],
       custom: true,
     };
@@ -625,6 +620,7 @@ function initApp(): void {
     state.selectedTag = tag;
 
     nebula.setPaused(false);
+    nebula.setDispersed(false);
     const pauseEl = document.getElementById('pause-icon');
     if (pauseEl) pauseEl.innerHTML = icon('pause', 'icon-sm');
 
