@@ -15,7 +15,7 @@ ZIPALIGN="$BUILD_TOOLS/zipalign"
 APKSIGNER="$BUILD_TOOLS/apksigner"
 
 OUT_DIR="$ROOT_DIR/releases"
-FINAL_APK="$OUT_DIR/nightcap-v4.0.0.apk"
+FINAL_APK="$OUT_DIR/nightcap-v5.0.0.apk"
 KEYSTORE="$ANDROID_DIR/nightcap-signing.jks"
 KEY_ALIAS="nightcap"
 KEY_PASS="nightcap2026"
@@ -41,8 +41,8 @@ echo "==> [4/7] Compiling & linking Android resources with aapt2..."
   --manifest "$ANDROID_DIR/AndroidManifest.xml" \
   --min-sdk-version 26 \
   --target-sdk-version 35 \
-  --version-code 8 \
-  --version-name "4.0.0" \
+  --version-code 9 \
+  --version-name "5.0.0" \
   --java "$BUILD_DIR/gen" \
   -A "$BUILD_DIR/assets" \
   -o "$BUILD_DIR/app-unsigned.apk" \

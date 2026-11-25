@@ -1,19 +1,15 @@
 import type { BottleId, MatchedRecipe, Recipe, VibeTag } from '../types';
-import { BOTTLE_MAP } from '../data/bottles';
-import { getShelfStatus } from '../data/matcher';
-import { GLASS_LABELS, ICE_LABELS, METHOD_LABELS } from '../data/recipes';
+import { GLASS_LABELS, METHOD_LABELS } from '../data/recipes';
 import { renderCocktailGlass } from '../components/CocktailGlass';
-import { renderRecipeCard } from '../components/RecipeCard';
 import { icon } from '../components/icons';
 import { escapeHtml, pluralize } from '../utils/html';
 import { haptic } from '../services/native';
-import { SheetGestureController, sheetDepth } from '../engine/motion';
 
 export interface ResultsSheetCallbacks {
-  getShelf: () => Set<BottleId>;
-  isShelfOnly: () => boolean;
+  getShelf?: () => Set<BottleId>;
+  isShelfOnly?: () => boolean;
   isSaved: (id: string) => boolean;
-  onToggleShelfOnly: () => void;
+  onToggleShelfOnly?: () => void;
   onToggleSave: (id: string) => void;
   onOpenRecipe: (recipe: Recipe) => void;
   onHighlightRecipe?: (recipe: Recipe) => void;
@@ -25,76 +21,42 @@ export interface ResultsSheetOpenOptions {
   entrance?: 'warp' | 'standard';
 }
 
-const MAX_PODIUM_CARDS = 7;
-
-const PODIUM_ROLE_BADGES = [
-  '✨ Идеально сейчас',
-  '☄️ Вариант #2',
-  '🌌 Хит #3',
-  '💫 Выбор #4',
-  '🪐 Вайб #5',
-  '⚡ Выбор #6',
-  '🌙 Резерв #7',
-];
+const CLOSE_ANIMATION_MS = 280;
 
 export class ResultsSheet {
   private root: HTMLElement;
   private cb: ResultsSheetCallbacks;
-  private gesture: SheetGestureController;
   private openState = false;
-  private viewMode: 'podium' | 'list' = 'podium';
-  private activeSlide = 0;
+  private heroIndex = 0;
   private lastMatches: MatchedRecipe[] = [];
   private lastTags: VibeTag[] = [];
-  private scrollSyncTimer: ReturnType<typeof setTimeout> | null = null;
+  private closeTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(root: HTMLElement, cb: ResultsSheetCallbacks) {
     this.root = root;
     this.cb = cb;
 
-    this.gesture = new SheetGestureController({
-      id: 'results',
-      rootEl: this.root,
-      depthManager: sheetDepth,
-      getPanelEl: () => this.root.querySelector<HTMLElement>('.results-panel'),
-      getBackdropEl: () => this.root.querySelector<HTMLElement>('.sheet-backdrop'),
-      getScrollEl: () =>
-        this.root.querySelector<HTMLElement>(this.viewMode === 'list' ? '.results-list' : '.podium-track'),
-      isDragHandle: (target) => Boolean(target.closest('.sheet-handle-bar, .results-header, .podium-footer')),
-      onDismiss: () => this.finalizeClose(),
-    });
-
     this.root.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
-      if (target === this.root || target.closest('[data-close-results]')) {
+
+      if (target.closest('[data-close-results]')) {
+        haptic('light');
         this.close();
         return;
       }
-      if (target.closest('[data-sheet-shelf-toggle]')) {
-        this.cb.onToggleShelfOnly();
+
+      if (target.closest('[data-shuffle-results]')) {
+        this.shuffleHero();
         return;
       }
+
       if (target.closest('[data-sheet-clear-tags]')) {
+        haptic('light');
         this.cb.onClearTags();
         this.close();
         return;
       }
-      const modeBtn = target.closest<HTMLElement>('[data-results-mode]');
-      if (modeBtn?.dataset.resultsMode) {
-        const nextMode = modeBtn.dataset.resultsMode === 'list' ? 'list' : 'podium';
-        if (nextMode !== this.viewMode) {
-          haptic('light');
-          this.viewMode = nextMode;
-          this.render(false);
-        }
-        return;
-      }
-      const dotBtn = target.closest<HTMLElement>('[data-podium-dot]');
-      if (dotBtn?.dataset.podiumDot !== undefined) {
-        const idx = Number(dotBtn.dataset.podiumDot);
-        this.scrollToSlide(idx);
-        return;
-      }
+
       const saveBtn = target.closest<HTMLElement>('[data-toggle-save]');
       if (saveBtn?.dataset.toggleSave) {
         e.stopPropagation();
@@ -102,9 +64,20 @@ export class ResultsSheet {
         this.syncSaveIcons();
         return;
       }
+
       const card = target.closest<HTMLElement>('[data-open-recipe]');
       if (card?.dataset.openRecipe) {
         const hit = this.lastMatches.find((m) => m.recipe.id === card.dataset.openRecipe);
+        if (hit) this.cb.onOpenRecipe(hit.recipe);
+      }
+    });
+
+    this.root.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const target = e.target as HTMLElement;
+      if (target.matches('[data-open-recipe]') && target.dataset.openRecipe) {
+        e.preventDefault();
+        const hit = this.lastMatches.find((m) => m.recipe.id === target.dataset.openRecipe);
         if (hit) this.cb.onOpenRecipe(hit.recipe);
       }
     });
@@ -119,33 +92,39 @@ export class ResultsSheet {
     selectedTags: VibeTag[],
     opts?: ResultsSheetOpenOptions
   ): void {
+    if (this.closeTimer !== null) {
+      clearTimeout(this.closeTimer);
+      this.closeTimer = null;
+    }
+
     this.lastMatches = matches;
     this.lastTags = selectedTags;
-    this.viewMode = 'podium';
-    this.activeSlide = 0;
+    this.heroIndex = 0;
     this.openState = true;
-    this.gesture.reset();
+
     this.root.classList.toggle('warp-entrance', opts?.entrance === 'warp');
-    this.render(true);
+    this.render({ animateCards: true, animateHero: true });
     this.root.classList.remove('hidden');
-    sheetDepth.push({
-      id: 'results',
-      getPanelEl: () => this.root.querySelector<HTMLElement>('.results-panel'),
-    });
+
     if (matches[0]) {
       this.cb.onHighlightRecipe?.(matches[0].recipe);
     }
+
     requestAnimationFrame(() => {
-      if (this.openState) this.root.classList.add('open');
+      if (!this.openState) return;
+      const scrollEl = this.root.querySelector<HTMLElement>('.results-page-scroll');
+      if (scrollEl) scrollEl.scrollTop = 0;
+      this.root.classList.add('open');
     });
   }
 
   public update(matches: MatchedRecipe[], selectedTags: VibeTag[]): void {
     this.lastMatches = matches;
     this.lastTags = selectedTags;
-    this.activeSlide = 0;
+    this.heroIndex = 0;
+
     if (this.openState) {
-      this.render(false);
+      this.render({ animateCards: false, animateHero: false });
       if (matches[0]) {
         this.cb.onHighlightRecipe?.(matches[0].recipe);
       }
@@ -156,23 +135,37 @@ export class ResultsSheet {
     if (!this.openState) return;
     this.openState = false;
     this.root.classList.remove('open');
-    this.gesture.animateClose(() => {
+
+    if (this.closeTimer !== null) {
+      clearTimeout(this.closeTimer);
+    }
+    this.closeTimer = setTimeout(() => {
+      this.closeTimer = null;
       if (!this.openState) {
         this.root.classList.add('hidden');
         this.root.classList.remove('warp-entrance');
       }
-    });
-    sheetDepth.pop('results');
+    }, CLOSE_ANIMATION_MS);
+
     this.cb.onClose();
   }
 
-  private finalizeClose(): void {
-    if (!this.openState) return;
-    this.openState = false;
-    this.root.classList.remove('open', 'warp-entrance');
-    this.root.classList.add('hidden');
-    sheetDepth.pop('results');
-    this.cb.onClose();
+  private shuffleHero(): void {
+    if (this.lastMatches.length <= 1) return;
+    haptic('medium');
+    this.heroIndex = (this.heroIndex + 1) % this.lastMatches.length;
+
+    const nextHero = this.lastMatches[this.heroIndex];
+    if (nextHero) {
+      this.cb.onHighlightRecipe?.(nextHero.recipe);
+    }
+
+    this.render({ animateCards: false, animateHero: true });
+
+    const scrollEl = this.root.querySelector<HTMLElement>('.results-page-scroll');
+    if (scrollEl && scrollEl.scrollTop > 12) {
+      scrollEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   private syncSaveIcons(): void {
@@ -186,264 +179,198 @@ export class ResultsSheet {
     });
   }
 
-  private scrollToSlide(idx: number): void {
-    const track = this.root.querySelector<HTMLElement>('.podium-track');
-    const slide = this.root.querySelectorAll<HTMLElement>('.podium-card')[idx];
-    if (!track || !slide) return;
-    const targetLeft = slide.offsetLeft - Math.max(0, (track.clientWidth - slide.offsetWidth) * 0.5);
-    track.scrollTo({ left: targetLeft, behavior: 'smooth' });
-  }
-
-  private bindPodiumScroll(featured: MatchedRecipe[]): void {
-    const track = this.root.querySelector<HTMLElement>('.podium-track');
-    if (!track || featured.length <= 1) return;
-
-    const handleScrollUpdate = () => {
-      const slides = track.querySelectorAll<HTMLElement>('.podium-card');
-      if (!slides.length) return;
-      const viewCenter = track.scrollLeft + track.clientWidth * 0.5;
-      let nearestIdx = 0;
-      let bestDist = Infinity;
-      slides.forEach((s, i) => {
-        const sCenter = s.offsetLeft + s.offsetWidth * 0.5;
-        const d = Math.abs(sCenter - viewCenter);
-        if (d < bestDist) {
-          bestDist = d;
-          nearestIdx = i;
-        }
-      });
-
-      if (nearestIdx !== this.activeSlide && featured[nearestIdx]) {
-        this.activeSlide = nearestIdx;
-        haptic('detent');
-        this.cb.onHighlightRecipe?.(featured[nearestIdx].recipe);
-
-        this.root.querySelectorAll<HTMLElement>('[data-podium-dot]').forEach((dot, i) => {
-          dot.classList.toggle('active', i === nearestIdx);
-        });
-        const counterEl = this.root.querySelector<HTMLElement>('#podium-counter');
-        if (counterEl) {
-          counterEl.textContent = `${nearestIdx + 1} / ${featured.length}`;
-        }
-      }
-    };
-
-    track.addEventListener(
-      'scroll',
-      () => {
-        if (this.scrollSyncTimer) clearTimeout(this.scrollSyncTimer);
-        this.scrollSyncTimer = setTimeout(handleScrollUpdate, 55);
-      },
-      { passive: true }
-    );
-  }
-
-  private renderPodiumSlide(m: MatchedRecipe, idx: number, shelf: Set<BottleId>, tagCount: number): string {
-    const r = m.recipe;
-    const saved = this.cb.isSaved(r.id);
-    const { onShelf, missingBottles } = getShelfStatus(r, shelf);
-
-    const roleLabel =
-      tagCount > 1
-        ? `✨ ${m.hits} из ${tagCount}`
-        : PODIUM_ROLE_BADGES[idx] || `✨ Выбор #${idx + 1}`;
-
-    let shelfPillHtml = '';
-    if (shelf.size > 0) {
-      if (r.bottles.length === 0) {
-        shelfPillHtml = `<span class="badge badge-zero">0,0% · готов</span>`;
-      } else if (onShelf) {
-        shelfPillHtml = `<span class="badge badge-ready">${icon('check', 'icon-xs')} Всё на полке</span>`;
-      } else {
-        const miss = missingBottles
-          .slice(0, 2)
-          .map((id) => BOTTLE_MAP.get(id)?.name || id)
-          .join(', ');
-        shelfPillHtml = `<span class="badge badge-missing">Докупить: ${escapeHtml(miss)}</span>`;
-      }
-    }
-
-    const previewIngs = r.ingredients
-      .slice(0, 3)
-      .map((ing) => ing.name)
-      .join(' · ');
+  private renderHeroCard(match: MatchedRecipe, animateHero: boolean): string {
+    const hero = match.recipe;
+    const saved = this.cb.isSaved(hero.id);
+    const abvText = hero.abv === 0 ? '0,0%' : `≈ ${hero.abv}%`;
+    const badgeLabel =
+      this.heroIndex === 0 ? '✨ Идеально сейчас' : `✨ Выбор #${this.heroIndex + 1}`;
+    const enterClass = animateHero ? ' results-hero-enter' : '';
 
     return `
-      <article class="podium-card" style="--drink-glow: ${r.visual.glowColor}">
-        <div class="podium-card-top">
-          <div class="podium-badges">
-            <span class="podium-role-pill">${escapeHtml(roleLabel)}</span>
-            ${shelfPillHtml}
+      <section class="results-hero-section" aria-label="Главный выбор">
+        <article class="results-hero-card${enterClass}" style="--drink-glow: ${hero.visual.glowColor}">
+          <div class="results-hero-glass" data-open-recipe="${escapeHtml(hero.id)}" data-tactile role="button" tabindex="0" aria-label="Открыть рецепт ${escapeHtml(hero.name)}">
+            <div class="results-hero-aura" aria-hidden="true"></div>
+            <div class="results-hero-glass-inner">
+              ${renderCocktailGlass(hero, 'hero')}
+            </div>
           </div>
-          <button type="button" class="icon-circle-btn fav-circle-btn ${saved ? 'saved' : ''}" data-toggle-save="${escapeHtml(r.id)}" data-tactile aria-label="${saved ? 'Убрать из тайника' : 'В тайник'}">
-            ${icon('heart', 'icon-sm', saved)}
-          </button>
-        </div>
 
-        <div class="podium-hero-stage" data-open-recipe="${escapeHtml(r.id)}">
-          <div class="podium-glass-aura"></div>
-          <div class="podium-glass-wrap">
-            ${renderCocktailGlass(r, 'hero')}
+          <div class="results-hero-content">
+            <div class="results-hero-top">
+              <span class="results-hero-badge">${escapeHtml(badgeLabel)}</span>
+              <button
+                type="button"
+                class="fav-icon-btn results-hero-fav ${saved ? 'saved' : ''}"
+                data-toggle-save="${escapeHtml(hero.id)}"
+                data-tactile
+                aria-label="${saved ? 'Убрать из тайника' : 'Сохранить в тайник'}"
+              >
+                ${icon('heart', 'icon-sm', saved)}
+              </button>
+            </div>
+
+            <h2 class="results-hero-name" data-open-recipe="${escapeHtml(hero.id)}">${escapeHtml(hero.name)}</h2>
+            <p class="results-hero-why" data-open-recipe="${escapeHtml(hero.id)}">${escapeHtml(hero.why)}</p>
+
+            <div class="results-hero-specs">
+              <span class="spec-abv ${hero.abv === 0 ? 'spec-abv-zero' : ''}">${abvText}</span>
+              <span class="spec-sep" aria-hidden="true">·</span>
+              <span>${escapeHtml(METHOD_LABELS[hero.method])}</span>
+              <span class="spec-sep" aria-hidden="true">·</span>
+              <span>${escapeHtml(GLASS_LABELS[hero.glass])}</span>
+            </div>
+
+            <button
+              type="button"
+              class="results-hero-cta"
+              data-open-recipe="${escapeHtml(hero.id)}"
+              data-tactile
+              style="--btn-glow: ${hero.visual.glowColor}"
+            >
+              <span>Рецепт</span>
+              <span class="results-hero-cta-arrow" aria-hidden="true">→</span>
+            </button>
           </div>
-        </div>
+        </article>
+      </section>
+    `;
+  }
 
-        <div class="podium-copy" data-open-recipe="${escapeHtml(r.id)}">
-          <h3 class="podium-title">${escapeHtml(r.name)}</h3>
-          <p class="podium-why">${escapeHtml(r.why)}</p>
-        </div>
+  private renderBentoCard(match: MatchedRecipe, idx: number, animateCards: boolean): string {
+    const r = match.recipe;
+    const saved = this.cb.isSaved(r.id);
+    const abvText = r.abv === 0 ? '0,0%' : `≈ ${r.abv}%`;
+    const animClass = animateCards ? ' bento-card-enter' : '';
+    const delayMs = animateCards ? Math.min(idx, 10) * 38 : 0;
 
-        <div class="podium-sensory-row">
-          <span>${r.abv === 0 ? '0,0%' : `≈ ${r.abv}%`}</span>
-          <span class="sensory-dot">·</span>
-          <span>${escapeHtml(METHOD_LABELS[r.method])}</span>
-          <span class="sensory-dot">·</span>
-          <span>${escapeHtml(GLASS_LABELS[r.glass])}</span>
-          ${r.ice !== 'none' ? `<span class="sensory-dot">·</span><span>${escapeHtml(ICE_LABELS[r.ice])}</span>` : ''}
-        </div>
-
-        <p class="podium-ings-teaser">${escapeHtml(previewIngs)}${r.ingredients.length > 3 ? ` +${r.ingredients.length - 3}` : ''}</p>
-
-        <button type="button" class="podium-mix-btn" data-open-recipe="${escapeHtml(r.id)}" data-tactile style="--btn-glow: ${r.visual.glowColor}">
-          ${icon('zap', 'icon-sm')}
-          <span>Смешать коктейль</span>
-          <span class="podium-mix-meta">${r.ingredients.length} ингр.</span>
+    return `
+      <article
+        class="results-bento-card${animClass}"
+        style="--drink-glow: ${r.visual.glowColor}; --card-delay: ${delayMs}ms"
+        data-open-recipe="${escapeHtml(r.id)}"
+        data-tactile
+        role="button"
+        tabindex="0"
+      >
+        <button
+          type="button"
+          class="fav-icon-btn bento-fav-btn ${saved ? 'saved' : ''}"
+          data-toggle-save="${escapeHtml(r.id)}"
+          data-tactile
+          aria-label="${saved ? 'Убрать из тайника' : 'Сохранить в тайник'}"
+        >
+          ${icon('heart', 'icon-sm', saved)}
         </button>
+
+        <div class="bento-glass-wrap">
+          <div class="bento-glass-aura" aria-hidden="true"></div>
+          ${renderCocktailGlass(r, 'mini')}
+        </div>
+
+        <div class="bento-body">
+          <h4 class="bento-title">${escapeHtml(r.name)}</h4>
+          <p class="bento-why">${escapeHtml(r.why)}</p>
+          <div class="bento-specs">
+            <span class="spec-abv ${r.abv === 0 ? 'spec-abv-zero' : ''}">${abvText}</span>
+            <span class="spec-sep" aria-hidden="true">·</span>
+            <span class="spec-method">${escapeHtml(METHOD_LABELS[r.method])}</span>
+          </div>
+        </div>
       </article>
     `;
   }
 
-  private render(animateCards = false): void {
-    const shelf = this.cb.getShelf();
-    const shelfOnly = this.cb.isShelfOnly();
+  private render(opts: { animateCards: boolean; animateHero: boolean }): void {
     const matches = this.lastMatches;
     const tagCount = this.lastTags.length;
+    const safeHeroIdx = matches.length > 0 ? this.heroIndex % matches.length : 0;
+    const heroMatch = matches[safeHeroIdx];
+    const restMatches = matches.filter((_, idx) => idx !== safeHeroIdx);
 
-    const primaryGlow = matches[this.activeSlide]?.recipe.visual.glowColor
-      || this.lastTags[0]?.glow.match(/#[0-9a-fA-F]{6}/)?.[0]
-      || '#c79bff';
+    const primaryGlow =
+      heroMatch?.recipe.visual.glowColor ||
+      this.lastTags[0]?.glow.match(/#[0-9a-fA-F]{6}/)?.[0] ||
+      '#c79bff';
 
-    const subtitleText = tagCount
-      ? this.lastTags.map((t) => `${t.emoji} ${t.label}`).join(' · ')
-      : shelfOnly && shelf.size > 0
-        ? 'Доступно с твоей полки'
-        : 'Космическая подборка';
+    const vibeTitle =
+      tagCount > 0
+        ? this.lastTags.map((t) => `${t.emoji} ${t.label}`).join(' · ')
+        : '✨ Космическая подборка';
 
-    const featured = matches.slice(0, MAX_PODIUM_CARDS);
+    const countSubtitle =
+      matches.length > 0
+        ? `${matches.length} ${pluralize(matches.length, 'коктейль', 'коктейля', 'коктейлей')} под вайб`
+        : 'Ничего не совпало';
 
-    const titleText = matches.length === 0
-      ? 'Слишком редкое сочетание'
-      : this.viewMode === 'podium'
-        ? matches.length > 1
-          ? `Топ ${featured.length} из ${matches.length}`
-          : featured[0].recipe.name
-        : `${matches.length} ${pluralize(matches.length, 'коктейль', 'коктейля', 'коктейлей')}`;
-
-    const shelfSwitchHtml =
-      shelf.size > 0
-        ? `
-          <button type="button" class="shelf-filter-chip ${shelfOnly ? 'active' : ''}" data-sheet-shelf-toggle data-tactile>
-            ${icon('wine', 'icon-xs')}
-            <span>С полки</span>
-          </button>
-        `
-        : '';
-
-    const modeSwitchHtml =
-      matches.length > 1
-        ? `
-          <button type="button" class="shelf-filter-chip ${this.viewMode === 'list' ? 'active' : ''}" data-results-mode="${this.viewMode === 'podium' ? 'list' : 'podium'}" data-tactile>
-            ${icon(this.viewMode === 'podium' ? 'book-open' : 'sparkles', 'icon-xs')}
-            <span>${this.viewMode === 'podium' ? `Весь список (${matches.length})` : 'Подиум'}</span>
-          </button>
-        `
-        : '';
+    const canShuffle = matches.length > 1;
 
     let bodyHtml = '';
-    if (!matches.length) {
+    if (!heroMatch) {
       bodyHtml = `
-        <div class="empty-state">
+        <div class="empty-state results-empty-state">
           <div class="empty-orb">${icon('sparkles', 'icon-lg')}</div>
-          <p class="empty-title">Ничего не совпало</p>
-          <p class="empty-sub">${
-            shelfOnly && shelf.size > 0
-              ? 'Попробуй отключить фильтр «С полки» или выбери другой вайб в туманности.'
-              : 'Попробуй выбрать другой вайб или введи другой ингредиент.'
-          }</p>
+          <p class="empty-title">Слишком редкое сочетание</p>
+          <p class="empty-sub">Попробуй выбрать другой вайб или введи другой ингредиент в туманности.</p>
           <div class="empty-actions">
-            ${
-              shelfOnly && shelf.size > 0
-                ? `<button type="button" class="btn-secondary" data-sheet-shelf-toggle data-tactile>Показать всю базу</button>`
-                : ''
-            }
-            ${tagCount > 0 ? `<button type="button" class="btn-primary" data-sheet-clear-tags data-tactile>Выбрать другой вайб</button>` : ''}
+            <button type="button" class="btn-primary" data-sheet-clear-tags data-tactile>Вернуться в космос</button>
           </div>
-        </div>
-      `;
-    } else if (this.viewMode === 'podium') {
-      const dotsHtml =
-        featured.length > 1
-          ? `
-            <div class="podium-footer">
-              <div class="podium-dots" role="tablist" aria-label="Слайды подборки">
-                ${featured
-                  .map(
-                    (_, i) =>
-                      `<button type="button" class="podium-dot ${i === this.activeSlide ? 'active' : ''}" data-podium-dot="${i}" aria-label="Коктейль ${i + 1}"></button>`
-                  )
-                  .join('')}
-              </div>
-              <span id="podium-counter" class="podium-counter">свайпай · ${this.activeSlide + 1} / ${featured.length}</span>
-            </div>
-          `
-          : '';
-
-      bodyHtml = `
-        <div class="podium-shell">
-          <div class="podium-track">
-            ${featured.map((m, idx) => this.renderPodiumSlide(m, idx, shelf, tagCount)).join('')}
-          </div>
-          ${dotsHtml}
         </div>
       `;
     } else {
-      const listHtml = matches
-        .map((m, idx) =>
-          renderRecipeCard({
-            recipe: m.recipe,
-            shelf,
-            isSaved: this.cb.isSaved(m.recipe.id),
-            matchBadge: tagCount > 1 ? `${m.hits} из ${tagCount}` : undefined,
-            isExactMatch: tagCount > 1 ? m.hits === tagCount : undefined,
-            animIndex: animateCards ? idx : undefined,
-          })
-        )
-        .join('');
-      bodyHtml = `<div class="results-list">${listHtml}</div>`;
+      const heroHtml = this.renderHeroCard(heroMatch, opts.animateHero);
+      const gridHtml = restMatches.length
+        ? `
+          <section class="results-grid-section" aria-label="Ещё под этот вайб">
+            <div class="results-section-head">
+              <h3 class="results-section-title">Ещё под этот вайб</h3>
+              <span class="results-section-count">${restMatches.length}</span>
+            </div>
+            <div class="results-bento-grid">
+              ${restMatches.map((m, idx) => this.renderBentoCard(m, idx, opts.animateCards)).join('')}
+            </div>
+          </section>
+        `
+        : '';
+
+      bodyHtml = `
+        ${heroHtml}
+        ${gridHtml}
+        <div class="results-bottom-spacer"></div>
+      `;
     }
 
     this.root.innerHTML = `
-      <div class="sheet-backdrop" data-close-results></div>
-      <div class="results-panel glass-chrome" style="--sheet-accent: ${primaryGlow}">
-        <div class="sheet-handle-bar"><span></span></div>
-        <div class="results-header">
-          <div class="results-header-text">
-            <p class="results-eyebrow">${escapeHtml(subtitleText)}</p>
-            <h3 class="results-title">${escapeHtml(titleText)}</h3>
+      <div class="results-page" style="--sheet-accent: ${primaryGlow}">
+        <header class="results-topbar">
+          <button type="button" class="results-back-btn" data-close-results data-tactile aria-label="Назад в космос">
+            ${icon('arrow-left', 'icon-sm')}
+            <span>Космос</span>
+          </button>
+
+          <div class="results-topbar-center">
+            <h1 class="results-topbar-title">${escapeHtml(vibeTitle)}</h1>
+            <p class="results-topbar-sub">${escapeHtml(countSubtitle)}</p>
           </div>
-          <div class="results-header-actions">
-            ${modeSwitchHtml}
-            ${shelfSwitchHtml}
-            <button type="button" class="icon-circle-btn" data-close-results data-tactile aria-label="Закрыть">
-              ${icon('x', 'icon-sm')}
-            </button>
-          </div>
+
+          <button
+            type="button"
+            class="icon-circle-btn results-shuffle-btn${canShuffle ? '' : ' is-disabled'}"
+            data-shuffle-results
+            data-tactile
+            title="Перемешать главный выбор"
+            aria-label="Другой главный коктейль"
+            ${canShuffle ? '' : 'disabled'}
+          >
+            ${icon('refresh', 'icon-sm')}
+          </button>
+        </header>
+
+        <div class="results-page-scroll">
+          ${bodyHtml}
         </div>
-        ${bodyHtml}
       </div>
     `;
-
-    if (this.viewMode === 'podium' && featured.length > 1) {
-      this.bindPodiumScroll(featured);
-    }
   }
 }

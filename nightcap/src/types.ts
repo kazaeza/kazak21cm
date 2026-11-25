@@ -142,4 +142,4 @@ export interface MatchedRecipe {
   missingBottles: BottleId[];
 }
 
-export type TabId = 'nebula' | 'shelf' | 'menu' | 'saved';
+export type TabId = 'nebula' | 'menu' | 'saved';

@@ -27,8 +27,10 @@ describe('Nightcap data integrity', () => {
     }
   });
 
-  test('all 36 vibe tags have emojis and strictly 5–12 curated recipes each (no bloat)', () => {
-    expect(TAGS.length).toBe(36);
+  test('all 37 vibe tags have emojis and strictly 5–12 curated recipes each (no bloat)', () => {
+    expect(TAGS.length).toBe(37);
+    expect(TAG_MAP.has('cassis')).toBe(true);
+    expect(RECIPES.filter((r) => r.tags.includes('cassis')).length).toBe(9);
     for (const tag of TAGS) {
       expect(tag.emoji.length).toBeGreaterThan(0);
       const count = RECIPES.filter((r) => r.tags.includes(tag.id)).length;
@@ -96,6 +98,18 @@ describe('Smart matcher & shelf filtering', () => {
     const espressoMartiniHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'эспрессо мартини'));
     expect(espressoMartiniHits.some((r) => r.id === 'espresso-martini')).toBe(true);
     expect(espressoMartiniHits.length).toBeLessThanOrEqual(3);
+
+    const kasisHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'касис'));
+    expect(kasisHits.length).toBeGreaterThanOrEqual(9);
+    expect(kasisHits.some((r) => r.id === 'kir-classic')).toBe(true);
+    expect(kasisHits.some((r) => r.id === 'kir-royale')).toBe(true);
+    expect(kasisHits.some((r) => r.id === 'el-diablo')).toBe(true);
+
+    const kassisHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'кассис'));
+    expect(kassisHits.length).toBeGreaterThanOrEqual(9);
+
+    const cassisHits = RECIPES.filter((r) => recipeMatchesQuery(r, 'cassis'));
+    expect(cassisHits.length).toBeGreaterThanOrEqual(9);
   });
 
   test('ranks exact multi-tag matches ahead of partial matches', () => {

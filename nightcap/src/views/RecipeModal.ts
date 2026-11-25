@@ -1,6 +1,5 @@
 import type { BottleId, Recipe } from '../types';
-import { BOTTLE_MAP } from '../data/bottles';
-import { getShelfStatus, getSimilarRecipes } from '../data/matcher';
+import { getSimilarRecipes } from '../data/matcher';
 import { GLASS_LABELS, ICE_LABELS, METHOD_LABELS } from '../data/recipes';
 import { TAG_MAP } from '../data/tags';
 import { renderCocktailGlass } from '../components/CocktailGlass';
@@ -10,7 +9,7 @@ import { MorphingPillController, SheetGestureController, sheetDepth } from '../e
 
 export interface RecipeModalCallbacks {
   isSaved: (id: string) => boolean;
-  getShelf: () => Set<BottleId>;
+  getShelf?: () => Set<BottleId>;
   onToggleSave: (id: string) => void;
   onOpenRecipe: (recipe: Recipe) => void;
   onPickTag: (tagId: string) => void;
@@ -135,22 +134,14 @@ export class RecipeModal {
   private renderIngredients(immediateGlider = false): void {
     const listEl = this.root.querySelector<HTMLElement>('#modal-ingredients-list');
     if (!listEl || !this.currentRecipe) return;
-    const shelf = this.cb.getShelf();
 
     listEl.innerHTML = this.currentRecipe.ingredients
       .map((ing) => {
-        const hasBottle = ing.bottleId && shelf.size > 0 ? shelf.has(ing.bottleId) : null;
-        const statusDot =
-          hasBottle === true
-            ? `<span class="ing-dot ing-dot-ok" title="Есть на полке"></span>`
-            : hasBottle === false
-              ? `<span class="ing-dot ing-dot-miss" title="Нет на полке"></span>`
-              : `<span class="ing-dot"></span>`;
         const scaled = formatScaledAmount(ing.amount, ing.ml, this.multiplier);
         return `
           <li class="ing-row">
             <div class="ing-left">
-              ${statusDot}
+              <span class="ing-dot" aria-hidden="true"></span>
               <div>
                 <span class="ing-name">${escapeHtml(ing.name)}</span>
                 ${ing.note ? `<span class="ing-note">${escapeHtml(ing.note)}</span>` : ''}
@@ -183,21 +174,7 @@ export class RecipeModal {
     this.multPill = null;
 
     const saved = this.cb.isSaved(r.id);
-    const shelf = this.cb.getShelf();
-    const { onShelf, missingBottles } = getShelfStatus(r, shelf);
     const similar = getSimilarRecipes(r, 4);
-
-    let shelfBanner = '';
-    if (shelf.size > 0) {
-      if (r.bottles.length === 0) {
-        shelfBanner = `<div class="shelf-status-banner ready">${icon('sparkles', 'icon-sm')} Безалкогольный — можно сделать прямо сейчас</div>`;
-      } else if (onShelf) {
-        shelfBanner = `<div class="shelf-status-banner ready">${icon('check', 'icon-sm')} Все основные бутылки уже есть на твоей полке</div>`;
-      } else {
-        const missNames = missingBottles.map((id) => BOTTLE_MAP.get(id)?.name || id).join(', ');
-        shelfBanner = `<div class="shelf-status-banner missing">${icon('wine', 'icon-sm')} На полке не отмечено: ${escapeHtml(missNames)}</div>`;
-      }
-    }
 
     const tagChips = r.tags
       .map((tid) => {
@@ -298,8 +275,6 @@ export class RecipeModal {
               </div>
             </div>
           </div>
-
-          ${shelfBanner}
 
           <div class="recipe-tags-row">${tagChips}</div>
 

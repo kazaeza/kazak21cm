@@ -1,15 +1,15 @@
 import type { BottleId, Recipe, RecipeCategory } from '../types';
-import { getShelfStatus, recipeMatchesQuery } from '../data/matcher';
+import { recipeMatchesQuery } from '../data/matcher';
 import { CATEGORY_LABELS, RECIPES } from '../data/recipes';
 import { renderRecipeCard } from '../components/RecipeCard';
 import { icon } from '../components/icons';
 import { escapeHtml, pluralize } from '../utils/html';
 import { MorphingPillController } from '../engine/motion';
 
-export type MenuFilterId = 'all' | 'shelf' | RecipeCategory | 'light' | 'strong';
+export type MenuFilterId = 'all' | RecipeCategory | 'light' | 'strong';
 
 export interface MenuViewCallbacks {
-  getShelf: () => Set<BottleId>;
+  getShelf?: () => Set<BottleId>;
   isSaved: (id: string) => boolean;
   onToggleSave: (id: string) => void;
   onOpenRecipe: (recipe: Recipe) => void;
@@ -17,7 +17,6 @@ export interface MenuViewCallbacks {
 
 const MENU_FILTERS: { id: MenuFilterId; label: string }[] = [
   { id: 'all', label: 'Все' },
-  { id: 'shelf', label: 'С моей полки' },
   { id: 'classic', label: CATEGORY_LABELS.classic },
   { id: 'modern', label: 'Современные' },
   { id: 'light', label: 'Полегче' },
@@ -35,7 +34,6 @@ export class MenuView {
   private query = '';
   private filter: MenuFilterId = 'all';
   private initialized = false;
-  private lastShelfVisible: boolean | null = null;
   private railPill: MorphingPillController | null = null;
 
   constructor(root: HTMLElement, cb: MenuViewCallbacks) {
@@ -125,7 +123,6 @@ export class MenuView {
   }
 
   private getFiltered(): Recipe[] {
-    const shelf = this.cb.getShelf();
     const q = this.query.trim().toLowerCase();
     return RECIPES.filter((r) => {
       if (q && !recipeMatchesQuery(r, q)) return false;
@@ -133,8 +130,6 @@ export class MenuView {
       switch (this.filter) {
         case 'all':
           return true;
-        case 'shelf':
-          return shelf.size === 0 ? true : getShelfStatus(r, shelf).onShelf;
         case 'light':
           return r.abv > 0 && r.abv <= 14;
         case 'strong':
@@ -148,33 +143,19 @@ export class MenuView {
         const bName = b.name.toLowerCase().includes(q) || b.nameEn.toLowerCase().includes(q);
         if (aName !== bName) return aName ? -1 : 1;
       }
-      if (shelf.size > 0 && this.filter !== 'shelf') {
-        const aOk = getShelfStatus(a, shelf).onShelf;
-        const bOk = getShelfStatus(b, shelf).onShelf;
-        if (aOk !== bOk) return aOk ? -1 : 1;
-      }
       return a.name.localeCompare(b.name, 'ru');
     });
   }
 
   private updateFiltersAndList(): void {
-    const shelf = this.cb.getShelf();
-    const hasShelf = shelf.size > 0;
-    if (this.filter === 'shelf' && !hasShelf) {
-      this.filter = 'all';
-    }
-
     const rail = this.root.querySelector<HTMLElement>('#menu-filter-rail');
     if (rail) {
-      if (this.lastShelfVisible !== hasShelf || !rail.querySelector('[data-menu-filter]')) {
-        this.lastShelfVisible = hasShelf;
+      if (!rail.querySelector('[data-menu-filter]')) {
         this.railPill?.destroy();
-        const pillsHtml = MENU_FILTERS.filter((f) => f.id !== 'shelf' || hasShelf)
-          .map(
-            (f) =>
-              `<button type="button" class="filter-pill ${this.filter === f.id ? 'active' : ''}" data-menu-filter="${f.id}" role="tab" aria-selected="${this.filter === f.id ? 'true' : 'false'}">${escapeHtml(f.label)}</button>`
-          )
-          .join('');
+        const pillsHtml = MENU_FILTERS.map(
+          (f) =>
+            `<button type="button" class="filter-pill ${this.filter === f.id ? 'active' : ''}" data-menu-filter="${f.id}" role="tab" aria-selected="${this.filter === f.id ? 'true' : 'false'}">${escapeHtml(f.label)}</button>`
+        ).join('');
         rail.innerHTML = `<span class="rail-glider" aria-hidden="true"></span>${pillsHtml}`;
         this.railPill = new MorphingPillController({
           container: rail,
@@ -198,7 +179,6 @@ export class MenuView {
   }
 
   private updateList(): void {
-    const shelf = this.cb.getShelf();
     const list = this.getFiltered();
 
     const clearBtn = this.root.querySelector<HTMLElement>('#menu-search-clear');
@@ -218,7 +198,7 @@ export class MenuView {
           <div class="empty-orb">${icon('search', 'icon-lg')}</div>
           <p class="empty-title">В карте такого нет</p>
           <p class="empty-sub">Попробуй другое слово (например «джин», «кислый», «мята») или переключи категорию.</p>
-          <button type="button" class="btn-secondary" data-clear-menu-search>Сбросить поиск</button>
+          <button type="button" class="btn-secondary" data-clear-menu-search data-tactile>Сбросить поиск</button>
         </div>
       `;
       return;
@@ -228,7 +208,6 @@ export class MenuView {
       .map((recipe) =>
         renderRecipeCard({
           recipe,
-          shelf,
           isSaved: this.cb.isSaved(recipe.id),
         })
       )

@@ -1,6 +1,4 @@
 import type { BottleId, Recipe } from '../types';
-import { BOTTLE_MAP } from '../data/bottles';
-import { getShelfStatus } from '../data/matcher';
 import { METHOD_LABELS } from '../data/recipes';
 import { escapeHtml } from '../utils/html';
 import { renderCocktailGlass } from './CocktailGlass';
@@ -8,7 +6,7 @@ import { icon } from './icons';
 
 export interface RecipeCardOptions {
   recipe: Recipe;
-  shelf: Set<BottleId>;
+  shelf?: Set<BottleId>;
   isSaved: boolean;
   matchBadge?: string;
   isExactMatch?: boolean;
@@ -16,28 +14,11 @@ export interface RecipeCardOptions {
 }
 
 export function renderRecipeCard(opts: RecipeCardOptions): string {
-  const { recipe, shelf, isSaved, matchBadge, isExactMatch, animIndex } = opts;
-  const { onShelf, missingBottles } = getShelfStatus(recipe, shelf);
-
-  let shelfBadge = '';
-  if (shelf.size > 0) {
-    if (recipe.bottles.length === 0) {
-      shelfBadge = `<span class="badge badge-zero">0,0% · всегда готов</span>`;
-    } else if (onShelf) {
-      shelfBadge = `<span class="badge badge-ready">${icon('check', 'icon-xs')} Есть на полке</span>`;
-    } else {
-      const names = missingBottles
-        .slice(0, 2)
-        .map((id) => BOTTLE_MAP.get(id)?.name || id)
-        .join(', ');
-      const suffix = missingBottles.length > 2 ? ` +${missingBottles.length - 2}` : '';
-      shelfBadge = `<span class="badge badge-missing">Нужно: ${escapeHtml(names + suffix)}</span>`;
-    }
-  }
+  const { recipe, isSaved, matchBadge, isExactMatch, animIndex } = opts;
 
   const statusBadge = matchBadge
     ? `<span class="badge ${isExactMatch ? 'badge-match-exact' : 'badge-match'}">${escapeHtml(matchBadge)}</span>`
-    : shelfBadge;
+    : '';
 
   const abvText = recipe.abv === 0 ? '0,0%' : `≈ ${recipe.abv}%`;
   const animClass = typeof animIndex === 'number' ? ' recipe-card-enter' : '';

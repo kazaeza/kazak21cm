@@ -1,5 +1,4 @@
 import type { BottleId, Recipe } from '../types';
-import { getShelfStatus } from '../data/matcher';
 import { RECIPES } from '../data/recipes';
 import { renderRecipeCard } from '../components/RecipeCard';
 import { icon } from '../components/icons';
@@ -7,7 +6,7 @@ import { pluralize } from '../utils/html';
 
 export interface SavedViewCallbacks {
   getSavedIds: () => Set<string>;
-  getShelf: () => Set<BottleId>;
+  getShelf?: () => Set<BottleId>;
   onToggleSave: (id: string) => void;
   onOpenRecipe: (recipe: Recipe) => void;
   onGoNebula: () => void;
@@ -52,24 +51,13 @@ export class SavedView {
 
   public render(): void {
     const savedIds = this.cb.getSavedIds();
-    const shelf = this.cb.getShelf();
     const savedRecipes = RECIPES.filter((r) => savedIds.has(r.id));
 
-    let shelfCaptionHtml = '';
-    if (savedRecipes.length > 0 && shelf.size > 0) {
-      const readyCount = savedRecipes.filter((r) => getShelfStatus(r, shelf).onShelf).length;
-      shelfCaptionHtml =
-        readyCount > 0
-          ? `<p class="saved-shelf-caption">${icon('check', 'icon-xs')} С твоей полкой прямо сейчас готовы <strong>${readyCount} из ${savedRecipes.length}</strong></p>`
-          : `<p class="saved-shelf-caption">Из сохранённых пока ни один не совпадает с твоей полкой полностью.</p>`;
-    }
-
     const contentHtml = savedRecipes.length
-      ? `${shelfCaptionHtml}<div class="cards-stack">${savedRecipes
+      ? `<div class="cards-stack">${savedRecipes
           .map((recipe) =>
             renderRecipeCard({
               recipe,
-              shelf,
               isSaved: true,
             })
           )

@@ -531,7 +531,7 @@ export const RECIPES_PART_2: Recipe[] = [
     nameEn: 'Kir Royale',
     abv: 11,
     category: 'classic',
-    tags: ['celebrate', 'easy'],
+    tags: ['celebrate', 'easy', 'cassis'],
     bottles: ['sparkling'],
     why: 'Французский шик за 10 секунд: ледяное игристое и капля тягучей чёрной смородины.',
     method: 'build',

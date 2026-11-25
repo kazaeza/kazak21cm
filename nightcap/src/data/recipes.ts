@@ -1,4 +1,5 @@
 import type { GlassType, IceType, MethodType, Recipe, RecipeCategory } from '../types';
+import { RECIPES_CASSIS } from './recipes-cassis';
 import { RECIPES_PART_1 } from './recipes-part1';
 import { RECIPES_PART_2 } from './recipes-part2';
 import { RECIPES_PART_3 } from './recipes-part3';
@@ -8,6 +9,7 @@ import { RECIPES_USER_2 } from './recipes-user2';
 export const RECIPES: Recipe[] = [
   ...RECIPES_USER_1,
   ...RECIPES_USER_2,
+  ...RECIPES_CASSIS,
   ...RECIPES_PART_3,
   ...RECIPES_PART_1,
   ...RECIPES_PART_2,

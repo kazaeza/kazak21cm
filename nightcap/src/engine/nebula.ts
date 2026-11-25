@@ -262,7 +262,7 @@ export interface NebulaOptions {
   bottomObstacleEl: HTMLElement;
   isSelected: (tagId: string) => boolean;
   onToggleTag: (tag: VibeTag) => void;
-  onFocusChange?: (tag: VibeTag | null) => void;
+  onFocusChange?: (tag: VibeTag | null, userInitiated: boolean) => void;
 }
 
 export class NebulaEngine {
@@ -279,7 +279,6 @@ export class NebulaEngine {
   private hoveredTagId: string | null = null;
   private focusTargetId: string | null = null;
   private centeredTagId: string | null = null;
-  private lastDetentTime = 0;
   private hasInteracted = false;
 
   private paused = false;
@@ -288,17 +287,26 @@ export class NebulaEngine {
   private lastTime = 0;
   private frameCounter = 0;
 
-  // Silky cloud dissolution (v4.0 "Заебенить" transition)
+  // Silky cloud dissolution & 1-second cosmic shaker mixing vortex (v5.0)
   private targetDisperse = 0;
   private disperseAmt = 0;
+  private targetMixSwirl = 0;
+  private mixSwirl = 0;
+  private mixAngle = 0;
 
-  // Dynamic reactive color tint from focused/selected tag or current podium cocktail
+  // Dynamic reactive dual-stop neon tint from focused/selected tag
   private tintR = 178;
   private tintG = 140;
   private tintB = 255;
   private targetTintR = 178;
   private targetTintG = 140;
   private targetTintB = 255;
+  private tint2R = 125;
+  private tint2G = 211;
+  private tint2B = 252;
+  private targetTint2R = 125;
+  private targetTint2G = 211;
+  private targetTint2B = 252;
   private hasSelectionAura = false;
   private auraStrength = 0;
   private warpBoost = 0;
@@ -431,8 +439,8 @@ export class NebulaEngine {
   }
 
   /**
-   * Silky v4.0 cloud dissolution: smoothly disperses star-nodes outward past the screen edges
-   * while the volumetric nebula continues breathing behind the emerging Cocktail Podium.
+   * Silky cloud dissolution: smoothly disperses star-nodes outward past the screen edges
+   * while the volumetric nebula continues breathing behind the ritual / results.
    */
   public setDispersed(dispersed: boolean, immediate = false): void {
     this.targetDisperse = dispersed ? 1 : 0;
@@ -443,7 +451,27 @@ export class NebulaEngine {
   }
 
   /**
-   * Gentle cosmic core pulse when opening the podium (zero harsh flicker).
+   * 1-second cosmic shaker ritual vortex: stars gracefully disperse and fade out while
+   * the volumetric nebula clouds swirl faster around the center and bloom warmly in the vibe's neon gradient.
+   */
+  public setMixingMode(mixing: boolean): void {
+    this.targetMixSwirl = mixing ? 1 : 0;
+    this.setDispersed(mixing);
+    if (mixing) {
+      this.warpBoost = 1;
+    }
+  }
+
+  /**
+   * Returns the currently center-focused star tag, if any.
+   */
+  public getFocusedTag(): VibeTag | null {
+    if (!this.centeredTagId) return this.tagNodes[0]?.tag ?? null;
+    return this.tagNodes.find((n) => n.tag.id === this.centeredTagId)?.tag ?? this.tagNodes[0]?.tag ?? null;
+  }
+
+  /**
+   * Gentle cosmic core pulse when launching the ritual (zero harsh flicker).
    */
   public triggerWarpPulse(): void {
     this.warpBoost = 1;
@@ -458,13 +486,20 @@ export class NebulaEngine {
       this.targetTintR = 178;
       this.targetTintG = 140;
       this.targetTintB = 255;
+      this.targetTint2R = 125;
+      this.targetTint2G = 211;
+      this.targetTint2B = 252;
       return;
     }
-    const [c1] = extractColors(glow);
+    const [c1, c2] = extractColors(glow);
     const [r, g, b] = hexToRgb(c1);
+    const [r2, g2, b2] = hexToRgb(c2);
     this.targetTintR = r;
     this.targetTintG = g;
     this.targetTintB = b;
+    this.targetTint2R = r2;
+    this.targetTint2G = g2;
+    this.targetTint2B = b2;
     this.hasSelectionAura = true;
   }
 
@@ -545,10 +580,8 @@ export class NebulaEngine {
         if (this.dragMoved) return;
         this.hasInteracted = true;
         this.opts.onToggleTag(tag);
-        // Smoothly pull a newly selected star into front optical focus!
-        if (this.opts.isSelected(tag.id)) {
-          this.focusTag(tag.id);
-        }
+        // Never untoggle to null: smoothly glide the tapped star right into center focus and keep it armed!
+        this.focusTag(tag.id);
       });
 
       layer.appendChild(btn);
@@ -741,19 +774,31 @@ export class NebulaEngine {
       canvas.height = targetH;
     }
 
-    // Smooth color, warp & disperse interpolation
+    // Smooth color, warp, mixing swirl & disperse interpolation
     const colorLerp = Math.min(1, dt * 0.0065);
     this.tintR += (this.targetTintR - this.tintR) * colorLerp;
     this.tintG += (this.targetTintG - this.tintG) * colorLerp;
     this.tintB += (this.targetTintB - this.tintB) * colorLerp;
+    this.tint2R += (this.targetTint2R - this.tint2R) * colorLerp;
+    this.tint2G += (this.targetTint2G - this.tint2G) * colorLerp;
+    this.tint2B += (this.targetTint2B - this.tint2B) * colorLerp;
 
     const targetAura = this.hasSelectionAura ? 1 : 0;
     this.auraStrength += (targetAura - this.auraStrength) * colorLerp;
 
-    const disperseLerp = Math.min(1, dt * (this.targetDisperse > 0.5 ? 0.011 : 0.0085));
+    const disperseLerp = Math.min(1, dt * (this.targetDisperse > 0.5 ? 0.017 : 0.0085));
     this.disperseAmt += (this.targetDisperse - this.disperseAmt) * disperseLerp;
     if (Math.abs(this.targetDisperse - this.disperseAmt) < 0.002) {
       this.disperseAmt = this.targetDisperse;
+    }
+
+    const mixLerp = Math.min(1, dt * (this.targetMixSwirl > 0.5 ? 0.0095 : 0.0075));
+    this.mixSwirl += (this.targetMixSwirl - this.mixSwirl) * mixLerp;
+    if (Math.abs(this.targetMixSwirl - this.mixSwirl) < 0.002) {
+      this.mixSwirl = this.targetMixSwirl;
+    }
+    if (this.mixSwirl > 0.002) {
+      this.mixAngle += dt * (0.0018 + 0.0036 * this.mixSwirl);
     }
 
     if (this.warpBoost > 0.001) {
@@ -885,38 +930,86 @@ export class NebulaEngine {
       ctx.restore();
     }
 
-    // 2. Volumetric Anisotropic Nebula Clouds + Reactive Core + Dust Lanes
+    // 2. Volumetric Anisotropic Nebula Clouds + Reactive Dual-Neon Core + Mixing Vortex + Dust Lanes
     const breath = now * 0.00048;
-    const cloudScale = (Math.min(w, h) < 480 ? 0.82 : 1.08) * (1 + this.disperseAmt * 0.14 + this.warpBoost * 0.08);
+    const swirl = this.mixSwirl;
+    const cloudScale =
+      (Math.min(w, h) < 480 ? 0.82 : 1.08) *
+      (1 + this.disperseAmt * 0.14 + swirl * 0.24 + this.warpBoost * 0.08);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const coreRad = Math.min(w, h) * (0.44 + 0.1 * this.auraStrength + 0.12 * this.disperseAmt);
-    const coreAlpha = 0.15 + 0.18 * this.auraStrength + 0.12 * this.disperseAmt + 0.16 * this.warpBoost;
+    const coreRad = Math.min(w, h) * (0.44 + 0.1 * this.auraStrength + 0.12 * this.disperseAmt + 0.20 * swirl);
+    const coreAlpha = Math.min(
+      0.85,
+      0.15 + 0.18 * this.auraStrength + 0.12 * this.disperseAmt + 0.30 * swirl + 0.16 * this.warpBoost
+    );
     const coreGrad = ctx.createRadialGradient(centerX, centerY, coreRad * 0.04, centerX, centerY, coreRad);
     coreGrad.addColorStop(0, `rgba(${Math.round(this.tintR)}, ${Math.round(this.tintG)}, ${Math.round(this.tintB)}, ${coreAlpha.toFixed(3)})`);
-    coreGrad.addColorStop(0.48, `rgba(${Math.round(this.tintR * 0.72)}, ${Math.round(this.tintG * 0.68)}, ${Math.round(this.tintB)}, ${(coreAlpha * 0.42).toFixed(3)})`);
+    coreGrad.addColorStop(0.45, `rgba(${Math.round(this.tint2R)}, ${Math.round(this.tint2G)}, ${Math.round(this.tint2B)}, ${(coreAlpha * (0.36 + 0.22 * swirl)).toFixed(3)})`);
     coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = coreGrad;
     ctx.beginPath();
     ctx.arc(centerX, centerY, coreRad, 0, Math.PI * 2);
     ctx.fill();
 
+    // Secondary swirling neon plasma bloom during 1-second shaker ritual
+    if (swirl > 0.01) {
+      const orbitDist = Math.min(w, h) * 0.11 * swirl;
+      const sx1 = centerX + Math.cos(this.mixAngle * 1.15) * orbitDist;
+      const sy1 = centerY + Math.sin(this.mixAngle * 1.15) * orbitDist;
+      const sx2 = centerX - Math.cos(this.mixAngle * 0.95) * orbitDist;
+      const sy2 = centerY - Math.sin(this.mixAngle * 0.95) * orbitDist;
+      const lobeRad = Math.min(w, h) * (0.34 + 0.06 * Math.sin(now * 0.007));
+
+      const lobe1 = ctx.createRadialGradient(sx1, sy1, lobeRad * 0.04, sx1, sy1, lobeRad);
+      lobe1.addColorStop(0, `rgba(${Math.round(this.tintR)}, ${Math.round(this.tintG)}, ${Math.round(this.tintB)}, ${(0.34 * swirl).toFixed(3)})`);
+      lobe1.addColorStop(0.55, `rgba(${Math.round(this.tintR)}, ${Math.round(this.tintG)}, ${Math.round(this.tintB)}, ${(0.11 * swirl).toFixed(3)})`);
+      lobe1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = lobe1;
+      ctx.beginPath();
+      ctx.arc(sx1, sy1, lobeRad, 0, Math.PI * 2);
+      ctx.fill();
+
+      const lobe2 = ctx.createRadialGradient(sx2, sy2, lobeRad * 0.04, sx2, sy2, lobeRad);
+      lobe2.addColorStop(0, `rgba(${Math.round(this.tint2R)}, ${Math.round(this.tint2G)}, ${Math.round(this.tint2B)}, ${(0.30 * swirl).toFixed(3)})`);
+      lobe2.addColorStop(0.55, `rgba(${Math.round(this.tint2R)}, ${Math.round(this.tint2G)}, ${Math.round(this.tint2B)}, ${(0.10 * swirl).toFixed(3)})`);
+      lobe2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = lobe2;
+      ctx.beginPath();
+      ctx.arc(sx2, sy2, lobeRad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     for (let i = 0; i < this.clouds.length; i++) {
       const c = this.clouds[i];
       const [xx, yy, depth] = projectMat(this.rotM, c.x, c.y, c.z);
-      const px = centerX + xx * radiusX * 1.14;
-      const py = centerY + yy * radiusY * 1.16;
+      let ox = xx * radiusX * 1.14;
+      let oy = yy * radiusY * 1.16;
+
+      if (swirl > 0.002) {
+        const theta = this.mixAngle * (0.62 + (i % 3) * 0.24) * swirl;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+        const pull = 1 - 0.24 * swirl;
+        const rxSwirl = (ox * cosT - oy * sinT) * pull;
+        const rySwirl = (ox * sinT + oy * cosT) * pull;
+        ox = rxSwirl;
+        oy = rySwirl;
+      }
+
+      const px = centerX + ox;
+      const py = centerY + oy;
       const depthNorm = (depth + 1) * 0.5;
-      const pulse = 0.94 + 0.06 * Math.sin(breath + c.phase);
+      const pulse = 0.94 + 0.06 * Math.sin(breath + c.phase + swirl * 2.2);
       const rx = c.rx * cloudScale * (0.84 + 0.28 * depthNorm) * pulse;
       const ry = c.ry * cloudScale * (0.84 + 0.28 * depthNorm) * pulse;
-      const rot = c.angle + now * c.rotSpeed + xx * 0.32;
+      const rot = c.angle + now * c.rotSpeed + xx * 0.32 + this.mixAngle * (i % 2 === 0 ? 1.3 : -1.05) * swirl;
 
       ctx.save();
       ctx.translate(px, py);
       ctx.rotate(rot);
-      ctx.globalAlpha = Math.min(1, c.alpha * (0.48 + 0.52 * depthNorm) * (1 + this.disperseAmt * 0.22));
+      ctx.globalAlpha = Math.min(1, c.alpha * (0.48 + 0.52 * depthNorm) * (1 + this.disperseAmt * 0.20 + swirl * 0.34));
       ctx.drawImage(this.cloudSprites[c.spriteIdx], -rx, -ry, rx * 2, ry * 2);
       ctx.restore();
     }
@@ -924,20 +1017,23 @@ export class NebulaEngine {
 
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
-    for (let i = 0; i < this.dustLanes.length; i++) {
-      const d = this.dustLanes[i];
-      const [xx, yy, depth] = projectMat(this.rotM, d.x, d.y, d.z);
-      if (depth < -0.25) continue;
-      const px = centerX + xx * radiusX * 0.95;
-      const py = centerY + yy * radiusY * 0.95;
-      const rx = d.rx * cloudScale;
-      const ry = d.ry * cloudScale;
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate(d.angle + yy * 0.25);
-      ctx.globalAlpha = d.alpha * smoothstep(-0.25, 0.65, depth);
-      ctx.drawImage(this.dustSprite, -rx, -ry, rx * 2, ry * 2);
-      ctx.restore();
+    const dustFade = 1 - swirl * 0.65;
+    if (dustFade > 0.02) {
+      for (let i = 0; i < this.dustLanes.length; i++) {
+        const d = this.dustLanes[i];
+        const [xx, yy, depth] = projectMat(this.rotM, d.x, d.y, d.z);
+        if (depth < -0.25) continue;
+        const px = centerX + xx * radiusX * 0.95;
+        const py = centerY + yy * radiusY * 0.95;
+        const rx = d.rx * cloudScale;
+        const ry = d.ry * cloudScale;
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(d.angle + yy * 0.25);
+        ctx.globalAlpha = d.alpha * smoothstep(-0.25, 0.65, depth) * dustFade;
+        ctx.drawImage(this.dustSprite, -rx, -ry, rx * 2, ry * 2);
+        ctx.restore();
+      }
     }
     ctx.restore();
     ctx.globalAlpha = 1;
@@ -973,11 +1069,11 @@ export class NebulaEngine {
     }
 
     const nextFocusedId = this.targetDisperse > 0.5 ? null : (centerFocusedNode?.tag.id ?? null);
-    if (nextFocusedId !== this.centeredTagId) {
+    const allowFocusSwitch = !this.focusTargetId || nextFocusedId === this.focusTargetId;
+    if (allowFocusSwitch && nextFocusedId !== this.centeredTagId) {
       this.centeredTagId = nextFocusedId;
-      if (this.hasInteracted && nextFocusedId && now - this.lastDetentTime > 95) {
-        this.lastDetentTime = now;
-        this.opts.onFocusChange?.(centerFocusedNode?.tag ?? null);
+      if (centerFocusedNode && nextFocusedId) {
+        this.opts.onFocusChange?.(centerFocusedNode.tag, this.hasInteracted);
       }
     }
 
@@ -986,13 +1082,17 @@ export class NebulaEngine {
       (centerFocusedNode ? projected.find((p) => p.node === centerFocusedNode) : undefined) ??
       null;
 
-    // If nothing is explicitly selected yet, subtly bias ambient nebula tint toward centered reticle star
+    // Smoothly bias ambient nebula dual-stop tint toward the currently centered star
     if (!this.opts.isSelected(this.centeredTagId || '') && centerFocusedNode && this.targetDisperse < 0.5) {
-      const [c1] = extractColors(centerFocusedNode.tag.glow);
+      const [c1, c2] = extractColors(centerFocusedNode.tag.glow);
       const [r, g, b] = hexToRgb(c1);
+      const [r2, g2, b2] = hexToRgb(c2);
       this.targetTintR = r;
       this.targetTintG = g;
       this.targetTintB = b;
+      this.targetTint2R = r2;
+      this.targetTint2G = g2;
+      this.targetTint2B = b2;
       this.hasSelectionAura = true;
     }
 
@@ -1002,7 +1102,6 @@ export class NebulaEngine {
     const lerpK = Math.min(1, 1 - Math.pow(0.86, dt / 16.667));
     const disperseEase = this.disperseAmt * this.disperseAmt;
     let selectedProj: { x: number; y: number; node: TagNode } | null = null;
-    const visibleFrontNodes: { x: number; y: number; node: TagNode; op: number }[] = [];
 
     for (let i = 0; i < projected.length; i++) {
       const p = projected[i];
@@ -1084,10 +1183,11 @@ export class NebulaEngine {
         targetOpacity = Math.max(0.94, 0.86 + 0.14 * ((p.depth + 1) * 0.5));
       }
 
-      targetOpacity *= 1 - disperseEase;
-      node.curOpacity += (targetOpacity - node.curOpacity) * lerpK;
+      targetOpacity *= Math.max(0, 1 - disperseEase * 1.45);
+      const opacityLerp = this.targetDisperse > 0.5 ? Math.min(1, lerpK * 2.4) : lerpK;
+      node.curOpacity += (targetOpacity - node.curOpacity) * opacityLerp;
 
-      if (node.curOpacity < 0.025 && (!isSel || this.disperseAmt > 0.85)) {
+      if (node.curOpacity < 0.025 && (!isSel || this.disperseAmt > 0.55)) {
         if (!node.hidden) {
           node.hidden = true;
           el.style.visibility = 'hidden';
@@ -1121,59 +1221,47 @@ export class NebulaEngine {
 
       if (node.curOpacity > 0.36) {
         frontOccupied.push({ x: px, y: py, w: ew, h: eh });
-        if (!isSel && !isFocused) visibleFrontNodes.push({ x: px, y: py, node, op: node.curOpacity });
       }
       if (isSel || (!selectedProj && isFocused)) {
         selectedProj = { x: px, y: py, node };
       }
     }
 
-    // 4. Delicate Constellation Links & Starlight Reticle Ring around Selected / Focused Star
+    // 4. Pure Starlight Radial Glow + Twin Gentle Orbiting Diffraction Sparkles (ZERO linear rings or strokes!)
     if (selectedProj && this.disperseAmt < 0.5) {
       const sx = selectedProj.x;
       const sy = selectedProj.y;
-      const isSelectedNode = this.opts.isSelected(selectedProj.node.tag.id);
-      const rCol = `${Math.round(this.tintR)}, ${Math.round(this.tintG)}, ${Math.round(this.tintB)}`;
-      const reticleAlpha = (1 - this.disperseAmt * 2) * (isSelectedNode ? 0.58 : 0.32);
+      const fade = 1 - this.disperseAmt * 2;
+      const breathe = 1 + 0.06 * Math.sin(now * 0.0032);
+      const r1 = `${Math.round(this.tintR)}, ${Math.round(this.tintG)}, ${Math.round(this.tintB)}`;
+      const r2 = `${Math.round(this.tint2R)}, ${Math.round(this.tint2G)}, ${Math.round(this.tint2B)}`;
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      visibleFrontNodes.sort((a, b) => Math.hypot(a.x - sx, a.y - sy) - Math.hypot(b.x - sx, b.y - sy));
-      const neighbors = visibleFrontNodes.slice(0, 3);
-      for (const nb of neighbors) {
-        const dist = Math.hypot(nb.x - sx, nb.y - sy);
-        if (dist > 235) continue;
-        const lineGrad = ctx.createLinearGradient(sx, sy, nb.x, nb.y);
-        lineGrad.addColorStop(0, `rgba(${rCol}, ${reticleAlpha.toFixed(2)})`);
-        lineGrad.addColorStop(1, `rgba(${rCol}, 0.03)`);
-        ctx.strokeStyle = lineGrad;
-        ctx.lineWidth = 1.1;
-        ctx.setLineDash([2, 6]);
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(nb.x, nb.y);
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
-
-      // Orbiting astrolabe focus halo + twin starlight satellites on selected star
-      const orbitPulse = 1 + 0.04 * Math.sin(now * 0.004);
-      const orx = (selectedProj.node.width * 0.56 + 18) * orbitPulse;
-      const ory = (selectedProj.node.height * 0.62 + 12) * orbitPulse;
-      ctx.strokeStyle = `rgba(${rCol}, ${(reticleAlpha * 0.72).toFixed(2)})`;
-      ctx.lineWidth = isSelectedNode ? 1.25 : 0.9;
+      // Soft multi-stop radial starlight bloom behind the focused/armed star
+      const glowRadius = Math.max(selectedProj.node.width * 0.78, 86) * breathe;
+      const glowGrad = ctx.createRadialGradient(sx, sy, glowRadius * 0.05, sx, sy, glowRadius);
+      glowGrad.addColorStop(0, `rgba(${r1}, ${(0.42 * fade).toFixed(3)})`);
+      glowGrad.addColorStop(0.32, `rgba(${r1}, ${(0.22 * fade).toFixed(3)})`);
+      glowGrad.addColorStop(0.66, `rgba(${r2}, ${(0.09 * fade).toFixed(3)})`);
+      glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glowGrad;
       ctx.beginPath();
-      ctx.ellipse(sx, sy, orx, ory, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.arc(sx, sy, glowRadius, 0, Math.PI * 2);
+      ctx.fill();
 
-      if (isSelectedNode) {
-        for (let k = 0; k < 2; k++) {
-          const oa = now * 0.0022 + k * Math.PI;
-          const ox = sx + Math.cos(oa) * orx;
-          const oy = sy + Math.sin(oa) * ory;
-          ctx.drawImage(this.sparkSprites[0], ox - 9, oy - 9, 18, 18);
-        }
+      // 2 tiny gentle orbiting diffraction sparkles (zero line strokes)
+      const orx = (selectedProj.node.width * 0.54 + 16) * (1 + 0.03 * Math.sin(now * 0.0036));
+      const ory = (selectedProj.node.height * 0.58 + 12) * (1 + 0.03 * Math.cos(now * 0.0036));
+      for (let k = 0; k < 2; k++) {
+        const oa = now * 0.0017 + k * Math.PI + 0.4;
+        const ox = sx + Math.cos(oa) * orx;
+        const oy = sy + Math.sin(oa) * ory;
+        const tw = (0.58 + 0.42 * Math.sin(now * 0.005 + k * 2.1)) * fade;
+        const sz = k === 0 ? 17 : 14;
+        ctx.globalAlpha = Math.max(0, Math.min(1, tw));
+        ctx.drawImage(this.sparkSprites[k === 0 ? 0 : 2], ox - sz * 0.5, oy - sz * 0.5, sz, sz);
       }
 
       ctx.restore();

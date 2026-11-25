@@ -17,6 +17,7 @@ export const TAGS: VibeTag[] = [
   { id: 'sweet', emoji: '🤗', label: 'Сланенького', sub: 'вместо торта, мягко и сливочно', glow: 'linear-gradient(135deg,#fda4af,#f9a8d4)', lenses: ['all', 'sweet', 'fun'] },
   { id: 'jam', emoji: '🍓', label: 'Конфитюр', sub: 'на джеме, мармеладе и варенье', glow: 'linear-gradient(135deg,#fb7185,#f59e0b)', lenses: ['all', 'sweet', 'fun'] },
   { id: 'sloe-gin', emoji: '🫐', label: 'Чёто со сло джином', sub: 'терновый джин и ягодная классика', glow: 'linear-gradient(135deg,#c026d3,#818cf8)', lenses: ['all', 'fun', 'sweet', 'sour'] },
+  { id: 'cassis', emoji: '🍇', label: 'Крем де касис', sub: 'чёрная смородина, кир рояль и ягодная глубина', glow: 'linear-gradient(135deg,#a855f7,#ec4899)', lenses: ['all', 'sweet', 'sour', 'light', 'fun'] },
   { id: 'smoke', emoji: '💨', label: 'Смоки', sub: 'дымный мескаль или торфяной скотч', glow: 'linear-gradient(135deg,#c084fc,#f472b6)', lenses: ['all', 'strong', 'fun'] },
   { id: 'shots', emoji: '⚡', label: 'SHOTS!', sub: 'быстро, громко, одним глотком', glow: 'linear-gradient(135deg,#ffb86c,#ff6b9d)', lenses: ['all', 'strong', 'fun', 'party'] },
   { id: 'gin-tonic', emoji: '🍸', label: 'Джин Джоник', sub: 'можжевельник, тоник и много льда', glow: 'linear-gradient(135deg,#66e0ff,#7c89ff)', lenses: ['all', 'light', 'strong'] },
@@ -55,6 +56,7 @@ export const TAG_MAP = new Map<string, VibeTag>(TAGS.map((t) => [t.id, t]));
 export const SURPRISES: SurpriseCombo[] = [
   { ids: ['gin-tonic'], text: '🍸 Джин Джоник — можжевельник и авторские тоники!' },
   { ids: ['sloe-gin'], text: '🫐 Чёто со сло джином — ягодная барная классика' },
+  { ids: ['cassis'], text: '🍇 Крем де касис — бархатная чёрная смородина!' },
   { ids: ['jam'], text: '🍓 Конфитюр — густо, ароматно и с джемом!' },
   { ids: ['jager'], text: '🦌 Ягер и бальзам — лесные травы и характер' },
   { ids: ['grapefruit'], text: '🩷 Грейпфрут — розовая сочная горчинка' },

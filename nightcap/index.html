@@ -49,38 +49,22 @@
         </div>
       </section>
 
-      <!-- ==================== TAB 2: SHELF (ПОЛКА) ==================== -->
-      <section id="screen-shelf" class="tab-screen content-screen hidden" data-tab="shelf"></section>
-
-      <!-- ==================== TAB 3: MENU (КАРТА) ==================== -->
+      <!-- ==================== TAB 2: MENU (КАРТА) ==================== -->
       <section id="screen-menu" class="tab-screen content-screen hidden" data-tab="menu"></section>
 
-      <!-- ==================== TAB 4: SAVED (ТАЙНИК) ==================== -->
+      <!-- ==================== TAB 3: SAVED (ТАЙНИК) ==================== -->
       <section id="screen-saved" class="tab-screen content-screen hidden" data-tab="saved"></section>
 
       <!-- ==================== FLOATING BOTTOM STACK ==================== -->
       <div id="bottom-stack" class="bottom-stack">
         <div id="orbit-hint" class="orbit-hint">
-          Крути сферу · наводи прицел или тапни вайб
+          Крути туманность · жми «Заебенить»
         </div>
 
-        <!-- Bottom Console: Search when idle -> Single-tag confirm "Заебенить" when selected -->
+        <!-- Bottom Console: Always-Armed Vibe Confirm -> Optional Compact Word Search -->
         <div id="cosmos-console" class="cosmos-console glass-chrome">
-          <!-- Custom compact live suggestions (never uses native Android datalist popup!) -->
-          <div id="word-suggestions" class="word-suggestions hidden" role="listbox" aria-label="Подсказки"></div>
-
-          <!-- State A: Nothing selected -> quick custom word search -->
-          <div id="console-idle" class="console-idle-row">
-            <form id="word-form" class="word-form" novalidate>
-              <span data-icon="search" data-icon-class="icon-xs text-muted"></span>
-              <input id="word-input" type="search" enterkeyhint="search" maxlength="45" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Или введи слово: джин, маракуйя, 0%…" />
-              <button type="submit" class="word-submit-btn" data-tactile aria-label="Найти вайб">+</button>
-            </form>
-            <button id="idle-shelf-chip" type="button" class="mini-shelf-chip hidden" data-tactile></button>
-          </div>
-
-          <!-- State B: One vibe selected -> crisp confirmation + "Заебенить" CTA -->
-          <div id="console-confirm" class="console-confirm hidden">
+          <!-- State A (Default): Always armed with the centered star -->
+          <div id="console-confirm" class="console-confirm">
             <div class="selected-vibe-bar">
               <div class="selected-vibe-info">
                 <span id="selected-vibe-dot" class="selected-vibe-dot"></span>
@@ -90,9 +74,11 @@
                 </div>
               </div>
               <div class="caught-controls">
-                <button id="confirm-shelf-chip" type="button" class="mini-shelf-chip hidden" data-tactile></button>
-                <button id="clear-btn" type="button" class="clear-x-btn" data-tactile aria-label="Снять выбор">
+                <button id="clear-custom-btn" type="button" class="clear-x-btn hidden" data-tactile aria-label="Сбросить свой запрос">
                   <span data-icon="x" data-icon-class="icon-xs"></span>
+                </button>
+                <button id="open-search-btn" type="button" class="console-search-btn" data-tactile aria-label="Поиск по слову">
+                  <span data-icon="search" data-icon-class="icon-xs"></span>
                 </button>
               </div>
             </div>
@@ -101,35 +87,34 @@
               <span class="confirm-cta-shimmer" aria-hidden="true"></span>
               <span data-icon="zap" data-icon-class="icon-sm confirm-cta-zap"></span>
               <span class="confirm-cta-label">Заебенить</span>
-              <span id="mix-count" class="confirm-cta-count">12</span>
             </button>
+          </div>
+
+          <!-- State B (Only when user taps 🔍): Compact custom word search -->
+          <div id="console-search" class="console-search hidden">
+            <div id="word-suggestions" class="word-suggestions hidden" role="listbox" aria-label="Подсказки"></div>
+            <div class="console-search-row">
+              <form id="word-form" class="word-form" novalidate>
+                <span data-icon="search" data-icon-class="icon-xs text-muted"></span>
+                <input id="word-input" type="search" enterkeyhint="search" maxlength="45" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Слово: джин, маракуйя, 0%…" />
+                <button type="submit" class="word-submit-btn" data-tactile aria-label="Найти вайб">+</button>
+              </form>
+              <button id="close-search-btn" type="button" class="clear-x-btn" data-tactile aria-label="Закрыть поиск">
+                <span data-icon="x" data-icon-class="icon-xs"></span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Floating Cosmic Navigation Dock with Morphing Glider -->
+        <!-- Minimalist Understated 3-Tab Cosmic Navigation Dock -->
         <nav id="cosmic-dock" aria-label="Навигация" class="cosmic-dock-wrap">
-          <div class="cosmic-dock glass-chrome">
+          <div class="cosmic-dock">
             <span id="dock-pill-indicator" class="dock-pill-indicator" aria-hidden="true"></span>
 
             <button type="button" data-nav="nebula" class="nav-item active" data-tactile>
               <span data-icon="orbit" data-icon-class="icon-nav"></span>
               <span>Космос</span>
             </button>
-
-            <button type="button" data-nav="shelf" class="nav-item" data-tactile>
-              <span class="nav-icon-wrap">
-                <span data-icon="wine" data-icon-class="icon-nav"></span>
-                <span id="nav-badge-shelf" class="nav-badge hidden"></span>
-              </span>
-              <span>Полка</span>
-            </button>
-
-            <div class="orb-slot">
-              <button id="center-orb-btn" type="button" class="orb-cta" data-tactile title="Подобрать коктейли">
-                <span data-icon="martini" data-icon-class="icon-orb"></span>
-                <span id="orb-count-label" class="orb-label">Микс</span>
-              </button>
-            </div>
 
             <button type="button" data-nav="menu" class="nav-item" data-tactile>
               <span data-icon="book-open" data-icon-class="icon-nav"></span>
@@ -145,6 +130,87 @@
             </button>
           </div>
         </nav>
+      </div>
+    </div>
+
+    <!-- ==================== 1-SECOND COSMIC SHAKER RITUAL OVERLAY ==================== -->
+    <div id="mix-ritual" class="mix-ritual hidden" aria-hidden="true">
+      <div class="ritual-mist ritual-mist-a" aria-hidden="true"></div>
+      <div class="ritual-mist ritual-mist-b" aria-hidden="true"></div>
+
+      <div class="ritual-stage">
+        <div class="ritual-shaker-wrap" aria-hidden="true">
+          <svg class="ritual-shaker-svg" viewBox="0 0 140 190" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="shakerMetal" x1="20%" y1="0%" x2="88%" y2="100%">
+                <stop offset="0%" stop-color="#f7f4ff" stop-opacity="0.92" />
+                <stop offset="28%" stop-color="#c9c2e8" stop-opacity="0.62" />
+                <stop offset="62%" stop-color="#4e4776" stop-opacity="0.58" />
+                <stop offset="100%" stop-color="#9e96cc" stop-opacity="0.72" />
+              </linearGradient>
+              <linearGradient id="shakerCapMetal" x1="15%" y1="0%" x2="90%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.96" />
+                <stop offset="42%" stop-color="#d2cbf0" stop-opacity="0.74" />
+                <stop offset="100%" stop-color="#60578a" stop-opacity="0.72" />
+              </linearGradient>
+              <linearGradient id="shakerCoreLiquid" x1="25%" y1="0%" x2="75%" y2="100%">
+                <stop offset="0%" stop-color="var(--ritual-c1, #f7b2d9)" stop-opacity="0.92" />
+                <stop offset="55%" stop-color="var(--ritual-c2, #7dd3fc)" stop-opacity="0.78" />
+                <stop offset="100%" stop-color="var(--ritual-c1, #c79bff)" stop-opacity="0.95" />
+              </linearGradient>
+              <linearGradient id="shakerRib" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.88" />
+                <stop offset="50%" stop-color="#ffffff" stop-opacity="0.34" />
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0.06" />
+              </linearGradient>
+              <radialGradient id="shakerInnerHalo" cx="50%" cy="54%" r="48%">
+                <stop offset="0%" stop-color="var(--ritual-c1, #c79bff)" stop-opacity="0.46" />
+                <stop offset="60%" stop-color="var(--ritual-c2, #7dd3fc)" stop-opacity="0.16" />
+                <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+
+            <!-- Soft zero-blur aura behind shaker -->
+            <ellipse cx="70" cy="108" rx="56" ry="62" fill="url(#shakerInnerHalo)" />
+
+            <!-- Top Cobbler Cap -->
+            <path d="M55 26 C55 20.5 61.5 18 70 18 C78.5 18 85 20.5 85 26 L86 42 L54 42 Z" fill="url(#shakerCapMetal)" stroke="rgba(255,255,255,0.62)" stroke-width="1.2" />
+            <ellipse cx="70" cy="24" rx="11.5" ry="2.6" fill="rgba(255,255,255,0.52)" />
+
+            <!-- Strainer Shoulder Dome -->
+            <path d="M52 42 L88 42 C96 48 103 58 105 68 L35 68 C37 58 44 48 52 42 Z" fill="url(#shakerMetal)" stroke="rgba(255,255,255,0.48)" stroke-width="1.2" />
+
+            <!-- Main Tapered Tin Body -->
+            <path d="M35 68 L105 68 L95 162 C94 169 84 174 70 174 C56 174 46 169 45 162 Z" fill="url(#shakerMetal)" stroke="rgba(255,255,255,0.46)" stroke-width="1.35" />
+
+            <!-- Glowing Cosmic Liquid Core Window -->
+            <path d="M44 77 L96 77 L88.5 156 C87.8 161 80 165 70 165 C60 165 52.2 161 51.5 156 Z" fill="url(#shakerCoreLiquid)" opacity="0.88" />
+            <ellipse cx="70" cy="77" rx="26" ry="3.6" fill="rgba(255,255,255,0.44)" />
+
+            <!-- Suspended Crystal Ice Facets Inside Core -->
+            <g opacity="0.72">
+              <rect x="54" y="92" width="14" height="14" rx="3" transform="rotate(-14 61 99)" fill="rgba(255,255,255,0.34)" stroke="rgba(255,255,255,0.72)" stroke-width="0.9" />
+              <rect x="72" y="108" width="13" height="13" rx="3" transform="rotate(18 78 114)" fill="rgba(255,255,255,0.28)" stroke="rgba(255,255,255,0.65)" stroke-width="0.9" />
+              <rect x="57" y="128" width="12" height="12" rx="2.5" transform="rotate(11 63 134)" fill="rgba(255,255,255,0.24)" stroke="rgba(255,255,255,0.58)" stroke-width="0.85" />
+            </g>
+
+            <!-- Specular Brushed-Metal Ribs & Seam Rings -->
+            <path d="M44 72 L52 159" stroke="url(#shakerRib)" stroke-width="4.2" stroke-linecap="round" />
+            <path d="M95 74 L89 156" stroke="rgba(255,255,255,0.24)" stroke-width="1.6" stroke-linecap="round" />
+            <ellipse cx="70" cy="68" rx="35" ry="4.4" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="1.3" />
+            <ellipse cx="70" cy="42" rx="18" ry="2.4" fill="none" stroke="rgba(255,255,255,0.52)" stroke-width="1.1" />
+            <path d="M51 163 Q70 171 89 163" stroke="rgba(255,255,255,0.44)" stroke-width="1.2" stroke-linecap="round" />
+
+            <!-- Twin Twinkling Starlight Accents -->
+            <path class="shaker-spark shaker-spark-1" d="M113 30 L115.2 37.8 L123 40 L115.2 42.2 L113 50 L110.8 42.2 L103 40 L110.8 37.8 Z" fill="#fff7ff" />
+            <path class="shaker-spark shaker-spark-2" d="M24 96 L25.6 101.4 L31 103 L25.6 104.6 L24 110 L22.4 104.6 L17 103 L22.4 101.4 Z" fill="var(--ritual-c2, #7dd3fc)" />
+          </svg>
+        </div>
+
+        <div class="ritual-caption">
+          <div id="ritual-vibe" class="ritual-vibe"></div>
+          <div id="ritual-status" class="ritual-status">Ловим вайб…</div>
+        </div>
       </div>
     </div>
 

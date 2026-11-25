@@ -1572,7 +1572,7 @@ export const RECIPES_PART_1: Recipe[] = [
     nameEn: 'El Diablo',
     abv: 13,
     category: 'classic',
-    tags: ['spicy'],
+    tags: ['spicy', 'cassis'],
     bottles: ['tequila'],
     why: 'Дерзкий мексиканский лонг: текила, чёрная смородина, лайм и колкое имбирное пиво.',
     method: 'build',
