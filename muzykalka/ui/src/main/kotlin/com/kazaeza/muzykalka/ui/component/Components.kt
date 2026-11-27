@@ -203,8 +203,8 @@ fun GlassCard(
         .background(Juicy.Ink2.copy(alpha = 0.90f))
         .drawBehind {
             if (light > 0f) drawRect(Color.White.copy(alpha = 0.04f * light))
-            if (hasAccent) {
-                val barColors = (if (accent!!.size >= 2) accent else listOf(accent.first(), accent.first()))
+            if (accent != null && accent.isNotEmpty()) {
+                val barColors = (if (accent.size >= 2) accent else listOf(accent.first(), accent.first()))
                     .map { it.copy(alpha = 0.85f) }
                 val inset = 14.dp.toPx()
                 val h = (size.height - inset * 2f).coerceAtLeast(size.height * 0.45f)

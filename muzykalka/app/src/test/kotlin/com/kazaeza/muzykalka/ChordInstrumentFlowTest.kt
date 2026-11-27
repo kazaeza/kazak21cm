@@ -48,7 +48,12 @@ class ChordInstrumentFlowTest {
 
     private fun has(text: String) = rule.onAllNodesWithText(text, substring = true, ignoreCase = true).fetchSemanticsNodes().isNotEmpty()
 
-    private fun chosen() = runBlocking { graph.settings.settings.first().chordInstrument }
+    private fun chosen(): ChordInstrument? {
+        var read: ChordInstrument? = null
+        val t = kotlin.concurrent.thread { read = runBlocking { graph.settings.settings.first().chordInstrument } }
+        t.join(5_000)
+        return read
+    }
 
     @Test
     fun theSettingsPageChoosesWhatPlaysChordsAndRemembersIt() {
@@ -62,14 +67,16 @@ class ChordInstrumentFlowTest {
             // the page is a lazy list: the item is composed once it is scrolled to
             rule.waitUntil(10_000) { rule.onAllNodes(hasScrollAction()).fetchSemanticsNodes().isNotEmpty() }
             rule.onNode(hasScrollAction()).performScrollToNode(hasText("аккорды играет", ignoreCase = true))
+            rule.onNode(hasScrollAction()).performScrollToNode(hasClickAction() and hasText("гитара", ignoreCase = true))
             rule.waitForIdle()
             assertTrue("both instruments are offered", has("пианино") && has("гитара"))
             rule.onAllNodes(hasClickAction() and hasText("гитара", ignoreCase = true)).onFirst().performClick()
             rule.waitUntil(5_000) { chosen() == ChordInstrument.GUITAR }
+            rule.onNode(hasScrollAction()).performScrollToNode(hasClickAction() and hasText("пианино", ignoreCase = true))
             rule.onAllNodes(hasClickAction() and hasText("пианино", ignoreCase = true)).onFirst().performClick()
             rule.waitUntil(5_000) { chosen() == ChordInstrument.PIANO }
         } finally {
-            runBlocking { graph.settings.update { it.copy(chordInstrument = ChordInstrument.PIANO) } }
+            kotlin.concurrent.thread { runBlocking { graph.settings.update { it.copy(chordInstrument = ChordInstrument.PIANO) } } }.join(15_000)
         }
     }
 
