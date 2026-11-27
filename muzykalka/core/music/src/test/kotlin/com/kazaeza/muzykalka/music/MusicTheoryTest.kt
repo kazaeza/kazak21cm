@@ -320,6 +320,18 @@ class MusicTheoryTest {
             assertEquals(listOf(62, 66, 69, 74), score.notes.map { it.note!!.value })
             assertTrue(abs(score.lengthSeconds - 3.95 * 60.0 / 90.0) < 1e-9) // last note lasts 0.95 beat
         }
+
+        @Test
+        fun `chords plays voicing and bass note on piano only`() {
+            val arranger = Arranger()
+            val key = Key(NoteName.parse("C"), Mode.MAJOR)
+            val progression = listOf("I", "IV", "V", "I").map(ChordDegree::parse)
+            val score = arranger.chords(progression, key)
+            assertTrue(score.notes.isNotEmpty())
+            assertTrue(score.notes.all { it.voice == Voice.PIANO })
+            val firstBass = score.notes.first { it.startBeat == 0.0 && it.note == arranger.bassNote(progression.first(), key) }
+            assertEquals(0.78f, firstBass.velocity)
+        }
     }
 
     @Nested

@@ -13,9 +13,13 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazaeza.muzykalka.audio.AudioOutput
+import com.kazaeza.muzykalka.data.settings.Settings
+import com.kazaeza.muzykalka.feature.game.Drills
 import com.kazaeza.muzykalka.feature.game.GameScreen
 import com.kazaeza.muzykalka.feature.game.RoundSpec
 import com.kazaeza.muzykalka.feature.settings.SettingsScreen
+import com.kazaeza.muzykalka.game.Answer
+import com.kazaeza.muzykalka.game.LoopTask
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.music.ChordInstrument
 import com.kazaeza.muzykalka.music.Voice
@@ -86,5 +90,32 @@ class ChordInstrumentFlowTest {
         } finally {
             runBlocking { graph.settings.update { it.copy(chordInstrument = ChordInstrument.PIANO) } }
         }
+    }
+
+    @Test
+    fun transferCheckAlwaysUsesPianoEvenWhenGuitarIsChosen() {
+        val guitarSettings = Settings(chordInstrument = ChordInstrument.GUITAR)
+        val engine = Drills.engine(RoundSpec(Variant.TIR_TRANSFER), 1, guitarSettings, emptyList(), 0L)
+        assertTrue("transfer check has no lives", Drills.noLives(Variant.TIR_TRANSFER))
+        assertTrue("transfer check uses long round", Drills.longRound(Variant.TIR_TRANSFER))
+        assertTrue("loop3 uses long round", Drills.longRound(Variant.TIR_LOOP3))
+        assertTrue("bassline uses long round", Drills.longRound(Variant.TIR_BASSLINE))
+        var t = 0L
+        engine.start(t)
+        val seenVoices = mutableSetOf<Voice>()
+        repeat(4) {
+            val task = engine.state.task as LoopTask
+            seenVoices += task.question.notes.map { it.voice }
+            assertTrue("no guitar in transfer check", task.question.notes.none { it.voice == Voice.GUITAR })
+            assertTrue("no guitar in transfer intro", task.intro?.notes.orEmpty().none { it.voice == Voice.GUITAR })
+            t += 1_000L
+            engine.promptFinished(t)
+            t += 200L
+            engine.answer(Answer.Pass, t)
+            t += 5_000L
+            engine.tick(t)
+        }
+        assertEquals("no lives lost, round stays open", null, engine.state.livesLeft)
+        assertTrue("band texture uses piano + bass + kick", Voice.PIANO in seenVoices && Voice.BASS in seenVoices && Voice.KICK in seenVoices)
     }
 }

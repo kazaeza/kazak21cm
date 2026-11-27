@@ -47,7 +47,7 @@ class SongOfDayFlowTest {
                 MuzykalkaTheme { TodayScreen({}, {}, {}, {}, {}, {}, onOpenSong = { opened = it }) }
             }
         }
-        rule.waitUntil(10_000) { rule.onAllNodesWithText("Начать сет", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("ЗА НЕДЕЛЮ").fetchSemanticsNodes().isNotEmpty() }
         // the card comes with the library, a moment after the first frame — and below the fold, so it is scrolled to
         rule.waitUntil(10_000) { runCatching { rule.onNode(hasScrollAction()).performScrollToNode(hasText("Песня дня", ignoreCase = true)) }.isSuccess }
         rule.onAllNodesWithText("Песня дня", ignoreCase = true).onFirst().performClick()
@@ -67,7 +67,7 @@ class SongOfDayFlowTest {
                 MuzykalkaTheme { TodayScreen({}, {}, {}, {}, {}, {}) }
             }
         }
-        rule.waitUntil(10_000) { rule.onAllNodesWithText("Начать сет", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("ЗА НЕДЕЛЮ").fetchSemanticsNodes().isNotEmpty() }
         rule.waitForIdle()
         assertEquals(0, rule.onAllNodesWithText("Песня дня", ignoreCase = true).fetchSemanticsNodes().size)
     }

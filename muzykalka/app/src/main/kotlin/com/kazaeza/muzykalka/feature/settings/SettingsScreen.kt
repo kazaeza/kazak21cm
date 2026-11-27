@@ -49,6 +49,7 @@ import com.kazaeza.muzykalka.music.TapSound
 import com.kazaeza.muzykalka.music.ToneTimbre
 import com.kazaeza.muzykalka.music.Voice
 import com.kazaeza.muzykalka.music.Tuning
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
@@ -204,8 +205,8 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
                 ChoiceRow(ChordInstrument.entries, settings.chordInstrument, { it.ru }, { c -> update { it.copy(chordInstrument = c) } }, colors = Accents.Taper)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Нажал на аккорд в листе песни, на карте позиции, в шагах — он прозвучит так. Группа в «Проверке переноса» и «Бас-линии» — тоже. " +
-                        "Петли над тоникой всегда на пианино: так аккорд не уводит тональность.",
+                    "Слуховые режимы всегда играют на пианино (в том числе «Проверка переноса»). " +
+                        "Этот выбор относится только к гитарным режимам: «Песни», «Ходы», «Позиция» и «Бас-линия».",
                     style = MaterialTheme.typography.bodySmall,
                     color = Juicy.TextDim,
                 )
@@ -312,9 +313,9 @@ fun SettingsScreen(repo: SettingsRepository, onBack: () -> Unit, onSoundCheck: (
                 Text("Данные", style = MaterialTheme.typography.titleLarge)
                 Text("Библиотека и прогресс хранятся на телефоне и в резервной копии Google. Файл — на всякий случай.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
                 Spacer(Modifier.height(10.dp))
-                GhostButton("Экспорт в файл", onClick = { exportLauncher.launch("muzykalka-${LocalDate.now()}.json") }, modifier = Modifier.fillMaxWidth(), colors = Accents.Good, leading = "↑")
+                GhostButton("Экспорт в файл", onClick = { exportLauncher.launch("muzykalka-${LocalDate.now()}.json") }, modifier = Modifier.fillMaxWidth(), colors = Accents.Good, leadingIcon = AppIcon.EXPORT)
                 Spacer(Modifier.height(8.dp))
-                GhostButton("Импорт из файла", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "↓")
+                GhostButton("Импорт из файла", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leadingIcon = AppIcon.IMPORT)
                 Text("Импорт заменяет всё; текущее состояние сначала сохраняется автоматически.", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
             }
         }

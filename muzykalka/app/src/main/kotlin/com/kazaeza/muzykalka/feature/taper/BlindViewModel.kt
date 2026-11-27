@@ -18,6 +18,7 @@ import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.RuNames
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,6 +61,7 @@ class BlindViewModel(private val graph: AppGraph, private val budgetMinutes: Dou
     private val arranger = Arranger()
     private var announceJob: Job? = null
     private var listenJob: Job? = null
+    private var listenToken = 0
 
     init {
         viewModelScope.launch { load() }
@@ -113,24 +115,32 @@ class BlindViewModel(private val graph: AppGraph, private val budgetMinutes: Dou
         val key = s.key ?: return
         if (s.phase != BlindPhase.RESULT) return
         if (listenJob?.isActive == true) {
-            stopListening()
+            stop()
             return
         }
+        val previous = listenJob
+        val token = ++listenToken
         state.update { it.copy(listening = true) }
         listenJob = viewModelScope.launch {
             try {
+                previous?.cancelAndJoin()
+                graph.audioOutput.a4Hz = settings.a4Hz
                 graph.audioOutput.play(arranger.sketch(entry.song, key))
             } finally {
-                state.update { it.copy(listening = false) }
+                if (listenToken == token) state.update { it.copy(listening = false) }
             }
         }
     }
 
+    fun stop() = stopListening()
+
     private fun stopListening() {
+        listenToken++
         if (listenJob?.isActive == true) {
             listenJob?.cancel()
             graph.audioOutput.stop()
         }
+        listenJob = null
         state.update { it.copy(listening = false) }
     }
 

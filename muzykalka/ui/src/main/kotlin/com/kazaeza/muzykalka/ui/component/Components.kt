@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
@@ -80,7 +82,7 @@ private fun rememberPressScale(source: MutableInteractionSource, amount: Float =
 /** «Обертон» (O-24): a hairline, the only kind of edge the design keeps. */
 private val Hairline = Color(0x24FFFFFF)
 
-/** The main call-to-action: a warm-white pill with dark ink and a soft glow of [colors]. */
+/** The main call-to-action: a warm-white pill with dark ink and a crisp subtle shadow of [colors]. */
 @Composable
 fun JuicyButton(
     text: String,
@@ -91,11 +93,13 @@ fun JuicyButton(
     leading: String? = null,
     height: Dp = 64.dp,
     textStyle: TextStyle = MaterialTheme.typography.titleLarge,
+    leadingIcon: AppIcon? = null,
 ) {
     val source = remember { MutableInteractionSource() }
     val scale = rememberPressScale(source, 0.96f)
     val shape = RoundedCornerShape(height / 2)
     val fill by animateColorAsState(if (enabled) Juicy.Paper else Juicy.Ink3, tween(Motion.MEDIUM), label = "fill")
+    val glow = (colors.firstOrNull() ?: Juicy.Orange).copy(alpha = 0.35f)
     Box(
         modifier
             .graphicsLayer {
@@ -103,7 +107,7 @@ fun JuicyButton(
                 scaleY = scale
             }
             .heightIn(min = height)
-            .shadow(if (enabled) 28.dp else 0.dp, shape, ambientColor = colors.first(), spotColor = colors.last())
+            .shadow(if (enabled) 10.dp else 0.dp, shape, ambientColor = glow, spotColor = glow)
             .clip(shape)
             .background(fill)
             .clickable(interactionSource = source, indication = null, enabled = enabled, onClick = onClick)
@@ -112,7 +116,10 @@ fun JuicyButton(
     ) {
         val ink = if (enabled) Juicy.PaperInk else Juicy.TextFaint
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            if (!leading.isNullOrBlank()) {
+            if (leadingIcon != null) {
+                AppGlyph(leadingIcon, color = ink, size = 20.dp)
+                Spacer(Modifier.width(10.dp))
+            } else if (!leading.isNullOrBlank()) {
                 Text(leading, style = textStyle, color = ink)
                 Spacer(Modifier.width(10.dp))
             }
@@ -121,7 +128,7 @@ fun JuicyButton(
     }
 }
 
-/** Secondary action: a hairline pill, no fill. */
+/** Secondary action: a tactile studio pill with subtle Ink3 fill and LineStrong hairline border. */
 @Composable
 fun GhostButton(
     text: String,
@@ -131,6 +138,7 @@ fun GhostButton(
     leading: String? = null,
     enabled: Boolean = true,
     height: Dp = 52.dp,
+    leadingIcon: AppIcon? = null,
 ) {
     val source = remember { MutableInteractionSource() }
     val scale = rememberPressScale(source, 0.96f)
@@ -144,13 +152,17 @@ fun GhostButton(
             }
             .heightIn(min = height)
             .clip(shape)
-            .border(BorderStroke(1.dp, Hairline), shape)
+            .background(Juicy.Ink3.copy(alpha = 0.5f))
+            .border(BorderStroke(1.dp, Juicy.LineStrong), shape)
             .clickable(interactionSource = source, indication = null, enabled = enabled, onClick = onClick)
             .padding(horizontal = 22.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (!leading.isNullOrBlank()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            if (leadingIcon != null) {
+                AppGlyph(leadingIcon, color = Juicy.Text, size = 18.dp)
+                Spacer(Modifier.width(8.dp))
+            } else if (!leading.isNullOrBlank()) {
                 Text(leading, style = MaterialTheme.typography.labelLarge, color = Juicy.Text)
                 Spacer(Modifier.width(8.dp))
             }
@@ -165,44 +177,55 @@ fun BigButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, 
     JuicyButton(text, onClick, modifier.fillMaxWidth(), enabled = enabled)
 
 /**
- * A block of content. «Обертон» (O-24) has no cards: a block is open space on the dark, closed
- * by a hairline below. [accent] draws a short glowing line on the left. Clickable blocks breathe
- * a faint light when pressed.
+ * A sleek studio-dark card («Обертон 2.0»): rounded elevated Ink2 surface with a subtle border
+ * and an optional 3.dp rounded vertical accent bar on the left. Clickable cards softly brighten on press.
  */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
     accent: List<Color>? = null,
-    @Suppress("UNUSED_PARAMETER") shape: Shape = RoundedCornerShape(26.dp),
+    shape: Shape = RoundedCornerShape(20.dp),
     onClick: (() -> Unit)? = null,
-    contentPadding: Dp = 18.dp,
+    contentPadding: Dp = 16.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val light by animateFloatAsState(if (pressed) 1f else 0f, tween(Motion.SHORT), label = "light")
     val scale = if (onClick != null) rememberPressScale(source, 0.985f) else 1f
+    val hasAccent = !accent.isNullOrEmpty()
     var m = modifier
         .graphicsLayer {
             scaleX = scale
             scaleY = scale
         }
+        .clip(shape)
+        .background(Juicy.Ink2.copy(alpha = 0.90f))
         .drawBehind {
             if (light > 0f) drawRect(Color.White.copy(alpha = 0.04f * light))
-            drawLine(Hairline, Offset(0f, size.height - 0.5f), Offset(size.width, size.height - 0.5f), strokeWidth = 1f)
-            if (accent != null) {
-                val h = size.height * 0.5f
-                val top = (size.height - h) / 2
+            if (hasAccent) {
+                val barColors = (if (accent!!.size >= 2) accent else listOf(accent.first(), accent.first()))
+                    .map { it.copy(alpha = 0.85f) }
+                val inset = 14.dp.toPx()
+                val h = (size.height - inset * 2f).coerceAtLeast(size.height * 0.45f)
+                val top = (size.height - h) / 2f
+                val x = 8.dp.toPx()
                 drawLine(
-                    Brush.verticalGradient(accent, startY = top, endY = top + h),
-                    Offset(1.5.dp.toPx(), top), Offset(1.5.dp.toPx(), top + h),
-                    strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round,
+                    Brush.verticalGradient(barColors, startY = top, endY = top + h),
+                    Offset(x, top),
+                    Offset(x, top + h),
+                    strokeWidth = 3.dp.toPx(),
+                    cap = StrokeCap.Round,
                 )
             }
         }
+        .border(BorderStroke(1.dp, Juicy.Line), shape)
     if (onClick != null) m = m.clickable(interactionSource = source, indication = null, onClick = onClick)
-    val start = if (accent != null) 18.dp else 4.dp
-    Column(m.padding(start = start, end = 4.dp, top = contentPadding, bottom = contentPadding), content = content)
+    val start = if (hasAccent) 20.dp else contentPadding
+    Column(
+        m.padding(start = start, end = contentPadding, top = contentPadding, bottom = contentPadding),
+        content = content,
+    )
 }
 
 /** A titled block used by placeholders and summaries. */
@@ -487,14 +510,109 @@ fun <T> ChoiceRow(
             TapOnPress(source)
             Box(
                 Modifier
+                    .heightIn(min = 40.dp)
                     .clip(shape)
-                    .background(if (isSel) Juicy.Paper else Color.Transparent)
-                    .border(BorderStroke(1.dp, if (isSel) Color.Transparent else Hairline), shape)
+                    .background(if (isSel) Juicy.Paper else Juicy.Ink3.copy(alpha = 0.45f))
+                    .border(BorderStroke(1.dp, if (isSel) Color.Transparent else Juicy.Line), shape)
                     .clickable(interactionSource = source, indication = LocalIndication.current) { onSelect(o) }
                     .padding(horizontal = 14.dp, vertical = 9.dp),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(label(o), style = MaterialTheme.typography.labelLarge, color = if (isSel) Juicy.PaperInk else Juicy.TextDim)
             }
         }
+    }
+}
+
+/** Sleek 6.dp rounded progress bar (Ink4 track + smooth gradient fill) for stage/track progress. */
+@Composable
+fun TrackProgressBar(
+    fraction: Float,
+    colors: List<Color>,
+    modifier: Modifier = Modifier,
+) {
+    val progress by animateFloatAsState(fraction.coerceIn(0f, 1f), tween(Motion.MEDIUM), label = "trackProgress")
+    val shape = RoundedCornerShape(3.dp)
+    val grad = when {
+        colors.size >= 2 -> colors
+        colors.size == 1 -> listOf(colors.first(), colors.first())
+        else -> Accents.Hero
+    }
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(shape)
+            .background(Juicy.Ink4),
+    ) {
+        if (progress > 0f) {
+            Box(
+                Modifier
+                    .fillMaxWidth(progress)
+                    .fillMaxHeight()
+                    .clip(shape)
+                    .background(Brush.horizontalGradient(grad)),
+            )
+        }
+    }
+}
+
+/** Crisp toggleable pill with a leading vector glyph (e.g. «Тихо · без голоса»). */
+@Composable
+fun IconChip(
+    icon: AppIcon,
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    accent: Color = Juicy.Gold,
+) {
+    val source = remember { MutableInteractionSource() }
+    val scale = rememberPressScale(source, 0.96f)
+    val shape = RoundedCornerShape(50)
+    val fill by animateColorAsState(
+        if (selected) accent.copy(alpha = 0.16f) else Juicy.Ink3.copy(alpha = 0.5f),
+        tween(Motion.SHORT),
+        label = "chipFill",
+    )
+    val stroke by animateColorAsState(
+        if (selected) accent.copy(alpha = 0.65f) else Juicy.Line,
+        tween(Motion.SHORT),
+        label = "chipBorder",
+    )
+    val iconColor by animateColorAsState(
+        if (selected) accent else Juicy.TextDim,
+        tween(Motion.SHORT),
+        label = "chipIcon",
+    )
+    val textColor by animateColorAsState(
+        if (selected) Juicy.Text else Juicy.TextDim,
+        tween(Motion.SHORT),
+        label = "chipText",
+    )
+    Row(
+        modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .heightIn(min = 40.dp)
+            .clip(shape)
+            .background(fill)
+            .border(BorderStroke(1.dp, stroke), shape)
+            .clickable(interactionSource = source, indication = null, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        AppGlyph(icon, color = iconColor, size = 16.dp)
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            color = textColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

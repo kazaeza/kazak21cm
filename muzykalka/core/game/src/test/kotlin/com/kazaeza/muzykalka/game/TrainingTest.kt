@@ -7,9 +7,17 @@ import org.junit.jupiter.api.Assertions.assertTrue
 /** O-55 (ADR-054): the sets to choose from. */
 class TrainingTest {
     @Test
-    fun `the daily set is the plan it always was`() {
+    fun `the daily set and minimal day are non-guitar by default`() {
         assertEquals(DailySet.DEFAULT, Training.DAILY.plan)
+        assertEquals(GuitarNeed.NONE, Training.DAILY.guitar)
         assertEquals(20.0, Training.DAILY.plan.sumOf { it.minutes })
+        assertTrue(Training.DAILY.plan.none { it.variant.guitar == GuitarNeed.REQUIRED })
+        assertTrue(Training.DAILY.plan.any { it.variant == Variant.KAMERTON_SING })
+
+        assertEquals(5.0, DailySet.MINIMAL.sumOf { it.minutes })
+        assertTrue(DailySet.MINIMAL.none { it.variant.guitar == GuitarNeed.REQUIRED })
+        assertTrue(DailySet.MINIMAL.all { it.minutes >= 1.0 })
+        assertEquals(DailySet.MINIMAL.size, DailySet.MINIMAL.map { it.variant }.toSet().size)
     }
 
     @Test
@@ -50,9 +58,13 @@ class TrainingTest {
     }
 
     @Test
-    fun `the others are offered guitar first, without the daily set`() {
-        assertEquals(Training.GUITAR, Training.OTHERS.first())
+    fun `the others put non-guitar sets first and helpers split cleanly`() {
+        assertEquals(GuitarNeed.NONE, Training.OTHERS.first().guitar)
+        assertEquals(Training.GUITAR, Training.OTHERS.last())
         assertTrue(Training.DAILY !in Training.OTHERS)
         assertEquals(Training.entries.size - 1, Training.OTHERS.size)
+        assertTrue(Training.NON_GUITAR.all { it.guitar == GuitarNeed.NONE })
+        assertTrue(Training.DAILY in Training.NON_GUITAR)
+        assertEquals(listOf(Training.GUITAR), Training.WITH_GUITAR)
     }
 }

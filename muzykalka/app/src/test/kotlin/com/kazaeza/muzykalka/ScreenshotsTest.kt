@@ -377,5 +377,5 @@ class ScreenshotsTest {
     }
 
     @Test
-    fun progress() = shot("07-progress", { ProgressScreen(onExam = {}) }, "Прогресс")
+    fun progress() = shot("07-progress", { ProgressScreen(onExam = { _ -> }) }, "Прогресс")
 }

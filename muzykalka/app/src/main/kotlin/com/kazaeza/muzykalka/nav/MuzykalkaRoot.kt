@@ -58,6 +58,8 @@ import com.kazaeza.muzykalka.feature.taper.BlindScreen
 import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
 import com.kazaeza.muzykalka.feature.today.TodayScreen
+import com.kazaeza.muzykalka.feature.today.TrackScreen
+import com.kazaeza.muzykalka.game.ExamKind
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.game.Training
 import com.kazaeza.muzykalka.music.OrbBody
@@ -132,6 +134,8 @@ fun MuzykalkaRoot(graph: AppGraph) {
                                     onLibrary = { tab(LIBRARY_TAB) },
                                     onOpenSong = { id -> nav.navigate(ItemRoute(id)) },
                                     onTraining = { t -> nav.navigate(SetRoute(minimal = false, training = t.name)) },
+                                    onTrack = { id -> nav.navigate(TrackRoute(id)) },
+                                    onStartDaily = { min -> nav.navigate(SetRoute(minimal = false, training = Training.DAILY.name, minutes = min)) },
                                 )
                                 1 -> ModesScreen(
                                     onPlay = { v, level -> nav.navigate(GameRoute(v.name, level)) },
@@ -148,7 +152,11 @@ fun MuzykalkaRoot(graph: AppGraph) {
                                     onCapture = { kind -> nav.navigate(EditorRoute(kind = kind.name)) },
                                     onOpen = { id -> nav.navigate(ItemRoute(id)) },
                                 )
-                                else -> ProgressScreen(onExam = { nav.navigate(ExamRoute) }, onFeel = { nav.navigate(FeelRoute) }, onTransfer = { nav.navigate(GameRoute(Variant.TIR_TRANSFER.name)) })
+                                else -> ProgressScreen(
+                                    onExam = { kind -> nav.navigate(ExamRoute(kind.name)) },
+                                    onFeel = { nav.navigate(FeelRoute) },
+                                    onTransfer = { nav.navigate(GameRoute(Variant.TIR_TRANSFER.name)) },
+                                )
                             }
                         }
                     }
@@ -185,11 +193,33 @@ fun MuzykalkaRoot(graph: AppGraph) {
                         )
                     }
                     composable<BlindRoute> { BlindScreen(onExit = { nav.popBackStack() }) }
+                    composable<TrackRoute> { back ->
+                        val r = back.toRoute<TrackRoute>()
+                        TrackScreen(
+                            trackId = r.trackId,
+                            onBack = { nav.popBackStack() },
+                            onStartStage = { trackId, stageId, min ->
+                                nav.navigate(SetRoute(minimal = false, trackId = trackId, stageId = stageId, minutes = min))
+                            },
+                        )
+                    }
                     composable<SetRoute> { back ->
                         val route = back.toRoute<SetRoute>()
-                        SetScreen(minimal = route.minimal, training = Training.of(route.training), onExit = { nav.popBackStack() }, onLibrary = { tab(LIBRARY_TAB) })
+                        SetScreen(
+                            minimal = route.minimal,
+                            training = Training.of(route.training),
+                            trackId = route.trackId,
+                            stageId = route.stageId,
+                            minutes = route.minutes.takeIf { it > 0 },
+                            onExit = { nav.popBackStack() },
+                            onLibrary = { tab(LIBRARY_TAB) },
+                        )
                     }
-                    composable<ExamRoute> { ExamScreen(onExit = { nav.popBackStack() }) }
+                    composable<ExamRoute> { back ->
+                        val r = back.toRoute<ExamRoute>()
+                        val kind = ExamKind.entries.firstOrNull { it.name == r.kind } ?: ExamKind.EAR
+                        ExamScreen(initialKind = kind, onExit = { nav.popBackStack() })
+                    }
                     composable<ListenRoute> { ListenScreen(onBack = { nav.popBackStack() }) }
                     composable<HarmonyLabRoute> { HarmonyLabScreen(onBack = { nav.popBackStack() }) }
                     composable<PositionRoute> { PositionScreen(onBack = { nav.popBackStack() }) }

@@ -78,4 +78,35 @@ class AdaptiveEarTest {
         assertNull(Metrics.median(emptyList()))
         assertEquals(1500L, Metrics.median(listOf(2000L, 1000L)))
     }
+
+    @Test fun applyHandlesShortSetsAndAvoidsDuplicateFocusVariant() {
+        val duelFocus = EarFocus(Variant.TIR_DUEL, listOf("4", "5"), 2)
+        val shortPlan = listOf(
+            SetSegment(Variant.TIR_CLASSIC, 2.0),
+            SetSegment(Variant.TIR_ON_TONIC, 1.5),
+            SetSegment(Variant.FORMULA_ALOUD, 1.5),
+        )
+        val shortApplied = AdaptiveEar.apply(shortPlan, duelFocus)
+        assertEquals(5.0, shortApplied.sumOf { it.minutes })
+        assertEquals(Variant.TIR_DUEL, shortApplied.first().variant)
+        assertEquals(2.0, shortApplied.first().minutes)
+        assertEquals(shortApplied.size, shortApplied.map { it.variant }.toSet().size)
+        assertTrue(shortApplied.all { it.minutes >= 1.0 })
+
+        val midPlan = listOf(
+            SetSegment(Variant.TIR_CLASSIC, 2.5),
+            SetSegment(Variant.TIR_ON_TONIC, 2.5),
+            SetSegment(Variant.TIR_LAYERS, 2.5),
+            SetSegment(Variant.FORMULA_ALOUD, 2.5),
+        )
+        val midApplied = AdaptiveEar.apply(midPlan, duelFocus)
+        assertEquals(10.0, midApplied.sumOf { it.minutes })
+        assertEquals(1.5, midApplied.single { it.variant == Variant.TIR_DUEL }.minutes)
+        assertEquals(1.0, midApplied.single { it.variant == Variant.TIR_CLASSIC }.minutes)
+
+        val chordsFocus = EarFocus(Variant.TIR_OVER_CHORDS, emptyList(), 1)
+        val withExisting = AdaptiveEar.apply(DailySet.DEFAULT, chordsFocus)
+        assertEquals(DailySet.DEFAULT, withExisting)
+        assertEquals(1, withExisting.count { it.variant == Variant.TIR_OVER_CHORDS })
+    }
 }

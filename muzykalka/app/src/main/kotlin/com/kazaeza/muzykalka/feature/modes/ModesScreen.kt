@@ -1,6 +1,8 @@
 package com.kazaeza.muzykalka.feature.modes
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,22 +34,22 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.data.settings.GameProgress
-import com.kazaeza.muzykalka.feature.common.ModeOrb
 import com.kazaeza.muzykalka.feature.common.ModeVisuals
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.isAvailable
 import com.kazaeza.muzykalka.feature.game.Drills
 import com.kazaeza.muzykalka.game.SingUnlock
 import com.kazaeza.muzykalka.game.GuitarNeed
-import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.TirDriver
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
+import com.kazaeza.muzykalka.ui.component.AppGlyph
+import com.kazaeza.muzykalka.ui.component.AppIcon
+import com.kazaeza.muzykalka.ui.component.Badge
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
 import com.kazaeza.muzykalka.ui.theme.Accents
@@ -78,25 +80,115 @@ sealed interface ModeEntry {
     data object Position : ModeEntry
 }
 
+/** A semantic group on «Режимы» («Обертон 2.0»: ear & phone first, physical guitar separated below). */
+data class ModeSection(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val accent: List<Color>,
+    val entries: List<ModeEntry>,
+    val physicalGuitar: Boolean = false,
+)
+
 /**
- * O-12: every mode on one screen, grouped by skill. Before, the tab showed four tiles and each
- * led to its own screen; «Вслепую» and «Вайб ступеней» were two taps deep and easy to miss.
+ * O-12 / «Обертон 2.0»: every playable mode on one screen, organized into 7 clear semantic groups
+ * with physical-guitar modes separated at the bottom.
  */
 object ModesCatalog {
-    /** Sections in screen order: the ear first, the guitar after. */
-    val SECTIONS: List<ModeId> = listOf(ModeId.TIR, ModeId.KAMERTON, ModeId.TAPER, ModeId.HUNT) // O-69: no «Попугай» for now
+    private fun drill(v: Variant): ModeEntry = ModeEntry.Drill(v)
 
-    fun entries(mode: ModeId): List<ModeEntry> {
-        val drills = Variant.entries
-            .filter { it.mode == mode && it.isAvailable() && it in Drills.PLAYABLE }
-            .map { ModeEntry.Drill(it) }
-        return when (mode) {
-            ModeId.TIR -> drills + ModeEntry.Listen + ModeEntry.Feel + ModeEntry.Lab
-            ModeId.TAPER -> drills + ModeEntry.Songs + ModeEntry.Blind
-            ModeId.HUNT -> drills + ModeEntry.Position
-            else -> drills
-        }
-    }
+    val GROUPS: List<ModeSection> = listOf(
+        ModeSection(
+            id = "notes",
+            title = "Ноты и ступени",
+            subtitle = "слышишь звук — знаешь ступень",
+            accent = Accents.Tir,
+            entries = listOf(
+                drill(Variant.TIR_CLASSIC),
+                drill(Variant.TIR_DUEL),
+                drill(Variant.TIR_OVER_CHORDS),
+                drill(Variant.TIR_SIMON),
+                drill(Variant.TIR_DYAD),
+            ),
+        ),
+        ModeSection(
+            id = "chords",
+            title = "Аккорды и лады",
+            subtitle = "функция, бас, переходы и цвет",
+            accent = Accents.Taper,
+            entries = listOf(
+                drill(Variant.TIR_LAYERS),
+                drill(Variant.TIR_ON_TONIC),
+                drill(Variant.TIR_BASS),
+                drill(Variant.TIR_TWO_CHORDS),
+                drill(Variant.TIR_UNDER_NOTE),
+                drill(Variant.TIR_COLOR),
+                drill(Variant.TIR_MODE),
+            ),
+        ),
+        ModeSection(
+            id = "songs-ear",
+            title = "Песни и перенос",
+            subtitle = "гармония в голове без гитары",
+            accent = Accents.Hero,
+            entries = listOf(
+                drill(Variant.TIR_LOOP3),
+                drill(Variant.TIR_SONG),
+                drill(Variant.TIR_NEXT),
+                drill(Variant.FORMULA_ALOUD),
+                drill(Variant.TIR_TRANSFER),
+            ),
+        ),
+        ModeSection(
+            id = "voice",
+            title = "Голос и внутренний слух",
+            subtitle = "имя → звук через голос",
+            accent = Accents.Kamerton,
+            entries = listOf(
+                drill(Variant.KAMERTON_SEARCH),
+                drill(Variant.KAMERTON_SING),
+            ),
+        ),
+        ModeSection(
+            id = "neck-quiet",
+            title = "Гриф без гитары",
+            subtitle = "ориентация на грифе тапами",
+            accent = Accents.Hunt,
+            entries = listOf(
+                drill(Variant.HUNT_REVERSE),
+                ModeEntry.Position,
+            ),
+        ),
+        ModeSection(
+            id = "free",
+            title = "Свободная практика",
+            subtitle = "без таймера, очков и спешки",
+            accent = Accents.Calm,
+            entries = listOf(
+                ModeEntry.Feel,
+                ModeEntry.Listen,
+                ModeEntry.Lab,
+            ),
+        ),
+        ModeSection(
+            id = "guitar",
+            title = "С физической гитарой",
+            subtitle = "отдельный блок, когда инструмент в руках",
+            accent = Accents.Hunt,
+            entries = listOf(
+                ModeEntry.Songs,
+                ModeEntry.Blind,
+                drill(Variant.TAPER_STEPS),
+                drill(Variant.TIR_BASSLINE),
+                drill(Variant.HUNT_FIND),
+                drill(Variant.HUNT_ALL_OCTAVES),
+            ),
+            physicalGuitar = true,
+        ),
+    )
+
+    fun available(section: ModeSection): List<ModeEntry> =
+        section.entries.filter { e -> e !is ModeEntry.Drill || (e.variant.isAvailable() && e.variant in Drills.PLAYABLE) }
 
     fun title(e: ModeEntry): String = when (e) {
         is ModeEntry.Drill -> e.variant.ru
@@ -112,37 +204,42 @@ object ModesCatalog {
         is ModeEntry.Drill -> when (e.variant) {
             Variant.TIR_CLASSIC -> "Гудит тоника, звучит нота — жми её ступень. Не уверен — «не знаю», ответ всё равно услышишь."
             Variant.TIR_OVER_CHORDS -> "Та же нота, но под ней меняются аккорды лада."
-            Variant.TIR_UNDER_NOTE -> "Наоборот: нота на экране гудит, поверх неё играет аккорд — какой? Как подобрать аккорд под мелодию."
-            Variant.TIR_ON_TONIC -> "Гудит тоника, поверх неё играет аккорд лада — какой это ступени? Сначала три главных: I, IV, V. Звено между «ноты» и «аккорды песни»."
-            Variant.TIR_DYAD -> "Два звука ударяют разом — какой верхний от нижнего? Подряд интервал — шаг, разом — цвет: это другое ухо. Нижний звук каждый раз новый, гула нет."
-            Variant.TIR_BASS -> "Гудит тоника, а из аккорда слышен только бас — какой это аккорд? Бас — то, чем аккорд называется. После ответа он прозвучит целиком."
-            Variant.TIR_TWO_CHORDS -> "Первый аккорд назван, за ним идёт второй — какой? Самый маленький кусочек «Куда пойдёт?»: один ход вместо песни. Сначала из I к IV или V."
-            Variant.TIR_DUEL -> "Две ступени, которые ты путаешь чаще всего, — вперемешку, пока не ответишь десять раз подряд. Победил пару — выходит следующая. Без жизней."
-            Variant.TIR_COLOR -> "Звучит аккорд — какого он цвета: мажор, минор, с квартой, септ? После ответа он раскладывается по нотам. Сначала потрогай их в «Созвучиях»."
-            Variant.TIR_BASSLINE -> "Звучит только бас петли из трёх-четырёх аккордов — сыграй его на гитаре, по ноте на аккорд, в любой октаве. Потом вся группа, бас ещё раз и та же петля в другой тональности. Нужна гитара и микрофон; в наушниках бас слышнее."
-            Variant.TIR_TRANSFER -> "Контрольный раунд раз в неделю, не урок: одна и та же задача — ступень аккорда в петле — то над синтезатором с гудящей тоникой, то в живой фактуре с гитарой, басом и ударными. В «Прогрессе» видно разрыв между ними."
-            Variant.TIR_LOOP3 -> "Петля из четырёх аккордов играет дважды — какая ступень у названного по счёту? Потом та же петля в другой тональности и в третьей: ответ тот же. Ступень не меняется, меняется тональность."
-            Variant.TIR_LAYERS -> "Гудит тоника, над ней — аккорд. Сначала: что он делает — дом, уход или напряжение (мажор тут ни при чём: vi минорный и всё равно дом). Потом — из чего он сделан."
-            Variant.TIR_MODE -> "Гудит тоника, по ней пробегает гамма — какой это лад? Мажор и минор, потом лады, которые отличаются от них одной ступенью."
-            Variant.TIR_SIMON -> "Сначала звучит «дом», потом две ноты — повтори их на круге. Верно — цепочка растёт на ноту, ошибся — рвётся, и она проигрывается медленно: на какой ноте сорвался. Три уровня: не спеша → с прыжками → без опоры."
-            Variant.TIR_SONG -> "Звучат первые аккорды песни из твоей библиотеки, в случайной тональности — чья это гармония? Сначала с подсказкой ступенями, потом только по названиям."
-            Variant.TIR_NEXT -> "Песня названа, звучат три её первых аккорда — куда она пойдёт дальше? Ответь до того, как услышишь: так гармония начинает звучать в голове заранее."
-            Variant.KAMERTON_SEARCH -> "Спокойно: «спой квинту» — и ищешь голосом, пока не попадёшь. Промахнулся — скажу, что спел и куда тянуть. Без жизней."
-            Variant.KAMERTON_SING -> "Видишь ступень — поёшь её. Засчитывается первая спетая нота, на скорость."
-            Variant.TAPER_STEPS -> "Тональность и ступени, например «ре мажор: I – V». Сыграй ход аккордами и отметь, как вышло."
-            Variant.FORMULA_ALOUD -> "Без гитары: названа песня и её часть — проговори ступени, открой ответ и честно оцени. Потом часть прозвучит. Для дороги."
-            Variant.PARROT_ECHO -> "Звучит тоника, потом нота — найди её на гитаре, телефон слушает. Засчитывается первая сыгранная нота, в любой октаве. Потом покажу, какая это ступень и где она на грифе."
-            Variant.HUNT_FIND -> "На экране нота — найди её на грифе и сыграй, телефон слушает."
-            Variant.HUNT_ALL_OCTAVES -> "Та же нота во всех октавах подряд."
-            Variant.HUNT_REVERSE -> "Показано место на грифе — назови ноту."
+            Variant.TIR_UNDER_NOTE -> "Нота на экране гудит, поверх неё играет аккорд — какой? Как подобрать аккорд под мелодию."
+            Variant.TIR_ON_TONIC -> "Гудит тоника, над ней звучит аккорд лада — на какой он ступени? Начинаем с I, IV, V."
+            Variant.TIR_DYAD -> "Два звука ударяют разом — какой верхний от нижнего? Нижний звук каждый раз новый, гула нет."
+            Variant.TIR_BASS -> "Гудит тоника, из аккорда слышен только бас — какой это аккорд? После ответа он прозвучит целиком."
+            Variant.TIR_TWO_CHORDS -> "Первый аккорд назван, за ним идёт второй — какой? Один гармонический переход вместо целой песни."
+            Variant.TIR_DUEL -> "Две ступени, которые ты путаешь чаще всего, вперемешку до десяти верных подряд. Без жизней."
+            Variant.TIR_COLOR -> "Звучит аккорд — какого он цвета: мажор, минор, sus или септ? После ответа раскладывается по нотам."
+            Variant.TIR_BASSLINE -> "Звучит только бас петли — сыграй его на гитаре по ноте на аккорд, затем услышишь всю группу."
+            Variant.TIR_TRANSFER -> "Контрольный раунд раз в неделю: ступень аккорда в петле то над синтезатором, то в живой фактуре с пианино, басом и ударными."
+            Variant.TIR_LOOP3 -> "Петля из четырёх аккордов звучит в разных тональностях — назови нужную ступень. Ступень одна, тональность меняется."
+            Variant.TIR_LAYERS -> "Над тоникой звучит аккорд: сначала его роль — дом, уход или напряжение, потом — из чего он сделан."
+            Variant.TIR_MODE -> "Гудит тоника, по ней пробегает гамма — какой это лад? От мажора и минора к другим ладам."
+            Variant.TIR_SIMON -> "Над гулом тоники звучит цепочка нот — повтори её на круге. Верно — цепочка растёт на ноту, ошибся — проигрывается медленно."
+            Variant.TIR_SONG -> "Звучат первые аккорды песни из библиотеки в случайной тональности — чья это гармония?"
+            Variant.TIR_NEXT -> "Песня названа, звучат три первых аккорда — куда она пойдёт дальше? Ответь до того, как услышишь."
+            Variant.KAMERTON_SEARCH -> "Спокойно ищешь заданную ступень голосом, пока не попадёшь. Промахнулся — подскажем, куда тянуть."
+            Variant.KAMERTON_SING -> "Видишь ступень — сразу поёшь её. Засчитывается первая спетая нота, на скорость."
+            Variant.TAPER_STEPS -> "Тональность и ступени, например «ре мажор: I – V». Сыграй ход на гитаре и честно отметь результат."
+            Variant.FORMULA_ALOUD -> "Названа песня и её часть — проговори ступени, открой ответ и послушай. Удобно в дороге."
+            Variant.PARROT_ECHO -> "Звучит тоника, потом нота — найди её на гитаре в любой октаве, телефон слушает."
+            Variant.HUNT_FIND -> "На экране нота — найди её на грифе и сыграй на гитаре, телефон слушает."
+            Variant.HUNT_ALL_OCTAVES -> "Та же нота на грифе во всех октавах подряд."
+            Variant.HUNT_REVERSE -> "Показана точка на грифе — назови ноту тапом, гитара не нужна."
             else -> e.variant.mode.goal
         }
         ModeEntry.Songs -> "Песни из твоей библиотеки по графику повторений, каждый раз в новой тональности."
-        ModeEntry.Blind -> "Случайная песня из твоих лайков, но без названия: только ступени. Кто это был — узнаешь в конце."
-        ModeEntry.Feel -> "Послушать, как звучит каждая ступень над тоникой. Без очков и таймера."
-        ModeEntry.Position -> "Где на грифе брать аккорды тональности, не уезжая: одна зона в пять ладов, корни всех семи аккордов на трёх басовых струнах. Карта, без очков."
-        ModeEntry.Lab -> "Потрогать интервалы и аккорды руками: держишь звук, меняешь одну ноту — слышишь, что изменилось и куда тянет. Без очков и таймера."
-        ModeEntry.Listen -> "С задержкой и без кнопок: ступень над аккордом, пауза — назови её про себя, потом ответ вслух. Можно в наушниках, не глядя в экран."
+        ModeEntry.Blind -> "Случайная песня без названия — только ступени. Кто это был, узнаешь в конце."
+        ModeEntry.Feel -> "Послушать, как звучит каждая ступень над тоникой и возвращается домой. Без очков и таймера."
+        ModeEntry.Position -> "Карта аккордов тональности в одной зоне грифа в пять ладов. Без очков и спешки."
+        ModeEntry.Lab -> "Держишь звук, меняешь одну ноту — слышишь характер интервала, аккорда и тяготение."
+        ModeEntry.Listen -> "Руки свободны: ступень над аккордом, пауза — назови про себя, затем ответ вслух."
+    }
+
+    fun accent(e: ModeEntry, fallback: List<Color>): List<Color> = when (e) {
+        is ModeEntry.Drill -> ModeVisuals.accent(e.variant)
+        else -> fallback
     }
 
     fun guitar(e: ModeEntry): GuitarNeed = when (e) {
@@ -152,8 +249,20 @@ object ModesCatalog {
         ModeEntry.Position -> GuitarNeed.OPTIONAL
     }
 
-    /** All cards of the screen, in order. */
-    fun all(): List<ModeEntry> = SECTIONS.flatMap(::entries)
+    /** Short input badge for the card footer: тихо / голос / гриф / гитара. */
+    fun inputBadge(e: ModeEntry): Pair<String, List<Color>> = when {
+        e is ModeEntry.Drill && (e.variant == Variant.KAMERTON_SEARCH || e.variant == Variant.KAMERTON_SING) ->
+            "голос" to Accents.Kamerton
+        e is ModeEntry.Drill && e.variant == Variant.HUNT_REVERSE || e == ModeEntry.Position ->
+            "гриф" to Accents.Hunt
+        guitar(e) == GuitarNeed.REQUIRED ->
+            "гитара" to Accents.Taper
+        else ->
+            "тихо" to Accents.Calm
+    }
+
+    /** All available cards of the screen, in order. */
+    fun all(): List<ModeEntry> = GROUPS.flatMap(::available)
 }
 
 /** «Режимы»: every mode on one screen, grouped by skill (O-12). */
@@ -183,15 +292,15 @@ fun ModesScreen(
     }.collectAsState(initial = null)
     val notation by remember { graph.settings.settings.map { it.degreeNotation } }.collectAsState(initial = DegreeNotation.ARABIC)
     ScreenFrame(title = "Режимы", subtitle = "всё в одном месте: выбирай и играй", accent = Accents.Recorder) {
-        ModesCatalog.SECTIONS.forEach { mode ->
-            val entries = ModesCatalog.entries(mode)
+        ModesCatalog.GROUPS.forEach { section ->
+            val entries = ModesCatalog.available(section)
             if (entries.isEmpty()) return@forEach
-            item(key = "head-${mode.name}") { SectionHead(mode) }
+            item(key = "head-${section.id}") { SectionHead(section) }
             entries.forEach { e ->
                 item(key = "entry-" + ModesCatalog.title(e)) {
                     EntryCard(
                         entry = e,
-                        mode = mode,
+                        accent = ModesCatalog.accent(e, section.accent),
                         progress = progress,
                         singing = singing,
                         tirHalves = tirHalves,
@@ -234,14 +343,43 @@ fun ModesScreen(
 }
 
 @Composable
-private fun SectionHead(mode: ModeId) {
-    val accent = ModeVisuals.accent(mode)
-    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        ModeOrb(mode, size = 40.dp)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(mode.ru, style = MaterialTheme.typography.headlineSmall, color = Juicy.Text)
-            Text(mode.goal, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+private fun SectionHead(section: ModeSection) {
+    Column(Modifier.fillMaxWidth().padding(top = if (section.physicalGuitar) 14.dp else 8.dp)) {
+        if (section.physicalGuitar) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Juicy.LineStrong),
+            )
+            Spacer(Modifier.height(14.dp))
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            if (section.physicalGuitar) {
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Juicy.Ink3)
+                        .border(BorderStroke(1.dp, Juicy.LineStrong), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AppGlyph(AppIcon.GUITAR, section.accent.first(), size = 20.dp)
+                }
+            } else {
+                Box(
+                    Modifier
+                        .width(4.dp)
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Brush.verticalGradient(section.accent)),
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(section.title, style = MaterialTheme.typography.headlineSmall, color = Juicy.Text)
+                Text(section.subtitle, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+            }
         }
     }
 }
@@ -250,7 +388,7 @@ private fun SectionHead(mode: ModeId) {
 @Composable
 private fun EntryCard(
     entry: ModeEntry,
-    mode: ModeId,
+    accent: List<Color>,
     progress: GameProgress,
     singing: SingUnlock.Status,
     tirHalves: TirDriver.Companion.Halves?,
@@ -260,7 +398,6 @@ private fun EntryCard(
     onLibrary: () -> Unit,
     onLoops: () -> Unit,
 ) {
-    val accent = ModeVisuals.accent(mode)
     val title = ModesCatalog.title(entry)
     val closed = entry is ModeEntry.Drill && entry.variant == Variant.KAMERTON_SING && !singing.open
     GlassCard(Modifier.fillMaxWidth(), accent = accent, contentPadding = 16.dp) {
@@ -281,12 +418,17 @@ private fun EntryCard(
             )
         }
         Spacer(Modifier.height(10.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(guitarText(ModesCatalog.guitar(entry)), style = MaterialTheme.typography.labelLarge, color = Juicy.TextFaint)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            val (badgeText, badgeColors) = ModesCatalog.inputBadge(entry)
+            Badge(badgeText, badgeColors)
             val v = (entry as? ModeEntry.Drill)?.variant
             val record = v?.let { progress.record(it) } ?: 0
             if (v != null && record > 0 && !Drills.guitarPaced(v)) {
-                Text("$record", style = MaterialTheme.typography.labelLarge, color = Juicy.Gold)
+                Text("рекорд $record", style = MaterialTheme.typography.labelMedium, color = Juicy.Gold)
             }
         }
         if (duelLine != null) {
@@ -297,34 +439,32 @@ private fun EntryCard(
         if (entry == ModeEntry.Drill(Variant.TIR_SONG)) {
             // O-47: the album of what the quiz teaches — every loop of the library and the songs that open with it
             Spacer(Modifier.height(10.dp))
-            GhostButton("Коллекция ходов", onClick = onLoops, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "")
+            GhostButton("Коллекция ходов", onClick = onLoops, modifier = Modifier.fillMaxWidth(), colors = accent, leadingIcon = AppIcon.CHEVRON_RIGHT)
         }
         if (entry == ModeEntry.Songs) {
             Spacer(Modifier.height(10.dp))
-            GhostButton("Взять песню из сборника", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = accent, leading = "")
+            GhostButton("Взять песню из сборника", onClick = onLibrary, modifier = Modifier.fillMaxWidth(), colors = accent, leadingIcon = AppIcon.CHEVRON_RIGHT)
         }
     }
 }
 
-private fun guitarText(g: GuitarNeed): String = when (g) {
-    GuitarNeed.REQUIRED -> "нужна гитара"
-    GuitarNeed.OPTIONAL -> "можно без гитары"
-    GuitarNeed.NONE -> "гитара не нужна"
-}
-
-/** Round «play» button on the right of a card. */
+/** Sleek studio round «play» button on the right of a card. */
 @Composable
 private fun PlayDisc(accent: List<Color>, label: String, enabled: Boolean = true, onClick: () -> Unit) {
+    val color = accent.first()
     Box(
         Modifier
-            .size(64.dp)
+            .size(48.dp)
             .alpha(if (enabled) 1f else 0.3f)
             .clip(CircleShape)
-            .background(Brush.linearGradient(accent))
+            .background(Juicy.Ink3)
+            .border(BorderStroke(1.5.dp, color.copy(alpha = 0.75f)), CircleShape)
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
-    ) { Text("►", style = MaterialTheme.typography.headlineSmall, color = Color.White, textAlign = TextAlign.Center) }
+    ) {
+        AppGlyph(AppIcon.PLAY, color, size = 20.dp)
+    }
 }
 
 /** Chips for the open levels, one line for the locked rest, and the name of the chosen level. */

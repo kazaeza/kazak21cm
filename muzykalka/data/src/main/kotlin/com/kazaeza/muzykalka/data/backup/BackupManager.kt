@@ -58,6 +58,7 @@ class BackupManager(
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
+        coerceInputValues = true
         encodeDefaults = true
         prettyPrint = false
     }

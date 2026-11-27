@@ -25,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -51,6 +52,7 @@ import com.kazaeza.muzykalka.ui.component.SectionLabel
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -69,14 +71,19 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
     var confirmDelete by remember { mutableStateOf(false) }
     // O-44 «Послушать»: the sketch of the song in a key of chance; the key is named, the chords stay degrees (rule 1)
     var listening by remember { mutableStateOf<Job?>(null) }
+    var playing by remember { mutableStateOf(false) }
+    var playToken by remember { mutableIntStateOf(0) }
     var listenKey by remember { mutableStateOf<Key?>(null) }
     val keys = remember { KeyPicker(Random(System.nanoTime())) }
-    DisposableEffect(id) {
-        onDispose {
-            if (listening?.isActive == true) graph.audioOutput.stop()
-            listening?.cancel()
-        }
+    fun stopListening() {
+        playToken++
+        if (listening?.isActive == true) graph.audioOutput.stop()
+        listening?.cancel()
+        listening = null
+        playing = false
     }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { stopListening() }
+    DisposableEffect(id) { onDispose { stopListening() } }
     val today = graph.today(settings)
     val notation = settings.degreeNotation
     val loaded by produceState(false, entries) { value = entries != null }
@@ -113,24 +120,28 @@ fun ItemScreen(id: String, onBack: () -> Unit, onEdit: (String) -> Unit, onOrder
         }
         e.song?.let { song ->
             item(key = "listen") {
-                val playing = listening?.isActive == true
                 Column {
                     GhostButton(
                         if (playing) "Стоп" else "Послушать",
                         onClick = {
                             if (playing) {
-                                listening?.cancel()
-                                graph.audioOutput.stop()
-                                listening = null
+                                stopListening()
                             } else {
                                 val key = keys.next(song.mode)
                                 listenKey = key
+                                val previous = listening
+                                val token = ++playToken
+                                playing = true
                                 listening = scope.launch {
-                                    graph.audioOutput.a4Hz = settings.a4Hz
                                     try {
+                                        previous?.cancelAndJoin()
+                                        graph.audioOutput.a4Hz = settings.a4Hz
                                         graph.audioOutput.play(Arranger().sketch(song, key))
                                     } finally {
-                                        listening = null
+                                        if (playToken == token) {
+                                            playing = false
+                                            listening = null
+                                        }
                                     }
                                 }
                             }

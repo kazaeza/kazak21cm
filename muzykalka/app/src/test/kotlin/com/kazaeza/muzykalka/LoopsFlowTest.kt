@@ -3,6 +3,7 @@ package com.kazaeza.muzykalka
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
@@ -50,7 +51,7 @@ class LoopsFlowTest {
         }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("узнаю 1 из 1").fetchSemanticsNodes().isNotEmpty() }
         assertTrue(rule.onAllNodesWithText("узнаю").fetchSemanticsNodes().isNotEmpty())
-        rule.onAllNodesWithText("►").onFirst().performClick()
+        rule.onAllNodesWithContentDescription("Играть").onFirst().performClick()
         rule.waitUntil(5_000) { audio.played.isNotEmpty() }
         val heard = audio.played.single()
         assertTrue(heard.notes.all { it.voice == Voice.PIANO || it.voice == Voice.BASS })

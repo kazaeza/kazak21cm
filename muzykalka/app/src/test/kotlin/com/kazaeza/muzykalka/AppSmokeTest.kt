@@ -86,27 +86,30 @@ class AppSmokeTest {
 
     @Test
     fun startsOnTodayAndAllTabsOpen() {
-        rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("ЗА НЕДЕЛЮ").assertIsDisplayed()
         // Four tabs only, found by their description (O-24: the tabs are words, the text is not in semantics twice).
         for (tab in listOf("Режимы", "Библиотека", "Прогресс", "Сегодня")) {
             rule.onNodeWithContentDescription(tab).performClick()
             rule.waitForIdle()
         }
         rule.onNodeWithText("ЗА НЕДЕЛЮ").assertIsDisplayed()
+        list().performScrollToNode(hasText("Начать сет", substring = true))
+        rule.waitForIdle()
+        rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
         rule.onAllNodesWithText("Лексикон").assertCountEquals(0)
     }
 
     /** O-29: the tabs are pages — a swipe across the screen turns them, and the bar follows. */
     @Test
     fun swipeTurnsTheTabs() {
-        rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("ЗА НЕДЕЛЮ").assertIsDisplayed()
         rule.onRoot().performTouchInput { swipeLeft() }
         rule.waitForIdle()
         rule.onNodeWithText("всё в одном месте: выбирай и играй").assertIsDisplayed()
         rule.onNodeWithContentDescription("Режимы").assertIsSelected()
         rule.onRoot().performTouchInput { swipeRight() }
         rule.waitForIdle()
-        rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("ЗА НЕДЕЛЮ").assertIsDisplayed()
         rule.onNodeWithContentDescription("Сегодня").assertIsSelected()
     }
 
@@ -117,8 +120,9 @@ class AppSmokeTest {
         rule.onNodeWithText("Drop D (D A D G B E)").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("СТРОЙ").assertIsDisplayed()
-        rule.onNodeWithText("←").performClick()
-        rule.onNodeWithText("Начать сет", substring = true).assertIsDisplayed()
+        rule.onNodeWithContentDescription("Назад").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("ЗА НЕДЕЛЮ").assertIsDisplayed()
     }
 
     /** O-42: the songbook is put into the library at start (in the background); the shelf chips show up with the first piece. */

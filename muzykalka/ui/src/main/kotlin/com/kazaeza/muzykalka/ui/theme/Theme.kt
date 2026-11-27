@@ -15,38 +15,40 @@ import androidx.compose.ui.unit.sp
 import com.kazaeza.muzykalka.ui.R
 
 /**
- * O-24 «Обертон»: warm near-black, light instead of paint. The names stay (every screen uses them), the values
- * moved from violet ink and neon to a quiet warm dark with soft glow accents.
+ * «Обертон 2.0»: elevated warm studio-dark surfaces with restrained, rich acoustic accents.
+ * Existing property names stay intact so every call site remains source- and binary-compatible.
  */
 object Juicy {
     val Ink = Color(0xFF0A0909)
-    val Ink2 = Color(0xFF121110)
-    val Ink3 = Color(0xFF1A1817)
-    val Ink4 = Color(0xFF24211F)
-    val Line = Color(0x17FFFFFF)
+    val Ink2 = Color(0xFF141312)
+    val Ink3 = Color(0xFF1E1C1A)
+    val Ink4 = Color(0xFF292624)
+    val SurfaceElevated = Color(0xFF171514)
+    val Line = Color(0x1CFFFFFF)
+    val LineStrong = Color(0x30FFFFFF)
     val Text = Color(0xFFF2EEE9)
     val TextDim = Color(0xFF9C958E)
     val TextFaint = Color(0xFF5C5752)
 
-    val Hot = Color(0xFFFF2E6A)
-    val Orange = Color(0xFFFF6B1A)
-    val Gold = Color(0xFFFFC21F)
-    val Lime = Color(0xFFC4FF2E)
-    val Mint = Color(0xFF2EFFC0)
-    val Cyan = Color(0xFF22E4FF)
-    val Blue = Color(0xFF5468FF)
-    val Violet = Color(0xFFA050FF)
-    val Magenta = Color(0xFFFF3BE0)
+    val Hot = Color(0xFFE0526F)
+    val Orange = Color(0xFFE87A3E)
+    val Gold = Color(0xFFEAB949)
+    val Lime = Color(0xFFA6D96A)
+    val Mint = Color(0xFF4CD4A9)
+    val Cyan = Color(0xFF4BB8E8)
+    val Blue = Color(0xFF6B7FE8)
+    val Violet = Color(0xFF9C72E8)
+    val Magenta = Color(0xFFD965B5)
 
-    val Good = Color(0xFF3DFFA0)
-    val Bad = Color(0xFFFF3B5C)
+    val Good = Color(0xFF4AD991)
+    val Bad = Color(0xFFE8536B)
     val Paper = Color(0xFFF2EEE9)
     val PaperInk = Color(0xFF15120F)
 }
 
 /** Gradients per area. Modes map onto these in :app (ui does not know the game catalogue). */
 object Accents {
-    val Hero = listOf(Juicy.Orange, Juicy.Hot, Juicy.Magenta)
+    val Hero = listOf(Juicy.Orange, Juicy.Gold)
     val Hunt = listOf(Juicy.Lime, Juicy.Mint)
     val Tir = listOf(Juicy.Orange, Juicy.Hot)
     val Kamerton = listOf(Juicy.Cyan, Juicy.Blue)
@@ -55,7 +57,7 @@ object Accents {
     val Recorder = listOf(Juicy.Violet, Juicy.Magenta)
     val Calm = listOf(Juicy.Blue, Juicy.Violet)
     val Good = listOf(Juicy.Good, Juicy.Mint)
-    val Bad = listOf(Juicy.Hot, Juicy.Orange)
+    val Bad = listOf(Juicy.Bad, Juicy.Orange)
 }
 
 val Unbounded = FontFamily(

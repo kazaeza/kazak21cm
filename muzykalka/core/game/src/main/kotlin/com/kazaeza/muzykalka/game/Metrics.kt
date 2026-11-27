@@ -141,7 +141,12 @@ object Metrics {
     fun variantsOf(link: Link): Set<Variant> = when (link) {
         Link.NAME_TO_PLACE -> setOf(Variant.HUNT_FIND, Variant.HUNT_ALL_OCTAVES)
         Link.PLACE_TO_NAME -> setOf(Variant.HUNT_REVERSE)
-        Link.SOUND_TO_NAME -> setOf(Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC, Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_RADIO)
+        Link.SOUND_TO_NAME -> setOf(
+            Variant.TIR_CLASSIC, Variant.TIR_OVER_CHORDS, Variant.TIR_UNDER_NOTE, Variant.TIR_ON_TONIC,
+            Variant.TIR_BASS, Variant.TIR_TWO_CHORDS, Variant.TIR_DYAD, Variant.TIR_DUEL, Variant.TIR_RADIO,
+            Variant.TIR_COLOR, Variant.TIR_LAYERS, Variant.TIR_LOOP3, Variant.TIR_MODE,
+            Variant.TIR_SIMON, Variant.TIR_SONG, Variant.TIR_NEXT, Variant.TIR_TRANSFER,
+        )
         Link.NAME_TO_SOUND -> setOf(Variant.KAMERTON_SEARCH, Variant.KAMERTON_SING, Variant.KAMERTON_DIGITS)
         Link.PLACE_TO_SOUND -> setOf(Variant.KAMERTON_PREDICT)
         Link.SOUND_TO_PLACE -> setOf(Variant.PARROT_ECHO, Variant.PARROT_CALL_RESPONSE)
@@ -285,16 +290,33 @@ object Metrics {
  * Entrance exam and credits (ticket G-04): fixed task counts, no lives, no clock. Each stage
  * measures one [Skill]; [measure] turns its attempts into the number compared with [Graduation].
  */
+enum class ExamKind(val ru: String) {
+    EAR("Слух · без гитары"),
+    GUITAR("Гитара"),
+}
+
 data class ExamStage(val skill: Skill, val variant: Variant, val level: Int, val tasks: Int)
 
 object Exam {
-    /** 0.1 battery. Memory (Taper without hints) is run separately after these stages. */
-    val STAGES_V01 = listOf(
-        ExamStage(Skill.NECK_LOW_STRINGS, Variant.HUNT_FIND, level = 1, tasks = 20),
-        ExamStage(Skill.NECK_FULL, Variant.HUNT_FIND, level = 3, tasks = 20),
+    /** Non-guitar ear exam: 7 degrees and 4-chord progressions. */
+    val STAGES_EAR = listOf(
         ExamStage(Skill.EAR_DEGREES, Variant.TIR_CLASSIC, level = 2, tasks = 20),
         ExamStage(Skill.EAR_PROGRESSIONS, Variant.TIR_CLASSIC, level = 6, tasks = 10),
     )
+
+    /** Physical-guitar neck exam: low strings and full fretboard. */
+    val STAGES_GUITAR = listOf(
+        ExamStage(Skill.NECK_LOW_STRINGS, Variant.HUNT_FIND, level = 1, tasks = 20),
+        ExamStage(Skill.NECK_FULL, Variant.HUNT_FIND, level = 3, tasks = 20),
+    )
+
+    /** 0.1 battery. Memory (Taper without hints) is run separately after these stages. */
+    val STAGES_V01 = STAGES_GUITAR + STAGES_EAR
+
+    fun stages(kind: ExamKind): List<ExamStage> = when (kind) {
+        ExamKind.EAR -> STAGES_EAR
+        ExamKind.GUITAR -> STAGES_GUITAR
+    }
 
     const val MEMORY_ITEMS = 10
 

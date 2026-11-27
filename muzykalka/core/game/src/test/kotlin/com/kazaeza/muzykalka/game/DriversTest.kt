@@ -255,6 +255,24 @@ class HuntDriverTest {
         assertFalse(e.correct)
         assertNotNull(e.correction)
     }
+
+    @Test
+    fun `reverse hunt corrects on piano while guitar hunts keep guitar`() {
+        val reverse = HuntDriver(Variant.HUNT_REVERSE, board)
+        val reverseTask = reverse.nextTask(DriverContext(Random(2), 1, emptyList()))
+        val reverseEval = reverse.evaluate(reverseTask, Answer.TimedOut)
+        assertEquals(Voice.PIANO, requireNotNull(reverseEval.correction).notes.single().voice)
+
+        val find = HuntDriver(Variant.HUNT_FIND, board)
+        val findTask = find.nextTask(DriverContext(Random(2), 1, emptyList()))
+        val findEval = find.evaluate(findTask, Answer.TimedOut)
+        assertEquals(Voice.GUITAR, requireNotNull(findEval.correction).notes.single().voice)
+
+        val octaves = HuntDriver(Variant.HUNT_ALL_OCTAVES, board)
+        val octavesTask = octaves.nextTask(DriverContext(Random(2), 1, emptyList()))
+        val octavesEval = octaves.evaluate(octavesTask, Answer.TimedOut)
+        assertEquals(Voice.GUITAR, requireNotNull(octavesEval.correction).notes.single().voice)
+    }
 }
 
 class TaperSessionTest {
@@ -493,11 +511,12 @@ class StepsDriverTest {
         assertEquals(20.0, DailySet.DEFAULT.sumOf { it.minutes })
         assertEquals(5.0, DailySet.MINIMAL.sumOf { it.minutes })
         listOf(DailySet.DEFAULT, DailySet.MINIMAL).forEach { plan ->
-            val songless = DailySet.withoutSongs(plan)
-            assertEquals(plan.sumOf { it.minutes }, songless.sumOf { it.minutes })
-            assertTrue(songless.none { it.variant == Variant.TAPER_ORDER })
-            assertEquals(1, songless.count { it.variant == Variant.TAPER_STEPS })
+            assertEquals(plan, DailySet.withoutSongs(plan))
         }
+        val guitarSongless = DailySet.withoutSongs(Training.GUITAR.plan)
+        assertEquals(Training.GUITAR.plan.sumOf { it.minutes }, guitarSongless.sumOf { it.minutes })
+        assertTrue(guitarSongless.none { it.variant == Variant.TAPER_ORDER })
+        assertEquals(1, guitarSongless.count { it.variant == Variant.TAPER_STEPS })
         val noSteps = listOf(SetSegment(Variant.TIR_CLASSIC, 1.0), SetSegment(Variant.TAPER_ORDER, 4.0))
         assertEquals(listOf(SetSegment(Variant.TIR_CLASSIC, 1.0), SetSegment(Variant.TAPER_STEPS, 4.0)), DailySet.withoutSongs(noSteps))
     }

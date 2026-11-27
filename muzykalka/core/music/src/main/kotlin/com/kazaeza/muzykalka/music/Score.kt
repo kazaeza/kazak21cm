@@ -97,12 +97,12 @@ class Arranger(
         return bassFloor + (pc - bassFloor.pitchClass)
     }
 
-    /** Block chords, one per [beatsEach] beats, with bass. Used for cadences. */
+    /** Block chords, one per [beatsEach] beats, with piano bass note. Used for cadences and sketches. */
     fun chords(chords: List<ChordDegree>, key: Key, beatsEach: Double = 1.0, tempoBpm: Double = 90.0): Score {
         val notes = chords.flatMapIndexed { i, c ->
             val start = i * beatsEach
             voicing(c, key).map { ScoreNote(start, beatsEach * 0.95, Voice.PIANO, it, 0.7f) } +
-                ScoreNote(start, beatsEach * 0.95, Voice.BASS, bassNote(c, key), 0.8f)
+                ScoreNote(start, beatsEach * 0.95, Voice.PIANO, bassNote(c, key), 0.78f)
         }
         return Score(tempoBpm, notes)
     }

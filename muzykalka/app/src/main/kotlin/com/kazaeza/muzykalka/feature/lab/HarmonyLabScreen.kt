@@ -34,6 +34,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kazaeza.muzykalka.AppGraph
 import com.kazaeza.muzykalka.LocalAppGraph
+import com.kazaeza.muzykalka.feature.common.IconBubble
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.music.Arranger
 import com.kazaeza.muzykalka.music.ChordDegree
@@ -55,6 +56,7 @@ import com.kazaeza.muzykalka.music.RuNames
 import com.kazaeza.muzykalka.music.Score
 import com.kazaeza.muzykalka.music.ScoreNote
 import com.kazaeza.muzykalka.music.Voice
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.DegreeChip
 import com.kazaeza.muzykalka.ui.component.DegreeRing
@@ -352,8 +354,16 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
         item(key = "rooms") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ChoiceRow(LabRoom.entries, ui.room, { it.ru }, vm::setRoom, modifier = Modifier.weight(1f), colors = Accents.Tir)
-                GhostButton(if (ui.sounding) "■" else "►", onClick = vm::toggle, colors = Accents.Tir)
-                GhostButton("⇄", onClick = vm::newRoot, colors = Accents.Tir)
+                IconBubble(
+                    icon = if (ui.sounding) AppIcon.STOP else AppIcon.PLAY,
+                    onClick = vm::toggle,
+                    description = if (ui.sounding) "Стоп" else "Играть",
+                )
+                IconBubble(
+                    icon = AppIcon.REPLAY,
+                    onClick = vm::newRoot,
+                    description = "Другая высота",
+                )
             }
         }
         when (ui.room) {
@@ -480,7 +490,13 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
                         Text(pull.line, style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
                         if (pull.target != null) {
                             Spacer(Modifier.height(10.dp))
-                            GhostButton(if (ui.pulled) "…и обратно" else "Послушать, куда тянет", onClick = vm::pull, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "→")
+                            GhostButton(
+                                if (ui.pulled) "…и обратно" else "Послушать, куда тянет",
+                                onClick = vm::pull,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = Accents.Taper,
+                                leadingIcon = AppIcon.CHEVRON_RIGHT,
+                            )
                         }
                     }
                 }
@@ -535,7 +551,13 @@ fun HarmonyLabScreen(onBack: () -> Unit) {
                 }
                 if (ui.sounding && ui.step != 0) {
                     item(key = "home") {
-                        GhostButton("Домой — в ${name(0)}", onClick = { vm.setStep(0) }, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "→")
+                        GhostButton(
+                            "Домой — в ${name(0)}",
+                            onClick = { vm.setStep(0) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = Accents.Tir,
+                            leadingIcon = AppIcon.CHEVRON_RIGHT,
+                        )
                     }
                 }
             }
@@ -608,7 +630,7 @@ private fun PuzzleCard(ui: LabUi, fmt: (Degree) -> String, onNew: () -> Unit, on
         if (puzzle == null) {
             Text("Звучит аккорд без имени. Подбери такой же на дорожках, сравни на слух — и открой, что это было.", style = MaterialTheme.typography.bodyMedium, color = Juicy.Text)
             Spacer(Modifier.height(10.dp))
-            GhostButton("Загадай аккорд", onClick = onNew, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "?")
+            GhostButton("Загадай аккорд", onClick = onNew, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leadingIcon = AppIcon.SPARK)
         } else {
             Text(
                 if (ui.puzzleOpen) "Это был " + (LabPresets.nameOf(puzzle) ?: "аккорд без имени") else if (ui.puzzleHeard) "Слушаешь загадку…" else "Слушаешь свой — загадка ждёт.",
@@ -627,11 +649,11 @@ private fun PuzzleCard(ui: LabUi, fmt: (Degree) -> String, onNew: () -> Unit, on
                 Text("Сверь со своим на дорожках: где голос стоит иначе?", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
             }
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GhostButton("Загадка", onClick = onPlay, colors = Accents.Taper, leading = "►")
-                if (!ui.puzzleOpen) GhostButton("Открыть", onClick = onOpen, colors = Accents.Taper, leading = "◉")
-                GhostButton(if (ui.puzzleOpen) "Новая" else "Другая", onClick = onNew, colors = Accents.Taper, leading = "⇄")
-                GhostButton("Хватит", onClick = onClose, colors = Accents.Calm)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton("Загадка", onClick = onPlay, colors = Accents.Taper, leadingIcon = AppIcon.PLAY)
+                if (!ui.puzzleOpen) GhostButton("Открыть", onClick = onOpen, colors = Accents.Taper, leadingIcon = AppIcon.CHECK)
+                GhostButton(if (ui.puzzleOpen) "Новая" else "Другая", onClick = onNew, colors = Accents.Taper, leadingIcon = AppIcon.REPLAY)
+                GhostButton("Хватит", onClick = onClose, colors = Accents.Calm, leadingIcon = AppIcon.CLOSE)
             }
         }
     }

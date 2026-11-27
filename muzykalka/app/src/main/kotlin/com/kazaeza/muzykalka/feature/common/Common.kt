@@ -13,6 +13,9 @@ import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kazaeza.muzykalka.game.ModeId
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.ui.component.AppGlyph
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
 import com.kazaeza.muzykalka.ui.component.JuicyButton
@@ -160,10 +165,13 @@ fun ScreenFrame(
                             Modifier
                                 .size(44.dp)
                                 .clip(CircleShape)
+                                .background(Juicy.Ink3.copy(alpha = 0.7f))
+                                .border(BorderStroke(1.dp, Juicy.Line), CircleShape)
+                                .semantics { contentDescription = "Назад" }
                                 .clickable(interactionSource = backSource, indication = LocalIndication.current, onClick = onBack),
                             contentAlignment = Alignment.Center,
-                        ) { Text("←", style = MaterialTheme.typography.headlineMedium, color = Juicy.Text) }
-                        Spacer(Modifier.size(6.dp))
+                        ) { AppGlyph(AppIcon.BACK, Juicy.Text, size = 22.dp) }
+                        Spacer(Modifier.size(10.dp))
                     }
                     Column(Modifier.weight(1f)) {
                         Text(title, style = MaterialTheme.typography.headlineLarge, color = Juicy.Text)
@@ -183,10 +191,29 @@ fun IconBubble(icon: String, onClick: () -> Unit, modifier: Modifier = Modifier,
     var m = modifier
         .size(46.dp)
         .clip(CircleShape)
+        .background(Juicy.Ink3.copy(alpha = 0.75f))
+        .border(BorderStroke(1.dp, Juicy.Line), CircleShape)
         .clickable(onClick = onClick)
     if (description != null) m = m.semantics { contentDescription = description }
     Box(m, contentAlignment = Alignment.Center) {
         Text(icon, style = MaterialTheme.typography.headlineSmall)
+    }
+}
+
+/** Round vector icon button used in headers («Обертон 2.0»). */
+@Composable
+fun IconBubble(icon: AppIcon, onClick: () -> Unit, modifier: Modifier = Modifier, description: String? = null) {
+    val source = remember { MutableInteractionSource() }
+    TapOnPress(source, low = true)
+    var m = modifier
+        .size(46.dp)
+        .clip(CircleShape)
+        .background(Juicy.Ink3.copy(alpha = 0.75f))
+        .border(BorderStroke(1.dp, Juicy.Line), CircleShape)
+        .clickable(interactionSource = source, indication = LocalIndication.current, onClick = onClick)
+    if (description != null) m = m.semantics { contentDescription = description }
+    Box(m, contentAlignment = Alignment.Center) {
+        AppGlyph(icon, Juicy.Text, size = 20.dp)
     }
 }
 

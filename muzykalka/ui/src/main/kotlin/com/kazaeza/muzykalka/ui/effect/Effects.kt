@@ -93,24 +93,25 @@ fun AuroraBackground(
                         h * (0.20f + 0.05f * n + 0.06f * cos(a * 0.5 + i).toFloat()),
                     )
                     val rr = r * (0.58f / sqrt(n.toFloat())) * (1f + 0.08f * sin(a + i).toFloat())
-                    val alpha = 0.40f * k / sqrt(n.toFloat())
+                    val alpha = 0.24f * k / sqrt(n.toFloat())
                     drawCircle(
                         Brush.radialGradient(listOf(c.copy(alpha = alpha), c.copy(alpha = alpha * 0.35f), Color.Transparent), centre, rr),
                         rr, centre, blendMode = BlendMode.Screen,
                     )
                 }
                 // the dark falls back in at the bottom, so content reads on calm ink
-                drawRect(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Juicy.Ink.copy(alpha = 0.8f)))
+                drawRect(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Juicy.Ink.copy(alpha = 0.85f)))
                 drawGrain(grain)
             },
         content = content,
     )
 }
 
-/** Five lights for the background: the accent colours first, then neighbours from the neon palette. */
+/** Soft studio lights for the background: screen accent colours first, then calm Blue/Gold companions. */
 private fun overtoneColors(colors: List<Color>): List<Color> {
-    val extra = listOf(Juicy.Magenta, Juicy.Blue, Juicy.Cyan, Juicy.Violet, Juicy.Hot)
-    return (colors + extra).distinct().take(5)
+    val companions = listOf(Juicy.Blue, Juicy.Gold, Juicy.Violet, Juicy.Mint)
+    val base = if (colors.isEmpty()) listOf(Juicy.Orange) else colors
+    return (base + companions).distinct().take(4)
 }
 
 /**

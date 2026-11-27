@@ -117,12 +117,21 @@ object AdaptiveEar {
         return if (gap >= 0.2) EarFocus(Variant.TIR_OVER_CHORDS, emptyList(), 1) else null
     }
 
-    /** Keep 2.5 of the four Tir minutes in the regular round and reserve 90 seconds for the focus. */
+    /**
+     * Reserve 90 seconds for the focus when regular Tir has at least 2.5 min (so the remainder stays >= 1.0 min),
+     * or replace a shorter (>= 1.5 min) Tir block on 5–10 min sets, never introducing a duplicate variant.
+     */
     fun apply(plan: List<SetSegment>, focus: EarFocus?): List<SetSegment> {
         if (focus == null) return plan
+        if (focus.variant != Variant.TIR_CLASSIC && plan.any { it.variant == focus.variant }) return plan
+        var applied = false
         return plan.flatMap { segment ->
-            if (segment.variant == Variant.TIR_CLASSIC && segment.minutes >= 3.0) {
+            if (!applied && segment.variant == Variant.TIR_CLASSIC && segment.minutes >= 2.5) {
+                applied = true
                 listOf(SetSegment(focus.variant, 1.5), segment.copy(minutes = segment.minutes - 1.5))
+            } else if (!applied && segment.variant == Variant.TIR_CLASSIC && segment.minutes >= 1.5) {
+                applied = true
+                listOf(SetSegment(focus.variant, segment.minutes))
             } else listOf(segment)
         }
     }

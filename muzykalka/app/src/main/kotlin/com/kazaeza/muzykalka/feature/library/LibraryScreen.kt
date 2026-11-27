@@ -31,6 +31,7 @@ import com.kazaeza.muzykalka.feature.common.ruDue
 import com.kazaeza.muzykalka.music.BookGenre
 import com.kazaeza.muzykalka.music.DegreeFormatter
 import com.kazaeza.muzykalka.music.DegreeNotation
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.Badge
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.DegreeChip
@@ -105,7 +106,7 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
     ScreenFrame(title = "Библиотека", subtitle = "${list.size} · учу $learning", accent = Accents.Taper) {
         item(key = "capture") {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                JuicyButton("Записать свою", onClick = { onCapture(LibraryKind.SONG) }, modifier = Modifier.weight(1f), colors = Accents.Taper, leading = "")
+                JuicyButton("Записать свою", onClick = { onCapture(LibraryKind.SONG) }, modifier = Modifier.weight(1f), colors = Accents.Taper, leadingIcon = AppIcon.ADD)
                 GhostButton("Рифф", onClick = { onCapture(LibraryKind.RIFF) }, modifier = Modifier.weight(0.5f), colors = Accents.Taper, height = 64.dp)
             }
         }
@@ -135,7 +136,7 @@ fun LibraryScreen(onCapture: (LibraryKind) -> Unit, onOpen: (String) -> Unit) {
                 item(key = "note") {
                     Text(
                         "В библиотеке лежит гармония известных песен — обучающих, хитов 1958–1990 годов и джазовых стандартов — ступенями. " +
-                            "Упрощено до основных аккордов: каждую можно поправить под свою версию или удалить. «＋ учить» ставит песню в повторы.",
+                            "Упрощено до основных аккордов: каждую можно поправить под свою версию или удалить. Кнопка «учить» ставит песню в повторы.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Juicy.TextDim,
                     )
@@ -156,16 +157,6 @@ private fun EntryCard(e: LibraryEntry, today: Int, notation: DegreeNotation, onC
     val book = e.bookEntry
     GlassCard(Modifier.fillMaxWidth(), accent = if (e.shelved) null else e.status.colors(), onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                when (e.kind) {
-                    LibraryKind.SONG -> ""
-                    LibraryKind.RIFF -> ""
-                    LibraryKind.TUNE -> ""
-                    LibraryKind.PHRASE -> ""
-                },
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Spacer(Modifier.height(1.dp).fillMaxWidth(0.03f))
             Column(Modifier.weight(1f)) {
                 Text(e.title, style = MaterialTheme.typography.titleLarge)
                 val sub = listOfNotNull(
@@ -178,7 +169,7 @@ private fun EntryCard(e: LibraryEntry, today: Int, notation: DegreeNotation, onC
             }
             if (e.shelved) {
                 Spacer(Modifier.width(8.dp))
-                GhostButton("учить", onClick = onLearn, colors = Accents.Taper, leading = "＋", height = 48.dp)
+                GhostButton("учить", onClick = onLearn, colors = Accents.Taper, height = 48.dp, leadingIcon = AppIcon.ADD)
             } else if (e.orderable) {
                 Badge(e.status.ru, e.status.colors())
             }

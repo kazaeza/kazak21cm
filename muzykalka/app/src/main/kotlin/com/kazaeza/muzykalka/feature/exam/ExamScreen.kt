@@ -1,12 +1,12 @@
 package com.kazaeza.muzykalka.feature.exam
 
-import androidx.compose.foundation.layout.size
-import com.kazaeza.muzykalka.ui.effect.GlowOrb
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +23,6 @@ import com.kazaeza.muzykalka.LocalAppGraph
 import com.kazaeza.muzykalka.data.repo.ExamResult
 import com.kazaeza.muzykalka.data.repo.SessionKind
 import com.kazaeza.muzykalka.feature.common.ModeOrb
-import com.kazaeza.muzykalka.feature.common.ModeVisuals
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.game.Drills
 import com.kazaeza.muzykalka.feature.game.GameScreen
@@ -32,13 +31,18 @@ import com.kazaeza.muzykalka.feature.game.RoundSummary
 import com.kazaeza.muzykalka.feature.taper.TaperScreen
 import com.kazaeza.muzykalka.feature.taper.TaperSpec
 import com.kazaeza.muzykalka.game.Exam
+import com.kazaeza.muzykalka.game.ExamKind
 import com.kazaeza.muzykalka.game.ExamStage
 import com.kazaeza.muzykalka.game.Graduation
 import com.kazaeza.muzykalka.game.Skill
+import com.kazaeza.muzykalka.ui.component.AppGlyph
+import com.kazaeza.muzykalka.ui.component.AppIcon
+import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
 import com.kazaeza.muzykalka.ui.component.JuicyButton
 import com.kazaeza.muzykalka.ui.component.SectionLabel
+import com.kazaeza.muzykalka.ui.effect.GlowOrb
 import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,32 +55,39 @@ import kotlinx.coroutines.launch
 enum class ExamPhase { INTRO, STAGE, MEMORY, DONE }
 
 data class ExamUi(
+    val kind: ExamKind = ExamKind.EAR,
     val phase: ExamPhase = ExamPhase.INTRO,
     val stage: Int = 0,
     val sessionId: Long? = null,
     val results: List<ExamResult> = emptyList(),
     val hasLibrary: Boolean = false,
-)
+) {
+    val stages: List<ExamStage> get() = Exam.stages(kind)
+}
 
-/** Ticket G-04: the entrance exam / credit — fixed tasks, no hints, numbers into the report card. */
-class ExamViewModel(private val graph: AppGraph) : ViewModel() {
-    val stages: List<ExamStage> = Exam.STAGES_V01
-    private val state = MutableStateFlow(ExamUi())
+/** Ticket G-04: split entrance exam / credit — ear (no guitar) or physical guitar. */
+class ExamViewModel(private val graph: AppGraph, initialKind: ExamKind = ExamKind.EAR) : ViewModel() {
+    private val state = MutableStateFlow(ExamUi(kind = initialKind))
     val ui: StateFlow<ExamUi> = state.asStateFlow()
 
     init {
         viewModelScope.launch { state.update { it.copy(hasLibrary = graph.library.allOrderable().isNotEmpty()) } }
     }
 
+    fun setKind(kind: ExamKind) {
+        state.update { if (it.phase == ExamPhase.INTRO) it.copy(kind = kind) else it }
+    }
+
     fun start() = viewModelScope.launch {
         val settings = graph.settings.settings.first()
         val kind = if (graph.practice.observeExams().first().isEmpty()) SessionKind.ENTRANCE_EXAM else SessionKind.CREDIT
         val id = graph.practice.startSession(kind, graph.today(settings))
-        state.update { it.copy(sessionId = id, phase = ExamPhase.STAGE, stage = 0) }
+        state.update { it.copy(sessionId = id, phase = ExamPhase.STAGE, stage = 0, results = emptyList()) }
     }
 
     fun stageDone(summary: RoundSummary?) {
         val s = state.value
+        val stages = s.stages
         val stage = stages[s.stage]
         val results = if (summary != null && summary.answered > 0) {
             val measured = Exam.measure(stage.skill, summary.attempts)
@@ -86,7 +97,7 @@ class ExamViewModel(private val graph: AppGraph) : ViewModel() {
         }
         if (s.stage + 1 < stages.size) {
             state.update { it.copy(stage = it.stage + 1, results = results) }
-        } else if (s.hasLibrary) {
+        } else if (s.kind == ExamKind.GUITAR && s.hasLibrary) {
             state.update { it.copy(phase = ExamPhase.MEMORY, results = results) }
         } else {
             state.update { it.copy(results = results) }
@@ -118,28 +129,40 @@ class ExamViewModel(private val graph: AppGraph) : ViewModel() {
 }
 
 @Composable
-fun ExamScreen(onExit: () -> Unit) {
+fun ExamScreen(initialKind: ExamKind = ExamKind.EAR, onExit: () -> Unit) {
     val graph = LocalAppGraph.current
-    val vm: ExamViewModel = viewModel { ExamViewModel(graph) }
+    val vm: ExamViewModel = viewModel(key = "exam-${initialKind.name}") { ExamViewModel(graph, initialKind) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     when (ui.phase) {
-        ExamPhase.INTRO -> ScreenFrame(title = "Замер уровня", subtitle = "точка отсчёта, без подсказок", accent = Accents.Calm, onBack = onExit) {
+        ExamPhase.INTRO -> ScreenFrame(title = "Замер уровня", subtitle = ui.kind.ru, accent = Accents.Calm, onBack = onExit) {
+            item(key = "kind") {
+                ChoiceRow(
+                    options = ExamKind.entries,
+                    selected = ui.kind,
+                    label = { it.ru },
+                    onSelect = vm::setKind,
+                )
+            }
             item(key = "about") {
                 GlassCard(Modifier.fillMaxWidth(), accent = Accents.Calm) {
-                    Text("Это замер, а не игра", style = MaterialTheme.typography.titleLarge)
+                    Text(if (ui.kind == ExamKind.EAR) "Замер слуха · без гитары" else "Замер на гитаре", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Фиксированное число заданий, без жизней и без таймера раунда. Результаты лягут в табель рядом с порогами выпускного. Повторяй каждые две недели как зачёт.",
+                        if (ui.kind == ExamKind.EAR) {
+                            "Фиксированное число заданий на слух, без жизней и таймера. Гитара не нужна — можно пройти в наушниках в любой момент."
+                        } else {
+                            "Проверка грифа по микрофону и памяти на песни из библиотеки без подсказок. Результаты лягут в табель."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = Juicy.TextDim,
                     )
                 }
             }
-            vm.stages.forEachIndexed { i, s ->
-                item(key = "st-$i") {
+            ui.stages.forEachIndexed { i, s ->
+                item(key = "st-${ui.kind.name}-$i") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ModeOrb(s.variant.mode, size = 22.dp)
-                        Spacer(Modifier.height(1.dp).fillMaxWidth(0.04f))
+                        Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(s.skill.ru, style = MaterialTheme.typography.titleMedium)
                             Text("${s.variant.ru}, ур. ${s.level} (${Drills.levelName(s.variant, s.level)}) · ${s.tasks} заданий", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
@@ -147,20 +170,24 @@ fun ExamScreen(onExit: () -> Unit) {
                     }
                 }
             }
-            item(key = "memory") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    GlowOrb(Accents.Calm, Modifier.size(22.dp))
-                    Spacer(Modifier.height(1.dp).fillMaxWidth(0.04f))
-                    Column(Modifier.weight(1f)) {
-                        Text(Skill.MEMORY.ru, style = MaterialTheme.typography.titleMedium)
-                        Text(if (ui.hasLibrary) "до ${Exam.MEMORY_ITEMS} случайных вещей из библиотеки, без подсказок" else "пропустим: библиотека пуста", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+            if (ui.kind == ExamKind.GUITAR) {
+                item(key = "memory") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        GlowOrb(Accents.Calm, Modifier.size(22.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(Skill.MEMORY.ru, style = MaterialTheme.typography.titleMedium)
+                            Text(if (ui.hasLibrary) "до ${Exam.MEMORY_ITEMS} случайных вещей из библиотеки, без подсказок" else "пропустим: библиотека пуста", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+                        }
                     }
                 }
             }
-            item(key = "go") { JuicyButton("Начать", onClick = { vm.start() }, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leading = "") }
+            item(key = "go") {
+                JuicyButton("Начать", onClick = { vm.start() }, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leadingIcon = AppIcon.PLAY)
+            }
         }
         ExamPhase.STAGE -> {
-            val st = vm.stages[ui.stage]
+            val st = ui.stages[ui.stage]
             GameScreen(
                 spec = RoundSpec(st.variant, level = st.level, exam = true, examTasks = st.tasks, sessionId = ui.sessionId),
                 onExit = { vm.stageDone(null) },
@@ -182,8 +209,12 @@ fun ExamScreen(onExit: () -> Unit) {
                     val t = Graduation.THRESHOLDS.first { it.skill == r.skill }
                     GlassCard(Modifier.fillMaxWidth(), accent = if (r.passed) Accents.Good else null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(if (r.passed) "✓" else "○", style = MaterialTheme.typography.headlineSmall)
-                            Spacer(Modifier.height(1.dp).fillMaxWidth(0.04f))
+                            if (r.passed) {
+                                AppGlyph(AppIcon.CHECK, color = Juicy.Good, size = 20.dp)
+                            } else {
+                                Text("○", style = MaterialTheme.typography.headlineSmall, color = Juicy.TextDim)
+                            }
+                            Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(r.skill.ru, style = MaterialTheme.typography.titleMedium)
                                 Text(t.check, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)

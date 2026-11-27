@@ -1,14 +1,9 @@
 package com.kazaeza.muzykalka.feature.today
 
-import com.kazaeza.muzykalka.ui.theme.DegreeColors
-import com.kazaeza.muzykalka.ui.component.DegreeChip
-import com.kazaeza.muzykalka.music.DegreeNotation
-import com.kazaeza.muzykalka.music.DegreeFormatter
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import com.kazaeza.muzykalka.ui.theme.Numbers
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,36 +16,47 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kazaeza.muzykalka.LocalAppGraph
+import com.kazaeza.muzykalka.feature.common.APP_STAGE
 import com.kazaeza.muzykalka.feature.common.IconBubble
 import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.feature.common.ruDate
-import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.game.DailySet
-import com.kazaeza.muzykalka.game.GuitarNeed
+import com.kazaeza.muzykalka.game.SetBuilder
+import com.kazaeza.muzykalka.game.TrackProgress
+import com.kazaeza.muzykalka.game.Tracks
 import com.kazaeza.muzykalka.game.Training
-import com.kazaeza.muzykalka.feature.common.APP_STAGE
-import com.kazaeza.muzykalka.ui.effect.GlowOrb
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.graphics.Color
-import kotlin.math.roundToInt
+import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.music.DegreeFormatter
+import com.kazaeza.muzykalka.music.DegreeNotation
+import com.kazaeza.muzykalka.ui.component.AppGlyph
+import com.kazaeza.muzykalka.ui.component.AppIcon
+import com.kazaeza.muzykalka.ui.component.Badge
+import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.CountUpText
+import com.kazaeza.muzykalka.ui.component.DegreeChip
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
+import com.kazaeza.muzykalka.ui.component.IconChip
 import com.kazaeza.muzykalka.ui.component.JuicyButton
 import com.kazaeza.muzykalka.ui.component.SectionLabel
 import com.kazaeza.muzykalka.ui.component.StatPill
+import com.kazaeza.muzykalka.ui.component.TrackProgressBar
 import com.kazaeza.muzykalka.ui.effect.breathe
 import com.kazaeza.muzykalka.ui.theme.Accents
+import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
+import com.kazaeza.muzykalka.ui.theme.Numbers
+import kotlin.math.roundToInt
 
 /**
- * «Сегодня» — one big button, the one number that matters and the no-guitar shortcuts.
- * Everything else (exam, triangle, detailed stats) lives in «Прогресс» (ADR-016).
+ * «Сегодня» — non-guitar daily set with duration/quiet controls, guided tracks with live mastery,
+ * and a clearly separated bottom section for physical-guitar practice.
  */
 @Composable
 fun TodayScreen(
@@ -62,6 +68,8 @@ fun TodayScreen(
     onLibrary: () -> Unit,
     onOpenSong: (String) -> Unit = {},
     onTraining: (Training) -> Unit = {},
+    onTrack: (String) -> Unit = {},
+    onStartDaily: ((Int) -> Unit)? = null,
 ) {
     val graph = LocalAppGraph.current
     val vm: TodayViewModel = viewModel { TodayViewModel(graph) }
@@ -71,10 +79,10 @@ fun TodayScreen(
         title = "Сегодня",
         subtitle = ruDate(ui.date),
         accent = Accents.Hero,
-        actions = { IconBubble("⋯", onSettings, description = "Настройки") },
+        actions = { IconBubble(AppIcon.SETTINGS, onSettings, description = "Настройки") },
     ) {
         item(key = "hero") {
-            GlassCard(Modifier.fillMaxWidth(), accent = Accents.Hero, contentPadding = 22.dp) {
+            GlassCard(Modifier.fillMaxWidth(), accent = Accents.Hero, contentPadding = 20.dp) {
                 SectionLabel("За неделю", color = Juicy.TextDim)
                 Row(verticalAlignment = Alignment.Bottom) {
                     CountUpText(ui.weekMinutes, MaterialTheme.typography.displayLarge, colors = Accents.Hero)
@@ -90,7 +98,6 @@ fun TodayScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                     MiniStat(ui.answersToday, plural(ui.answersToday, "ответ", "ответа", "ответов") + " сегодня")
                     MiniStat(ui.streak, plural(ui.streak, "день", "дня", "дней") + " подряд")
-                    // «играю с ходу» is the goal of the whole app, but it stays at zero for months — shown once it is not
                     if (ui.playableNow > 0) MiniStat(ui.playableNow, plural(ui.playableNow, "песня", "песни", "песен") + " с ходу")
                 }
             }
@@ -98,18 +105,37 @@ fun TodayScreen(
         if (ui.libraryCount > 0) {
             item(key = "pills") { StatPill("", "повторить: ${ui.dueCount}", colors = Accents.Taper) }
         }
+        item(key = "controls") {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ChoiceRow(
+                    options = SetBuilder.BUDGET_OPTIONS,
+                    selected = ui.dailyMinutes,
+                    label = { "$it мин" },
+                    onSelect = vm::setMinutes,
+                )
+                IconChip(
+                    icon = if (ui.quietMode) AppIcon.VOLUME_OFF else AppIcon.MIC,
+                    text = if (ui.quietMode) "Тихо · без голоса" else "С голосом",
+                    selected = ui.quietMode,
+                    onClick = { vm.setQuietMode(!ui.quietMode) },
+                )
+            }
+        }
         item(key = "start") {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 JuicyButton(
-                    (if (ui.practicedToday) "Ещё один сет" else "Начать сет") + " · ${ui.setMinutes} мин",
-                    onClick = onStartSet,
+                    text = (if (ui.practicedToday) "Ещё один сет" else "Начать сет") + " · ${ui.setMinutes} мин",
+                    onClick = { onStartDaily?.invoke(ui.setMinutes) ?: onStartSet() },
                     modifier = Modifier.fillMaxWidth().breathe(!ui.practicedToday, 0.025f, 1800),
-                    height = 76.dp,
+                    height = 72.dp,
                     textStyle = MaterialTheme.typography.headlineSmall,
-                    leading = "►",
+                    leadingIcon = AppIcon.PLAY,
                 )
                 Text(
-                    listOfNotNull(ui.focus?.reason, ui.set.joinToString(" → ") { it.variant.ru.lowercase() } + ". Любую часть можно пропустить.").joinToString("\n"),
+                    listOfNotNull(
+                        ui.focus?.reason,
+                        ui.set.joinToString(" → ") { it.variant.ru.lowercase() } + ". Гитара не нужна, любую часть можно пропустить.",
+                    ).joinToString("\n"),
                     style = MaterialTheme.typography.bodySmall,
                     color = Juicy.TextDim,
                     modifier = Modifier.padding(horizontal = 6.dp),
@@ -117,9 +143,26 @@ fun TodayScreen(
             }
         }
         item(key = "short") {
-            GhostButton("Нет времени? 5 минут", onClick = onShortSet, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = "")
+            GhostButton(
+                text = "Нет времени? 5 минут",
+                onClick = onShortSet,
+                modifier = Modifier.fillMaxWidth(),
+                colors = Accents.Taper,
+                leadingIcon = AppIcon.CLOCK,
+            )
         }
-        // O-44: one song of the library a day — a reason to look into it, and a progression to take along
+        item(key = "tracks-header") { SectionLabel("Программы без гитары") }
+        ui.nonGuitarTracks.forEach { tp ->
+            item(key = "track-${tp.track.id}") {
+                TrackCard(tp, active = tp.track.id == ui.activeTrackId, onClick = { onTrack(tp.track.id) })
+            }
+        }
+        item(key = "just-play") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton("Просто Тир", onClick = { onPlay(Variant.TIR_CLASSIC) }, modifier = Modifier.weight(1f), colors = Accents.Tir)
+                GhostButton("Вайб ступеней", onClick = onFeel, modifier = Modifier.weight(1f), colors = Accents.Tir)
+            }
+        }
         ui.songOfDay?.let { song ->
             item(key = "song-of-day") { SongOfDayCard(song, ui.notation, onClick = { onOpenSong(song.id) }) }
         }
@@ -130,29 +173,45 @@ fun TodayScreen(
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "В библиотеке уже лежат аккорды известных песен: Stand by Me, блюз, Autumn Leaves и ещё больше сотни. " +
-                            "Нажми «＋ учить» у песни — и приложение будет просить сыграть её в разных тональностях.",
+                            "Открой песню и поставь её в повторы.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Juicy.TextDim,
                     )
                 }
             }
         }
-        // O-55: besides the daily set — one set for the guitar in hands and several for when it is not there
-        item(key = "with-guitar") { SectionLabel("С гитарой") }
-        Training.OTHERS.filter { it.guitar != GuitarNeed.NONE }.forEach { t ->
-            item(key = "training-${t.name}") { TrainingCard(t, onClick = { onTraining(t) }) }
-        }
-        item(key = "no-guitar") { SectionLabel("Без гитары") }
-        Training.OTHERS.filter { it.guitar == GuitarNeed.NONE }.forEach { t ->
-            item(key = "training-${t.name}") { TrainingCard(t, onClick = { onTraining(t) }) }
-        }
-        item(key = "just-play") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GhostButton("Просто Тир", onClick = { onPlay(Variant.TIR_CLASSIC) }, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "")
-                GhostButton("Вайб ступеней", onClick = onFeel, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "")
+        item(key = "guitar-header") {
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppGlyph(AppIcon.GUITAR, color = Juicy.Gold, size = 16.dp)
+                SectionLabel("С физической гитарой", color = Juicy.Gold)
             }
         }
+        ui.guitarTracks.forEach { tp ->
+            item(key = "track-${tp.track.id}") {
+                TrackCard(tp, active = tp.track.id == ui.activeTrackId, onClick = { onTrack(tp.track.id) })
+            }
+        }
+        item(key = "guitar-quick") {
+            val guitarMin = DailySet.available(Training.GUITAR.plan, APP_STAGE).sumOf { it.minutes }.roundToInt()
+            GhostButton(
+                text = "Сет с гитарой · $guitarMin мин",
+                onClick = { onTraining(Training.GUITAR) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = Accents.Taper,
+                leadingIcon = AppIcon.GUITAR,
+            )
+        }
     }
+}
+
+internal fun trackAccent(id: String): List<Color> = when (id) {
+    Tracks.STEPS_BASE.id -> Accents.Tir
+    Tracks.CHORDS_FUNC.id -> Accents.Hero
+    Tracks.SONGS_HEAD.id -> Accents.Parrot
+    Tracks.VOICE_EAR.id -> Accents.Kamerton
+    Tracks.NECK_HEAD.id -> Accents.Calm
+    else -> Accents.Taper
 }
 
 /** O-55: the colours of a set — the mode it leans on. */
@@ -164,27 +223,39 @@ internal fun trainingAccent(t: Training): List<Color> = when (t) {
     Training.ROAD -> Accents.Calm
 }
 
-/** O-55: one set to choose — its thread, its name, what it trains, its parts and how long it takes. */
 @Composable
-private fun TrainingCard(t: Training, onClick: () -> Unit) {
-    val parts = DailySet.available(t.plan, APP_STAGE)
-    val minutes = parts.sumOf { it.minutes }.roundToInt()
-    GlassCard(Modifier.fillMaxWidth(), accent = trainingAccent(t), onClick = onClick) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            GlowOrb(trainingAccent(t), Modifier.size(44.dp))
-            Spacer(Modifier.width(14.dp))
+private fun TrackCard(tp: TrackProgress, active: Boolean, onClick: () -> Unit) {
+    val accent = trackAccent(tp.track.id)
+    val stageNum = tp.currentStageIndex + 1
+    val totalStages = tp.track.stages.size
+    GlassCard(Modifier.fillMaxWidth(), accent = accent, onClick = onClick) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(t.ru, style = MaterialTheme.typography.titleLarge)
-                Text(t.goal, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
-                Spacer(Modifier.height(4.dp))
-                Text(parts.joinToString(" · ") { it.variant.ru.lowercase() }, style = MaterialTheme.typography.labelMedium, color = Juicy.TextFaint)
+                Text(tp.track.ru, style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Этап $stageNum из $totalStages · ${tp.currentStage.title}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Juicy.TextDim,
+                )
             }
-            Spacer(Modifier.width(10.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                Text("$minutes", style = Numbers.Small, color = Juicy.Gold)
-                Text("мин", style = MaterialTheme.typography.labelMedium, color = Juicy.TextDim)
+            if (active) {
+                Badge("основной", accent)
+                Spacer(Modifier.width(6.dp))
+            } else if (tp.track.requiresVoice) {
+                Badge("голос", accent)
+                Spacer(Modifier.width(6.dp))
             }
+            AppGlyph(AppIcon.CHEVRON_RIGHT, color = Juicy.TextFaint, size = 18.dp)
         }
+        Spacer(Modifier.height(10.dp))
+        TrackProgressBar(tp.overallFraction.toFloat(), accent)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            tp.stages[tp.currentStageIndex].summary,
+            style = MaterialTheme.typography.labelMedium,
+            color = Juicy.TextFaint,
+        )
     }
 }
 

@@ -50,11 +50,12 @@ class AndroidPitchInput(private val context: Context) : PitchInput {
     private var currentDevice: Int? = null
     private var currentA4 = 0.0
     private var currentHold = 0
+    private var currentBoostDb = 0.0
 
     @SuppressLint("MissingPermission")
     @Synchronized
-    override fun start(deviceId: Int?, a4Hz: Double, minHoldMs: Int) {
-        if (active && deviceId == currentDevice && a4Hz == currentA4 && minHoldMs == currentHold) return
+    override fun start(deviceId: Int?, a4Hz: Double, minHoldMs: Int, boostDb: Double) {
+        if (active && deviceId == currentDevice && a4Hz == currentA4 && minHoldMs == currentHold && boostDb == currentBoostDb) return
         if (active) stopInternal()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             errorFlow.value = "Нет доступа к микрофону"
@@ -74,9 +75,10 @@ class AndroidPitchInput(private val context: Context) : PitchInput {
         currentDevice = deviceId
         currentA4 = a4Hz
         currentHold = minHoldMs
+        currentBoostDb = boostDb
         active = true
         running.value = true
-        thread = Thread({ loop(record, a4Hz, minHoldMs) }, "muzykalka-audio-in").apply {
+        thread = Thread({ loop(record, a4Hz, minHoldMs, boostDb) }, "muzykalka-audio-in").apply {
             isDaemon = true
             start()
         }
@@ -108,7 +110,7 @@ class AndroidPitchInput(private val context: Context) : PitchInput {
         return record
     }
 
-    private fun loop(record: AudioRecord, a4Hz: Double, minHoldMs: Int) {
+    private fun loop(record: AudioRecord, a4Hz: Double, minHoldMs: Int, boostDb: Double) {
         try {
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
         } catch (_: Exception) {
@@ -116,7 +118,9 @@ class AndroidPitchInput(private val context: Context) : PitchInput {
         val detector = McLeodPitchDetector(SAMPLE_RATE, WINDOW)
         val segmenter = StableNoteSegmenter(NoteSegmenterConfig(minHoldMs = minHoldMs, a4Hz = a4Hz))
         val window = FloatArray(WINDOW)
+        val boosted = FloatArray(WINDOW)
         val hop = FloatArray(HOP)
+        val gain = if (boostDb <= 0.0) 1f else Math.pow(10.0, boostDb / 20.0).toFloat()
         var filled = 0
         try {
             record.startRecording()
@@ -135,10 +139,13 @@ class AndroidPitchInput(private val context: Context) : PitchInput {
                 System.arraycopy(hop, 0, window, WINDOW - HOP, HOP)
                 filled = minOf(WINDOW, filled + HOP)
                 if (filled < WINDOW) continue
+                for (i in 0 until WINDOW) {
+                    boosted[i] = (window[i] * gain).coerceIn(-1f, 1f)
+                }
                 val frame = PitchFrame(
                     timeNanos = System.nanoTime() - HALF_WINDOW_NS,
-                    estimate = detector.detect(window, 0),
-                    rmsDb = rmsDb(window, 0, WINDOW),
+                    estimate = detector.detect(boosted, 0),
+                    rmsDb = rmsDb(boosted, 0, WINDOW),
                 )
                 framesFlow.tryEmit(frame)
                 for (event in segmenter.accept(frame)) notesFlow.tryEmit(event)

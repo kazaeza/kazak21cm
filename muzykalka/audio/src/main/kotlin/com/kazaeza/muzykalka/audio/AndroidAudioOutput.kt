@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
 /**
@@ -40,6 +41,7 @@ class AndroidAudioOutput(
 ) : AudioOutput {
     private val audioManager = context.applicationContext.getSystemService(AudioManager::class.java)
     private val lock = Any()
+    private val playSeq = AtomicLong(0L)
 
     @Volatile
     private var track: AudioTrack? = null
@@ -171,6 +173,7 @@ class AndroidAudioOutput(
     override suspend fun play(score: Score) {
         if (score.notes.isEmpty()) return
         if (!ensureRunning()) return
+        val token = playSeq.incrementAndGet()
         lastActivityNanos = System.nanoTime()
         // the glass reads a table of its own for each note, and the first time making one takes tens of milliseconds
         withContext(Dispatchers.Default) { synth.prepare(score, a4Hz) }
@@ -184,9 +187,11 @@ class AndroidAudioOutput(
             val deadline = System.nanoTime() + ((end - start) * 1_000_000_000L / SAMPLE_RATE) + 2_000_000_000L
             while (playedFrame() < end && running && System.nanoTime() < deadline) delay(12)
         } catch (e: CancellationException) {
-            synth.stopAll()
-            soundingUntilFrame = 0
-            markSilent()
+            if (playSeq.get() == token) {
+                synth.stopAll()
+                soundingUntilFrame = 0
+                markSilent()
+            }
             throw e
         }
         lastActivityNanos = System.nanoTime()

@@ -2,7 +2,9 @@ package com.kazaeza.muzykalka
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.down
@@ -125,11 +127,11 @@ class TapSoundTest {
                 MuzykalkaTheme { GameScreen(RoundSpec(Variant.TIR_CLASSIC, level = 1), onExit = {}) }
             }
         }
-        rule.waitUntil(10_000) { rule.onAllNodesWithText("❙❙").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText("❙❙").performTouchInput { down(center) }
+        rule.waitUntil(10_000) { rule.onAllNodesWithContentDescription("Пауза").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithContentDescription("Пауза").performTouchInput { down(center) }
         rule.waitForIdle()
         assertTrue("the pause button was pressed during the question: $taps", taps.isEmpty())
-        rule.onNodeWithText("❙❙").performTouchInput { up() }
+        rule.onNodeWithContentDescription("Пауза").performTouchInput { up() }
         release.complete(Unit)
     }
 
@@ -143,10 +145,10 @@ class TapSoundTest {
             }
         }
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Какая ступень?").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText("❙❙").performTouchInput { down(center) }
+        rule.onNodeWithContentDescription("Пауза").performTouchInput { down(center) }
         rule.waitForIdle()
         assertEquals("pause is the low voice", listOf(true), taps)
-        rule.onNodeWithText("❙❙").performTouchInput { up() }
+        rule.onNodeWithContentDescription("Пауза").performTouchInput { up() }
         rule.onAllNodesWithText("5").onFirst() // the keys exist
     }
 }

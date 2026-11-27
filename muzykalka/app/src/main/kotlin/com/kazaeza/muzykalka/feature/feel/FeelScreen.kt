@@ -30,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,6 +64,8 @@ import com.kazaeza.muzykalka.music.Song
 import com.kazaeza.muzykalka.music.SongBook
 import com.kazaeza.muzykalka.music.SongOpenings
 import com.kazaeza.muzykalka.music.Voice
+import com.kazaeza.muzykalka.ui.component.AppGlyph
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.DegreeChip
 import com.kazaeza.muzykalka.ui.component.GhostButton
@@ -371,21 +375,23 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit, onOpenSong: (String) -> Un
             }
         }
         item(key = "controls") {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ChoiceRow(FeelScope.entries, ui.scope, { it.ru }, vm::setScope, colors = Accents.Tir)
-                HintStyleSwitch(ui.settings.hintStyle, vm::setHintStyle)
-                SectionLabel("под ступенью")
-                ChoiceRow(
-                    FEEL_CONTEXTS,
-                    ui.context,
-                    { step -> if (step == FEEL_DRONE) "дрон" else DegreeFormatter.chord(Harmony.diatonicChord(ui.scope.mode, step), notation) },
-                    vm::setContext,
-                    colors = Accents.Tir,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (key != null) DegreeChip(RuNames.key(key), Juicy.Gold, large = true)
-                    Spacer(Modifier.weight(1f))
-                    GhostButton("другая", onClick = vm::newKey, colors = Accents.Tir, leading = "⇄")
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ChoiceRow(FeelScope.entries, ui.scope, { it.ru }, vm::setScope, colors = Accents.Tir)
+                    HintStyleSwitch(ui.settings.hintStyle, vm::setHintStyle)
+                    SectionLabel("под ступенью")
+                    ChoiceRow(
+                        FEEL_CONTEXTS,
+                        ui.context,
+                        { step -> if (step == FEEL_DRONE) "дрон" else DegreeFormatter.chord(Harmony.diatonicChord(ui.scope.mode, step), notation) },
+                        vm::setContext,
+                        colors = Accents.Tir,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (key != null) DegreeChip(RuNames.key(key), Juicy.Gold, large = true)
+                        Spacer(Modifier.weight(1f))
+                        GhostButton("другая", onClick = vm::newKey, colors = Accents.Tir, leadingIcon = AppIcon.REPLAY)
+                    }
                 }
             }
         }
@@ -411,15 +417,15 @@ fun FeelScreen(onBack: () -> Unit, onTir: () -> Unit, onOpenSong: (String) -> Un
         item(key = "actions") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (ui.playing != null || ui.droneOn) {
-                    GhostButton("Стоп", onClick = vm::stop, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "■")
+                    GhostButton("Стоп", onClick = vm::stop, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leadingIcon = AppIcon.STOP)
                 }
                 if (ui.playing == null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        GhostButton("Все по кругу", onClick = vm::playAll, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "↻")
-                        if (!ui.droneOn) GhostButton("Только дрон", onClick = vm::droneOnly, modifier = Modifier.weight(1f), colors = Accents.Tir, leading = "~")
+                        GhostButton("Все по кругу", onClick = vm::playAll, modifier = Modifier.weight(1f), colors = Accents.Tir, leadingIcon = AppIcon.REPLAY)
+                        if (!ui.droneOn) GhostButton("Только дрон", onClick = vm::droneOnly, modifier = Modifier.weight(1f), colors = Accents.Tir, leadingIcon = AppIcon.PLAY)
                     }
                 }
-                JuicyButton("Проверить себя в Тире", onClick = onTir, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "")
+                JuicyButton("Проверить себя в Тире", onClick = onTir, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leadingIcon = AppIcon.CHEVRON_RIGHT)
             }
         }
     }
@@ -507,11 +513,11 @@ private fun SongPickDialog(
                         }
                     }
                     key?.let { Text("Играет в тональности ${RuNames.key(it)}: первые аккорды песни.", style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        GhostButton("Послушать", onClick = onPlay, colors = Accents.Tir, leading = "►")
-                        if (pick.songs.size > 1) GhostButton("другая · ${pick.index + 1} из ${pick.songs.size}", onClick = onNext, colors = Accents.Tir, leading = "⇄")
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GhostButton("Послушать", onClick = onPlay, colors = Accents.Tir, leadingIcon = AppIcon.PLAY)
+                        if (pick.songs.size > 1) GhostButton("другая · ${pick.index + 1} из ${pick.songs.size}", onClick = onNext, colors = Accents.Tir, leadingIcon = AppIcon.REPLAY)
                     }
-                    GhostButton("Открыть в библиотеке", onClick = { onOpen(song.id) }, colors = Accents.Taper, leading = "")
+                    GhostButton("Открыть в библиотеке", onClick = { onOpen(song.id) }, colors = Accents.Taper, leadingIcon = AppIcon.CHEVRON_RIGHT)
                 }
             }
         },
@@ -569,8 +575,8 @@ private fun AnchorEditor(
                 OutlinedTextField(ui.editMelody, onMelody, label = { Text("Мелодия ступенями") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 ui.editError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Juicy.Hot) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GhostButton("Послушать", onClick = onPreview, colors = Accents.Tir, leading = "►")
-                    if (hasAnchor) GhostButton("Удалить", onClick = onDelete, colors = Accents.Calm, leading = "✕")
+                    GhostButton("Послушать", onClick = onPreview, colors = Accents.Tir, leadingIcon = AppIcon.PLAY)
+                    if (hasAnchor) GhostButton("Удалить", onClick = onDelete, colors = Accents.Calm, leadingIcon = AppIcon.CLOSE)
                 }
             }
         },
@@ -615,7 +621,12 @@ private fun VibeCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(DegreeFormatter.degree(degree, notation), style = MaterialTheme.typography.displaySmall, color = color)
             Spacer(Modifier.width(8.dp))
-            Text(if (playing) "♪" else "►", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+            AppGlyph(
+                icon = if (playing) AppIcon.SPARK else AppIcon.PLAY,
+                color = if (playing) color else Juicy.TextDim,
+                size = 16.dp,
+                modifier = Modifier.semantics { contentDescription = if (playing) "Играет" else "Играть" },
+            )
         }
         if (song != null) {
             // O-57: a tune takes the place of the words; a sound without one keeps them
@@ -623,15 +634,17 @@ private fun VibeCard(
             Spacer(Modifier.height(4.dp))
             Text(melodyAccented(song, notation), style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
             Text(song.cue, style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
-            Text(
-                "► мотив",
-                style = MaterialTheme.typography.labelLarge,
-                color = color,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
                     .clickable(onClickLabel = "Послушать мотив") { onSongHint(song) }
                     .padding(vertical = 6.dp),
-            )
+            ) {
+                AppGlyph(AppIcon.PLAY, color = color, size = 14.dp)
+                Spacer(Modifier.width(6.dp))
+                Text("мотив", style = MaterialTheme.typography.labelLarge, color = color)
+            }
         } else {
             Text(vibe.word, style = MaterialTheme.typography.titleLarge, color = Juicy.Text)
             Spacer(Modifier.height(4.dp))

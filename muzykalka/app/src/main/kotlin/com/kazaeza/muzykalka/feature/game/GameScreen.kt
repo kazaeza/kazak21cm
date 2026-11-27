@@ -14,7 +14,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +51,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -74,6 +78,8 @@ import com.kazaeza.muzykalka.game.LoopTask
 import com.kazaeza.muzykalka.game.ModeQuizTask
 import com.kazaeza.muzykalka.game.EchoTask
 import com.kazaeza.muzykalka.game.Variant
+import com.kazaeza.muzykalka.ui.component.AppGlyph
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.ComboBadge
 import com.kazaeza.muzykalka.ui.component.CountUpText
 import com.kazaeza.muzykalka.ui.component.GhostButton
@@ -241,12 +247,13 @@ private fun GameHost(
                     Spacer(Modifier.height(8.dp))
                     Box(Modifier.fillMaxWidth().height(GameTouchTarget).alpha(if (ui.canProceed) 1f else 0f)) {
                         JuicyButton(
-                            if (ui.waitsForNext) "Понял — дальше ›" else "Дальше ›",
+                            if (ui.waitsForNext) "Понял — дальше" else "Дальше",
                             onClick = vm::next,
                             modifier = Modifier.fillMaxSize(),
                             colors = accent,
                             enabled = ui.canProceed,
                             height = GameTouchTarget,
+                            leadingIcon = AppIcon.CHEVRON_RIGHT,
                         )
                     }
                 }
@@ -308,10 +315,12 @@ private fun GameTopBar(ui: GameUi, accent: List<Color>, onPause: () -> Unit) {
             Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(Juicy.Ink3.copy(alpha = 0.7f))
+                .background(Juicy.Ink3.copy(alpha = 0.75f))
+                .border(BorderStroke(1.dp, Juicy.Line), CircleShape)
+                .semantics { contentDescription = "Пауза" }
                 .clickable(interactionSource = pauseSource, indication = LocalIndication.current, onClickLabel = "Пауза", onClick = onPause),
             contentAlignment = Alignment.Center,
-        ) { Text("❙❙", style = MaterialTheme.typography.titleMedium, color = Juicy.Text) }
+        ) { AppGlyph(AppIcon.PAUSE, Juicy.Text, size = 18.dp) }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -453,7 +462,13 @@ private fun SummaryOverlay(
                 }
             }
             if (anchors.isNotEmpty()) AnchorsCard(anchors.take(MAX_SUMMARY_ANCHORS), playing, notation, onAnchor)
-            JuicyButton(if (inSequence) "Дальше" else "Ещё раунд", onClick = if (inSequence) onClose else onAgain, Modifier.fillMaxWidth(), colors = accent, leading = if (inSequence) "→" else "↻")
+            JuicyButton(
+                if (inSequence) "Дальше" else "Ещё раунд",
+                onClick = if (inSequence) onClose else onAgain,
+                Modifier.fillMaxWidth(),
+                colors = accent,
+                leadingIcon = if (inSequence) AppIcon.CHEVRON_RIGHT else AppIcon.REPLAY,
+            )
             if (!inSequence) GhostButton("Готово", onClick = onClose, Modifier.fillMaxWidth())
             Text(
                 "Каждый ответ сохранён в статистику",
@@ -474,12 +489,14 @@ private fun AnchorsCard(anchors: List<DegreeAnchor>, playing: DegreeAnchor?, not
         SectionLabel("якоря к ошибкам")
         anchors.forEach { anchor ->
             val color = DegreeColors.of(anchor.degree)
+            val isPlaying = anchor == playing
+            val actionLabel = if (isPlaying) "Стоп" else "Послушать"
             Row(
                 Modifier
                     .fillMaxWidth()
                     .height(GameTouchTarget)
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable(onClickLabel = if (anchor == playing) "Стоп" else "Послушать") { onAnchor(anchor) }
+                    .clickable(onClickLabel = actionLabel) { onAnchor(anchor) }
                     .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -489,7 +506,16 @@ private fun AnchorsCard(anchors: List<DegreeAnchor>, playing: DegreeAnchor?, not
                     Text(anchor.title, style = MaterialTheme.typography.titleMedium, color = Juicy.Text, maxLines = 1)
                     Text(anchor.melodyText, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim, maxLines = 1)
                 }
-                Text(if (anchor == playing) "■" else "►", style = MaterialTheme.typography.headlineSmall, color = color)
+                Box(
+                    Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(color.copy(alpha = 0.14f))
+                        .semantics { contentDescription = actionLabel },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AppGlyph(if (isPlaying) AppIcon.STOP else AppIcon.PLAY, color = color, size = 18.dp)
+                }
             }
         }
     }

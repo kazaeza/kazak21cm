@@ -28,6 +28,7 @@ import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 
 /** The tile that was tapped last: which one ([id] is its place on the sheet), what chord, in which key. */
@@ -54,19 +55,32 @@ class ChordAudition internal constructor(
     private var job: Job? = null
 
     fun tap(id: String, chord: ChordDegree, key: Key) {
-        job?.cancel()
+        val previous = job
         output.a4Hz = a4Hz()
         heard = HeardChord(id, chord, key)
         val arranger = Arranger(chordInstrument = instrument())
-        job = scope.launch { output.play(arranger.hit(chord, key)) }
+        job = scope.launch {
+            previous?.cancelAndJoin()
+            output.play(arranger.hit(chord, key))
+        }
     }
 
     /** True for the tile [id] that was tapped last: it wears the ring while its caption is shown. */
     fun isHeard(id: String): Boolean = heard?.id == id
 
+    /** Stops any sounding chord without forgetting the caption (e.g. app backgrounded). */
+    fun stop() {
+        if (job?.isActive == true) {
+            job?.cancel()
+            output.stop()
+        }
+        job = null
+    }
+
     /** A new order, a new key: hush the chord and forget the caption. */
     fun clear() {
         job?.cancel()
+        job = null
         heard = null
     }
 }

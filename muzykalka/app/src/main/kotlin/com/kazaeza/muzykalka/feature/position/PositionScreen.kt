@@ -71,6 +71,7 @@ import com.kazaeza.muzykalka.ui.theme.Accents
 import com.kazaeza.muzykalka.ui.theme.DegreeColors
 import com.kazaeza.muzykalka.ui.theme.Juicy
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -198,14 +199,24 @@ class PositionViewModel(private val graph: AppGraph) : ViewModel() {
         val key = s.key ?: return
         show(key, s.start, step)
         val chord = s.roots.first { it.step == step }.chord
-        job?.cancel()
+        val previous = job
         val sound = Arranger(chordInstrument = s.settings.chordInstrument).hit(chord, key)
-        job = viewModelScope.launch { graph.audioOutput.play(sound) }
+        job = viewModelScope.launch {
+            previous?.cancelAndJoin()
+            graph.audioOutput.play(sound)
+        }
+    }
+
+    fun stop() {
+        if (job?.isActive == true) {
+            job?.cancel()
+            graph.audioOutput.stop()
+        }
+        job = null
     }
 
     override fun onCleared() {
-        job?.cancel()
-        graph.audioOutput.stop()
+        stop()
     }
 }
 
@@ -221,6 +232,7 @@ fun PositionScreen(onBack: () -> Unit) {
     val graph = LocalAppGraph.current
     val vm: PositionViewModel = viewModel { PositionViewModel(graph) }
     val ui by vm.ui.collectAsStateWithLifecycle()
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { vm.stop() }
     val key = ui.key
     val notation = ui.settings.degreeNotation
     val zone = Positions.zone(ui.start)

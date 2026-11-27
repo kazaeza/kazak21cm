@@ -14,6 +14,7 @@ import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.DegreeAnchor
 import com.kazaeza.muzykalka.music.Arranger
+import com.kazaeza.muzykalka.music.ChordInstrument
 import com.kazaeza.muzykalka.music.HintStyle
 import com.kazaeza.muzykalka.music.SongHint
 import com.kazaeza.muzykalka.game.TirKind
@@ -269,13 +270,14 @@ object Drills {
     fun allLevelsOpen(v: Variant): Boolean = v == Variant.TAPER_STEPS || v.isSongQuiz() || v == Variant.TIR_SIMON
 
     /**
-     * No lives: the relaxed drills, and «Дуэль» (S-03) — two degrees one takes for each other are missed by
-     * definition, and three misses must not end the duel.
+     * No lives: the relaxed drills, «Дуэль» (S-03), and «Проверка переноса» (control check must not abort on 3 misses).
      */
-    fun noLives(v: Variant): Boolean = relaxed(v) || v == Variant.TIR_DUEL || v == Variant.FORMULA_ALOUD
+    fun noLives(v: Variant): Boolean = relaxed(v) || v == Variant.TIR_DUEL || v == Variant.FORMULA_ALOUD || v == Variant.TIR_TRANSFER
 
-    /** The longest round rule 6 allows: the drills without lives, and the quiz whose every question is a whole progression. */
-    fun longRound(v: Variant): Boolean = noLives(v) || v.isSongQuiz() || v == Variant.TIR_SIMON || v == Variant.PARROT_ECHO
+    /** The longest round rule 6 allows: the drills without lives, and the modes whose every question is a whole progression or phrase. */
+    fun longRound(v: Variant): Boolean =
+        noLives(v) || v.isSongQuiz() || v == Variant.TIR_SIMON || v == Variant.PARROT_ECHO ||
+            v == Variant.TIR_TRANSFER || v == Variant.TIR_LOOP3 || v == Variant.TIR_BASSLINE
 
     /**
      * S-03: the user's own duels — the degrees taken for each other in the Tir lately, the worst first
@@ -393,7 +395,7 @@ object Drills {
             Variant.TIR_MODE -> RoundEngine(ModeQuizDriver(KeyPicker(random)), config, random, level, history, epochOffsetMs)
             Variant.TIR_LAYERS -> RoundEngine(LayersDriver(KeyPicker(random)), config, random, level, history, epochOffsetMs)
             Variant.TIR_LOOP3 -> RoundEngine(Loop3Driver(settings.degreeNotation), config, random, level, history, epochOffsetMs)
-            Variant.TIR_TRANSFER -> RoundEngine(TransferDriver(settings.degreeNotation, Arranger(chordInstrument = settings.chordInstrument)), config, random, level, history, epochOffsetMs)
+            Variant.TIR_TRANSFER -> RoundEngine(TransferDriver(settings.degreeNotation, Arranger(chordInstrument = ChordInstrument.PIANO)), config, random, level, history, epochOffsetMs)
             Variant.TIR_BASSLINE -> RoundEngine(BassLineDriver(KeyPicker(random), settings.degreeNotation, Arranger(chordInstrument = settings.chordInstrument)), config, random, level, history, epochOffsetMs)
             Variant.TIR_COLOR -> RoundEngine(ColorDriver(KeyPicker(random), settings.degreeNotation), config, random, level, history, epochOffsetMs)
             Variant.FORMULA_ALOUD -> RoundEngine(FormulaDriver(songs, KeyPicker(random), settings.degreeNotation, firstSectionKey = spec.songFocus?.formulaKey), config, random, level, history, epochOffsetMs)
@@ -458,6 +460,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     private var ownSession = false
     private var level = 1
     private var settings = Settings()
+    private var promptJob: Job? = null
     private var feedbackAudio: Job? = null
     private var replayJob: Job? = null
     private val replaysByAnswer = mutableMapOf<Int, Int>()
@@ -616,6 +619,40 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         }
     }
 
+    private fun launchPrompt(e: RoundEngine<*>, s: RoundState<*>) {
+        val audio = s.task?.prompt?.audio
+        val droneTask = s.task as? DroneTask
+        val drone = droneTask?.drone
+        val intro = droneTask?.intro
+        val previous = listOfNotNull(promptJob, replayJob, hintJob)
+        promptJob = viewModelScope.launch {
+            previous.forEach { it.cancelAndJoin() }
+            awaitUnpaused()
+            try {
+                // O-15 (ADR-029): a new key over its tonic first, then the drone moves to the task's chord.
+                if (intro != null) {
+                    ensureDrone(droneTask.introDrone ?: drone)
+                    awaitUnpaused()
+                    promptPlaying = true
+                    playPulsing(intro, PulseKind.HOME, tonicOf(s.task))
+                    promptPlaying = false
+                    awaitUnpaused()
+                }
+                ensureDrone(drone)
+                awaitUnpaused()
+                if (audio != null) {
+                    promptPlaying = true
+                    playPulsing(audio, PulseKind.QUESTION, tonicOf(s.task))
+                    promptPlaying = false
+                }
+                e.promptFinished(now())
+                react(e)
+            } finally {
+                promptPlaying = false
+            }
+        }
+    }
+
     private fun onEnter(e: RoundEngine<*>, s: RoundState<*>) {
         when (s.phase) {
             RoundPhase.PROMPTING -> {
@@ -624,32 +661,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                     phrase.clear()
                     state.update { it.copy(phrase = emptyList()) }
                 }
-                val audio = s.task?.prompt?.audio
-                val droneTask = s.task as? DroneTask
-                val drone = droneTask?.drone
-                val intro = droneTask?.intro
-                viewModelScope.launch {
-                    awaitUnpaused()
-                    // O-15 (ADR-029): a new key over its tonic first, then the drone moves to the task's chord.
-                    if (intro != null) {
-                        ensureDrone(droneTask.introDrone ?: drone)
-                        awaitUnpaused()
-                        promptPlaying = true
-                        playPulsing(intro, PulseKind.HOME, tonicOf(s.task))
-                        promptPlaying = false
-                        awaitUnpaused()
-                    }
-                    ensureDrone(drone)
-                    awaitUnpaused()
-                    ensureDrone(drone)
-                    if (audio != null) {
-                        promptPlaying = true
-                        playPulsing(audio, PulseKind.QUESTION, tonicOf(s.task))
-                        promptPlaying = false
-                    }
-                    e.promptFinished(now())
-                    react(e)
-                }
+                launchPrompt(e, s)
             }
             RoundPhase.FEEDBACK -> {
                 val ev = s.lastEvaluation ?: return
@@ -657,7 +669,7 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
                 val sound = if (ev.correct) ev.confirmation else ev.correction
                 // O-63: where the user chose songs, the driver's confirmation / correction already holds the tune.
                 // O-66: whatever still sounds (a replay, a hint) is cut first — the answer is never heard on top of it
-                val before = listOfNotNull(replayJob, hintJob, feedbackAudio)
+                val before = listOfNotNull(promptJob, replayJob, hintJob, feedbackAudio)
                 feedbackAudio = viewModelScope.launch {
                     before.forEach { it.cancelAndJoin() }
                     if (sound != null) {
@@ -689,10 +701,11 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     /** O-57: «▶» by the song of the hint — again, over the drone that still hums. */
     fun playSongHint() {
         if (feedbackAudio?.isActive == true) return
-        replayJob?.cancel()
         val task = state.value.task as? TirTask
         val score = songHintScore(task) ?: return
+        val previousReplay = replayJob
         feedbackAudio = viewModelScope.launch {
+            previousReplay?.cancelAndJoin()
             playPulsing(score, PulseKind.REVEAL, tonicOf(task))
             delay(120)
         }
@@ -733,10 +746,13 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     fun next() {
         val e = engine ?: return
         if (paused || e.state.phase != RoundPhase.FEEDBACK) return
-        feedbackAudio?.cancel()
-        hintJob?.cancel()
-        e.proceed(now())
-        react(e)
+        val before = listOfNotNull(feedbackAudio, hintJob)
+        viewModelScope.launch {
+            before.forEach { it.cancelAndJoin() }
+            if (paused || e.state.phase != RoundPhase.FEEDBACK) return@launch
+            e.proceed(now())
+            react(e)
+        }
     }
 
     /** 🔁: Tir — the question again, «Спой ступень» — the tonic (scale not repeated; the drone keeps sounding). */
@@ -758,8 +774,11 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
     fun pause() {
         if (paused || finished || engine == null) return
         pausedAtMs = realNow()
+        promptJob?.cancel()
         replayJob?.cancel()
         feedbackAudio?.cancel()
+        hintJob?.cancel()
+        promptPlaying = false
         graph.audioOutput.stop()
         currentDrone = null
         state.update { it.copy(paused = true) }
@@ -775,14 +794,17 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
         state.update { it.copy(paused = false) }
         val e = engine ?: return
         val task = e.state.task ?: return
-        // A prompt that has not started yet resumes by itself; a cut one or a pending answer gets the question again.
-        val cutPrompt = e.state.phase == RoundPhase.PROMPTING && promptPlaying
-        if (e.state.phase != RoundPhase.LISTENING && !cutPrompt) return
+        if (e.state.phase == RoundPhase.PROMPTING || promptPlaying) {
+            launchPrompt(e, e.state)
+            return
+        }
+        if (e.state.phase != RoundPhase.LISTENING) return
         val drone = (task as? DroneTask)?.drone
         val sound = (task as? DroneTask)?.replay ?: task.prompt.audio
+        val before = listOfNotNull(replayJob, hintJob)
         replayJob = viewModelScope.launch {
+            before.forEach { it.cancelAndJoin() }
             ensureDrone(drone)
-            while (e.state.phase == RoundPhase.PROMPTING && e.state.task === task) delay(30)
             if (sound != null && e.state.phase == RoundPhase.LISTENING && e.state.task === task) {
                 markReplay(e)
                 playPulsing(sound, PulseKind.QUESTION, tonicOf(task))
@@ -801,8 +823,10 @@ class GameViewModel(private val graph: AppGraph, private val spec: RoundSpec) : 
 
     private fun startMic() {
         graph.pitchInput.start(
-            settings.inputDeviceId, settings.a4Hz,
+            settings.inputDeviceId,
+            settings.a4Hz,
             if (spec.variant.isSung()) SingDriver.VOICE_MIN_HOLD_MS else DEFAULT_MIN_HOLD_MS,
+            boostDb = settings.micBoostDb.toDouble(),
         )
         micJobs += viewModelScope.launch {
             combine(graph.headphones.connected, flowOf(settings.headphones)) { a, b -> a || b }.collect { headphones.value = it }

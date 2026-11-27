@@ -76,6 +76,10 @@ fun BlindScreen(onExit: () -> Unit, vmKey: String = "blind") {
     val particles = rememberParticleState()
     val audition = rememberChordAudition(ui.settings.a4Hz, ui.settings.chordInstrument)
     KeepScreenOn()
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+        audition.stop()
+        vm.stop()
+    }
     var asking by remember { mutableStateOf(false) }
     BackHandler(enabled = !asking) { asking = true }
     LaunchedEffect(ui.entry?.id, ui.key, ui.phase) { audition.clear() }

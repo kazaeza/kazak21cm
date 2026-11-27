@@ -49,9 +49,12 @@ import com.kazaeza.muzykalka.game.DailySet
 import com.kazaeza.muzykalka.game.GuitarNeed
 import com.kazaeza.muzykalka.game.Training
 import com.kazaeza.muzykalka.game.Metrics
+import com.kazaeza.muzykalka.game.SetBuilder
 import com.kazaeza.muzykalka.game.SetSegment
+import com.kazaeza.muzykalka.game.Tracks
 import com.kazaeza.muzykalka.game.Variant
 import com.kazaeza.muzykalka.feature.common.APP_STAGE
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
 import com.kazaeza.muzykalka.ui.component.GradientText
@@ -90,46 +93,102 @@ data class SetUi(
     val activity: Int = 0,
     /** «Выйти из сета» before the last part (ADR-019). */
     val endedEarly: Boolean = false,
+    val customTitle: String? = null,
+    val customGoal: String? = null,
+    val stageMinLevels: Map<Variant, Int> = emptyMap(),
 ) {
     val focusIndex: Int get() = focus?.let { f -> segments.indexOfFirst { it.variant == f.variant } } ?: -1
     val current: SetSegment? get() = segments.getOrNull(index)
+    val guitarNeeded: Boolean get() = segments.any { it.variant.guitar == GuitarNeed.REQUIRED }
     fun roundsOf(s: SetSegment): Int = if (s.variant == Variant.TAPER_ORDER) 1 else maxOf(1, (s.minutes * 60 / 75).roundToInt())
     fun roundMsOf(s: SetSegment): Long = (s.minutes * 60_000 / roundsOf(s)).toLong().coerceIn(60_000, 90_000)
 }
 
-/** Ticket T-03: the daily set (or the minimal day, or one of the sets of O-55) as one guided session. */
-class SetViewModel(private val graph: AppGraph, minimal: Boolean, training: Training = Training.DAILY) : ViewModel() {
-    private val state = MutableStateFlow(SetUi(minimal, training, DailySet.available(if (minimal) DailySet.MINIMAL else training.plan, APP_STAGE)))
+/** Ticket T-03: the daily set, track stage session, minimal day, or named set as one guided session. */
+class SetViewModel(
+    private val graph: AppGraph,
+    minimal: Boolean,
+    training: Training = Training.DAILY,
+    private val trackId: String? = null,
+    private val stageId: String? = null,
+    private val minutes: Int? = null,
+) : ViewModel() {
+    private val initialStage = trackId?.let { tid -> Tracks.byId(tid).stages.firstOrNull { it.id == stageId } }
+    private val initialTrack = trackId?.let { Tracks.byId(it) }
+    private val state = MutableStateFlow(
+        SetUi(
+            minimal = minimal,
+            training = training,
+            segments = DailySet.available(initialStage?.drills ?: if (minimal) DailySet.MINIMAL else training.plan, APP_STAGE),
+            customTitle = initialStage?.title,
+            customGoal = initialStage?.goal ?: initialTrack?.subtitle,
+            stageMinLevels = initialStage?.minLevelByVariant.orEmpty(),
+        ),
+    )
     val ui: StateFlow<SetUi> = state.asStateFlow()
 
     init {
-        // No song is due (or the library is empty): «Ходы» take the songs' minutes.
         viewModelScope.launch {
             val settings = graph.settings.settings.first()
             val today = graph.today(settings)
+            val studyDay = graph.studyDay(settings)
             val library = graph.library.allOrderable()
             val anyDue = library.any { it.card?.isDue(today) ?: true }
-            if (!anyDue) state.update { it.copy(segments = DailySet.withoutSongs(it.segments)) }
-            // «Спой ступень» is closed until «Пропевка» goes well: its minutes are sung as the search instead.
             val singing = SingUnlock.status(graph.practice.recentAttempts(Variant.KAMERTON_SEARCH, SingUnlock.WINDOW))
-            val focus = if (!minimal && training in setOf(Training.DAILY, Training.EAR)) {
-                val day = graph.studyDay(settings)
-                val (attempts, lessons) = graph.practice.observeTrainingHistory().first()
-                AdaptiveEar.choose(attempts, today, lessons) { day.of(Instant.ofEpochMilli(it)) }
+            val (attempts, lessons) = graph.practice.observeTrainingHistory().first()
+            val progress = graph.progress.current()
+            val unlocked = Variant.entries.associateWith { progress.unlockedLevel(it) }
+            val targetMinutes = minutes ?: settings.dailyMinutes
+
+            val wantsEarFocus = !minimal && (
+                (initialStage != null && initialStage.drills.any { it.variant == Variant.TIR_CLASSIC }) ||
+                    (initialStage == null && training in setOf(Training.DAILY, Training.EAR))
+                )
+            val focus = if (wantsEarFocus) {
+                AdaptiveEar.choose(attempts, today, lessons) { studyDay.of(Instant.ofEpochMilli(it)) }
             } else null
-            val songFocus = if (!minimal && training in setOf(Training.SONGS, Training.ROAD, Training.GUITAR)) {
+
+            val songFocus = if (!minimal && initialStage == null && training in setOf(Training.SONGS, Training.ROAD, Training.GUITAR)) {
                 val songs = library.mapNotNull { e -> e.song?.let { GuessSong(e.id, it, !e.shelved) } }
-                val day = graph.studyDay(settings)
-                SongFocus.choose(songs, graph.practice.observeAttempts().first(), today, training == Training.GUITAR) {
-                    day.of(Instant.ofEpochMilli(it))
+                SongFocus.choose(songs, attempts, today, training == Training.GUITAR) {
+                    studyDay.of(Instant.ofEpochMilli(it))
                 }
             } else null
+
+            val transfer = Metrics.transfer(attempts) { studyDay.of(Instant.ofEpochMilli(it)) }
+            val transferGapBig = transfer.trusted && (transfer.gap ?: 0.0) >= 0.2
+
+            val segments = when {
+                initialStage != null -> {
+                    val built = SetBuilder.buildStage(initialStage, targetMinutes, settings.quietMode, singing, focus, APP_STAGE)
+                    if (anyDue) built else DailySet.withoutSongs(built)
+                }
+                minimal -> SetBuilder.applyQuiet(DailySet.available(DailySet.MINIMAL, APP_STAGE), settings.quietMode)
+                training == Training.DAILY -> {
+                    val activeTrack = Tracks.byId(settings.activeTrackId)
+                    val activeStageIdx = Tracks.evaluate(activeTrack, attempts, unlocked).currentStageIndex
+                    SetBuilder.buildDaily(targetMinutes, settings.quietMode, activeTrack, singing, focus, transferGapBig, APP_STAGE, activeStageIdx)
+                }
+                else -> {
+                    var plan = DailySet.available(training.plan, APP_STAGE)
+                    if (!anyDue) plan = DailySet.withoutSongs(plan)
+                    if (songFocus != null && training == Training.ROAD) {
+                        plan = plan.map { b -> if (b.variant == Variant.TIR_UNDER_NOTE) b.copy(variant = Variant.FORMULA_ALOUD) else b }
+                    }
+                    plan = SingUnlock.plan(plan, singing)
+                    if (training.guitar == GuitarNeed.NONE) plan = SetBuilder.applyQuiet(plan, settings.quietMode)
+                    if (minutes != null) plan = SetBuilder.scale(plan, minutes)
+                    AdaptiveEar.apply(plan, focus)
+                }
+            }
+
             state.update {
-                val plan = if (songFocus != null && training == Training.ROAD) it.segments.map { block ->
-                    if (block.variant == Variant.TIR_UNDER_NOTE) block.copy(variant = Variant.FORMULA_ALOUD) else block
-                } else it.segments
-                it.copy(ready = true, focus = focus, songFocus = songFocus,
-                    segments = AdaptiveEar.apply(SingUnlock.plan(plan, singing), focus))
+                it.copy(
+                    ready = true,
+                    focus = focus,
+                    songFocus = songFocus,
+                    segments = segments,
+                )
             }
         }
     }
@@ -209,9 +268,19 @@ class SetViewModel(private val graph: AppGraph, minimal: Boolean, training: Trai
 }
 
 @Composable
-fun SetScreen(minimal: Boolean, onExit: () -> Unit, onLibrary: () -> Unit, training: Training = Training.DAILY) {
+fun SetScreen(
+    minimal: Boolean,
+    onExit: () -> Unit,
+    onLibrary: () -> Unit,
+    training: Training = Training.DAILY,
+    trackId: String? = null,
+    stageId: String? = null,
+    minutes: Int? = null,
+) {
     val graph = LocalAppGraph.current
-    val vm: SetViewModel = viewModel(key = "set-$minimal-${training.name}") { SetViewModel(graph, minimal, training) }
+    val vm: SetViewModel = viewModel(key = "set-$minimal-${training.name}-$trackId-$stageId-$minutes") {
+        SetViewModel(graph, minimal, training, trackId, stageId, minutes)
+    }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val seg = ui.current
 
@@ -231,11 +300,16 @@ fun SetScreen(minimal: Boolean, onExit: () -> Unit, onLibrary: () -> Unit, train
                 )
             } else {
                 GameScreen(
-                    spec = RoundSpec(seg.variant, sessionId = ui.sessionId, durationMs = ui.roundMsOf(seg),
+                    spec = RoundSpec(
+                        seg.variant,
+                        level = ui.stageMinLevels[seg.variant],
+                        sessionId = ui.sessionId,
+                        durationMs = ui.roundMsOf(seg),
                         songFocus = ui.songFocus?.takeIf { ui.round == 0 && ui.index == ui.segments.indexOfFirst { block ->
                             block.variant == (if (ui.training == Training.GUITAR) Variant.TAPER_STEPS else Variant.FORMULA_ALOUD)
                         } },
-                        focus = ui.focus?.takeIf { ui.focusIndex == ui.index }),
+                        focus = ui.focus?.takeIf { ui.focusIndex == ui.index },
+                    ),
                     onExit = { vm.endSet() },
                     onFinished = { vm.roundDone(it.answered > 0) },
                     vmKey = "set-${ui.sessionId}-${ui.index}-${ui.round}",
@@ -253,10 +327,11 @@ private const val EXIT_SET = "Выйти из сета"
 
 @Composable
 private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
+    val totalMin = formatMinutes(ui.segments.sumOf { it.minutes })
+    val goal = ui.customGoal ?: if (ui.minimal) "серия не прервётся" else ui.training.goal
     ScreenFrame(
-        title = if (ui.minimal) "Короткий сет" else ui.training.ru,
-        subtitle = "${ui.segments.sumOf { it.minutes }.roundToInt()} минут — " + if (ui.minimal) "серия не прервётся" else ui.training.goal +
-            (if (ui.training.guitar == GuitarNeed.NONE) " · гитара не нужна" else ""),
+        title = ui.customTitle ?: if (ui.minimal) "Короткий сет" else ui.training.ru,
+        subtitle = "$totalMin — $goal" + (if (!ui.guitarNeeded) " · гитара не нужна" else ""),
         accent = Accents.Hero,
         onBack = onExit,
     ) {
@@ -268,9 +343,9 @@ private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
                         Spacer(Modifier.padding(horizontal = 8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(s.variant.ru, style = MaterialTheme.typography.titleLarge)
-                            Text(s.variant.mode.goal, style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
+                            Text(variantHint(s.variant), style = MaterialTheme.typography.bodySmall, color = Juicy.TextDim)
                         }
-                        Text("${s.minutes.roundToInt()} мин", style = MaterialTheme.typography.titleMedium, color = Juicy.Gold)
+                        Text(formatMinutes(s.minutes), style = MaterialTheme.typography.titleMedium, color = Juicy.Gold)
                     }
                 }
             }
@@ -281,8 +356,48 @@ private fun SetIntro(ui: SetUi, onStart: () -> Unit, onExit: () -> Unit) {
             Text("«${song.title}», часть ${song.section} в прошлый раз далась с трудом. $task")
         } }
         ui.focus?.let { focus -> item(key = "reason") { Text(focus.reason) } }
-        item(key = "go") { JuicyButton("Поехали", enabled = ui.ready, onClick = onStart, modifier = Modifier.fillMaxWidth(), height = 72.dp, leading = "►") }
+        item(key = "go") {
+            JuicyButton("Поехали", enabled = ui.ready, onClick = onStart, modifier = Modifier.fillMaxWidth(), height = 72.dp, leadingIcon = AppIcon.PLAY)
+        }
     }
+}
+
+private fun formatMinutes(minutes: Double): String {
+    val rounded = minutes.roundToInt().toDouble()
+    return if (kotlin.math.abs(minutes - rounded) < 1e-6) {
+        "${rounded.toInt()} мин"
+    } else {
+        "${((minutes * 10.0).roundToInt() / 10.0).toString().replace('.', ',')} мин"
+    }
+}
+
+private fun variantHint(v: Variant): String = when (v) {
+    Variant.TIR_CLASSIC -> "нота над гулом тоники — назови ступень"
+    Variant.TIR_DUEL -> "две путающиеся ступени подряд до автоматизма"
+    Variant.TIR_OVER_CHORDS -> "ступень звучит поверх меняющихся аккордов"
+    Variant.TIR_UNDER_NOTE -> "нота видна — угадай аккорд под ней"
+    Variant.TIR_ON_TONIC -> "аккорд над тоникой — какая это ступень"
+    Variant.TIR_BASS -> "только бас аккорда над тоникой"
+    Variant.TIR_TWO_CHORDS -> "из одного аккорда в следующий — куда шаг"
+    Variant.TIR_DYAD -> "два звука вместе — назови верхний от нижнего"
+    Variant.TIR_COLOR -> "мажор, минор, уменьшённый или септаккорд"
+    Variant.TIR_LAYERS -> "функция аккорда: дом, уход или напряжение"
+    Variant.TIR_MODE -> "лад целиком над тоникой"
+    Variant.TIR_SIMON -> "повтори растущую цепочку ступеней"
+    Variant.TIR_SONG -> "узнай песню по начальной гармонии"
+    Variant.TIR_NEXT -> "три аккорда прозвучали — куда ход пойдёт дальше"
+    Variant.TIR_LOOP3 -> "одна петля в трёх тональностях подряд"
+    Variant.TIR_TRANSFER -> "контроль: ступени над дроном и в живом миксе"
+    Variant.KAMERTON_SEARCH -> "найди заданную ступень голосом над тоникой"
+    Variant.KAMERTON_SING -> "спой нужную ступень с первой ноты"
+    Variant.HUNT_REVERSE -> "назови ноту на показанном ладу тапами"
+    Variant.HUNT_FIND -> "сыграй названную ноту на грифе"
+    Variant.HUNT_ALL_OCTAVES -> "найди все октавы ноты по грифу"
+    Variant.TIR_BASSLINE -> "сними басовую линию по слуху на гитаре"
+    Variant.TAPER_STEPS -> "сыграй аккордовый ход в случайной тональности"
+    Variant.TAPER_ORDER -> "песни из библиотеки по ступеням"
+    Variant.FORMULA_ALOUD -> "вспомни формулу части песни без инструмента"
+    else -> v.mode.goal
 }
 
 @Composable
@@ -314,13 +429,13 @@ private fun NextUp(ui: SetUi, seg: SetSegment, onGo: () -> Unit, onSkip: () -> U
                 ModeOrb(seg.variant.mode, size = 120.dp)
                 Spacer(Modifier.height(20.dp))
                 Text(seg.variant.ru, style = MaterialTheme.typography.displaySmall)
-                Text("${seg.minutes.roundToInt()} мин · ${seg.variant.guitar.ru}", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
+                Text("${formatMinutes(seg.minutes)} · ${seg.variant.guitar.ru}", style = MaterialTheme.typography.titleMedium, color = Juicy.TextDim)
                 Spacer(Modifier.height(24.dp))
                 GradientText(if (count > 0) "$count" else "!", MaterialTheme.typography.displayLarge, ModeVisuals.accent(seg.variant), Modifier.pop(count + 1, 0.5f))
                 Spacer(Modifier.height(24.dp))
                 GhostButton("Пропустить", onClick = onSkip)
                 Spacer(Modifier.height(10.dp))
-                GhostButton("Пауза", onClick = { paused = true }, colors = Accents.Calm, leading = "❙❙")
+                GhostButton("Пауза", onClick = { paused = true }, colors = Accents.Calm, leadingIcon = AppIcon.PAUSE)
             }
         }
         if (paused) {
@@ -350,7 +465,6 @@ private fun SetDone(ui: SetUi, onExit: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(if (ui.activity > 0) "" else "", style = MaterialTheme.typography.displayLarge)
             Text(if (ui.activity > 0) "Сет закрыт!" else "Сет пропущен", style = MaterialTheme.typography.displaySmall)
             if (ui.endedEarly && ui.activity > 0) {
                 Text("вышли на части ${ui.index + 1} из ${ui.segments.size} — сделанное засчитано", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)

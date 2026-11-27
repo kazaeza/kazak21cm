@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
@@ -75,7 +76,7 @@ class PauseFlowTest {
         assertFalse(exited)
 
         // ⏸ in the top bar opens the same question; only «Следующее упражнение» moves on.
-        rule.onAllNodesWithText("❙❙").onFirst().performClick()
+        rule.onAllNodesWithContentDescription("Пауза").onFirst().performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithText("Следующее упражнение").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Следующее упражнение").performClick()
         rule.waitForIdle()

@@ -54,14 +54,16 @@ class TransferDriverTest {
     }
 
     @Test
-    fun `O-82 - with the piano chosen the band comps on the piano, the bass and the drums stay`() {
-        val t = tasks(6, arranger = Arranger(chordInstrument = ChordInstrument.PIANO)).first { it.texture == Texture.REAL }
-        val voices = t.question.notes.map { it.voice }.toSet()
-        assertTrue(Voice.PIANO in voices && Voice.BASS in voices && Voice.KICK in voices && Voice.SNARE in voices && Voice.HAT in voices)
-        assertTrue(Voice.GUITAR !in voices && Voice.TONE !in voices)
-        assertNull(t.drone, "still no hum")
-        val intro = requireNotNull(t.intro)
-        assertTrue(intro.notes.any { it.voice == Voice.PIANO } && intro.notes.none { it.voice == Voice.GUITAR }, "the cadence is in the same texture")
+    fun `O-82 - default TransferDriver and piano choice comp on piano while bass and drums stay`() {
+        for (arranger in listOf(Arranger(), Arranger(chordInstrument = ChordInstrument.PIANO))) {
+            val t = tasks(6, arranger = arranger).first { it.texture == Texture.REAL }
+            val voices = t.question.notes.map { it.voice }.toSet()
+            assertTrue(Voice.PIANO in voices && Voice.BASS in voices && Voice.KICK in voices && Voice.SNARE in voices && Voice.HAT in voices)
+            assertTrue(Voice.GUITAR !in voices && Voice.TONE !in voices)
+            assertNull(t.drone, "still no hum")
+            val intro = requireNotNull(t.intro)
+            assertTrue(intro.notes.any { it.voice == Voice.PIANO } && intro.notes.none { it.voice == Voice.GUITAR }, "the cadence is in the same texture")
+        }
     }
 
     @Test

@@ -67,6 +67,9 @@ interface AudioOutput {
     fun keepOpen(on: Boolean)
 }
 
+/** Default software pre-gain (dB) applied to microphone samples before pitch detection and RMS. */
+const val DEFAULT_MIC_BOOST_DB = 12.0
+
 /**
  * Microphone / USB-interface side. AudioRecord (source UNPROCESSED when supported, else
  * VOICE_RECOGNITION), 48 kHz mono float, window 2048 / hop 512, McLeod pitch → StableNoteSegmenter.
@@ -84,7 +87,12 @@ interface PitchInput {
     val error: StateFlow<String?>
 
     /** Requires RECORD_AUDIO. [deviceId] = AudioDeviceInfo.id of a preferred input, null = default. */
-    fun start(deviceId: Int?, a4Hz: Double, minHoldMs: Int = DEFAULT_MIN_HOLD_MS)
+    fun start(
+        deviceId: Int?,
+        a4Hz: Double,
+        minHoldMs: Int = DEFAULT_MIN_HOLD_MS,
+        boostDb: Double = DEFAULT_MIC_BOOST_DB,
+    )
 
     fun stop()
 }

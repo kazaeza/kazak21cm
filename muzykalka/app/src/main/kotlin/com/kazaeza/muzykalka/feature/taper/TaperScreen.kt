@@ -100,6 +100,7 @@ fun TaperScreen(
     val particles = rememberParticleState()
     val audition = rememberChordAudition(ui.settings.a4Hz, ui.settings.chordInstrument)
     KeepScreenOn()
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { audition.stop() }
     var asking by remember { mutableStateOf(false) }
     BackHandler(enabled = !asking) { asking = true }
     LaunchedEffect(ui.item?.id, ui.key, ui.phase) { audition.clear() }

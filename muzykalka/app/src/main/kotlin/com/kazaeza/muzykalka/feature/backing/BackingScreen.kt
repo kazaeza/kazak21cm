@@ -37,6 +37,7 @@ import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.Mode
 import com.kazaeza.muzykalka.music.RuNames
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.DegreeChip
 import com.kazaeza.muzykalka.ui.component.GhostButton
@@ -183,15 +184,23 @@ fun BackingScreen(id: String, onBack: () -> Unit) {
         }
         if (key == null) return@ScreenFrame
         item(key = "controls") {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    DegreeChip(RuNames.key(key), Juicy.Gold, large = true)
-                    Spacer(Modifier.weight(1f))
-                    GhostButton("другая", onClick = vm::newKey, colors = Accents.Taper, leading = "⇄")
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        DegreeChip(RuNames.key(key), Juicy.Gold, large = true)
+                        Spacer(Modifier.weight(1f))
+                        GhostButton("другая", onClick = vm::newKey, colors = Accents.Taper, leadingIcon = AppIcon.REPLAY)
+                    }
+                    SectionLabel("темп, ударов в минуту")
+                    ChoiceRow(BackingViewModel.TEMPOS, ui.tempo, { it.toString() }, vm::setTempo, colors = Accents.Taper)
+                    JuicyButton(
+                        if (ui.playing) "Стоп" else "Играть",
+                        onClick = vm::toggle,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = Accents.Taper,
+                        leadingIcon = if (ui.playing) AppIcon.STOP else AppIcon.PLAY,
+                    )
                 }
-                SectionLabel("темп, ударов в минуту")
-                ChoiceRow(BackingViewModel.TEMPOS, ui.tempo, { it.toString() }, vm::setTempo, colors = Accents.Taper)
-                JuicyButton(if (ui.playing) "Стоп" else "Играть", onClick = vm::toggle, modifier = Modifier.fillMaxWidth(), colors = Accents.Taper, leading = if (ui.playing) "■" else "►")
             }
         }
         item(key = "now") {

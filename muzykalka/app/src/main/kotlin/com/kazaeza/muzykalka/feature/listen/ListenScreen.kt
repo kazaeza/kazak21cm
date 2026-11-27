@@ -46,6 +46,7 @@ import com.kazaeza.muzykalka.feature.common.SongHintLine
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.MidiNote
 import com.kazaeza.muzykalka.music.RuNames
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.ChoiceRow
 import com.kazaeza.muzykalka.ui.component.DeadlineBar
 import com.kazaeza.muzykalka.ui.component.DegreeChip
@@ -214,9 +215,9 @@ fun ListenContent(
         item(key = "action") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (ui.running) {
-                    GhostButton("Стоп", onClick = onToggle, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "■")
+                    GhostButton("Стоп", onClick = onToggle, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leadingIcon = AppIcon.STOP)
                 } else {
-                    JuicyButton("Слушать", onClick = onToggle, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leading = "►")
+                    JuicyButton("Слушать", onClick = onToggle, modifier = Modifier.fillMaxWidth(), colors = Accents.Tir, leadingIcon = AppIcon.PLAY)
                 }
                 if (ui.heard > 0) {
                     Text("услышано: ${ui.heard}", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
@@ -224,20 +225,22 @@ fun ListenContent(
             }
         }
         item(key = "controls") {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SectionLabel("что гудит под нотой")
-                ChoiceRow(ListenScope.entries, ui.scope, { it.ru }, onScope, colors = Accents.Tir)
-                SectionLabel("пауза перед ответом")
-                ChoiceRow(ListenDeck.DELAYS_MS, ui.delayMs, { "${it / 1000} с" }, onDelay, colors = Accents.Tir)
-                SectionLabel("ответ")
-                ChoiceRow(listOf(true, false), ui.voice, { if (it) "вслух" else "только на экране" }, onVoice, colors = Accents.Tir)
-                HintStyleSwitch(ui.hintStyle, onHintStyle)
-                if (ui.voice && ui.voiceAvailable == false) {
-                    Text(
-                        "На телефоне нет русского голоса для озвучки — ответ будет только на экране. Голос ставится в настройках Android: «Синтез речи».",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Juicy.Gold,
-                    )
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionLabel("что гудит под нотой")
+                    ChoiceRow(ListenScope.entries, ui.scope, { it.ru }, onScope, colors = Accents.Tir)
+                    SectionLabel("пауза перед ответом")
+                    ChoiceRow(ListenDeck.DELAYS_MS, ui.delayMs, { "${it / 1000} с" }, onDelay, colors = Accents.Tir)
+                    SectionLabel("ответ")
+                    ChoiceRow(listOf(true, false), ui.voice, { if (it) "вслух" else "только на экране" }, onVoice, colors = Accents.Tir)
+                    HintStyleSwitch(ui.hintStyle, onHintStyle)
+                    if (ui.voice && ui.voiceAvailable == false) {
+                        Text(
+                            "На телефоне нет русского голоса для озвучки — ответ будет только на экране. Голос ставится в настройках Android: «Синтез речи».",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Juicy.Gold,
+                        )
+                    }
                 }
             }
         }

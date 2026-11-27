@@ -1,7 +1,11 @@
 package com.kazaeza.muzykalka.feature.loops
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -11,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,6 +26,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -40,6 +48,8 @@ import com.kazaeza.muzykalka.music.Harmony
 import com.kazaeza.muzykalka.music.Key
 import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.RuNames
+import com.kazaeza.muzykalka.ui.component.AppGlyph
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.Badge
 import com.kazaeza.muzykalka.ui.component.DegreeChip
 import com.kazaeza.muzykalka.ui.component.GlassCard
@@ -154,15 +164,31 @@ private const val SONGS_SHOWN = 4
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LoopCardView(card: LoopCard, notation: DegreeNotation, playingKey: Key?, onPlay: () -> Unit, onOpenSong: (String) -> Unit) {
+    val isPlaying = playingKey != null
+    val playLabel = if (isPlaying) "Стоп" else "Играть"
     GlassCard(Modifier.fillMaxWidth(), accent = if (card.known) Accents.Good else null, onClick = onPlay) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 card.chords.forEach { c -> DegreeChip(DegreeFormatter.chord(c, notation), DegreeColors.of(c.root), large = true) }
             }
-            Spacer(Modifier.width(8.dp))
-            Text(if (playingKey != null) "■" else "►", style = MaterialTheme.typography.titleLarge, color = Juicy.TextDim)
+            Spacer(Modifier.width(10.dp))
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(if (isPlaying) Juicy.Orange.copy(alpha = 0.16f) else Juicy.Ink3.copy(alpha = 0.7f))
+                    .border(BorderStroke(1.dp, if (isPlaying) Juicy.Orange.copy(alpha = 0.5f) else Juicy.Line), CircleShape)
+                    .semantics { contentDescription = playLabel },
+                contentAlignment = Alignment.Center,
+            ) {
+                AppGlyph(
+                    icon = if (isPlaying) AppIcon.STOP else AppIcon.PLAY,
+                    color = if (isPlaying) Juicy.Orange else Juicy.TextDim,
+                    size = 16.dp,
+                )
+            }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             when {
                 card.known -> Badge("узнаю", Accents.Good)
@@ -175,22 +201,29 @@ private fun LoopCardView(card: LoopCard, notation: DegreeNotation, playingKey: K
                 color = Juicy.TextDim,
             )
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Column {
             card.songs.take(SONGS_SHOWN).forEach { song ->
-                Text(
-                    listOfNotNull(song.title, song.artist).joinToString(" · ") + if (song.learning) " · учу" else "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Juicy.Text,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 40.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .clickable(onClickLabel = "Открыть песню") { onOpenSong(song.id) }
-                        .padding(vertical = 9.dp),
-                )
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        listOfNotNull(song.title, song.artist).joinToString(" · ") + if (song.learning) " · учу" else "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Juicy.Text,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    AppGlyph(AppIcon.CHEVRON_RIGHT, Juicy.TextFaint, size = 16.dp)
+                }
             }
             if (card.songs.size > SONGS_SHOWN) {
                 Text("и ещё ${card.songs.size - SONGS_SHOWN}", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)

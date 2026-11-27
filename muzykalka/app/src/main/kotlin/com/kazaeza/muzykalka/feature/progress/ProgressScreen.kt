@@ -34,6 +34,7 @@ import com.kazaeza.muzykalka.feature.common.ScreenFrame
 import com.kazaeza.muzykalka.feature.common.plural
 import com.kazaeza.muzykalka.feature.today.TRIANGLE_ORDER
 import com.kazaeza.muzykalka.game.Comparison
+import com.kazaeza.muzykalka.game.ExamKind
 import com.kazaeza.muzykalka.game.Graduation
 import com.kazaeza.muzykalka.game.Levels
 import com.kazaeza.muzykalka.game.Variant
@@ -46,6 +47,7 @@ import com.kazaeza.muzykalka.music.PitchClass
 import com.kazaeza.muzykalka.ui.chart.ConfusionGrid
 import com.kazaeza.muzykalka.ui.chart.LineChart
 import com.kazaeza.muzykalka.ui.chart.TriangleChart
+import com.kazaeza.muzykalka.ui.component.AppIcon
 import com.kazaeza.muzykalka.ui.component.BigStat
 import com.kazaeza.muzykalka.ui.component.GhostButton
 import com.kazaeza.muzykalka.ui.component.GlassCard
@@ -173,7 +175,7 @@ class ProgressViewModel(graph: AppGraph) : ViewModel() {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -> Unit = {}) {
+fun ProgressScreen(onExam: (ExamKind) -> Unit, onFeel: () -> Unit = {}, onTransfer: () -> Unit = {}) {
     val graph = LocalAppGraph.current
     val vm: ProgressViewModel = viewModel { ProgressViewModel(graph) }
     val ui by vm.ui.collectAsStateWithLifecycle()
@@ -221,7 +223,7 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
                 val synth = t.synth
                 val real = t.real
                 if (synth == null || real == null) {
-                    Text("Один контрольный раунд раз в неделю: та же задача над синтезатором и в звуке гитары, баса и ударных. Здесь будет разрыв между ними.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
+                    Text("Один контрольный раунд раз в неделю: та же задача над синтезатором и в живой фактуре пианино, баса и ударных. Здесь будет разрыв между ними.", style = MaterialTheme.typography.bodyMedium, color = Juicy.TextDim)
                 } else {
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -255,7 +257,7 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
                     )
                 }
                 Spacer(Modifier.height(10.dp))
-                JuicyButton(if (ui.transfer.synth == null) "Пройти проверку · 90 с" else "Проверить снова · 90 с", onClick = onTransfer, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leading = "")
+                JuicyButton(if (ui.transfer.synth == null) "Пройти проверку · 90 с" else "Проверить снова · 90 с", onClick = onTransfer, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leadingIcon = AppIcon.PLAY)
                 Text("Это контроль, а не урок: задачи не из тренировок и не повторяются по ошибкам. С одним человеком цифры шумные — смотри на тренд.", style = MaterialTheme.typography.bodySmall, color = Juicy.TextFaint)
             }
         }
@@ -405,7 +407,7 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
             GlassCard(Modifier.fillMaxWidth(), accent = Accents.Calm) {
                 SectionLabel("замер уровня")
                 Text(
-                    "Десять минут без подсказок: гриф, слух и память. Это точка отсчёта — повтори через месяц и сравни. " +
+                    "Два отдельных замера без подсказок: слух в наушниках (без гитары) и гриф с памятью на живой гитаре. " +
                         "Справа — твой результат и цель.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Juicy.TextDim,
@@ -431,7 +433,21 @@ fun ProgressScreen(onExam: () -> Unit, onFeel: () -> Unit = {}, onTransfer: () -
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                JuicyButton(if (ui.exams.isEmpty()) "Сделать замер" else "Замерить снова", onClick = onExam, modifier = Modifier.fillMaxWidth(), colors = Accents.Calm, leading = "")
+                JuicyButton(
+                    text = "Замер слуха · без гитары",
+                    onClick = { onExam(ExamKind.EAR) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = Accents.Calm,
+                    leadingIcon = AppIcon.PIANO,
+                )
+                Spacer(Modifier.height(8.dp))
+                GhostButton(
+                    text = "Замер на гитаре",
+                    onClick = { onExam(ExamKind.GUITAR) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = Accents.Taper,
+                    leadingIcon = AppIcon.GUITAR,
+                )
             }
         }
     }

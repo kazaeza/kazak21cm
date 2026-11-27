@@ -3,11 +3,14 @@ package com.kazaeza.muzykalka
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -76,9 +79,10 @@ class HarmonyLabFlowTest {
         rule.waitUntil(5_000) { held() == listOf(0, 12) }
         scrollTo("октава")
         rule.onNodeWithText("2 : 1").assertExists()
-        scrollTo("■")
-        rule.onNodeWithText("■").performClick()
-        rule.waitUntil(5_000) { rule.onAllNodesWithText("►").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNode(hasScrollAction()).performScrollToNode(hasContentDescription("Стоп"))
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Стоп").performClick()
+        rule.waitUntil(5_000) { rule.onAllNodesWithContentDescription("Играть").fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test

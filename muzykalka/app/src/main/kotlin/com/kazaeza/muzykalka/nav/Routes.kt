@@ -7,7 +7,10 @@ import kotlinx.serialization.Serializable
 @Serializable data object TabsRoute
 @Serializable data object SettingsRoute
 @Serializable data object SoundCheckRoute
-@Serializable data object ExamRoute
+@Serializable data class ExamRoute(val kind: String = "EAR")
+
+/** Guided learning track details & stage picker. */
+@Serializable data class TrackRoute(val trackId: String)
 
 /** «Вайб ступеней»: listen to every degree against its tonic (ADR-015). */
 @Serializable data object FeelRoute
@@ -36,8 +39,14 @@ import kotlinx.serialization.Serializable
 /** O-47 «Коллекция ходов»: the library's opening loops and which of them the ear knows. */
 @Serializable data object LoopsRoute
 
-/** [training] is a [com.kazaeza.muzykalka.game.Training] name (O-55); ignored for the minimal day. */
-@Serializable data class SetRoute(val minimal: Boolean, val training: String = "DAILY")
+/** [training] is a [com.kazaeza.muzykalka.game.Training] name (O-55); optional [trackId]/[stageId] and [minutes] (0 = default budget) for track stages and budget scaling. */
+@Serializable data class SetRoute(
+    val minimal: Boolean,
+    val training: String = "DAILY",
+    val trackId: String? = null,
+    val stageId: String? = null,
+    val minutes: Int = 0,
+)
 
 @Serializable data class ItemRoute(val id: String)
 

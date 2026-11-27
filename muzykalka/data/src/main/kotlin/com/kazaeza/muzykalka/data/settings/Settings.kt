@@ -59,6 +59,12 @@ data class Settings(
     val hintStyle: HintStyle = HintStyle.FEEL,
     /** O-82: what strikes a chord the app plays by itself (a tap on a chord, the band of the loops) — the piano was the user's pick. */
     val chordInstrument: ChordInstrument = ChordInstrument.PIANO,
+    /** Quiet mode: skips voice/singing/mic-requiring tasks (e.g. on transit or at night). */
+    val quietMode: Boolean = false,
+    /** Software microphone pre-gain in dB (0..24) applied before pitch detection and RMS. */
+    val micBoostDb: Int = 12,
+    /** Currently selected guided learning track ID (e.g. STEPS_BASE). */
+    val activeTrackId: String = "STEPS_BASE",
 ) {
     val tuning: Tuning get() = Tuning.byId(tuningId) ?: Tuning.STANDARD
 }
@@ -92,6 +98,9 @@ class SettingsRepository(context: Context) {
         val ORB = stringPreferencesKey("orb_body")
         val HINTS = stringPreferencesKey("hint_style")
         val CHORDS = stringPreferencesKey("chord_instrument")
+        val QUIET_MODE = booleanPreferencesKey("quiet_mode")
+        val MIC_BOOST_DB = intPreferencesKey("mic_boost_db")
+        val ACTIVE_TRACK_ID = stringPreferencesKey("active_track_id")
     }
 
     private companion object {
@@ -124,6 +133,9 @@ class SettingsRepository(context: Context) {
             p[K.ORB] = next.orbBody.name
             p[K.HINTS] = next.hintStyle.name
             p[K.CHORDS] = next.chordInstrument.name
+            p[K.QUIET_MODE] = next.quietMode
+            p[K.MIC_BOOST_DB] = next.micBoostDb.coerceIn(0, 24)
+            p[K.ACTIVE_TRACK_ID] = next.activeTrackId
         }
     }
 
@@ -153,6 +165,9 @@ class SettingsRepository(context: Context) {
             orbBody = p[K.ORB]?.let { runCatching { OrbBody.valueOf(it) }.getOrNull() } ?: d.orbBody,
             hintStyle = p[K.HINTS]?.let { runCatching { HintStyle.valueOf(it) }.getOrNull() } ?: d.hintStyle,
             chordInstrument = p[K.CHORDS]?.let { runCatching { ChordInstrument.valueOf(it) }.getOrNull() } ?: d.chordInstrument,
+            quietMode = p[K.QUIET_MODE] ?: d.quietMode,
+            micBoostDb = (p[K.MIC_BOOST_DB] ?: d.micBoostDb).coerceIn(0, 24),
+            activeTrackId = p[K.ACTIVE_TRACK_ID] ?: d.activeTrackId,
         )
     }
 

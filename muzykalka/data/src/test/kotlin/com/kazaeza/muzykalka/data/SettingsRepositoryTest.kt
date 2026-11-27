@@ -72,4 +72,26 @@ class SettingsRepositoryTest {
         assertEquals(HintStyle.SONGS, repo.settings.first().hintStyle)
         repo.update { it.copy(hintStyle = HintStyle.FEEL, a4Hz = 440.0) }
     }
+
+    @Test
+    fun `quiet mode, mic boost and active track round-trip with clamping`() = runBlocking {
+        val defaults = Settings()
+        assertEquals(false, defaults.quietMode)
+        assertEquals(12, defaults.micBoostDb)
+        assertEquals("STEPS_BASE", defaults.activeTrackId)
+
+        val repo = SettingsRepository(context)
+        repo.update { it.copy(quietMode = true, micBoostDb = 18, activeTrackId = "CHORDS_BASE") }
+        val saved = repo.settings.first()
+        assertEquals(true, saved.quietMode)
+        assertEquals(18, saved.micBoostDb)
+        assertEquals("CHORDS_BASE", saved.activeTrackId)
+
+        repo.update { it.copy(micBoostDb = 40) }
+        assertEquals(24, repo.settings.first().micBoostDb)
+        repo.update { it.copy(micBoostDb = -5) }
+        assertEquals(0, repo.settings.first().micBoostDb)
+
+        repo.update { it.copy(quietMode = false, micBoostDb = 12, activeTrackId = "STEPS_BASE") }
+    }
 }

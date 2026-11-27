@@ -164,7 +164,8 @@ class HuntDriver(
 
     override fun evaluate(task: HuntTask, answer: Answer): Evaluation {
         val expectedNote = task.acceptable.minOrNull()
-        val correctionScore = expectedNote?.let { Score(90.0, listOf(ScoreNote(0.0, 2.0, Voice.GUITAR, it, 0.9f))) }
+        val correctionVoice = if (variant == Variant.HUNT_REVERSE) Voice.PIANO else Voice.GUITAR
+        val correctionScore = expectedNote?.let { Score(90.0, listOf(ScoreNote(0.0, 2.0, correctionVoice, it, 0.9f))) }
         val expectedText = buildString {
             append(RuNames.note(task.name, naming))
             if (task.kind == HuntKind.REVERSE) {

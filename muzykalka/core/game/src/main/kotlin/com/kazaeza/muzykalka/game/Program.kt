@@ -48,15 +48,16 @@ data class SetSegment(val variant: Variant, val minutes: Double)
 enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, val plan: List<SetSegment>) {
     DAILY(
         "Сет дня",
-        "по кусочку каждого режима",
-        GuitarNeed.REQUIRED,
+        "слух, голос, аккорды и песни в голове — без гитары",
+        GuitarNeed.NONE,
         listOf(
-            SetSegment(Variant.HUNT_FIND, 2.0),
             SetSegment(Variant.TIR_CLASSIC, 4.0),
             SetSegment(Variant.KAMERTON_SING, 3.0),
-            SetSegment(Variant.HUNT_ALL_OCTAVES, 3.0),
-            SetSegment(Variant.TAPER_STEPS, 3.0),
-            SetSegment(Variant.TAPER_ORDER, 5.0),
+            SetSegment(Variant.TIR_OVER_CHORDS, 3.0),
+            SetSegment(Variant.TIR_LAYERS, 2.0),
+            SetSegment(Variant.TIR_ON_TONIC, 2.0),
+            SetSegment(Variant.TIR_LOOP3, 3.0),
+            SetSegment(Variant.FORMULA_ALOUD, 3.0),
         ),
     ),
     GUITAR(
@@ -117,8 +118,14 @@ enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, va
         /** Parts that listen to the voice. */
         val VOICE = setOf(Variant.KAMERTON_SING, Variant.KAMERTON_SEARCH)
 
-        /** What «Сегодня» offers besides the daily set: the guitar first, then the ones without it. */
-        val OTHERS = listOf(GUITAR, EAR, SONGS, ROAD)
+        /** What «Сегодня» offers besides the daily set: non-guitar sets first, then the physical-guitar set. */
+        val OTHERS = listOf(EAR, SONGS, ROAD, GUITAR)
+
+        /** Sets that require no physical guitar (ear, voice, songs in head, fretboard taps). */
+        val NON_GUITAR = listOf(DAILY, EAR, SONGS, ROAD)
+
+        /** Sets that require a physical guitar in hands. */
+        val WITH_GUITAR = listOf(GUITAR)
 
         /** The name a route carries; an unknown one (an older build's) is the daily set. */
         fun of(name: String?): Training = entries.firstOrNull { it.name == name } ?: DAILY
@@ -126,18 +133,17 @@ enum class Training(val ru: String, val goal: String, val guitar: GuitarNeed, va
 }
 
 /**
- * The daily set (20 min) and the short day (5 min). Defaults from the plan, except that the Taper
- * block starts with «Ходы» — banal progressions as the base — before the user's own songs
- * (ADR-014). The adaptive planner (ticket S-01) redistributes time within ±50% of these.
+ * The daily set (20 min) and the short day (5 min), both 100% non-guitar by default.
+ * Physical guitar drills live in [Training.GUITAR] and [Tracks.GUITAR].
  */
 object DailySet {
     val DEFAULT = Training.DAILY.plan
 
-    /** «Нет времени? 5 минут»: still counts toward the streak. */
+    /** «Нет времени? 5 минут»: still counts toward the streak, no physical guitar needed. */
     val MINIMAL = listOf(
-        SetSegment(Variant.TIR_CLASSIC, 1.5),
-        SetSegment(Variant.TAPER_STEPS, 1.5),
-        SetSegment(Variant.TAPER_ORDER, 2.0),
+        SetSegment(Variant.TIR_CLASSIC, 2.0),
+        SetSegment(Variant.TIR_ON_TONIC, 1.5),
+        SetSegment(Variant.FORMULA_ALOUD, 1.5),
     )
 
     /**

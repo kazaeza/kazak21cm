@@ -22,6 +22,7 @@ import com.kazaeza.muzykalka.music.KeyPicker
 import com.kazaeza.muzykalka.music.Melody
 import com.kazaeza.muzykalka.music.MelodyKind
 import com.kazaeza.muzykalka.music.Mode
+import com.kazaeza.muzykalka.music.OrbBody
 import com.kazaeza.muzykalka.music.SongBook
 import com.kazaeza.muzykalka.srs.Fsrs
 import kotlinx.coroutines.flow.first
@@ -177,6 +178,21 @@ class RepositoriesTest {
         val other = MuzykalkaDatabase.inMemory(context)
         BackupManager(context, other, SettingsRepository(context), ProgressStore(context), "test", store).import(json)
         assertEquals("5 3 1", store.current()[7]?.melodyText)
+        other.close()
+    }
+
+    @Test
+    fun backupImportCoercesUnknownEnumValuesToDefault() = runBlocking {
+        val settingsRepo = SettingsRepository(context)
+        settingsRepo.update { it.copy(orbBody = OrbBody.THREAD) }
+        val exported = BackupManager(context, db, settingsRepo, ProgressStore(context), "test").export()
+        assertTrue(exported.contains("\"orbBody\":\"THREAD\""))
+        val legacyJson = exported.replace("\"orbBody\":\"THREAD\"", "\"orbBody\":\"DROP\"")
+
+        settingsRepo.update { it.copy(orbBody = OrbBody.INK) }
+        val other = MuzykalkaDatabase.inMemory(context)
+        BackupManager(context, other, settingsRepo, ProgressStore(context), "test").import(legacyJson)
+        assertEquals(OrbBody.THREAD, settingsRepo.settings.first().orbBody)
         other.close()
     }
 }
